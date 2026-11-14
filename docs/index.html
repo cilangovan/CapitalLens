@@ -3,169 +3,249 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>HOOP · Portfolio Monitor</title>
+<title>HOOP · T212 Monitor</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
   :root {
-    --bg: #0a0f1e;
-    --surface: #111827;
-    --surface2: #1f2937;
-    --border: #1e293b;
-    --text: #f1f5f9;
-    --muted: #64748b;
-    --green: #22c55e;
-    --red: #ef4444;
-    --amber: #f59e0b;
-    --blue: #3b82f6;
-    --purple: #a78bfa;
+    --bg: #060a14;
+    --card: #0d1526;
+    --card2: #111d35;
+    --border: #1a2744;
+    --text: #e8edf5;
+    --muted: #4a6080;
+    --muted2: #6b85a8;
+    --green: #00d084;
+    --red: #ff4757;
+    --amber: #ffa502;
+    --blue: #4a9eff;
+    --purple: #9b6dff;
+    --teal: #00c9b1;
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; font-size: 14px; min-height: 100vh; }
+  body { background: var(--bg); color: var(--text); font-family: system-ui, -apple-system, sans-serif; font-size: 14px; }
 
-  header { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
-  .logo { font-size: 16px; font-weight: 600; letter-spacing: -.01em; }
-  .logo span { color: var(--blue); }
-  .updated { font-size: 12px; color: var(--muted); }
+  /* Header */
+  header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 18px 28px; border-bottom: 1px solid var(--border);
+    background: linear-gradient(90deg, #060a14 0%, #0a1428 100%);
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo { font-size: 15px; font-weight: 700; letter-spacing: -.02em; }
+  .logo em { color: var(--blue); font-style: normal; }
+  .header-right { display: flex; align-items: center; gap: 16px; }
+  .updated { font-size: 11px; color: var(--muted2); }
+  .live-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--green); display: inline-block; margin-right: 6px; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.4} }
 
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1px; background: var(--border); border-top: 1px solid var(--border); }
-  .stat { background: var(--surface); padding: 16px 20px; }
-  .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
-  .stat-value { font-size: 22px; font-weight: 600; }
-  .stat-value.green { color: var(--green); }
-  .stat-value.red { color: var(--red); }
-  .stat-value.amber { color: var(--amber); }
+  /* Layout */
+  .wrap { max-width: 1200px; margin: 0 auto; padding: 24px 24px; }
 
-  section { padding: 24px; border-bottom: 1px solid var(--border); }
-  h2 { font-size: 12px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 16px; }
+  /* Stats strip */
+  .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 1px; background: var(--border); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 24px; }
+  .stat { background: var(--card); padding: 16px 18px; }
+  .stat-label { font-size: 10px; color: var(--muted2); text-transform: uppercase; letter-spacing: .08em; margin-bottom: 8px; }
+  .stat-val { font-size: 20px; font-weight: 700; line-height: 1; }
+  .stat-val.g { color: var(--green); }
+  .stat-val.r { color: var(--red); }
+  .stat-val.a { color: var(--amber); }
+  .stat-val.b { color: var(--blue); }
 
-  .alerts { display: flex; flex-direction: column; gap: 8px; }
-  .alert { padding: 12px 14px; border-radius: 6px; font-size: 13px; border-left: 3px solid; }
-  .alert.dip   { background: rgba(239,68,68,.08); border-color: var(--red); }
-  .alert.buy   { background: rgba(34,197,94,.08); border-color: var(--green); }
-  .alert.trim  { background: rgba(245,158,11,.08); border-color: var(--amber); }
-  .alert.rebalance { background: rgba(167,139,250,.08); border-color: var(--purple); }
-  .alert.growth { background: rgba(239,68,68,.08); border-color: var(--red); }
-  .alert-title { font-weight: 600; margin-bottom: 3px; }
-  .alert-body  { color: #94a3b8; font-size: 12px; }
-  .no-alerts { color: var(--muted); font-size: 13px; }
+  /* Two col layout */
+  .cols { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 24px; }
+  @media(max-width:800px){ .cols { grid-template-columns: 1fr; } }
 
+  /* Cards */
+  .card { background: var(--card); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; margin-bottom: 20px; }
+  .card-head { padding: 14px 18px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .card-title { font-size: 11px; font-weight: 600; color: var(--muted2); text-transform: uppercase; letter-spacing: .08em; }
+  .card-body { padding: 18px; }
+
+  /* Alerts */
+  .alert { padding: 12px 14px; border-radius: 6px; margin-bottom: 8px; border-left: 3px solid; }
+  .alert:last-child { margin-bottom: 0; }
+  .alert.dip   { background: rgba(255,71,87,.08);  border-color: var(--red); }
+  .alert.buy   { background: rgba(0,208,132,.08);  border-color: var(--green); }
+  .alert.trim  { background: rgba(255,165,2,.08);  border-color: var(--amber); }
+  .alert.rebalance { background: rgba(155,109,255,.08); border-color: var(--purple); }
+  .alert.growth { background: rgba(255,71,87,.08); border-color: var(--red); }
+  .alert-title { font-weight: 600; font-size: 13px; margin-bottom: 3px; }
+  .alert-body  { color: var(--muted2); font-size: 12px; line-height: 1.5; }
+  .no-alerts { color: var(--muted); font-size: 13px; padding: 8px 0; }
+
+  /* Chart container */
+  .chart-wrap { position: relative; height: 220px; }
+
+  /* Table */
   table { width: 100%; border-collapse: collapse; }
-  th { text-align: left; font-size: 11px; color: var(--muted); padding: 8px 10px; border-bottom: 1px solid var(--border); font-weight: 500; }
-  td { padding: 10px 10px; border-bottom: 1px solid rgba(255,255,255,.03); }
+  th { text-align: left; font-size: 10px; color: var(--muted); padding: 10px 12px; border-bottom: 1px solid var(--border); font-weight: 600; text-transform: uppercase; letter-spacing: .06em; }
+  td { padding: 11px 12px; border-bottom: 1px solid rgba(255,255,255,.03); font-size: 13px; vertical-align: middle; }
+  tr:last-child td { border-bottom: none; }
   tr:hover td { background: rgba(255,255,255,.02); }
-  .ticker { font-weight: 600; font-size: 13px; }
-  .badge { display: inline-block; font-size: 10px; padding: 2px 6px; border-radius: 3px; margin-left: 6px; vertical-align: middle; }
-  .badge.solo { background: rgba(59,130,246,.2); color: var(--blue); }
-  .badge.pie  { background: rgba(167,139,250,.2); color: var(--purple); }
-  .green { color: var(--green); }
-  .red   { color: var(--red); }
-  .amber { color: var(--amber); }
-  .muted { color: var(--muted); }
-  .bar-wrap { background: var(--surface2); border-radius: 2px; height: 4px; width: 80px; overflow: hidden; display: inline-block; vertical-align: middle; margin-left: 8px; }
-  .bar { height: 100%; border-radius: 2px; }
+  .ticker-name { font-weight: 600; font-size: 13px; }
+  .badge { display: inline-block; font-size: 10px; padding: 2px 7px; border-radius: 20px; margin-left: 6px; vertical-align: middle; font-weight: 500; }
+  .badge.solo { background: rgba(74,158,255,.15); color: var(--blue); }
+  .badge.pie  { background: rgba(155,109,255,.15); color: var(--purple); }
+  .g { color: var(--green); }
+  .r { color: var(--red); }
+  .a { color: var(--amber); }
+  .mu { color: var(--muted2); }
 
-  .pies-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
-  .pie-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
-  .pie-name { font-weight: 600; margin-bottom: 4px; font-size: 13px; }
-  .pie-meta { color: var(--muted); font-size: 12px; }
-  .pie-return { font-size: 20px; font-weight: 600; margin-top: 10px; }
+  /* Mini bar */
+  .mini-bar { display: inline-flex; align-items: center; gap: 8px; }
+  .bar-track { background: rgba(255,255,255,.06); border-radius: 2px; height: 4px; width: 60px; overflow: hidden; }
+  .bar-fill { height: 100%; border-radius: 2px; transition: width .3s; }
 
-  #loading { display: flex; align-items: center; justify-content: center; height: 60vh; color: var(--muted); }
+  /* Pie cards */
+  .pie-cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; }
+  .pie-card { background: var(--card2); border: 1px solid var(--border); border-radius: 8px; padding: 14px 16px; }
+  .pie-card-name { font-weight: 600; font-size: 13px; margin-bottom: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pie-card-meta { font-size: 11px; color: var(--muted2); margin-bottom: 10px; }
+  .pie-card-ret { font-size: 22px; font-weight: 700; }
 
-  @media (max-width: 600px) {
-    .hide-mobile { display: none; }
-    section { padding: 16px; }
+  /* Sparkline-style gain bar */
+  .gain-bar { height: 3px; border-radius: 2px; margin-top: 10px; }
+
+  #loading { display: flex; align-items: center; justify-content: center; height: 80vh; color: var(--muted); flex-direction: column; gap: 12px; }
+  .spinner { width: 24px; height: 24px; border: 2px solid var(--border); border-top-color: var(--blue); border-radius: 50%; animation: spin .8s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+
+  @media(max-width:600px){
+    .hide-sm { display: none; }
+    .wrap { padding: 16px; }
+    header { padding: 14px 16px; }
   }
 </style>
 </head>
 <body>
 
 <header>
-  <div class="logo">HOOP · <span>T212</span> Monitor</div>
-  <div class="updated" id="updated">Loading...</div>
+  <div class="logo">HOOP · <em>T212</em> Monitor</div>
+  <div class="header-right">
+    <span class="updated"><span class="live-dot"></span><span id="updated">Loading...</span></span>
+  </div>
 </header>
 
-<div id="loading">Fetching portfolio data...</div>
+<div id="loading">
+  <div class="spinner"></div>
+  <span style="color:var(--muted);font-size:13px">Fetching portfolio...</span>
+</div>
+
 <div id="app" style="display:none">
+  <div class="wrap">
 
-  <div class="grid" id="stats-grid"></div>
+    <!-- Stats -->
+    <div class="stats" id="stats"></div>
 
-  <section>
-    <h2>Alerts</h2>
-    <div class="alerts" id="alerts-container"></div>
-  </section>
+    <!-- Alerts + Gain chart -->
+    <div class="cols">
+      <div class="card">
+        <div class="card-head"><span class="card-title">Alerts</span><span id="alert-count" style="font-size:11px;color:var(--muted2)"></span></div>
+        <div class="card-body" id="alerts-body"></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="card-title">Gain by position</span></div>
+        <div class="card-body"><div class="chart-wrap"><canvas id="gainChart"></canvas></div></div>
+      </div>
+    </div>
 
-  <section>
-    <h2>Pies</h2>
-    <div class="pies-grid" id="pies-grid"></div>
-  </section>
+    <!-- Pies -->
+    <div class="card" id="pies-card">
+      <div class="card-head"><span class="card-title">Pies</span></div>
+      <div class="card-body">
+        <div class="pie-cards" id="pies-grid"></div>
+      </div>
+    </div>
 
-  <section>
-    <h2>All Positions</h2>
-    <table>
-      <thead>
-        <tr>
-          <th>Ticker</th>
-          <th>Price</th>
-          <th>Gain</th>
-          <th>From High</th>
-          <th class="hide-mobile">P&L</th>
-          <th class="hide-mobile">Type</th>
-        </tr>
-      </thead>
-      <tbody id="positions-tbody"></tbody>
-    </table>
-  </section>
+    <!-- Portfolio breakdown chart -->
+    <div class="cols">
+      <div class="card">
+        <div class="card-head"><span class="card-title">Portfolio breakdown</span></div>
+        <div class="card-body"><div class="chart-wrap"><canvas id="breakdownChart"></canvas></div></div>
+      </div>
+      <div class="card">
+        <div class="card-head"><span class="card-title">P&amp;L distribution</span></div>
+        <div class="card-body"><div class="chart-wrap"><canvas id="plChart"></canvas></div></div>
+      </div>
+    </div>
 
+    <!-- Positions table -->
+    <div class="card">
+      <div class="card-head">
+        <span class="card-title">All positions</span>
+        <span style="font-size:11px;color:var(--muted2)" id="pos-count"></span>
+      </div>
+      <div style="overflow-x:auto">
+        <table>
+          <thead><tr>
+            <th>Ticker</th>
+            <th>Price</th>
+            <th>Gain %</th>
+            <th>P&amp;L</th>
+            <th class="hide-sm">From high</th>
+            <th class="hide-sm">Type</th>
+          </tr></thead>
+          <tbody id="pos-tbody"></tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
 </div>
 
 <script>
+const COLORS = ['#4a9eff','#00d084','#9b6dff','#ffa502','#00c9b1','#ff4757','#ff6b81','#eccc68','#48dbfb','#ff9f43','#54a0ff','#5f27cd','#01abc2','#2ed573'];
+
+function clean(ticker) {
+  return ticker.replace(/_US_EQ.*|_EQ.*|l_EQ.*|d_EQ.*/,'').replace('_US','');
+}
+function fmt(n, d=2){ return Number(n).toFixed(d); }
+function sign(n){ return n>=0?'+':''; }
+function cls(n){ return n>=0?'g':'r'; }
+
 async function load() {
   try {
-    const r = await fetch('data.json?t=' + Date.now());
-    if (!r.ok) throw new Error('No data yet');
+    const r = await fetch('data.json?t='+Date.now());
+    if(!r.ok) throw new Error();
     const d = await r.json();
     render(d);
   } catch(e) {
-    document.getElementById('loading').textContent = 'No data yet — run the monitor first via GitHub Actions.';
+    document.getElementById('loading').innerHTML = '<span style="color:var(--muted)">No data yet — trigger a GitHub Actions run first.</span>';
   }
 }
-
-function fmt(n, dec=2) { return Number(n).toFixed(dec); }
-function sign(n) { return n >= 0 ? '+' : ''; }
-function cls(n) { return n >= 0 ? 'green' : 'red'; }
 
 function render(d) {
   document.getElementById('loading').style.display = 'none';
   document.getElementById('app').style.display = 'block';
-  document.getElementById('updated').textContent = 'Updated ' + new Date(d.updated).toLocaleString('en-GB');
+
+  const ts = new Date(d.updated);
+  document.getElementById('updated').textContent = isNaN(ts) ? d.updated : ts.toLocaleString('en-GB');
+
+  const acc = d.account || {};
+  const totalPL = d.positions.reduce((s,p)=>s+(p.ppl||0),0);
+  const cash = parseFloat(acc.free||0);
+  const total = parseFloat(acc.total||0);
+  const invested = total - cash;
 
   // Stats
-  const acc = d.account || {};
-  const totalPL = d.positions.reduce((s, p) => s + (p.ppl || 0), 0);
-  const cash = parseFloat(acc.free || 0);
-  const total = parseFloat(acc.total || 0);
-  const alertCount = d.alerts.length;
-
-  const stats = [
-    { label: 'Total value', value: '£' + fmt(total), cls: '' },
-    { label: 'Cash', value: '£' + fmt(cash), cls: '' },
-    { label: 'Total P&L', value: sign(totalPL) + '£' + fmt(Math.abs(totalPL)), cls: cls(totalPL) },
-    { label: 'Positions', value: d.positions.length, cls: '' },
-    { label: 'Pies', value: d.pies.length, cls: '' },
-    { label: 'Active alerts', value: alertCount, cls: alertCount > 0 ? 'amber' : 'green' },
-    { label: 'Target growth', value: d.target_annual_pct + '%pa', cls: '' },
-    { label: 'Monitor runs', value: d.run_count, cls: '' },
-  ];
-  document.getElementById('stats-grid').innerHTML = stats.map(s =>
-    `<div class="stat"><div class="stat-label">${s.label}</div><div class="stat-value ${s.cls}">${s.value}</div></div>`
-  ).join('');
+  document.getElementById('stats').innerHTML = [
+    {l:'Total value', v:'£'+fmt(total), c:'b'},
+    {l:'Invested',    v:'£'+fmt(invested), c:''},
+    {l:'Cash',        v:'£'+fmt(cash), c:''},
+    {l:'Total P&L',   v:sign(totalPL)+'£'+fmt(Math.abs(totalPL)), c:cls(totalPL)},
+    {l:'Positions',   v:d.positions.length, c:''},
+    {l:'Pies',        v:d.pies.length, c:''},
+    {l:'Alerts',      v:d.alerts.length, c:d.alerts.length>0?'a':'g'},
+    {l:'Target',      v:d.target_annual_pct+'%pa', c:'b'},
+  ].map(s=>`<div class="stat"><div class="stat-label">${s.l}</div><div class="stat-val ${s.c}">${s.v}</div></div>`).join('');
 
   // Alerts
-  const ac = document.getElementById('alerts-container');
-  if (d.alerts.length === 0) {
-    ac.innerHTML = '<div class="no-alerts">No alerts — all positions within thresholds.</div>';
+  const ab = document.getElementById('alerts-body');
+  document.getElementById('alert-count').textContent = d.alerts.length + ' active';
+  if(d.alerts.length===0){
+    ab.innerHTML='<div class="no-alerts">✓ All positions within thresholds</div>';
   } else {
-    ac.innerHTML = d.alerts.map(a => `
+    ab.innerHTML = d.alerts.map(a=>`
       <div class="alert ${a.type}">
         <div class="alert-title">${a.title}</div>
         <div class="alert-body">${a.body}</div>
@@ -173,41 +253,121 @@ function render(d) {
   }
 
   // Pies
-  document.getElementById('pies-grid').innerHTML = d.pies.map(p => {
-    const c = p.gain_pct >= 0 ? 'green' : 'red';
-    return `<div class="pie-card">
-      <div class="pie-name">${p.name}</div>
-      <div class="pie-meta">${p.holdings} holdings · £${fmt(p.value)}</div>
-      <div class="pie-return ${c}">${sign(p.gain_pct)}${fmt(p.gain_pct, 1)}%</div>
-    </div>`;
-  }).join('');
+  const pg = document.getElementById('pies-grid');
+  if(d.pies.length===0){
+    pg.innerHTML='<div style="color:var(--muted);font-size:13px">No pie data returned from API — check pies:read scope is enabled on your API key.</div>';
+  } else {
+    pg.innerHTML = d.pies.map((p,i)=>{
+      const c = p.gain_pct>=0?'var(--green)':'var(--red)';
+      const bw = Math.min(100, Math.abs(p.gain_pct)*3);
+      return `<div class="pie-card">
+        <div class="pie-card-name">${p.name}</div>
+        <div class="pie-card-meta">${p.holdings} holdings · £${fmt(p.value)}</div>
+        <div class="pie-card-ret" style="color:${c}">${sign(p.gain_pct)}${fmt(p.gain_pct,1)}%</div>
+        <div class="gain-bar" style="background:${c};width:${bw}%;opacity:.7"></div>
+      </div>`;
+    }).join('');
+  }
 
-  // Positions
-  const sorted = [...d.positions].sort((a, b) => b.gain_pct - a.gain_pct);
-  document.getElementById('positions-tbody').innerHTML = sorted.map(p => {
+  // Positions table
+  const sorted = [...d.positions].sort((a,b)=>b.gain_pct-a.gain_pct);
+  document.getElementById('pos-count').textContent = sorted.length + ' positions';
+  document.getElementById('pos-tbody').innerHTML = sorted.map(p=>{
     const gc = cls(p.gain_pct);
-    const dipCls = p.dip_from_high >= 8 ? 'red' : p.dip_from_high >= 4 ? 'amber' : 'muted';
-    const barWidth = Math.min(100, p.dip_from_high * 5);
-    const barColor = p.dip_from_high >= 12 ? '#ef4444' : p.dip_from_high >= 8 ? '#f59e0b' : '#22c55e';
+    const dipCls = p.dip_from_high>=12?'r':p.dip_from_high>=8?'a':'mu';
+    const bw = Math.min(100, p.dip_from_high*5);
+    const bc = p.dip_from_high>=12?'var(--red)':p.dip_from_high>=8?'var(--amber)':'var(--green)';
     const badge = p.in_pie
       ? '<span class="badge pie">pie</span>'
       : '<span class="badge solo">solo</span>';
     return `<tr>
-      <td><span class="ticker">${p.ticker}</span>${badge}</td>
+      <td><span class="ticker-name">${clean(p.ticker)}</span>${badge}</td>
       <td>£${fmt(p.current)}</td>
-      <td class="${gc}">${sign(p.gain_pct)}${fmt(p.gain_pct, 1)}%</td>
-      <td class="${dipCls}">
-        ${fmt(p.dip_from_high, 1)}%
-        <span class="bar-wrap"><span class="bar" style="width:${barWidth}%;background:${barColor}"></span></span>
+      <td class="${gc}">${sign(p.gain_pct)}${fmt(p.gain_pct,1)}%</td>
+      <td class="${gc}">${sign(p.ppl)}£${fmt(Math.abs(p.ppl))}</td>
+      <td class="hide-sm">
+        <div class="mini-bar">
+          <span class="${dipCls}">${fmt(p.dip_from_high,1)}%</span>
+          <div class="bar-track"><div class="bar-fill" style="width:${bw}%;background:${bc}"></div></div>
+        </div>
       </td>
-      <td class="hide-mobile ${gc}">${sign(p.ppl)}£${fmt(Math.abs(p.ppl))}</td>
-      <td class="hide-mobile muted">${p.in_pie ? 'Pie' : 'Solo'}</td>
+      <td class="hide-sm mu">${p.in_pie?'Pie':'Solo'}</td>
     </tr>`;
   }).join('');
+
+  // Gain bar chart
+  const gainData = sorted.slice(0,15);
+  new Chart(document.getElementById('gainChart'), {
+    type: 'bar',
+    data: {
+      labels: gainData.map(p=>clean(p.ticker)),
+      datasets:[{
+        data: gainData.map(p=>p.gain_pct),
+        backgroundColor: gainData.map(p=>p.gain_pct>=0?'rgba(0,208,132,.7)':'rgba(255,71,87,.7)'),
+        borderRadius: 4,
+        borderSkipped: false,
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      plugins:{ legend:{display:false}, tooltip:{callbacks:{label:c=>sign(c.raw)+fmt(c.raw,1)+'%'}} },
+      scales:{
+        x:{ticks:{color:'#4a6080',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'}},
+        y:{ticks:{color:'#4a6080',font:{size:10},callback:v=>v+'%'},grid:{color:'rgba(255,255,255,.04)'}},
+      }
+    }
+  });
+
+  // Breakdown doughnut
+  const top10 = [...sorted].sort((a,b)=>Math.abs(b.ppl)-Math.abs(a.ppl)).slice(0,10);
+  new Chart(document.getElementById('breakdownChart'), {
+    type: 'doughnut',
+    data:{
+      labels: top10.map(p=>clean(p.ticker)),
+      datasets:[{
+        data: top10.map(p=>Math.abs(p.ppl)||1),
+        backgroundColor: COLORS.slice(0,top10.length),
+        borderColor: '#060a14',
+        borderWidth: 2,
+      }]
+    },
+    options:{
+      responsive:true, maintainAspectRatio:false,
+      cutout:'65%',
+      plugins:{
+        legend:{position:'right',labels:{color:'#6b85a8',font:{size:11},boxWidth:12,padding:10}},
+        tooltip:{callbacks:{label:c=>' £'+fmt(c.raw,2)+' P&L'}}
+      }
+    }
+  });
+
+  // P&L horizontal bar
+  const plSorted = [...sorted].sort((a,b)=>b.ppl-a.ppl).slice(0,12);
+  new Chart(document.getElementById('plChart'), {
+    type: 'bar',
+    data:{
+      labels: plSorted.map(p=>clean(p.ticker)),
+      datasets:[{
+        data: plSorted.map(p=>p.ppl),
+        backgroundColor: plSorted.map(p=>p.ppl>=0?'rgba(0,208,132,.7)':'rgba(255,71,87,.7)'),
+        borderRadius: 4,
+        borderSkipped: false,
+      }]
+    },
+    options:{
+      indexAxis:'y',
+      responsive:true, maintainAspectRatio:false,
+      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>sign(c.raw)+'£'+fmt(Math.abs(c.raw))}}},
+      scales:{
+        x:{ticks:{color:'#4a6080',font:{size:10},callback:v=>'£'+v},grid:{color:'rgba(255,255,255,.04)'}},
+        y:{ticks:{color:'#6b85a8',font:{size:11}},grid:{display:false}},
+      }
+    }
+  });
 }
 
 load();
-setInterval(load, 5 * 60 * 1000); // auto-refresh every 5 min
+setInterval(load, 5*60*1000);
 </script>
 </body>
 </html>
