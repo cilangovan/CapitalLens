@@ -1,5 +1,5 @@
 {
-  "updated": "2026-11-14T03:46:04.199628+00:00",
+  "updated": "2026-11-14T10:54:38.944571+00:00",
   "account": {
     "free": 4362.44,
     "total": 9374.32,
@@ -18,7 +18,7 @@
       "gain_pct": -10.65,
       "dip_from_high": 0.0,
       "ppl": -18.4,
-      "pie": "Solo holdings"
+      "pie": "Magnificent 7"
     },
     {
       "ticker": "VUSAa_EQ",
@@ -28,7 +28,7 @@
       "gain_pct": 14.15,
       "dip_from_high": 0.0,
       "ppl": 23.95,
-      "pie": "Solo holdings"
+      "pie": "Wider ETF"
     },
     {
       "ticker": "SSLNl_EQ",
@@ -48,7 +48,7 @@
       "gain_pct": 15.75,
       "dip_from_high": 0.0,
       "ppl": 16.92,
-      "pie": "Solo holdings"
+      "pie": "Magnificent 7"
     },
     {
       "ticker": "IAEXl_EQ",
@@ -58,7 +58,7 @@
       "gain_pct": 3.37,
       "dip_from_high": 0.0,
       "ppl": 3.71,
-      "pie": "Solo holdings"
+      "pie": "Country Etf"
     },
     {
       "ticker": "IPOLl_EQ",
@@ -68,7 +68,7 @@
       "gain_pct": 11.01,
       "dip_from_high": 0.0,
       "ppl": 24.34,
-      "pie": "Solo holdings"
+      "pie": "Country Etf"
     },
     {
       "ticker": "ITWNl_EQ",
@@ -78,7 +78,7 @@
       "gain_pct": 17.24,
       "dip_from_high": 0.0,
       "ppl": 38.84,
-      "pie": "Solo holdings"
+      "pie": "Country Etf"
     },
     {
       "ticker": "AAPL_US_EQ",
@@ -88,7 +88,7 @@
       "gain_pct": 25.24,
       "dip_from_high": 0.0,
       "ppl": 31.26,
-      "pie": "Solo holdings"
+      "pie": "Magnificent 7"
     },
     {
       "ticker": "AMZN_US_EQ",
@@ -98,7 +98,7 @@
       "gain_pct": 9.47,
       "dip_from_high": 0.0,
       "ppl": 7.34,
-      "pie": "Solo holdings"
+      "pie": "Magnificent 7"
     },
     {
       "ticker": "SPCX_US_EQ",
@@ -108,7 +108,7 @@
       "gain_pct": -8.59,
       "dip_from_high": 0.0,
       "ppl": -7.25,
-      "pie": "Solo holdings"
+      "pie": "Magnificent 7"
     },
     {
       "ticker": "IMIBl_EQ",
@@ -118,7 +118,7 @@
       "gain_pct": 4.29,
       "dip_from_high": 0.0,
       "ppl": 4.35,
-      "pie": "Solo holdings"
+      "pie": "Country Etf"
     },
     {
       "ticker": "GOOGL_US_EQ",
@@ -128,7 +128,7 @@
       "gain_pct": -9.49,
       "dip_from_high": 0.0,
       "ppl": -9.62,
-      "pie": "Solo holdings"
+      "pie": "Magnificent 7"
     },
     {
       "ticker": "FB_US_EQ",
@@ -138,7 +138,7 @@
       "gain_pct": -11.36,
       "dip_from_high": 0.0,
       "ppl": -5.76,
-      "pie": "Solo holdings"
+      "pie": "Magnificent 7"
     },
     {
       "ticker": "CS1l_EQ",
@@ -148,7 +148,7 @@
       "gain_pct": 2.26,
       "dip_from_high": 0.0,
       "ppl": 4.97,
-      "pie": "Solo holdings"
+      "pie": "Country Etf"
     },
     {
       "ticker": "XDAXl_EQ",
@@ -158,7 +158,7 @@
       "gain_pct": 2.05,
       "dip_from_high": 0.0,
       "ppl": 3.36,
-      "pie": "Solo holdings"
+      "pie": "Country Etf"
     },
     {
       "ticker": "SGLNl_EQ",
@@ -178,7 +178,7 @@
       "gain_pct": 15.71,
       "dip_from_high": 0.0,
       "ppl": 53.32,
-      "pie": "Solo holdings"
+      "pie": "Wider ETF"
     },
     {
       "ticker": "SXRVd_EQ",
@@ -188,7 +188,7 @@
       "gain_pct": 13.83,
       "dip_from_high": 0.0,
       "ppl": 40.23,
-      "pie": "Solo holdings"
+      "pie": "Wider ETF"
     },
     {
       "ticker": "VWCEd_EQ",
@@ -198,27 +198,33 @@
       "gain_pct": 14.57,
       "dip_from_high": 0.0,
       "ppl": 6.2,
-      "pie": "Solo holdings"
+      "pie": "Wider ETF"
     }
   ],
   "pies": [
     {
-      "id": 3073704,
-      "name": "UK Gold & Silver",
+      "id": 3068081,
+      "name": "Wider ETF",
       "value": 0.0,
       "gain_pct": 0.0,
-      "holdings": 2,
+      "holdings": 4,
       "drifts": [],
       "instruments": [
         {
-          "ticker": "SGLNl_EQ",
-          "value": 0.0,
-          "shares": 17.97242306
+          "ticker": "QDVEd_EQ",
+          "value": 0.0
         },
         {
-          "ticker": "SSLNl_EQ",
-          "value": 0.0,
-          "shares": 2.81986325
+          "ticker": "SXRVd_EQ",
+          "value": 0.0
+        },
+        {
+          "ticker": "VUSAa_EQ",
+          "value": 0.0
+        },
+        {
+          "ticker": "VWCEd_EQ",
+          "value": 0.0
         }
       ]
     },
@@ -232,13 +238,71 @@
       "instruments": [
         {
           "ticker": "ASMLa_EQ",
-          "value": 0.0,
-          "shares": 0.0
+          "value": 0.0
         },
         {
           "ticker": "AMD_US_EQ",
-          "value": 0.0,
-          "shares": 0.0
+          "value": 0.0
+        }
+      ]
+    },
+    {
+      "id": 7212795,
+      "name": "Atomic Resources \u2622\ufe0f \ud83d\udee2\ufe0f",
+      "value": 0.0,
+      "gain_pct": 0.0,
+      "holdings": 4,
+      "drifts": [],
+      "instruments": [
+        {
+          "ticker": "COPXl_EQ",
+          "value": 0.0
+        },
+        {
+          "ticker": "NUCGl_EQ",
+          "value": 0.0
+        },
+        {
+          "ticker": "SPOGl_EQ",
+          "value": 0.0
+        },
+        {
+          "ticker": "OIGBl_EQ",
+          "value": 0.0
+        }
+      ]
+    },
+    {
+      "id": 5706663,
+      "name": "Country Etf",
+      "value": 0.0,
+      "gain_pct": 0.0,
+      "holdings": 6,
+      "drifts": [],
+      "instruments": [
+        {
+          "ticker": "ITWNl_EQ",
+          "value": 0.0
+        },
+        {
+          "ticker": "CS1l_EQ",
+          "value": 0.0
+        },
+        {
+          "ticker": "IPOLl_EQ",
+          "value": 0.0
+        },
+        {
+          "ticker": "XDAXl_EQ",
+          "value": 0.0
+        },
+        {
+          "ticker": "IAEXl_EQ",
+          "value": 0.0
+        },
+        {
+          "ticker": "IMIBl_EQ",
+          "value": 0.0
         }
       ]
     },
@@ -252,43 +316,155 @@
       "instruments": [
         {
           "ticker": "CYSEl_EQ",
-          "value": 0.0,
-          "shares": 0.0
+          "value": 0.0
         },
         {
           "ticker": "IWFVl_EQ",
-          "value": 0.0,
-          "shares": 0.0
+          "value": 0.0
         },
         {
           "ticker": "GNOGl_EQ",
-          "value": 0.0,
-          "shares": 0.0
+          "value": 0.0
         },
         {
           "ticker": "WCOBl_EQ",
-          "value": 0.0,
-          "shares": 0.0
+          "value": 0.0
         },
         {
           "ticker": "DRDRl_EQ",
-          "value": 0.0,
-          "shares": 0.0
+          "value": 0.0
         },
         {
           "ticker": "FLRKl_EQ",
-          "value": 0.0,
-          "shares": 0.0
+          "value": 0.0
         },
         {
           "ticker": "SMGBl_EQ",
-          "value": 0.0,
-          "shares": 0.0
+          "value": 0.0
         },
         {
           "ticker": "INTLl_EQ",
-          "value": 0.0,
-          "shares": 0.0
+          "value": 0.0
+        }
+      ]
+    },
+    {
+      "id": 8631949,
+      "name": "Space x allied ",
+      "value": 0.0,
+      "gain_pct": 0.0,
+      "holdings": 6,
+      "drifts": [],
+      "instruments": [
+        {
+          "ticker": "STM_US_EQ",
+          "value": 0.0
+        },
+        {
+          "ticker": "IRDM_US_EQ",
+          "value": 0.0
+        },
+        {
+          "ticker": "IPAX_US_EQ",
+          "value": 0.0
+        },
+        {
+          "ticker": "ACIC_US_EQ",
+          "value": 0.0
+        },
+        {
+          "ticker": "DXYZ_US_EQ",
+          "value": 0.0
+        },
+        {
+          "ticker": "GILT_US_EQ",
+          "value": 0.0
+        }
+      ]
+    },
+    {
+      "id": 10340434,
+      "name": "EM markets",
+      "value": 0.0,
+      "gain_pct": 0.0,
+      "holdings": 5,
+      "drifts": [],
+      "instruments": [
+        {
+          "ticker": "VEVEl_EQ",
+          "value": 0.0
+        },
+        {
+          "ticker": "JEQPl_EQ",
+          "value": 0.0
+        },
+        {
+          "ticker": "SPYId_EQ",
+          "value": 0.0
+        },
+        {
+          "ticker": "JEPQl_EQ",
+          "value": 0.0
+        },
+        {
+          "ticker": "VFEMl_EQ",
+          "value": 0.0
+        }
+      ]
+    },
+    {
+      "id": 3073704,
+      "name": "UK Gold & Silver",
+      "value": 0.0,
+      "gain_pct": 0.0,
+      "holdings": 2,
+      "drifts": [],
+      "instruments": [
+        {
+          "ticker": "SGLNl_EQ",
+          "value": 0.0
+        },
+        {
+          "ticker": "SSLNl_EQ",
+          "value": 0.0
+        }
+      ]
+    },
+    {
+      "id": 3119349,
+      "name": "Magnificent 7",
+      "value": 0.0,
+      "gain_pct": 0.0,
+      "holdings": 7,
+      "drifts": [],
+      "instruments": [
+        {
+          "ticker": "NVDA_US_EQ",
+          "value": 0.0
+        },
+        {
+          "ticker": "AAPL_US_EQ",
+          "value": 0.0
+        },
+        {
+          "ticker": "MSFT_US_EQ",
+          "value": 0.0
+        },
+        {
+          "ticker": "GOOGL_US_EQ",
+          "value": 0.0
+        },
+        {
+          "ticker": "AMZN_US_EQ",
+          "value": 0.0
+        },
+        {
+          "ticker": "SPCX_US_EQ",
+          "value": 0.0
+        },
+        {
+          "ticker": "FB_US_EQ",
+          "value": 0.0
         }
       ]
     }
@@ -315,6 +491,7 @@
     "SXRVd_EQ": 1446.6,
     "VWCEd_EQ": 169.86
   },
-  "run_count": 4,
-  "target_annual_pct": 15.0
+  "run_count": 5,
+  "target_annual_pct": 15.0,
+  "dashboard_pwd": "changeme"
 }
