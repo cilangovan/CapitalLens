@@ -1,5 +1,5 @@
 {
-  "updated": "2026-11-14T03:35:36.902543+00:00",
+  "updated": "2026-11-14T03:46:04.199628+00:00",
   "account": {
     "free": 4362.44,
     "total": 9374.32,
@@ -12,177 +12,287 @@
   "positions": [
     {
       "ticker": "NVDA_US_EQ",
+      "display": "NVDA",
       "current": 161.04,
       "avg": 180.22673735,
       "gain_pct": -10.65,
       "dip_from_high": 0.0,
       "ppl": -18.4,
-      "in_pie": false
+      "pie": "Solo holdings"
     },
     {
       "ticker": "VUSAa_EQ",
+      "display": "VUSAa",
       "current": 129.425,
       "avg": 113.38544541,
       "gain_pct": 14.15,
       "dip_from_high": 0.0,
       "ppl": 23.95,
-      "in_pie": false
+      "pie": "Solo holdings"
     },
     {
       "ticker": "SSLNl_EQ",
+      "display": "SSLNl",
       "current": 3537.8,
       "avg": 4972.79433675,
       "gain_pct": -28.86,
       "dip_from_high": 0.0,
       "ppl": -40.47,
-      "in_pie": false
+      "pie": "UK Gold & Silver"
     },
     {
       "ticker": "MSFT_US_EQ",
+      "display": "MSFT",
       "current": 522.25,
       "avg": 451.16991951,
       "gain_pct": 15.75,
       "dip_from_high": 0.0,
       "ppl": 16.92,
-      "in_pie": false
+      "pie": "Solo holdings"
     },
     {
       "ticker": "IAEXl_EQ",
+      "display": "IAEXl",
       "current": 9539.0,
       "avg": 9227.75055579,
       "gain_pct": 3.37,
       "dip_from_high": 0.0,
       "ppl": 3.71,
-      "in_pie": false
+      "pie": "Solo holdings"
     },
     {
       "ticker": "IPOLl_EQ",
+      "display": "IPOLl",
       "current": 41.757,
       "avg": 37.6149578,
       "gain_pct": 11.01,
       "dip_from_high": 0.0,
       "ppl": 24.34,
-      "in_pie": false
+      "pie": "Solo holdings"
     },
     {
       "ticker": "ITWNl_EQ",
+      "display": "ITWNl",
       "current": 13486.0,
       "avg": 11503.23697459,
       "gain_pct": 17.24,
       "dip_from_high": 0.0,
       "ppl": 38.84,
-      "in_pie": false
+      "pie": "Solo holdings"
     },
     {
       "ticker": "AAPL_US_EQ",
+      "display": "AAPL",
       "current": 355.33,
       "avg": 283.72118687,
       "gain_pct": 25.24,
       "dip_from_high": 0.0,
       "ppl": 31.26,
-      "in_pie": false
+      "pie": "Solo holdings"
     },
     {
       "ticker": "AMZN_US_EQ",
+      "display": "AMZN",
       "current": 264.39,
       "avg": 241.51291002,
       "gain_pct": 9.47,
       "dip_from_high": 0.0,
       "ppl": 7.34,
-      "in_pie": false
+      "pie": "Solo holdings"
     },
     {
       "ticker": "SPCX_US_EQ",
+      "display": "SPCX",
       "current": 136.26,
       "avg": 149.05781039,
       "gain_pct": -8.59,
       "dip_from_high": 0.0,
       "ppl": -7.25,
-      "in_pie": false
+      "pie": "Solo holdings"
     },
     {
       "ticker": "IMIBl_EQ",
+      "display": "IMIBl",
       "current": 2640.75,
       "avg": 2532.00825781,
       "gain_pct": 4.29,
       "dip_from_high": 0.0,
       "ppl": 4.35,
-      "in_pie": false
+      "pie": "Solo holdings"
     },
     {
       "ticker": "GOOGL_US_EQ",
+      "display": "GOOGL",
       "current": 294.05,
       "avg": 324.86766618,
       "gain_pct": -9.49,
       "dip_from_high": 0.0,
       "ppl": -9.62,
-      "in_pie": false
+      "pie": "Solo holdings"
     },
     {
       "ticker": "FB_US_EQ",
+      "display": "FB",
       "current": 637.0,
       "avg": 718.64533417,
       "gain_pct": -11.36,
       "dip_from_high": 0.0,
       "ppl": -5.76,
-      "in_pie": false
+      "pie": "Solo holdings"
     },
     {
       "ticker": "CS1l_EQ",
+      "display": "CS1l",
       "current": 43397.0,
       "avg": 42436.99275923,
       "gain_pct": 2.26,
       "dip_from_high": 0.0,
       "ppl": 4.97,
-      "in_pie": false
+      "pie": "Solo holdings"
     },
     {
       "ticker": "XDAXl_EQ",
+      "display": "XDAXl",
       "current": 20837.5,
       "avg": 20418.40995652,
       "gain_pct": 2.05,
       "dip_from_high": 0.0,
       "ppl": 3.36,
-      "in_pie": false
+      "pie": "Solo holdings"
     },
     {
       "ticker": "SGLNl_EQ",
+      "display": "SGLNl",
       "current": 5692.0,
       "avg": 5776.66164501,
       "gain_pct": -1.47,
       "dip_from_high": 0.0,
       "ppl": -25.31,
-      "in_pie": false
+      "pie": "UK Gold & Silver"
     },
     {
       "ticker": "QDVEd_EQ",
+      "display": "QDVEd",
       "current": 42.695,
       "avg": 36.89791455,
       "gain_pct": 15.71,
       "dip_from_high": 0.0,
       "ppl": 53.32,
-      "in_pie": false
+      "pie": "Solo holdings"
     },
     {
       "ticker": "SXRVd_EQ",
+      "display": "SXRVd",
       "current": 1446.6,
       "avg": 1270.89412214,
       "gain_pct": 13.83,
       "dip_from_high": 0.0,
       "ppl": 40.23,
-      "in_pie": false
+      "pie": "Solo holdings"
     },
     {
       "ticker": "VWCEd_EQ",
+      "display": "VWCEd",
       "current": 169.86,
       "avg": 148.26114595,
       "gain_pct": 14.57,
       "dip_from_high": 0.0,
       "ppl": 6.2,
-      "in_pie": false
+      "pie": "Solo holdings"
     }
   ],
-  "pies": [],
+  "pies": [
+    {
+      "id": 3073704,
+      "name": "UK Gold & Silver",
+      "value": 0.0,
+      "gain_pct": 0.0,
+      "holdings": 2,
+      "drifts": [],
+      "instruments": [
+        {
+          "ticker": "SGLNl_EQ",
+          "value": 0.0,
+          "shares": 17.97242306
+        },
+        {
+          "ticker": "SSLNl_EQ",
+          "value": 0.0,
+          "shares": 2.81986325
+        }
+      ]
+    },
+    {
+      "id": 3068386,
+      "name": "Semiconductor",
+      "value": 0.0,
+      "gain_pct": 0.0,
+      "holdings": 2,
+      "drifts": [],
+      "instruments": [
+        {
+          "ticker": "ASMLa_EQ",
+          "value": 0.0,
+          "shares": 0.0
+        },
+        {
+          "ticker": "AMD_US_EQ",
+          "value": 0.0,
+          "shares": 0.0
+        }
+      ]
+    },
+    {
+      "id": 10340330,
+      "name": "Global ETF ",
+      "value": 0.0,
+      "gain_pct": 0.0,
+      "holdings": 8,
+      "drifts": [],
+      "instruments": [
+        {
+          "ticker": "CYSEl_EQ",
+          "value": 0.0,
+          "shares": 0.0
+        },
+        {
+          "ticker": "IWFVl_EQ",
+          "value": 0.0,
+          "shares": 0.0
+        },
+        {
+          "ticker": "GNOGl_EQ",
+          "value": 0.0,
+          "shares": 0.0
+        },
+        {
+          "ticker": "WCOBl_EQ",
+          "value": 0.0,
+          "shares": 0.0
+        },
+        {
+          "ticker": "DRDRl_EQ",
+          "value": 0.0,
+          "shares": 0.0
+        },
+        {
+          "ticker": "FLRKl_EQ",
+          "value": 0.0,
+          "shares": 0.0
+        },
+        {
+          "ticker": "SMGBl_EQ",
+          "value": 0.0,
+          "shares": 0.0
+        },
+        {
+          "ticker": "INTLl_EQ",
+          "value": 0.0,
+          "shares": 0.0
+        }
+      ]
+    }
+  ],
   "alerts": [],
   "highs": {
     "NVDA_US_EQ": 161.04,
@@ -205,6 +315,6 @@
     "SXRVd_EQ": 1446.6,
     "VWCEd_EQ": 169.86
   },
-  "run_count": 3,
+  "run_count": 4,
   "target_annual_pct": 15.0
 }
