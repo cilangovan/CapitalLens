@@ -1,5 +1,5 @@
 {
-  "updated": "2026-11-14T10:54:38.944571+00:00",
+  "updated": "2026-11-14T11:03:50.496867+00:00",
   "account": {
     "free": 4362.44,
     "total": 9374.32,
@@ -491,7 +491,7 @@
     "SXRVd_EQ": 1446.6,
     "VWCEd_EQ": 169.86
   },
-  "run_count": 5,
+  "run_count": 6,
   "target_annual_pct": 15.0,
   "dashboard_pwd": "changeme"
 }
