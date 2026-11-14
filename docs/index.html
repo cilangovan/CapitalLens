@@ -6,66 +6,53 @@
 <title>HOOP · T212 Monitor</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
-  :root{
-    --bg:#060a14;--card:#0d1526;--card2:#111d35;--border:#1a2744;
-    --text:#e8edf5;--muted:#4a6080;--muted2:#6b85a8;
-    --green:#00d084;--red:#ff4757;--amber:#ffa502;--blue:#4a9eff;--purple:#9b6dff;--teal:#00c9b1;
-  }
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,sans-serif;font-size:14px}
-
+  :root{--bg:#060a14;--card:#0d1526;--card2:#111d35;--border:#1a2744;--text:#e8edf5;--muted:#4a6080;--muted2:#6b85a8;--green:#00d084;--red:#ff4757;--amber:#ffa502;--blue:#4a9eff;--purple:#9b6dff;}
+  *{box-sizing:border-box;margin:0;padding:0}body{background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,sans-serif;font-size:14px}
+  #lockscreen{position:fixed;inset:0;background:rgba(6,10,20,.97);z-index:9999;display:flex;align-items:center;justify-content:center}
+  .lock-box{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:44px 40px;width:340px;text-align:center;box-shadow:0 24px 64px rgba(0,0,0,.6)}
+  .lock-icon{font-size:40px;margin-bottom:18px}.lock-title{font-size:18px;font-weight:700;margin-bottom:6px}
+  .lock-sub{font-size:12px;color:var(--muted2);margin-bottom:28px;line-height:1.5}
+  .lock-input{width:100%;background:#0a1428;border:1px solid var(--border);border-radius:8px;padding:13px 16px;color:var(--text);font-size:16px;text-align:center;letter-spacing:.25em;outline:none;margin-bottom:12px;transition:border .2s}
+  .lock-input:focus{border-color:var(--blue)}
+  .lock-submit{width:100%;background:var(--blue);border:none;border-radius:8px;padding:13px;color:#fff;font-size:14px;font-weight:600;cursor:pointer;transition:opacity .2s}
+  .lock-submit:hover{opacity:.88}.lock-err{color:var(--red);font-size:12px;margin-top:10px;min-height:18px}
+  .lock-hint{font-size:11px;color:var(--muted);margin-top:18px;line-height:1.5}
   header{display:flex;align-items:center;justify-content:space-between;padding:16px 28px;border-bottom:1px solid var(--border);background:#060a14;position:sticky;top:0;z-index:100}
-  .logo{font-size:15px;font-weight:700;letter-spacing:-.02em}
-  .logo em{color:var(--blue);font-style:normal}
-  .live{font-size:11px;color:var(--muted2)}
-  .dot{width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block;margin-right:5px;animation:pulse 2s infinite}
-  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
-
+  .logo{font-size:15px;font-weight:700;letter-spacing:-.02em}.logo em{color:var(--blue);font-style:normal}
+  .hdr-right{display:flex;align-items:center;gap:12px}
+  .live-info{font-size:11px;color:var(--muted2);display:flex;align-items:center;gap:5px}
+  .dot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 2s infinite;flex-shrink:0}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+  .countdown{font-size:10px;color:var(--muted);padding:3px 7px;background:var(--card2);border-radius:4px;border:1px solid var(--border)}
+  .btn-sm{background:none;border:1px solid var(--border);border-radius:6px;padding:5px 10px;color:var(--muted2);font-size:11px;cursor:pointer;transition:all .15s}
+  .btn-sm:hover{border-color:var(--blue);color:var(--blue)}
+  .btn-lock{background:none;border:none;cursor:pointer;font-size:15px;opacity:.45;transition:opacity .15s}.btn-lock:hover{opacity:1}
   .wrap{max-width:1300px;margin:0 auto;padding:24px}
-
   .stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:1px;background:var(--border);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:24px}
-  .stat{background:var(--card);padding:16px 18px}
-  .stat-label{font-size:10px;color:var(--muted2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
+  .stat{background:var(--card);padding:16px 18px}.stat-label{font-size:10px;color:var(--muted2);text-transform:uppercase;letter-spacing:.08em;margin-bottom:8px}
   .stat-val{font-size:20px;font-weight:700;line-height:1}
   .g{color:var(--green)}.r{color:var(--red)}.a{color:var(--amber)}.b{color:var(--blue)}.mu{color:var(--muted2)}
-
   .cols2{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:20px}
-  .cols3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:20px;margin-bottom:20px}
-  @media(max-width:900px){.cols2,.cols3{grid-template-columns:1fr}}
-
+  @media(max-width:900px){.cols2{grid-template-columns:1fr}}
   .card{background:var(--card);border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:20px}
   .card-head{padding:13px 18px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between}
   .card-title{font-size:10px;font-weight:600;color:var(--muted2);text-transform:uppercase;letter-spacing:.08em}
-  .card-body{padding:18px}
-  .chart-wrap{position:relative;height:220px}
-
-  /* Pie group sections */
-  .pie-group{margin-bottom:24px}
-  .pie-group-header{display:flex;align-items:center;justify-content:space-between;padding:12px 16px;background:var(--card2);border:1px solid var(--border);border-radius:8px 8px 0 0;border-bottom:none}
-  .pie-group-name{font-weight:700;font-size:14px}
-  .pie-group-stats{display:flex;gap:16px;font-size:12px}
-  .pie-group-stat{color:var(--muted2)}
-  .pie-group-stat span{font-weight:600}
+  .card-body{padding:18px}.chart-wrap{position:relative;height:230px}
+  .alert{padding:11px 14px;border-radius:6px;margin-bottom:8px;border-left:3px solid}.alert:last-child{margin-bottom:0}
+  .alert.dip{background:rgba(255,71,87,.08);border-color:var(--red)}.alert.buy{background:rgba(0,208,132,.08);border-color:var(--green)}
+  .alert.trim{background:rgba(255,165,2,.08);border-color:var(--amber)}.alert.rebalance{background:rgba(155,109,255,.08);border-color:var(--purple)}
+  .alert-title{font-weight:600;font-size:13px;margin-bottom:3px}.alert-body{color:var(--muted2);font-size:12px;line-height:1.5}
+  .no-alerts{color:var(--muted);font-size:13px}
+  .pie-group{margin-bottom:20px;border:1px solid var(--border);border-radius:10px;overflow:hidden}
+  .pie-group-header{display:flex;align-items:center;justify-content:space-between;padding:13px 18px;background:var(--card2)}
+  .pie-group-name{font-weight:700;font-size:14px}.pie-group-meta{display:flex;gap:16px;font-size:12px;color:var(--muted2)}
+  .pie-group-meta strong{font-weight:600}
   table{width:100%;border-collapse:collapse}
   th{text-align:left;font-size:10px;color:var(--muted);padding:9px 14px;border-bottom:1px solid var(--border);font-weight:600;text-transform:uppercase;letter-spacing:.06em;background:rgba(10,20,45,.8)}
   td{padding:10px 14px;border-bottom:1px solid rgba(255,255,255,.03);font-size:13px;vertical-align:middle}
-  tr:last-child td{border-bottom:none}
-  tr:hover td{background:rgba(255,255,255,.02)}
-  .ticker-name{font-weight:600}
-  .mini-bar{display:inline-flex;align-items:center;gap:8px}
-  .bar-track{background:rgba(255,255,255,.06);border-radius:2px;height:4px;width:60px;overflow:hidden}
-  .bar-fill{height:100%;border-radius:2px}
-
-  .alert{padding:12px 14px;border-radius:6px;margin-bottom:8px;border-left:3px solid}
-  .alert:last-child{margin-bottom:0}
-  .alert.dip{background:rgba(255,71,87,.08);border-color:var(--red)}
-  .alert.buy{background:rgba(0,208,132,.08);border-color:var(--green)}
-  .alert.trim{background:rgba(255,165,2,.08);border-color:var(--amber)}
-  .alert.rebalance{background:rgba(155,109,255,.08);border-color:var(--purple)}
-  .alert-title{font-weight:600;font-size:13px;margin-bottom:3px}
-  .alert-body{color:var(--muted2);font-size:12px;line-height:1.5}
-  .no-alerts{color:var(--muted);font-size:13px;padding:4px 0}
-
+  tr:last-child td{border-bottom:none}tr:hover td{background:rgba(255,255,255,.025)}
+  .ticker-name{font-weight:600}.mini-bar{display:inline-flex;align-items:center;gap:8px}
+  .bar-track{background:rgba(255,255,255,.06);border-radius:2px;height:4px;width:60px;overflow:hidden}.bar-fill{height:100%;border-radius:2px}
   #loading{display:flex;align-items:center;justify-content:center;height:80vh;flex-direction:column;gap:12px}
   .spinner{width:24px;height:24px;border:2px solid var(--border);border-top-color:var(--blue);border-radius:50%;animation:spin .8s linear infinite}
   @keyframes spin{to{transform:rotate(360deg)}}
@@ -73,61 +60,101 @@
 </style>
 </head>
 <body>
+
+<div id="lockscreen">
+  <div class="lock-box">
+    <div class="lock-icon">🔒</div>
+    <div class="lock-title">Portfolio Monitor</div>
+    <div class="lock-sub">Enter your password to access<br>your T212 portfolio dashboard</div>
+    <input type="password" class="lock-input" id="pwd-input" placeholder="••••••••" maxlength="50" autocomplete="current-password">
+    <button class="lock-submit" id="pwd-btn">Unlock Dashboard</button>
+    <div class="lock-err" id="pwd-err"></div>
+    <div class="lock-hint">Session stays active for 5 minutes<br>Locks automatically on inactivity</div>
+  </div>
+</div>
+
 <header>
   <div class="logo">HOOP · <em>T212</em> Monitor</div>
-  <div class="live"><span class="dot"></span><span id="updated">Loading...</span></div>
+  <div class="hdr-right">
+    <div class="live-info"><span class="dot"></span><span id="updated">—</span></div>
+    <span class="countdown" id="countdown" style="display:none"></span>
+    <button class="btn-sm" onclick="loadData()">↻ Refresh</button>
+    <button class="btn-lock" onclick="lockNow()" title="Lock">🔒</button>
+  </div>
 </header>
 
-<div id="loading"><div class="spinner"></div><span style="color:var(--muted);font-size:13px">Fetching portfolio...</span></div>
+<div id="loading"><div class="spinner"></div><span style="color:var(--muted);font-size:13px">Loading portfolio...</span></div>
 
 <div id="app" style="display:none">
 <div class="wrap">
-
   <div class="stats" id="stats"></div>
-
   <div class="cols2">
     <div class="card">
       <div class="card-head"><span class="card-title">Alerts</span><span id="alert-badge" class="mu" style="font-size:11px"></span></div>
       <div class="card-body" id="alerts-body"></div>
     </div>
     <div class="card">
-      <div class="card-head"><span class="card-title">Gain % by position</span></div>
+      <div class="card-head"><span class="card-title">Gain % — all positions</span></div>
       <div class="card-body"><div class="chart-wrap"><canvas id="gainChart"></canvas></div></div>
     </div>
   </div>
-
   <div class="cols2">
     <div class="card">
       <div class="card-head"><span class="card-title">Portfolio breakdown by pie</span></div>
       <div class="card-body"><div class="chart-wrap" style="height:260px"><canvas id="pieChart"></canvas></div></div>
     </div>
     <div class="card">
-      <div class="card-head"><span class="card-title">P&amp;L by position</span></div>
+      <div class="card-head"><span class="card-title">P&amp;L — top positions</span></div>
       <div class="card-body"><div class="chart-wrap"><canvas id="plChart"></canvas></div></div>
     </div>
   </div>
-
   <div id="groups-container"></div>
-
 </div>
 </div>
 
 <script>
+const SESSION_MS=5*60*1000;
 const PIE_COLORS=['#4a9eff','#00d084','#9b6dff','#ffa502','#00c9b1','#ff4757','#ff6b81','#eccc68','#48dbfb','#ff9f43'];
+let correctPassword=null,charts={},countdownTimer=null;
 
-function clean(t){return(t||'').split('_')[0]}
-function fmt(n,d=2){return Number(n).toFixed(d)}
-function sign(n){return n>=0?'+':''}
-function gc(n){return n>=0?'g':'r'}
+function isUnlocked(){const t=sessionStorage.getItem('t212_unlock');return t&&(Date.now()-parseInt(t))<SESSION_MS;}
+function unlock(){sessionStorage.setItem('t212_unlock',Date.now().toString());document.getElementById('lockscreen').style.display='none';document.getElementById('countdown').style.display='inline-block';startCountdown();loadData();}
+function lockNow(){sessionStorage.removeItem('t212_unlock');document.getElementById('lockscreen').style.display='flex';document.getElementById('pwd-input').value='';document.getElementById('pwd-err').textContent='';document.getElementById('app').style.display='none';document.getElementById('loading').style.display='flex';document.getElementById('loading').innerHTML='<div class="spinner"></div><span style="color:var(--muted);font-size:13px">Loading portfolio...</span>';document.getElementById('countdown').style.display='none';if(countdownTimer)clearInterval(countdownTimer);}
+function startCountdown(){const el=document.getElementById('countdown');if(countdownTimer)clearInterval(countdownTimer);countdownTimer=setInterval(()=>{const t=sessionStorage.getItem('t212_unlock');if(!t){clearInterval(countdownTimer);lockNow();return;}const rem=SESSION_MS-(Date.now()-parseInt(t));if(rem<=0){clearInterval(countdownTimer);lockNow();return;}const m=Math.floor(rem/60000),s=Math.floor((rem%60000)/1000);el.textContent=`🔒 ${m}:${s.toString().padStart(2,'0')}`;},1000);}
+function showErr(){document.getElementById('pwd-err').textContent='Incorrect password';document.getElementById('pwd-input').value='';document.getElementById('pwd-input').focus();document.getElementById('pwd-btn').textContent='Unlock Dashboard';}
 
-async function load(){
+async function tryUnlock(inputPwd){
+  if(correctPassword!==null){inputPwd===correctPassword?unlock():showErr();return;}
+  document.getElementById('pwd-btn').textContent='Checking...';
   try{
     const r=await fetch('data.json?t='+Date.now());
     if(!r.ok)throw new Error();
-    render(await r.json());
-  }catch(e){
-    document.getElementById('loading').innerHTML='<span style="color:var(--muted)">No data yet — run the GitHub Action first.</span>';
-  }
+    const d=await r.json();
+    correctPassword=d.dashboard_pwd||'changeme';
+  }catch(e){correctPassword='changeme';}
+  inputPwd===correctPassword?unlock():showErr();
+}
+
+document.getElementById('pwd-btn').onclick=()=>{const v=document.getElementById('pwd-input').value.trim();if(v)tryUnlock(v);};
+document.getElementById('pwd-input').addEventListener('keydown',e=>{if(e.key==='Enter')document.getElementById('pwd-btn').click();});
+document.addEventListener('visibilitychange',()=>{if(!document.hidden&&!isUnlocked()&&document.getElementById('lockscreen').style.display==='none')lockNow();});
+if(isUnlocked())unlock();
+setInterval(()=>{if(isUnlocked())loadData();},5*60*1000);
+
+function fmt(n,d=2){return Number(n).toFixed(d);}
+function sign(n){return n>=0?'+':'';}
+function gc(n){return n>=0?'g':'r';}
+function clean(t){return(t||'').split('_')[0];}
+function destroyCharts(){Object.values(charts).forEach(c=>{try{c.destroy();}catch(e){}});charts={};}
+
+async function loadData(){
+  try{
+    const r=await fetch('data.json?t='+Date.now());
+    if(!r.ok)throw new Error();
+    const d=await r.json();
+    if(d.dashboard_pwd)correctPassword=d.dashboard_pwd;
+    render(d);
+  }catch(e){document.getElementById('loading').innerHTML='<span style="color:var(--muted)">No data yet — run the GitHub Action first.</span>';}
 }
 
 function render(d){
@@ -135,178 +162,51 @@ function render(d){
   document.getElementById('app').style.display='block';
   const ts=new Date(d.updated);
   document.getElementById('updated').textContent=isNaN(ts)?d.updated:ts.toLocaleString('en-GB');
-
-  const acc=d.account||{};
-  const cash=parseFloat(acc.free||0);
-  const total=parseFloat(acc.total||0);
-  const invested=total-cash;
+  const acc=d.account||{},cash=parseFloat(acc.free||0),total=parseFloat(acc.total||0),invested=total-cash;
   const totalPL=d.positions.reduce((s,p)=>s+(p.ppl||0),0);
-  const winners=d.positions.filter(p=>p.gain_pct>0).length;
-  const losers=d.positions.filter(p=>p.gain_pct<0).length;
+  const winners=d.positions.filter(p=>p.gain_pct>0).length,losers=d.positions.filter(p=>p.gain_pct<0).length;
 
-  // Stats
   document.getElementById('stats').innerHTML=[
-    {l:'Total value',v:'£'+fmt(total),c:'b'},
-    {l:'Invested',v:'£'+fmt(invested),c:''},
-    {l:'Cash',v:'£'+fmt(cash),c:''},
-    {l:'Total P&L',v:sign(totalPL)+'£'+fmt(Math.abs(totalPL)),c:gc(totalPL)},
-    {l:'Winners',v:winners,c:'g'},
-    {l:'Losers',v:losers,c:losers>0?'r':'g'},
-    {l:'Pies',v:d.pies.length,c:'b'},
-    {l:'Target',v:d.target_annual_pct+'%pa',c:'b'},
+    {l:'Total value',v:'£'+fmt(total),c:'b'},{l:'Invested',v:'£'+fmt(invested),c:''},
+    {l:'Cash',v:'£'+fmt(cash),c:''},{l:'Total P&L',v:sign(totalPL)+'£'+fmt(Math.abs(totalPL)),c:gc(totalPL)},
+    {l:'Winners',v:winners,c:'g'},{l:'Losers',v:losers,c:losers>0?'r':'g'},
+    {l:'Pies',v:d.pies.length,c:'b'},{l:'Target',v:d.target_annual_pct+'%pa',c:'b'},
   ].map(s=>`<div class="stat"><div class="stat-label">${s.l}</div><div class="stat-val ${s.c}">${s.v}</div></div>`).join('');
 
-  // Alerts
-  const ab=document.getElementById('alerts-body');
   document.getElementById('alert-badge').textContent=d.alerts.length+' active';
-  ab.innerHTML=d.alerts.length===0
+  document.getElementById('alerts-body').innerHTML=d.alerts.length===0
     ?'<div class="no-alerts">✓ All positions within thresholds</div>'
     :d.alerts.map(a=>`<div class="alert ${a.type}"><div class="alert-title">${a.title}</div><div class="alert-body">${a.body}</div></div>`).join('');
 
-  // ── Charts ──────────────────────────────────────────────────────────────
-
-  // Gain bar chart
+  destroyCharts();
   const sorted=[...d.positions].sort((a,b)=>b.gain_pct-a.gain_pct).slice(0,16);
-  new Chart(document.getElementById('gainChart'),{
-    type:'bar',
-    data:{
-      labels:sorted.map(p=>clean(p.ticker)),
-      datasets:[{
-        data:sorted.map(p=>p.gain_pct),
-        backgroundColor:sorted.map(p=>p.gain_pct>=0?'rgba(0,208,132,.75)':'rgba(255,71,87,.75)'),
-        borderRadius:4,borderSkipped:false
-      }]
-    },
-    options:{responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>sign(c.raw)+fmt(c.raw,1)+'%'}}},
-      scales:{
-        x:{ticks:{color:'#4a6080',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'}},
-        y:{ticks:{color:'#4a6080',font:{size:10},callback:v=>v+'%'},grid:{color:'rgba(255,255,255,.04)'}}
-      }
-    }
-  });
+  charts.gain=new Chart(document.getElementById('gainChart'),{type:'bar',data:{labels:sorted.map(p=>clean(p.ticker)),datasets:[{data:sorted.map(p=>p.gain_pct),backgroundColor:sorted.map(p=>p.gain_pct>=0?'rgba(0,208,132,.75)':'rgba(255,71,87,.75)'),borderRadius:4,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>sign(c.raw)+fmt(c.raw,1)+'%'}}},scales:{x:{ticks:{color:'#4a6080',font:{size:10}},grid:{color:'rgba(255,255,255,.04)'}},y:{ticks:{color:'#4a6080',font:{size:10},callback:v=>v+'%'},grid:{color:'rgba(255,255,255,.04)'}}}}}});
 
-  // Pie breakdown doughnut — group by pie name
   const groups={};
-  d.positions.forEach(p=>{
-    const g=p.pie||'Solo holdings';
-    if(!groups[g])groups[g]={value:0,pl:0};
-    // approximate value = ppl + cost
-    const cost=p.gain_pct!==0?Math.abs(p.ppl)/(Math.abs(p.gain_pct)/100):0;
-    groups[g].value+=cost+(p.ppl||0);
-    groups[g].pl+=p.ppl||0;
-  });
+  d.positions.forEach(p=>{const g=p.pie||'Solo holdings';if(!groups[g])groups[g]={value:0,pl:0};const cost=p.gain_pct!==0?Math.abs(p.ppl)/(Math.abs(p.gain_pct)/100):0;groups[g].value+=cost+(p.ppl||0);groups[g].pl+=p.ppl||0;});
   const gNames=Object.keys(groups);
-  const gVals=gNames.map(n=>Math.max(groups[n].value,0.01));
-  new Chart(document.getElementById('pieChart'),{
-    type:'doughnut',
-    data:{
-      labels:gNames,
-      datasets:[{
-        data:gVals,
-        backgroundColor:PIE_COLORS.slice(0,gNames.length),
-        borderColor:'#060a14',borderWidth:3
-      }]
-    },
-    options:{responsive:true,maintainAspectRatio:false,cutout:'60%',
-      plugins:{
-        legend:{position:'right',labels:{color:'#6b85a8',font:{size:12},boxWidth:12,padding:12}},
-        tooltip:{callbacks:{label:c=>{
-          const n=c.label;
-          const pl=groups[n]?.pl||0;
-          return ` £${fmt(c.raw)} · P&L ${sign(pl)}£${fmt(Math.abs(pl))}`;
-        }}}
-      }
-    }
-  });
+  charts.pie=new Chart(document.getElementById('pieChart'),{type:'doughnut',data:{labels:gNames,datasets:[{data:gNames.map(n=>Math.max(groups[n].value,0.01)),backgroundColor:PIE_COLORS.slice(0,gNames.length),borderColor:'#060a14',borderWidth:3}]},options:{responsive:true,maintainAspectRatio:false,cutout:'60%',plugins:{legend:{position:'right',labels:{color:'#6b85a8',font:{size:12},boxWidth:12,padding:12}},tooltip:{callbacks:{label:c=>{const n=c.label,pl=groups[n]?.pl||0;return ` £${fmt(c.raw)} · P&L ${sign(pl)}£${fmt(Math.abs(pl))}`;}}}}}});
 
-  // P&L horizontal bar
   const plSorted=[...d.positions].sort((a,b)=>b.ppl-a.ppl).slice(0,14);
-  new Chart(document.getElementById('plChart'),{
-    type:'bar',
-    data:{
-      labels:plSorted.map(p=>clean(p.ticker)),
-      datasets:[{
-        data:plSorted.map(p=>p.ppl),
-        backgroundColor:plSorted.map(p=>p.ppl>=0?'rgba(0,208,132,.75)':'rgba(255,71,87,.75)'),
-        borderRadius:4,borderSkipped:false
-      }]
-    },
-    options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,
-      plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>sign(c.raw)+'£'+fmt(Math.abs(c.raw))}}},
-      scales:{
-        x:{ticks:{color:'#4a6080',font:{size:10},callback:v=>'£'+v},grid:{color:'rgba(255,255,255,.04)'}},
-        y:{ticks:{color:'#6b85a8',font:{size:11}},grid:{display:false}}
-      }
-    }
-  });
+  charts.pl=new Chart(document.getElementById('plChart'),{type:'bar',data:{labels:plSorted.map(p=>clean(p.ticker)),datasets:[{data:plSorted.map(p=>p.ppl),backgroundColor:plSorted.map(p=>p.ppl>=0?'rgba(0,208,132,.75)':'rgba(255,71,87,.75)'),borderRadius:4,borderSkipped:false}]},options:{indexAxis:'y',responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>sign(c.raw)+'£'+fmt(Math.abs(c.raw))}}},scales:{x:{ticks:{color:'#4a6080',font:{size:10},callback:v=>'£'+v},grid:{color:'rgba(255,255,255,.04)'}},y:{ticks:{color:'#6b85a8',font:{size:11}},grid:{display:false}}}}}}); 
 
-  // ── Grouped positions by pie ────────────────────────────────────────────
   const gc2={};
-  d.positions.forEach(p=>{
-    const g=p.pie||'Solo holdings';
-    if(!gc2[g])gc2[g]=[];
-    gc2[g].push(p);
-  });
-
-  // Sort: named pies first, Solo holdings last
-  const sortedGroups=Object.keys(gc2).sort((a,b)=>{
-    if(a==='Solo holdings')return 1;
-    if(b==='Solo holdings')return-1;
-    return a.localeCompare(b);
-  });
-
-  const colorMap={};
-  sortedGroups.forEach((g,i)=>colorMap[g]=PIE_COLORS[i%PIE_COLORS.length]);
-
+  d.positions.forEach(p=>{const g=p.pie||'Solo holdings';if(!gc2[g])gc2[g]=[];gc2[g].push(p);});
+  const sortedGroups=Object.keys(gc2).sort((a,b)=>{if(a==='Solo holdings')return 1;if(b==='Solo holdings')return -1;return a.localeCompare(b);});
+  const colorMap={};sortedGroups.forEach((g,i)=>colorMap[g]=PIE_COLORS[i%PIE_COLORS.length]);
   document.getElementById('groups-container').innerHTML=sortedGroups.map(grpName=>{
     const rows=gc2[grpName].sort((a,b)=>b.gain_pct-a.gain_pct);
-    const grpPL=rows.reduce((s,r)=>s+(r.ppl||0),0);
-    const grpWin=rows.filter(r=>r.gain_pct>0).length;
-    const color=colorMap[grpName];
-
+    const grpPL=rows.reduce((s,r)=>s+(r.ppl||0),0),grpW=rows.filter(r=>r.gain_pct>0).length;
+    const color=colorMap[grpName],plColor=grpPL>=0?'var(--green)':'var(--red)';
     const rowsHTML=rows.map(r=>{
-      const g=r.gain_pct>=0?'var(--green)':'var(--red)';
-      const dipCls=r.dip_from_high>=12?'var(--red)':r.dip_from_high>=8?'var(--amber)':'var(--muted2)';
-      const bw=Math.min(100,r.dip_from_high*5);
-      const bc=r.dip_from_high>=12?'var(--red)':r.dip_from_high>=8?'var(--amber)':'var(--green)';
-      return `<tr>
-        <td><span class="ticker-name">${clean(r.ticker)}</span></td>
-        <td>£${fmt(r.current)}</td>
-        <td style="color:${g}">${sign(r.gain_pct)}${fmt(r.gain_pct,1)}%</td>
-        <td style="color:${g}">${sign(r.ppl)}£${fmt(Math.abs(r.ppl))}</td>
-        <td class="hide-sm">
-          <div class="mini-bar">
-            <span style="color:${dipCls};min-width:36px">${fmt(r.dip_from_high,1)}%</span>
-            <div class="bar-track"><div class="bar-fill" style="width:${bw}%;background:${bc}"></div></div>
-          </div>
-        </td>
-        <td class="hide-sm" style="color:var(--muted2)">£${fmt(r.avg)} avg</td>
-      </tr>`;
+      const rg=r.gain_pct>=0?'var(--green)':'var(--red)';
+      const dipC=r.dip_from_high>=12?'var(--red)':r.dip_from_high>=8?'var(--amber)':'var(--muted2)';
+      const bw=Math.min(100,r.dip_from_high*5),bc=r.dip_from_high>=12?'var(--red)':r.dip_from_high>=8?'var(--amber)':'var(--green)';
+      return `<tr><td><span class="ticker-name">${clean(r.ticker)}</span></td><td style="color:var(--muted2)">£${fmt(r.current)}</td><td style="color:${rg}">${sign(r.gain_pct)}${fmt(r.gain_pct,1)}%</td><td style="color:${rg}">${sign(r.ppl)}£${fmt(Math.abs(r.ppl))}</td><td class="hide-sm"><div class="mini-bar"><span style="color:${dipC};min-width:38px">${fmt(r.dip_from_high,1)}%</span><div class="bar-track"><div class="bar-fill" style="width:${bw}%;background:${bc}"></div></div></div></td><td class="hide-sm" style="color:var(--muted)">£${fmt(r.avg)} avg</td></tr>`;
     }).join('');
-
-    return `<div class="pie-group">
-      <div class="pie-group-header" style="border-left:3px solid ${color}">
-        <span class="pie-group-name" style="color:${color}">${grpName}</span>
-        <div class="pie-group-stats">
-          <span class="pie-group-stat">${rows.length} positions</span>
-          <span class="pie-group-stat">${grpWin}W / ${rows.length-grpWin}L</span>
-          <span class="pie-group-stat">P&L <span style="color:${grpPL>=0?'var(--green)':'var(--red)';}">${sign(grpPL)}£${fmt(Math.abs(grpPL))}</span></span>
-        </div>
-      </div>
-      <table>
-        <thead><tr>
-          <th>Ticker</th><th>Price</th><th>Gain</th><th>P&L</th>
-          <th class="hide-sm">From high</th><th class="hide-sm">Avg cost</th>
-        </tr></thead>
-        <tbody>${rowsHTML}</tbody>
-      </table>
-    </div>`;
+    return `<div class="pie-group"><div class="pie-group-header" style="border-left:4px solid ${color}"><span class="pie-group-name" style="color:${color}">${grpName}</span><div class="pie-group-meta"><span>${rows.length} positions</span><span>${grpW}W / ${rows.length-grpW}L</span><span>P&L <strong style="color:${plColor}">${sign(grpPL)}£${fmt(Math.abs(grpPL))}</strong></span></div></div><table><thead><tr><th>Ticker</th><th>Price</th><th>Gain</th><th>P&L</th><th class="hide-sm">From high</th><th class="hide-sm">Avg cost</th></tr></thead><tbody>${rowsHTML}</tbody></table></div>`;
   }).join('');
 }
-
-load();
-setInterval(load,5*60*1000);
 </script>
 </body>
 </html>
