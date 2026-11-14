@@ -417,8 +417,8 @@ def build_email_html(summary_rows, pie_summaries, alerts, account):
     </body></html>"""
 
 
-def save_dashboard_data(summary_rows, pie_summaries, alerts, account, state):
-    """Write JSON for the dashboard page to consume."""
+def save_docs_data(summary_rows, pie_summaries, alerts, account, state):
+    """Write JSON for the docs page to consume."""
     now = datetime.now(timezone.utc).isoformat()
     data = {
         "updated": now,
@@ -430,10 +430,10 @@ def save_dashboard_data(summary_rows, pie_summaries, alerts, account, state):
         "run_count": state.get("run_count", 0),
         "target_annual_pct": ANNUAL_GROWTH_PCT,
     }
-    os.makedirs("dashboard", exist_ok=True)
-    with open("dashboard/data.json", "w") as f:
+    os.makedirs("docs", exist_ok=True)
+    with open("docs/data.json", "w") as f:
         json.dump(data, f, indent=2)
-    print("[dashboard] data.json updated")
+    print("[docs] data.json updated")
 
 
 # ── Main ──────────────────────────────────────────────────────────────────────
@@ -485,8 +485,8 @@ def main():
         html = build_email_html(summary_rows, pie_summaries, all_alerts, account)
         send_email(subject, html)
 
-    # Save dashboard data
-    save_dashboard_data(summary_rows, pie_summaries, all_alerts, account, state)
+    # Save docs data
+    save_docs_data(summary_rows, pie_summaries, all_alerts, account, state)
 
     # Persist state
     save_state(state)
