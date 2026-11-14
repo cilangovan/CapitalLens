@@ -1,14 +1,13 @@
+
 name: T212 Portfolio Monitor
 
 on:
   schedule:
-    # Every 15 minutes during market hours Mon-Fri (UTC)
-    # London market hours: 08:00-16:30 UTC (BST add 1hr)
     - cron: "*/15 7-17 * * 1-5"
-  workflow_dispatch:  # manual trigger anytime
+  workflow_dispatch:
 
 permissions:
-  contents: write  # needed to push dashboard data.json
+  contents: write
 
 jobs:
   monitor:
@@ -34,17 +33,18 @@ jobs:
 
       - name: Run monitor
         env:
-          T212_API_KEY:    ${{ secrets.T212_API_KEY }}
-          T212_API_SECRET: ${{ secrets.T212_API_SECRET }}
-          GMAIL_USER:      ${{ secrets.GMAIL_USER }}
-          GMAIL_APP_PASS:  ${{ secrets.GMAIL_APP_PASS }}
-          NTFY_TOPIC:      ${{ secrets.NTFY_TOPIC }}
+          T212_API_KEY:        ${{ secrets.T212_API_KEY }}
+          T212_API_SECRET:     ${{ secrets.T212_API_SECRET }}
+          GMAIL_USER:          ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASS:      ${{ secrets.GMAIL_APP_PASS }}
+          NTFY_TOPIC:          ${{ secrets.NTFY_TOPIC }}
+          DASHBOARD_PASSWORD:  ${{ secrets.DASHBOARD_PASSWORD }}
         run: python monitor.py
 
-      - name: Push dashboard data to GitHub Pages
+      - name: Push dashboard data
         run: |
           git config user.name  "T212 Monitor Bot"
           git config user.email "bot@t212monitor"
-          git add dashboard/
+          git add docs/
           git diff --staged --quiet || git commit -m "chore: update dashboard data [skip ci]"
           git push
