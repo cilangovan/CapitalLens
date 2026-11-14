@@ -1,8 +1,9 @@
 """
-Trading 212 Portfolio Monitor v4
-- Password injected from GitHub Secret DASHBOARD_PASSWORD
+Trading 212 Portfolio Monitor v5
+- No password / auth (handle at network level)
 - Rate limit fix with retry/backoff
 - Pie grouping
+- ntfy + Gmail alerts
 """
 
 import os, json, time, smtplib, urllib.request, urllib.error, base64
@@ -10,13 +11,12 @@ from datetime import datetime, timezone
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
 
-T212_API_KEY       = os.environ["T212_API_KEY"]
-T212_API_SECRET    = os.environ["T212_API_SECRET"]
-GMAIL_USER         = os.environ["GMAIL_USER"]
-GMAIL_APP_PASS     = os.environ["GMAIL_APP_PASS"]
-NTFY_TOPIC         = os.environ.get("NTFY_TOPIC", "hoop-t212-x7k29")
-DASHBOARD_PASSWORD = os.environ.get("DASHBOARD_PASSWORD", "changeme")
-NTFY_URL           = f"https://ntfy.sh/{NTFY_TOPIC}"
+T212_API_KEY    = os.environ["T212_API_KEY"]
+T212_API_SECRET = os.environ["T212_API_SECRET"]
+GMAIL_USER      = os.environ["GMAIL_USER"]
+GMAIL_APP_PASS  = os.environ["GMAIL_APP_PASS"]
+NTFY_TOPIC      = os.environ.get("NTFY_TOPIC", "hoop-t212-x7k29")
+NTFY_URL        = f"https://ntfy.sh/{NTFY_TOPIC}"
 
 DIP_FROM_HIGH_PCT   = 8.0
 BUY_SIGNAL_PCT      = 12.0
@@ -26,8 +26,6 @@ ANNUAL_GROWTH_PCT   = 15.0
 
 T212_BASE  = "https://live.trading212.com"
 STATE_FILE = "portfolio_state.json"
-
-# ── API ───────────────────────────────────────────────────────────────────────
 
 def t212_get(path, retries=4, base_wait=12):
     creds = base64.b64encode(f"{T212_API_KEY}:{T212_API_SECRET}".encode()).decode()
@@ -54,10 +52,7 @@ def t212_get(path, retries=4, base_wait=12):
     print(f"[T212] Gave up on {path} after {retries} retries")
     return None
 
-def rl(secs=5):
-    time.sleep(secs)
-
-# ── Fetchers ──────────────────────────────────────────────────────────────────
+def rl(secs=5): time.sleep(secs)
 
 def fetch_account():
     d = t212_get("/api/v0/equity/account/cash"); rl(); return d
@@ -70,30 +65,21 @@ def fetch_pies_with_instruments():
     if not raw:
         print("[warn] No pies — check pies:read scope on API key")
         return [], {}
-
-    pies    = []
-    pie_map = {}
-
+    pies, pie_map = [], {}
     for i, p in enumerate(raw):
         pie_id = p.get("id")
         print(f"[fetch] pie {i+1}/{len(raw)} id={pie_id}")
         detail = t212_get(f"/api/v0/equity/pies/{pie_id}", retries=5, base_wait=15)
         rl(8)
-
         if not detail:
-            print(f"[warn] Skipping pie {pie_id}")
-            continue
-
+            print(f"[warn] Skipping pie {pie_id}"); continue
         name        = detail.get("settings", {}).get("name", f"Pie {pie_id}")
         instruments = detail.get("instruments", [])
         total_val   = sum(float(inst.get("currentValue", 0)) for inst in instruments)
         gain_pct    = float(detail.get("result", {}).get("priceAvgReturnPercentage", 0))
-
         for inst in instruments:
             t = inst.get("ticker", "")
-            if t:
-                pie_map[t] = name
-
+            if t: pie_map[t] = name
         drifts = []
         for inst in instruments:
             t          = inst.get("ticker", "")
@@ -101,43 +87,27 @@ def fetch_pies_with_instruments():
             actual_pct = (cur_val / total_val * 100) if total_val > 0 else 0
             target_pct = float(inst.get("expectedShare", actual_pct))
             drift      = abs(actual_pct - target_pct)
-            if drift >= REBALANCE_DRIFT_PCT:
-                drifts.append(f"{t}: {drift:.1f}%")
-
+            if drift >= REBALANCE_DRIFT_PCT: drifts.append(f"{t}: {drift:.1f}%")
         pies.append({
-            "id":          pie_id,
-            "name":        name,
-            "value":       round(total_val, 2),
-            "gain_pct":    round(gain_pct, 2),
-            "holdings":    len(instruments),
-            "drifts":      drifts,
-            "instruments": [
-                {"ticker": inst.get("ticker",""), "value": round(float(inst.get("currentValue",0)),2)}
-                for inst in instruments
-            ],
+            "id": pie_id, "name": name, "value": round(total_val, 2),
+            "gain_pct": round(gain_pct, 2), "holdings": len(instruments), "drifts": drifts,
+            "instruments": [{"ticker": inst.get("ticker",""), "value": round(float(inst.get("currentValue",0)),2)} for inst in instruments],
         })
-
     print(f"[fetch] {len(pies)} pies, {len(pie_map)} tickers mapped")
     return pies, pie_map
 
-# ── State ─────────────────────────────────────────────────────────────────────
-
 def load_state():
     if os.path.exists(STATE_FILE):
-        with open(STATE_FILE) as f:
-            return json.load(f)
+        with open(STATE_FILE) as f: return json.load(f)
     return {"highs":{}, "last_alerts":{}, "run_count":0, "first_run_date":None}
 
 def save_state(state):
-    with open(STATE_FILE,"w") as f:
-        json.dump(state, f, indent=2)
+    with open(STATE_FILE,"w") as f: json.dump(state, f, indent=2)
 
 def update_highs(state, positions):
     for pos in positions:
-        t = pos.get("ticker","")
-        c = float(pos.get("currentPrice",0))
-        if c > 0:
-            state["highs"][t] = max(state["highs"].get(t,0), c)
+        t = pos.get("ticker",""); c = float(pos.get("currentPrice",0))
+        if c > 0: state["highs"][t] = max(state["highs"].get(t,0), c)
     return state
 
 def cooldown(state, key, hours=4):
@@ -146,81 +116,51 @@ def cooldown(state, key, hours=4):
 def mark(state, key):
     state["last_alerts"][key] = time.time()
 
-# ── Pie membership ────────────────────────────────────────────────────────────
-
 def resolve_pie(ticker, pie_map):
-    if ticker in pie_map:
-        return pie_map[ticker]
+    if ticker in pie_map: return pie_map[ticker]
     base = ticker.split("_")[0]
     for k, v in pie_map.items():
-        if k.startswith(base) or k.split("_")[0] == base:
-            return v
+        if k.startswith(base) or k.split("_")[0] == base: return v
     return "Solo holdings"
 
-# ── Analysis ──────────────────────────────────────────────────────────────────
-
 def analyse(positions, pies, pie_map, state):
-    alerts  = []
-    summary = []
-
+    alerts, summary = [], []
     for pos in positions:
         ticker = pos.get("ticker","UNKNOWN")
         avg    = float(pos.get("averagePrice",0))
         cur    = float(pos.get("currentPrice",0))
         ppl    = float(pos.get("ppl",0))
-
-        if cur == 0 or avg == 0:
-            continue
-
+        if cur == 0 or avg == 0: continue
         gain_pct      = ((cur - avg) / avg) * 100
         high          = state["highs"].get(ticker, cur)
         dip_from_high = ((high - cur) / high) * 100 if high > 0 else 0
         pie_name      = resolve_pie(ticker, pie_map)
         display       = ticker.split("_")[0]
-
-        summary.append({
-            "ticker":        ticker,
-            "display":       display,
-            "current":       cur,
-            "avg":           avg,
-            "gain_pct":      round(gain_pct, 2),
-            "dip_from_high": round(dip_from_high, 2),
-            "ppl":           round(ppl, 2),
-            "pie":           pie_name,
-        })
-
+        summary.append({"ticker":ticker,"display":display,"current":cur,"avg":avg,
+            "gain_pct":round(gain_pct,2),"dip_from_high":round(dip_from_high,2),"ppl":round(ppl,2),"pie":pie_name})
         if dip_from_high >= DIP_FROM_HIGH_PCT:
             key = f"dip_{ticker}"
             if not cooldown(state, key, 6):
                 sev = "🔴 STRONG DIP" if dip_from_high >= BUY_SIGNAL_PCT else "🟡 DIP"
                 alerts.append({"type":"dip","key":key,"priority":"high" if dip_from_high>=BUY_SIGNAL_PCT else "default",
-                    "title":f"{sev} — {display}",
-                    "body":f"Down {dip_from_high:.1f}% from high · £{cur:.2f} now · avg £{avg:.2f} · {pie_name}"})
+                    "title":f"{sev} — {display}","body":f"Down {dip_from_high:.1f}% from high · £{cur:.2f} now · avg £{avg:.2f} · {pie_name}"})
             if dip_from_high >= BUY_SIGNAL_PCT:
                 key2 = f"buy_{ticker}"
                 if not cooldown(state, key2, 6):
                     alerts.append({"type":"buy","key":key2,"priority":"high",
-                        "title":f"💡 BUY — {display}",
-                        "body":f"{dip_from_high:.1f}% dip from high · entry at £{cur:.2f} · {pie_name}"})
-
+                        "title":f"💡 BUY — {display}","body":f"{dip_from_high:.1f}% dip · entry at £{cur:.2f} · {pie_name}"})
         if gain_pct >= TRIM_GAIN_PCT:
             key = f"trim_{ticker}"
             if not cooldown(state, key, 24):
                 alerts.append({"type":"trim","key":key,"priority":"default",
-                    "title":f"💰 TRIM — {display}",
-                    "body":f"Up {gain_pct:.1f}% · £{avg:.2f} → £{cur:.2f} · consider partial sell · {pie_name}"})
-
+                    "title":f"💰 TRIM — {display}","body":f"Up {gain_pct:.1f}% · £{avg:.2f} → £{cur:.2f} · consider partial sell · {pie_name}"})
     for pie in pies:
         if pie["drifts"]:
             key = f"rebalance_{pie['name']}"
             if not cooldown(state, key, 12):
                 alerts.append({"type":"rebalance","key":key,"priority":"default",
-                    "title":f"⚖️ REBALANCE — {pie['name']}",
-                    "body":f"Drift: {', '.join(pie['drifts'])}. Rebalance in Trading 212."})
-
+                    "title":f"⚖️ REBALANCE — {pie['name']}","body":f"Drift: {', '.join(pie['drifts'])}. Rebalance in Trading 212."})
     return alerts, summary
-
-# ── Notifications ─────────────────────────────────────────────────────────────
 
 def send_ntfy(title, body, priority="default"):
     pm = {"high":"urgent","default":"default","low":"low"}
@@ -229,8 +169,7 @@ def send_ntfy(title, body, priority="default"):
     try:
         urllib.request.urlopen(req, timeout=10)
         print(f"[ntfy] {title}")
-    except Exception as e:
-        print(f"[ntfy] Error: {e}")
+    except Exception as e: print(f"[ntfy] Error: {e}")
 
 def send_email(subject, html):
     try:
@@ -241,18 +180,14 @@ def send_email(subject, html):
             s.login(GMAIL_USER, GMAIL_APP_PASS)
             s.sendmail(GMAIL_USER, GMAIL_USER, msg.as_string())
         print(f"[email] {subject}")
-    except Exception as e:
-        print(f"[email] Error: {e}")
+    except Exception as e: print(f"[email] Error: {e}")
 
 def build_email(summary, pies, alerts, account):
     now   = datetime.now(timezone.utc).strftime("%d %b %Y %H:%M UTC")
     cash  = float((account or {}).get("free",0))
     total = float((account or {}).get("total",0))
-
     groups = {}
-    for r in summary:
-        groups.setdefault(r["pie"], []).append(r)
-
+    for r in summary: groups.setdefault(r["pie"], []).append(r)
     groups_html = ""
     for grp_name, rows in sorted(groups.items(), key=lambda x: (x[0]=="Solo holdings", x[0])):
         grp_pl = sum(r["ppl"] for r in rows)
@@ -264,9 +199,7 @@ def build_email(summary, pies, alerts, account):
           <td style="padding:7px 12px;color:{'#00d084' if r['ppl']>=0 else '#ff4757'}">£{r['ppl']:+.2f}</td>
           <td style="padding:7px 12px;color:{'#ff4757' if r['dip_from_high']>=8 else '#64748b'}">{r['dip_from_high']:.1f}%↓</td>
         </tr>""" for r in sorted(rows, key=lambda x: x["gain_pct"], reverse=True))
-
-        groups_html += f"""
-        <div style="margin-bottom:20px">
+        groups_html += f"""<div style="margin-bottom:20px">
           <div style="display:flex;justify-content:space-between;padding:10px 14px;background:#1a2744;border-radius:6px 6px 0 0;border-left:3px solid {gc}">
             <span style="font-weight:700;color:#e8edf5">{grp_name}</span>
             <span style="font-weight:700;color:{gc}">{'+' if grp_pl>=0 else ''}£{grp_pl:.2f}</span>
@@ -278,31 +211,20 @@ def build_email(summary, pies, alerts, account):
               <th style="padding:6px 12px;text-align:left;color:#4a6080;font-size:10px">GAIN</th>
               <th style="padding:6px 12px;text-align:left;color:#4a6080;font-size:10px">P&L</th>
               <th style="padding:6px 12px;text-align:left;color:#4a6080;font-size:10px">FROM HIGH</th>
-            </tr></thead>
-            <tbody>{rows_html}</tbody>
-          </table>
-        </div>"""
-
+            </tr></thead><tbody>{rows_html}</tbody>
+          </table></div>"""
     alerts_html = "".join(
         f'<div style="margin:6px 0;padding:10px 14px;background:#1a2744;border-left:3px solid #ffa502;border-radius:4px">'
         f'<strong style="color:#e8edf5">{a["title"]}</strong><br>'
-        f'<span style="font-size:12px;color:#6b85a8">{a["body"]}</span></div>'
-        for a in alerts
+        f'<span style="font-size:12px;color:#6b85a8">{a["body"]}</span></div>' for a in alerts
     ) or '<div style="color:#4a6080;font-size:13px">No alerts — all within thresholds.</div>'
-
     return f"""<html><body style="background:#060a14;font-family:system-ui,sans-serif;max-width:820px;margin:0 auto;padding:20px;color:#e8edf5">
     <div style="background:#0d1526;border:1px solid #1a2744;border-radius:10px;padding:18px 22px;margin-bottom:20px">
       <h2 style="margin:0 0 4px;font-size:17px">📊 T212 Portfolio Monitor</h2>
       <p style="margin:0;font-size:12px;color:#4a6080">{now} · Cash £{cash:.2f} · Total £{total:.2f}</p>
     </div>
-    <div style="margin-bottom:20px">
-      <h3 style="font-size:11px;color:#4a6080;text-transform:uppercase;letter-spacing:.06em;margin:0 0 10px">Alerts</h3>
-      {alerts_html}
-    </div>
-    <div>
-      <h3 style="font-size:11px;color:#4a6080;text-transform:uppercase;letter-spacing:.06em;margin:0 0 12px">Positions by pie</h3>
-      {groups_html}
-    </div>
+    <div style="margin-bottom:20px"><h3 style="font-size:11px;color:#4a6080;text-transform:uppercase;letter-spacing:.06em;margin:0 0 10px">Alerts</h3>{alerts_html}</div>
+    <div><h3 style="font-size:11px;color:#4a6080;text-transform:uppercase;letter-spacing:.06em;margin:0 0 12px">Positions by pie</h3>{groups_html}</div>
     <div style="margin-top:16px;font-size:11px;color:#334155;border-top:1px solid #1a2744;padding-top:12px">
       Dip {DIP_FROM_HIGH_PCT}% · Buy {BUY_SIGNAL_PCT}% · Trim {TRIM_GAIN_PCT}% · Rebalance {REBALANCE_DRIFT_PCT}% · Target {ANNUAL_GROWTH_PCT}%pa
     </div></body></html>"""
@@ -317,42 +239,31 @@ def save_docs(summary, pies, alerts, account, state):
         "highs":             state["highs"],
         "run_count":         state.get("run_count",0),
         "target_annual_pct": ANNUAL_GROWTH_PCT,
-        "dashboard_pwd":     DASHBOARD_PASSWORD,
     }
     os.makedirs("docs", exist_ok=True)
     with open("docs/data.json","w") as f:
         json.dump(data, f, indent=2)
     print("[docs] data.json written")
 
-# ── Main ──────────────────────────────────────────────────────────────────────
-
 def main():
-    print(f"\n{'='*55}\nT212 Monitor v4 — {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}\n{'='*55}")
+    print(f"\n{'='*55}\nT212 Monitor v5 — {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}\n{'='*55}")
     state = load_state()
     state["run_count"] = state.get("run_count",0) + 1
-
     account   = fetch_account()
     positions = fetch_positions()
     pies, pie_map = fetch_pies_with_instruments()
-
     if not positions:
         print("[warn] No positions returned"); return
-
     state = update_highs(state, positions)
     alerts, summary = analyse(positions, pies, pie_map, state)
-
     print(f"[done] {len(alerts)} alerts · {len(summary)} positions · {len(pies)} pies")
-
     for a in alerts:
         if not cooldown(state, a["key"]):
             send_ntfy(a["title"], a["body"], a.get("priority","default"))
-            mark(state, a["key"])
-            time.sleep(1)
-
+            mark(state, a["key"]); time.sleep(1)
     if state["run_count"] == 1 or state["run_count"] % 6 == 0 or alerts:
         subj = f"T212 · {len(alerts)} alert(s) · {datetime.now(timezone.utc).strftime('%d %b %H:%M')}"
         send_email(subj, build_email(summary, pies, alerts, account))
-
     save_docs(summary, pies, alerts, account, state)
     save_state(state)
 
