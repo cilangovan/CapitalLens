@@ -1,0 +1,213 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>HOOP · Portfolio Monitor</title>
+<style>
+  :root {
+    --bg: #0a0f1e;
+    --surface: #111827;
+    --surface2: #1f2937;
+    --border: #1e293b;
+    --text: #f1f5f9;
+    --muted: #64748b;
+    --green: #22c55e;
+    --red: #ef4444;
+    --amber: #f59e0b;
+    --blue: #3b82f6;
+    --purple: #a78bfa;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: system-ui, sans-serif; font-size: 14px; min-height: 100vh; }
+
+  header { padding: 20px 24px; border-bottom: 1px solid var(--border); display: flex; align-items: center; justify-content: space-between; }
+  .logo { font-size: 16px; font-weight: 600; letter-spacing: -.01em; }
+  .logo span { color: var(--blue); }
+  .updated { font-size: 12px; color: var(--muted); }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 1px; background: var(--border); border-top: 1px solid var(--border); }
+  .stat { background: var(--surface); padding: 16px 20px; }
+  .stat-label { font-size: 11px; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 6px; }
+  .stat-value { font-size: 22px; font-weight: 600; }
+  .stat-value.green { color: var(--green); }
+  .stat-value.red { color: var(--red); }
+  .stat-value.amber { color: var(--amber); }
+
+  section { padding: 24px; border-bottom: 1px solid var(--border); }
+  h2 { font-size: 12px; font-weight: 500; color: var(--muted); text-transform: uppercase; letter-spacing: .06em; margin-bottom: 16px; }
+
+  .alerts { display: flex; flex-direction: column; gap: 8px; }
+  .alert { padding: 12px 14px; border-radius: 6px; font-size: 13px; border-left: 3px solid; }
+  .alert.dip   { background: rgba(239,68,68,.08); border-color: var(--red); }
+  .alert.buy   { background: rgba(34,197,94,.08); border-color: var(--green); }
+  .alert.trim  { background: rgba(245,158,11,.08); border-color: var(--amber); }
+  .alert.rebalance { background: rgba(167,139,250,.08); border-color: var(--purple); }
+  .alert.growth { background: rgba(239,68,68,.08); border-color: var(--red); }
+  .alert-title { font-weight: 600; margin-bottom: 3px; }
+  .alert-body  { color: #94a3b8; font-size: 12px; }
+  .no-alerts { color: var(--muted); font-size: 13px; }
+
+  table { width: 100%; border-collapse: collapse; }
+  th { text-align: left; font-size: 11px; color: var(--muted); padding: 8px 10px; border-bottom: 1px solid var(--border); font-weight: 500; }
+  td { padding: 10px 10px; border-bottom: 1px solid rgba(255,255,255,.03); }
+  tr:hover td { background: rgba(255,255,255,.02); }
+  .ticker { font-weight: 600; font-size: 13px; }
+  .badge { display: inline-block; font-size: 10px; padding: 2px 6px; border-radius: 3px; margin-left: 6px; vertical-align: middle; }
+  .badge.solo { background: rgba(59,130,246,.2); color: var(--blue); }
+  .badge.pie  { background: rgba(167,139,250,.2); color: var(--purple); }
+  .green { color: var(--green); }
+  .red   { color: var(--red); }
+  .amber { color: var(--amber); }
+  .muted { color: var(--muted); }
+  .bar-wrap { background: var(--surface2); border-radius: 2px; height: 4px; width: 80px; overflow: hidden; display: inline-block; vertical-align: middle; margin-left: 8px; }
+  .bar { height: 100%; border-radius: 2px; }
+
+  .pies-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+  .pie-card { background: var(--surface); border: 1px solid var(--border); border-radius: 8px; padding: 16px; }
+  .pie-name { font-weight: 600; margin-bottom: 4px; font-size: 13px; }
+  .pie-meta { color: var(--muted); font-size: 12px; }
+  .pie-return { font-size: 20px; font-weight: 600; margin-top: 10px; }
+
+  #loading { display: flex; align-items: center; justify-content: center; height: 60vh; color: var(--muted); }
+
+  @media (max-width: 600px) {
+    .hide-mobile { display: none; }
+    section { padding: 16px; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">HOOP · <span>T212</span> Monitor</div>
+  <div class="updated" id="updated">Loading...</div>
+</header>
+
+<div id="loading">Fetching portfolio data...</div>
+<div id="app" style="display:none">
+
+  <div class="grid" id="stats-grid"></div>
+
+  <section>
+    <h2>Alerts</h2>
+    <div class="alerts" id="alerts-container"></div>
+  </section>
+
+  <section>
+    <h2>Pies</h2>
+    <div class="pies-grid" id="pies-grid"></div>
+  </section>
+
+  <section>
+    <h2>All Positions</h2>
+    <table>
+      <thead>
+        <tr>
+          <th>Ticker</th>
+          <th>Price</th>
+          <th>Gain</th>
+          <th>From High</th>
+          <th class="hide-mobile">P&L</th>
+          <th class="hide-mobile">Type</th>
+        </tr>
+      </thead>
+      <tbody id="positions-tbody"></tbody>
+    </table>
+  </section>
+
+</div>
+
+<script>
+async function load() {
+  try {
+    const r = await fetch('data.json?t=' + Date.now());
+    if (!r.ok) throw new Error('No data yet');
+    const d = await r.json();
+    render(d);
+  } catch(e) {
+    document.getElementById('loading').textContent = 'No data yet — run the monitor first via GitHub Actions.';
+  }
+}
+
+function fmt(n, dec=2) { return Number(n).toFixed(dec); }
+function sign(n) { return n >= 0 ? '+' : ''; }
+function cls(n) { return n >= 0 ? 'green' : 'red'; }
+
+function render(d) {
+  document.getElementById('loading').style.display = 'none';
+  document.getElementById('app').style.display = 'block';
+  document.getElementById('updated').textContent = 'Updated ' + new Date(d.updated).toLocaleString('en-GB');
+
+  // Stats
+  const acc = d.account || {};
+  const totalPL = d.positions.reduce((s, p) => s + (p.ppl || 0), 0);
+  const cash = parseFloat(acc.free || 0);
+  const total = parseFloat(acc.total || 0);
+  const alertCount = d.alerts.length;
+
+  const stats = [
+    { label: 'Total value', value: '£' + fmt(total), cls: '' },
+    { label: 'Cash', value: '£' + fmt(cash), cls: '' },
+    { label: 'Total P&L', value: sign(totalPL) + '£' + fmt(Math.abs(totalPL)), cls: cls(totalPL) },
+    { label: 'Positions', value: d.positions.length, cls: '' },
+    { label: 'Pies', value: d.pies.length, cls: '' },
+    { label: 'Active alerts', value: alertCount, cls: alertCount > 0 ? 'amber' : 'green' },
+    { label: 'Target growth', value: d.target_annual_pct + '%pa', cls: '' },
+    { label: 'Monitor runs', value: d.run_count, cls: '' },
+  ];
+  document.getElementById('stats-grid').innerHTML = stats.map(s =>
+    `<div class="stat"><div class="stat-label">${s.label}</div><div class="stat-value ${s.cls}">${s.value}</div></div>`
+  ).join('');
+
+  // Alerts
+  const ac = document.getElementById('alerts-container');
+  if (d.alerts.length === 0) {
+    ac.innerHTML = '<div class="no-alerts">No alerts — all positions within thresholds.</div>';
+  } else {
+    ac.innerHTML = d.alerts.map(a => `
+      <div class="alert ${a.type}">
+        <div class="alert-title">${a.title}</div>
+        <div class="alert-body">${a.body}</div>
+      </div>`).join('');
+  }
+
+  // Pies
+  document.getElementById('pies-grid').innerHTML = d.pies.map(p => {
+    const c = p.gain_pct >= 0 ? 'green' : 'red';
+    return `<div class="pie-card">
+      <div class="pie-name">${p.name}</div>
+      <div class="pie-meta">${p.holdings} holdings · £${fmt(p.value)}</div>
+      <div class="pie-return ${c}">${sign(p.gain_pct)}${fmt(p.gain_pct, 1)}%</div>
+    </div>`;
+  }).join('');
+
+  // Positions
+  const sorted = [...d.positions].sort((a, b) => b.gain_pct - a.gain_pct);
+  document.getElementById('positions-tbody').innerHTML = sorted.map(p => {
+    const gc = cls(p.gain_pct);
+    const dipCls = p.dip_from_high >= 8 ? 'red' : p.dip_from_high >= 4 ? 'amber' : 'muted';
+    const barWidth = Math.min(100, p.dip_from_high * 5);
+    const barColor = p.dip_from_high >= 12 ? '#ef4444' : p.dip_from_high >= 8 ? '#f59e0b' : '#22c55e';
+    const badge = p.in_pie
+      ? '<span class="badge pie">pie</span>'
+      : '<span class="badge solo">solo</span>';
+    return `<tr>
+      <td><span class="ticker">${p.ticker}</span>${badge}</td>
+      <td>£${fmt(p.current)}</td>
+      <td class="${gc}">${sign(p.gain_pct)}${fmt(p.gain_pct, 1)}%</td>
+      <td class="${dipCls}">
+        ${fmt(p.dip_from_high, 1)}%
+        <span class="bar-wrap"><span class="bar" style="width:${barWidth}%;background:${barColor}"></span></span>
+      </td>
+      <td class="hide-mobile ${gc}">${sign(p.ppl)}£${fmt(Math.abs(p.ppl))}</td>
+      <td class="hide-mobile muted">${p.in_pie ? 'Pie' : 'Solo'}</td>
+    </tr>`;
+  }).join('');
+}
+
+load();
+setInterval(load, 5 * 60 * 1000); // auto-refresh every 5 min
+</script>
+</body>
+</html>
