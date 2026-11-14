@@ -1,1 +1,210 @@
-{}
+{
+  "updated": "2026-11-14T03:28:38.398769+00:00",
+  "account": {
+    "free": 4362.44,
+    "total": 9374.32,
+    "ppl": 151.98,
+    "result": 576.59,
+    "invested": 4718.67,
+    "pieCash": 20.08,
+    "blocked": 121.16
+  },
+  "positions": [
+    {
+      "ticker": "NVDA_US_EQ",
+      "current": 161.04,
+      "avg": 180.22673735,
+      "gain_pct": -10.65,
+      "dip_from_high": 0.0,
+      "ppl": -18.4,
+      "in_pie": false
+    },
+    {
+      "ticker": "VUSAa_EQ",
+      "current": 129.425,
+      "avg": 113.38544541,
+      "gain_pct": 14.15,
+      "dip_from_high": 0.0,
+      "ppl": 23.95,
+      "in_pie": false
+    },
+    {
+      "ticker": "SSLNl_EQ",
+      "current": 3537.8,
+      "avg": 4972.79433675,
+      "gain_pct": -28.86,
+      "dip_from_high": 0.0,
+      "ppl": -40.47,
+      "in_pie": false
+    },
+    {
+      "ticker": "MSFT_US_EQ",
+      "current": 522.25,
+      "avg": 451.16991951,
+      "gain_pct": 15.75,
+      "dip_from_high": 0.0,
+      "ppl": 16.92,
+      "in_pie": false
+    },
+    {
+      "ticker": "IAEXl_EQ",
+      "current": 9539.0,
+      "avg": 9227.75055579,
+      "gain_pct": 3.37,
+      "dip_from_high": 0.0,
+      "ppl": 3.71,
+      "in_pie": false
+    },
+    {
+      "ticker": "IPOLl_EQ",
+      "current": 41.757,
+      "avg": 37.6149578,
+      "gain_pct": 11.01,
+      "dip_from_high": 0.0,
+      "ppl": 24.34,
+      "in_pie": false
+    },
+    {
+      "ticker": "ITWNl_EQ",
+      "current": 13486.0,
+      "avg": 11503.23697459,
+      "gain_pct": 17.24,
+      "dip_from_high": 0.0,
+      "ppl": 38.84,
+      "in_pie": false
+    },
+    {
+      "ticker": "AAPL_US_EQ",
+      "current": 355.33,
+      "avg": 283.72118687,
+      "gain_pct": 25.24,
+      "dip_from_high": 0.0,
+      "ppl": 31.26,
+      "in_pie": false
+    },
+    {
+      "ticker": "AMZN_US_EQ",
+      "current": 264.39,
+      "avg": 241.51291002,
+      "gain_pct": 9.47,
+      "dip_from_high": 0.0,
+      "ppl": 7.34,
+      "in_pie": false
+    },
+    {
+      "ticker": "SPCX_US_EQ",
+      "current": 136.26,
+      "avg": 149.05781039,
+      "gain_pct": -8.59,
+      "dip_from_high": 0.0,
+      "ppl": -7.25,
+      "in_pie": false
+    },
+    {
+      "ticker": "IMIBl_EQ",
+      "current": 2640.75,
+      "avg": 2532.00825781,
+      "gain_pct": 4.29,
+      "dip_from_high": 0.0,
+      "ppl": 4.35,
+      "in_pie": false
+    },
+    {
+      "ticker": "GOOGL_US_EQ",
+      "current": 294.05,
+      "avg": 324.86766618,
+      "gain_pct": -9.49,
+      "dip_from_high": 0.0,
+      "ppl": -9.62,
+      "in_pie": false
+    },
+    {
+      "ticker": "FB_US_EQ",
+      "current": 637.0,
+      "avg": 718.64533417,
+      "gain_pct": -11.36,
+      "dip_from_high": 0.0,
+      "ppl": -5.76,
+      "in_pie": false
+    },
+    {
+      "ticker": "CS1l_EQ",
+      "current": 43397.0,
+      "avg": 42436.99275923,
+      "gain_pct": 2.26,
+      "dip_from_high": 0.0,
+      "ppl": 4.97,
+      "in_pie": false
+    },
+    {
+      "ticker": "XDAXl_EQ",
+      "current": 20837.5,
+      "avg": 20418.40995652,
+      "gain_pct": 2.05,
+      "dip_from_high": 0.0,
+      "ppl": 3.36,
+      "in_pie": false
+    },
+    {
+      "ticker": "SGLNl_EQ",
+      "current": 5692.0,
+      "avg": 5776.66164501,
+      "gain_pct": -1.47,
+      "dip_from_high": 0.0,
+      "ppl": -25.31,
+      "in_pie": false
+    },
+    {
+      "ticker": "QDVEd_EQ",
+      "current": 42.695,
+      "avg": 36.89791455,
+      "gain_pct": 15.71,
+      "dip_from_high": 0.0,
+      "ppl": 53.32,
+      "in_pie": false
+    },
+    {
+      "ticker": "SXRVd_EQ",
+      "current": 1446.6,
+      "avg": 1270.89412214,
+      "gain_pct": 13.83,
+      "dip_from_high": 0.0,
+      "ppl": 40.23,
+      "in_pie": false
+    },
+    {
+      "ticker": "VWCEd_EQ",
+      "current": 169.86,
+      "avg": 148.26114595,
+      "gain_pct": 14.57,
+      "dip_from_high": 0.0,
+      "ppl": 6.2,
+      "in_pie": false
+    }
+  ],
+  "pies": [],
+  "alerts": [],
+  "highs": {
+    "NVDA_US_EQ": 161.04,
+    "VUSAa_EQ": 129.425,
+    "SSLNl_EQ": 3537.8,
+    "MSFT_US_EQ": 522.25,
+    "IAEXl_EQ": 9539.0,
+    "IPOLl_EQ": 41.757,
+    "ITWNl_EQ": 13486.0,
+    "AAPL_US_EQ": 355.33,
+    "AMZN_US_EQ": 264.39,
+    "SPCX_US_EQ": 136.26,
+    "IMIBl_EQ": 2640.75,
+    "GOOGL_US_EQ": 294.05,
+    "FB_US_EQ": 637.0,
+    "CS1l_EQ": 43397.0,
+    "XDAXl_EQ": 20837.5,
+    "SGLNl_EQ": 5692.0,
+    "QDVEd_EQ": 42.695,
+    "SXRVd_EQ": 1446.6,
+    "VWCEd_EQ": 169.86
+  },
+  "run_count": 2,
+  "target_annual_pct": 15.0
+}
