@@ -3,6 +3,7 @@
 Analyst Service — fetches Yahoo Finance analyst ratings for all portfolio tickers
 and upserts into Supabase analyst_ratings table.
 Runs daily at 08:00 UTC via GitHub Actions.
+Uses yfinance library which handles Yahoo auth/crumb automatically.
 """
 
 import os
@@ -11,6 +12,13 @@ import time
 import urllib.request
 import urllib.error
 from datetime import datetime, timezone
+
+try:
+    import yfinance as yf
+    USE_YFINANCE = True
+except ImportError:
+    USE_YFINANCE = False
+    print("[analyst_service] WARNING: yfinance not installed, falling back to direct HTTP")
 
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_KEY"]
@@ -112,6 +120,81 @@ def supabase_request(method, path, data=None):
         return None
 
 
+def fetch_yahoo_analyst_yf(yahoo_ticker):
+    """Fetch analyst data via yfinance (handles auth automatically)."""
+    try:
+        t = yf.Ticker(yahoo_ticker)
+        info = t.info or {}
+
+        recommendation = (info.get("recommendationKey") or "none").lower()
+        target_mean = info.get("targetMeanPrice")
+        analyst_count = info.get("numberOfAnalystOpinions") or 1
+
+        # yfinance info doesn't always have buy/hold/sell split — use recommendations df if available
+        buy_pct, hold_pct, sell_pct = None, None, None
+        try:
+            recs = t.recommendations
+            if recs is not None and not recs.empty:
+                # Sum last 3 months
+                recent = recs.tail(3) if len(recs) >= 3 else recs
+                sb = recent.get("strongBuy", recent.get("Strong Buy", 0)).sum() if hasattr(recent, 'get') else 0
+                b  = recent.get("buy",       recent.get("Buy",         0)).sum() if hasattr(recent, 'get') else 0
+                h  = recent.get("hold",      recent.get("Hold",        0)).sum() if hasattr(recent, 'get') else 0
+                s  = recent.get("sell",      recent.get("Sell",        0)).sum() if hasattr(recent, 'get') else 0
+                ss = recent.get("strongSell",recent.get("Strong Sell", 0)).sum() if hasattr(recent, 'get') else 0
+                # Try column access
+                cols = list(recent.columns) if hasattr(recent, 'columns') else []
+                for col in cols:
+                    cv = recent[col].sum()
+                    cl = col.lower().replace(" ", "")
+                    if cl == "strongbuy": sb = cv
+                    elif cl == "buy": b = cv
+                    elif cl == "hold": h = cv
+                    elif cl == "sell": s = cv
+                    elif cl == "strongsell": ss = cv
+                total = sb + b + h + s + ss or analyst_count or 1
+                buy_pct  = round((sb + b) / total * 100, 1)
+                hold_pct = round(h / total * 100, 1)
+                sell_pct = round((s + ss) / total * 100, 1)
+        except Exception:
+            pass
+
+        # Fallback: estimate from recommendation key
+        if buy_pct is None:
+            rec_map = {
+                "strong_buy":  (85, 10, 5),
+                "buy":         (65, 25, 10),
+                "hold":        (30, 50, 20),
+                "underperform":(15, 35, 50),
+                "sell":        (10, 20, 70),
+                "none":        (40, 40, 20),
+            }
+            buy_pct, hold_pct, sell_pct = rec_map.get(recommendation, (40, 40, 20))
+
+        if buy_pct >= 70: star_rating = 5
+        elif buy_pct >= 55: star_rating = 4
+        elif buy_pct >= 40: star_rating = 3
+        elif buy_pct >= 25: star_rating = 2
+        else: star_rating = 1
+
+        # Skip tickers with no useful data
+        if recommendation == "none" and not target_mean:
+            return None
+
+        return {
+            "recommendation": recommendation,
+            "star_rating": star_rating,
+            "target_mean": target_mean,
+            "buy_pct": buy_pct,
+            "hold_pct": hold_pct,
+            "sell_pct": sell_pct,
+            "analyst_count": analyst_count,
+        }
+    except Exception as e:
+        print(f"  yfinance error for {yahoo_ticker}: {e}")
+        return None
+
+
 def _yahoo_crumb_and_cookie():
     """Get a crumb + session cookie from Yahoo Finance (required for v10 API)."""
     req = urllib.request.Request(
@@ -138,7 +221,14 @@ _COOKIE = None
 
 
 def fetch_yahoo_analyst(yahoo_ticker):
-    """Fetch analyst summary using Yahoo Finance v10 quoteSummary (current working endpoint)."""
+    """Fetch analyst summary — yfinance first, HTTP fallback."""
+    if USE_YFINANCE:
+        return fetch_yahoo_analyst_yf(yahoo_ticker)
+    return _fetch_yahoo_http(yahoo_ticker)
+
+
+def _fetch_yahoo_http(yahoo_ticker):
+    """HTTP fallback using Yahoo Finance v10 quoteSummary."""
     global _CRUMB, _COOKIE
     try:
         # Get crumb once per session
