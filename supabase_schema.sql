@@ -1,0 +1,79 @@
+-- T212 Monitor — Supabase Schema
+-- Run this in Supabase SQL Editor to create/update all tables
+-- Existing tables (portfolio_snapshots, positions, alerts) are unaffected
+
+-- ============================================================
+-- analyst_ratings
+-- ============================================================
+create table if not exists analyst_ratings (
+  id            bigserial primary key,
+  ticker        text unique not null,
+  yahoo_ticker  text,
+  pie           text,
+  recommendation text,
+  star_rating   int,
+  target_mean   numeric,
+  buy_pct       numeric,
+  hold_pct      numeric,
+  sell_pct      numeric,
+  analyst_count int,
+  updated_at    timestamptz default now()
+);
+
+alter table analyst_ratings enable row level security;
+
+drop policy if exists "allow all" on analyst_ratings;
+create policy "allow all" on analyst_ratings for all using (true) with check (true);
+
+-- ============================================================
+-- strategy_recommendations
+-- ============================================================
+create table if not exists strategy_recommendations (
+  id                bigserial primary key,
+  week_number       int,
+  total_suggested   numeric,
+  on_track          boolean,
+  annualised_return numeric,
+  recommendations   jsonb,
+  notes             jsonb,
+  updated_at        timestamptz default now()
+);
+
+alter table strategy_recommendations enable row level security;
+
+drop policy if exists "allow all" on strategy_recommendations;
+create policy "allow all" on strategy_recommendations for all using (true) with check (true);
+
+-- ============================================================
+-- returns_summary
+-- ============================================================
+create table if not exists returns_summary (
+  id                bigserial primary key,
+  xirr_pct          numeric,
+  annualised_pct    numeric,
+  total_return_pct  numeric,
+  yearly_breakdown  jsonb,
+  monthly_breakdown jsonb,
+  updated_at        timestamptz default now()
+);
+
+alter table returns_summary enable row level security;
+
+drop policy if exists "allow all" on returns_summary;
+create policy "allow all" on returns_summary for all using (true) with check (true);
+
+-- ============================================================
+-- Ensure existing tables have RLS + allow-all policies
+-- ============================================================
+
+alter table if exists portfolio_snapshots enable row level security;
+drop policy if exists "allow all" on portfolio_snapshots;
+create policy "allow all" on portfolio_snapshots for all using (true) with check (true);
+
+alter table if exists positions enable row level security;
+drop policy if exists "allow all" on positions;
+create policy "allow all" on positions for all using (true) with check (true);
+
+alter table if exists alerts enable row level security;
+drop policy if exists "allow all" on alerts;
+create policy "allow all" on alerts for all using (true) with check (true);

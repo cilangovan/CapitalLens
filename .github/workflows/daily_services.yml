@@ -1,0 +1,58 @@
+name: Daily Portfolio Services
+
+on:
+  schedule:
+    # 08:00 UTC Mon-Fri
+    - cron: '0 8 * * 1-5'
+  workflow_dispatch:
+
+jobs:
+  analyst:
+    name: Analyst Ratings
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install deps
+        run: pip install -r requirements.txt
+      - name: Run analyst service
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python -m services.analyst_service
+
+  returns:
+    name: Returns Calculator
+    runs-on: ubuntu-latest
+    needs: analyst
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install deps
+        run: pip install -r requirements.txt
+      - name: Run returns service
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python -m services.returns_service
+
+  strategy:
+    name: Strategy Engine
+    runs-on: ubuntu-latest
+    needs: [analyst, returns]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install deps
+        run: pip install -r requirements.txt
+      - name: Run strategy service
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python -m services.strategy_service
