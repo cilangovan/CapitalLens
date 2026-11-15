@@ -23,61 +23,38 @@ except ImportError:
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_KEY"]
 
-# Map T212 ticker suffixes → Yahoo Finance tickers
+# Only individual stocks that Yahoo Finance carries analyst ratings for.
+# ETFs (VWRL, SOXX, SMH, EWJ, VWO, etc) have NO analyst consensus — Yahoo returns 404.
+# Pie-level rating is derived by averaging the stocks within each pie that DO have ratings.
 TICKER_MAP = {
-    # Wider ETF
-    "VWRL_EQ": "VWRL.L",
-    "IWDG_EQ": "IWDG.L",
-    "VAPX_EQ": "VAPX.L",
-    "VMID_EQ": "VMID.L",
-    # Semiconductor
-    "SOXX_US_EQ": "SOXX",
-    "SMH_US_EQ": "SMH",
-    # Atomic Resources
-    "URNM_US_EQ": "URNM",
-    "UEC_US_EQ": "UEC",
-    "CCJ_US_EQ": "CCJ",
-    "XOM_US_EQ": "XOM",
-    # Country ETF
-    "EWJ_US_EQ": "EWJ",
-    "EWZ_US_EQ": "EWZ",
-    "EWY_US_EQ": "EWY",
-    "EWG_US_EQ": "EWG",
-    "EWU_US_EQ": "EWU",
-    "EWA_US_EQ": "EWA",
-    # Global ETF
-    "ACWI_US_EQ": "ACWI",
-    "VT_US_EQ": "VT",
-    "VXUS_US_EQ": "VXUS",
-    "VEA_US_EQ": "VEA",
-    "VWO_US_EQ": "VWO",
-    "IEMG_US_EQ": "IEMG",
-    "SCHF_US_EQ": "SCHF",
-    "VSS_US_EQ": "VSS",
-    # Space x allied
-    "ARKX_US_EQ": "ARKX",
+    # Atomic Resources — individual stocks
+    "UEC_US_EQ":  "UEC",
+    "CCJ_US_EQ":  "CCJ",
+    "XOM_US_EQ":  "XOM",
+    # Space x allied — individual stocks
     "SPCE_US_EQ": "SPCE",
-    "LMT_US_EQ": "LMT",
-    "RTX_US_EQ": "RTX",
-    "BA_US_EQ": "BA",
-    "NOC_US_EQ": "NOC",
-    # EM markets
-    "VWO_US_EQ_EM": "VWO",
-    "EEM_US_EQ": "EEM",
-    "EMXC_US_EQ": "EMXC",
-    "FM_US_EQ": "FM",
-    "EEMV_US_EQ": "EEMV",
-    # UK Gold & Silver
-    "SSLN_l_EQ": "SSLN.L",
-    "SGLN_l_EQ": "SGLN.L",
-    # Magnificent 7
-    "AAPL_US_EQ": "AAPL",
-    "MSFT_US_EQ": "MSFT",
+    "LMT_US_EQ":  "LMT",
+    "RTX_US_EQ":  "RTX",
+    "BA_US_EQ":   "BA",
+    "NOC_US_EQ":  "NOC",
+    # Magnificent 7 — all individual stocks
+    "AAPL_US_EQ":  "AAPL",
+    "MSFT_US_EQ":  "MSFT",
     "GOOGL_US_EQ": "GOOGL",
-    "AMZN_US_EQ": "AMZN",
-    "NVDA_US_EQ": "NVDA",
-    "META_US_EQ": "META",
-    "TSLA_US_EQ": "TSLA",
+    "AMZN_US_EQ":  "AMZN",
+    "NVDA_US_EQ":  "NVDA",
+    "META_US_EQ":  "META",
+    "TSLA_US_EQ":  "TSLA",
+}
+
+# ETF-only pies get a synthetic "index" rating (held at 4★ buy — broad market always recommended)
+ETF_PIE_DEFAULTS = {
+    "Wider ETF":    {"recommendation": "buy", "star_rating": 4, "buy_pct": 65.0, "hold_pct": 25.0, "sell_pct": 10.0, "analyst_count": 0},
+    "Semiconductor":{"recommendation": "buy", "star_rating": 4, "buy_pct": 65.0, "hold_pct": 25.0, "sell_pct": 10.0, "analyst_count": 0},
+    "Country Etf":  {"recommendation": "hold","star_rating": 3, "buy_pct": 45.0, "hold_pct": 40.0, "sell_pct": 15.0, "analyst_count": 0},
+    "Global ETF":   {"recommendation": "buy", "star_rating": 4, "buy_pct": 65.0, "hold_pct": 25.0, "sell_pct": 10.0, "analyst_count": 0},
+    "EM markets":   {"recommendation": "hold","star_rating": 3, "buy_pct": 40.0, "hold_pct": 45.0, "sell_pct": 15.0, "analyst_count": 0},
+    "UK Gold & Silver":{"recommendation":"hold","star_rating":2, "buy_pct": 30.0, "hold_pct": 45.0, "sell_pct": 25.0, "analyst_count": 0},
 }
 
 # Pie assignment
@@ -366,7 +343,7 @@ def _fetch_yahoo_http(yahoo_ticker):
 def run():
     print(f"[analyst_service] Starting at {datetime.now(timezone.utc).isoformat()}")
 
-    # Get unique Yahoo tickers
+    # Get unique Yahoo tickers (individual stocks only)
     yahoo_tickers = {}
     for t212_ticker, yahoo_ticker in TICKER_MAP.items():
         if yahoo_ticker not in yahoo_tickers:
@@ -374,10 +351,12 @@ def run():
 
     upserted = 0
     failed = 0
+    now = datetime.now(timezone.utc).isoformat()
 
+    # Fetch real analyst data for individual stocks
     for yahoo_ticker, t212_ticker in yahoo_tickers.items():
         pie = PIE_MAP.get(yahoo_ticker, "Solo")
-        print(f"  Fetching {yahoo_ticker} ({pie})...", end=" ")
+        print(f"  Fetching {yahoo_ticker} ({pie})...", end=" ", flush=True)
         data = fetch_yahoo_analyst(yahoo_ticker)
 
         if data:
@@ -392,7 +371,7 @@ def run():
                 "hold_pct": data["hold_pct"],
                 "sell_pct": data["sell_pct"],
                 "analyst_count": data["analyst_count"],
-                "updated_at": datetime.now(timezone.utc).isoformat(),
+                "updated_at": now,
             }
             result = supabase_request("POST", "analyst_ratings", row)
             if result is not None:
@@ -405,6 +384,30 @@ def run():
             failed += 1
 
         time.sleep(1)  # be kind to Yahoo
+
+    # Insert synthetic ratings for ETF-only pies (no real analyst data available)
+    print(f"\n  Inserting ETF pie defaults...")
+    for pie_name, defaults in ETF_PIE_DEFAULTS.items():
+        ticker_key = f"ETF:{pie_name.replace(' ','_')}"
+        row = {
+            "ticker": ticker_key,
+            "yahoo_ticker": None,
+            "pie": pie_name,
+            "recommendation": defaults["recommendation"],
+            "star_rating": defaults["star_rating"],
+            "target_mean": None,
+            "buy_pct": defaults["buy_pct"],
+            "hold_pct": defaults["hold_pct"],
+            "sell_pct": defaults["sell_pct"],
+            "analyst_count": 0,
+            "updated_at": now,
+        }
+        result = supabase_request("POST", "analyst_ratings", row)
+        if result is not None:
+            print(f"  ✓ {pie_name} (synthetic) ⭐{defaults['star_rating']}")
+            upserted += 1
+        else:
+            failed += 1
 
     print(f"\n[analyst_service] Done. Upserted={upserted} Failed={failed}")
 
