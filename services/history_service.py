@@ -11,7 +11,7 @@ import time
 import base64
 import urllib.request
 import urllib.error
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 
 T212_BASE       = "https://live.trading212.com"
 T212_API_KEY    = os.environ["T212_API_KEY"]
@@ -72,18 +72,6 @@ def fetch_all_pages(path, data_key="items", cursor_key="nextPagePath"):
             print(f"    page {page}: got None response — stopping")
             break
 
-        # DEBUG: show full response structure on first page
-        if page == 1:
-            print(f"  RAW RESPONSE TYPE: {type(resp).__name__}")
-            if isinstance(resp, dict):
-                print(f"  RAW KEYS: {list(resp.keys())}")
-                print(f"  RAW RESPONSE (first 500 chars): {json.dumps(resp, default=str)[:500]}")
-            elif isinstance(resp, list):
-                print(f"  RAW RESPONSE is a LIST of {len(resp)} items")
-                if resp:
-                    print(f"  First item keys: {list(resp[0].keys()) if isinstance(resp[0], dict) else resp[0]}")
-                    print(f"  First item: {json.dumps(resp[0], default=str)[:300]}")
-
         # Handle case where response IS the list (not wrapped in dict)
         if isinstance(resp, list):
             all_items.extend(resp)
@@ -114,22 +102,42 @@ def fetch_all_pages(path, data_key="items", cursor_key="nextPagePath"):
     return all_items
 
 
+ACCOUNT_START_YEAR = 2020
+
+
+def fetch_all_years(base_path):
+    """Fetch history year by year from ACCOUNT_START_YEAR to now, to get all records past the 400-item limit."""
+    all_items = []
+    current_year = datetime.now(timezone.utc).year
+    for year in range(ACCOUNT_START_YEAR, current_year + 1):
+        date_from = f"{year}-01-01T00:00:00.000Z"
+        date_to   = f"{year}-12-31T23:59:59.999Z" if year < current_year else datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.000Z")
+        path_with_params = f"{base_path}?from={date_from}&to={date_to}"
+        print(f"    year {year}: fetching {date_from[:10]} → {date_to[:10]}")
+        items = fetch_all_pages(path_with_params)
+        print(f"    year {year}: {len(items)} items")
+        all_items.extend(items)
+        if year < current_year:
+            time.sleep(1)
+    return all_items
+
+
 def fetch_orders():
     """Fetch all historical filled orders."""
-    print("  Fetching order history...")
-    return fetch_all_pages("/api/v0/equity/history/orders")
+    print("  Fetching order history (all years)...")
+    return fetch_all_years("/api/v0/equity/history/orders")
 
 
 def fetch_dividends():
     """Fetch all dividend payments."""
-    print("  Fetching dividend history...")
-    return fetch_all_pages("/api/v0/equity/history/dividends")
+    print("  Fetching dividend history (all years)...")
+    return fetch_all_years("/api/v0/equity/history/dividends")
 
 
 def fetch_transactions():
     """Fetch deposits and withdrawals."""
-    print("  Fetching transactions...")
-    return fetch_all_pages("/api/v0/equity/history/transactions")
+    print("  Fetching transactions (all years)...")
+    return fetch_all_years("/api/v0/equity/history/transactions")
 
 
 def process_orders(orders):
@@ -142,7 +150,6 @@ def process_orders(orders):
       items[].order.instrument.ticker
     """
     rows = []
-    first_sell_logged = False
     for item in orders:
         fill  = item.get("fill") or {}
         order = item.get("order") or {}
@@ -153,12 +160,6 @@ def process_orders(orders):
 
         side    = order.get("side", "")   # BUY or SELL
 
-        # Log first SELL in full to see walletImpact structure
-        if side == "SELL" and not first_sell_logged:
-            first_sell_logged = True
-            print(f"  FIRST SELL fill keys: {list(fill.keys())}")
-            print(f"  FIRST SELL fill: {json.dumps(fill, default=str)[:500]}")
-            print(f"  FIRST SELL order keys: {list(order.keys())}")
         ticker  = order.get("ticker") or (order.get("instrument") or {}).get("ticker", "")
         display = ticker.split("_")[0]
 
@@ -217,9 +218,6 @@ def run():
     # Orders → realised P&L
     orders = fetch_orders()
     print(f"  {len(orders)} total orders fetched")
-    if orders:
-        print(f"  Sample order keys: {list(orders[0].keys())}")
-        print(f"  Sample order: {json.dumps(orders[0], default=str)[:300]}")
     order_rows = process_orders(orders)
     sells = [r for r in order_rows if r["side"] == "SELL"]
     print(f"  {len(order_rows)} processed, {len(sells)} sells")
@@ -229,9 +227,6 @@ def run():
     # Dividends
     divs = fetch_dividends()
     print(f"  {len(divs)} dividends fetched")
-    if divs:
-        print(f"  Sample dividend keys: {list(divs[0].keys())}")
-        print(f"  Sample dividend: {json.dumps(divs[0], default=str)[:300]}")
     div_rows = process_dividends(divs)
     if div_rows:
         sb_upsert("dividends", div_rows, "reference")
@@ -239,8 +234,6 @@ def run():
     # Transactions (deposits/withdrawals) — log only, used for context
     txns = fetch_transactions()
     print(f"  {len(txns)} transactions fetched")
-    if txns:
-        print(f"  Sample transaction: {json.dumps(txns[0], default=str)[:300]}")
     deposits    = sum(float(t.get("amount",0)) for t in txns if float(t.get("amount",0)) > 0)
     withdrawals = sum(float(t.get("amount",0)) for t in txns if float(t.get("amount",0)) < 0)
     print(f"  Deposits: £{deposits:.2f}  Withdrawals: £{withdrawals:.2f}")
