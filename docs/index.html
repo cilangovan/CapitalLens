@@ -543,6 +543,11 @@ async function loadOverview() {
 }
 
 async function loadOverviewCharts() {
+  if (IS_GUEST) {
+    document.getElementById('gain-bar').parentElement.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px 0">🔒 Sign in to view holdings chart</div>';
+    document.getElementById('pie-doughnut').parentElement.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px 0">🔒 Sign in to view pie breakdown</div>';
+    return;
+  }
   const snap = (await api('portfolio_snapshots','?select=*&order=created_at.desc&limit=1'))[0];
   if (!snap) return;
   const positions = await api('positions', `?snapshot_id=eq.${snap.id}&select=*&order=gain_pct.desc`);
@@ -583,6 +588,10 @@ async function loadOverviewCharts() {
 
 // ── HEATMAP ───────────────────────────────────────────────────
 async function loadHeatmap() {
+  if (IS_GUEST) {
+    document.getElementById('heatmap-grid').innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px 0">🔒 Sign in to view heatmap</div>';
+    return;
+  }
   const snap = (await api('portfolio_snapshots','?select=*&order=created_at.desc&limit=1'))[0];
   if (!snap) return;
   const positions = await api('positions', `?snapshot_id=eq.${snap.id}&select=*`);
@@ -617,6 +626,10 @@ async function loadHeatmap() {
 
 // ── POSITIONS ─────────────────────────────────────────────────
 async function loadPositions() {
+  if (IS_GUEST) {
+    document.getElementById('positions-list').innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px 0">🔒 Sign in to view holdings</div>';
+    return;
+  }
   const snap = (await api('portfolio_snapshots','?select=*&order=created_at.desc&limit=1'))[0];
   if (!snap) return;
   const positions = await api('positions', `?snapshot_id=eq.${snap.id}&select=*`);
@@ -681,6 +694,11 @@ function togglePie(header) {
 
 // ── ANALYST ───────────────────────────────────────────────────
 async function loadAnalyst() {
+  if (IS_GUEST) {
+    document.getElementById('pie-ratings').innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px 0">🔒 Sign in to view analyst ratings</div>';
+    document.getElementById('analyst-table-wrap').innerHTML = '';
+    return;
+  }
   const rows = await api('analyst_ratings','?select=*&order=star_rating.desc');
 
   const byPie = {};
@@ -717,6 +735,10 @@ async function loadAnalyst() {
 
 // ── STRATEGY ──────────────────────────────────────────────────
 async function loadStrategy() {
+  if (IS_GUEST) {
+    document.getElementById('strategy-content').innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px 0">🔒 Sign in to view strategy recommendations</div>';
+    return;
+  }
   const rows = await api('strategy_recommendations','?select=*&order=updated_at.desc&limit=1');
   const s = rows[0];
   const el = document.getElementById('strategy-content');
@@ -888,6 +910,10 @@ async function loadReturns() {
 
 // ── ALERTS LOG ────────────────────────────────────────────────
 async function loadAlerts() {
+  if (IS_GUEST) {
+    document.getElementById('alerts-log').innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px 0">🔒 Sign in to view alerts</div>';
+    return;
+  }
   const alerts = await api('alerts','?select=*&order=created_at.desc&limit=100');
   const el = document.getElementById('alerts-log');
   if (!alerts.length) { el.innerHTML = '<div class="loading">No alerts yet.</div>'; return; }
