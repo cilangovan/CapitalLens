@@ -114,7 +114,7 @@
 </div>
 
 <div id="heatmap" class="tab">
-  <div class="card"><h3>Price Heatmap — coloured by gain %, sized by P&L</h3><div id="heatmap-grid"><div class="loading">Loading…</div></div></div>
+  <div class="card"><h3>Price Heatmap — coloured by gain %, sized by P&L <span id="heatmap-updated" style="font-size:12px;font-weight:400;color:var(--muted);margin-left:8px;"></span></h3><div id="heatmap-grid"><div class="loading">Loading…</div></div></div>
 </div>
 
 <div id="positions" class="tab">
@@ -260,6 +260,11 @@ async function loadHeatmap() {
 
   const grid = document.getElementById('heatmap-grid');
   grid.innerHTML = '';
+
+  // Show snapshot date in header
+  const snapDate = new Date(snap.created_at);
+  const snapLabel = snapDate.toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
+  document.getElementById('heatmap-updated').textContent = `· data as of ${snapLabel}`;
 
   positions.forEach(p => {
     const gain = p.gain_pct || 0;
