@@ -785,10 +785,10 @@ async function loadReturns() {
       <div class="card">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
           <h3 style="margin:0">Realised P&amp;L — Closed Trades</h3>
-          <select id="pnl-year-filter" style="background:#0d1b2e;color:#e2e8f0;border:1px solid #2d3353;border-radius:6px;padding:3px 8px;font-size:12px;cursor:pointer">
+          ${IS_GUEST ? '' : `<select id="pnl-year-filter" style="background:#0d1b2e;color:#e2e8f0;border:1px solid #2d3353;border-radius:6px;padding:3px 8px;font-size:12px;cursor:pointer">
             <option value="all">All Years</option>
             ${[...new Set(realisedRows.map(x=>(x.filled_date||'').slice(0,4)).filter(y=>y))].sort().reverse().map(y=>`<option value="${y}">${y}</option>`).join('')}
-          </select>
+          </select>`}
         </div>
         <div id="pnl-table-wrap">
         ${IS_GUEST
@@ -815,10 +815,10 @@ async function loadReturns() {
       <div class="card">
         <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
           <h3 style="margin:0">Dividends</h3>
-          <select id="div-year-filter" style="background:#0d1b2e;color:#e2e8f0;border:1px solid #2d3353;border-radius:6px;padding:3px 8px;font-size:12px;cursor:pointer">
+          ${IS_GUEST ? '' : `<select id="div-year-filter" style="background:#0d1b2e;color:#e2e8f0;border:1px solid #2d3353;border-radius:6px;padding:3px 8px;font-size:12px;cursor:pointer">
             <option value="all">All Years</option>
             ${[...new Set(divRows.map(x=>(x.paid_date||'').slice(0,4)).filter(y=>y))].sort().reverse().map(y=>`<option value="${y}">${y}</option>`).join('')}
-          </select>
+          </select>`}
         </div>
         <div id="div-table-wrap">
         ${IS_GUEST
