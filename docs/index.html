@@ -311,7 +311,7 @@ async function doLogin() {
     IS_GUEST = false;
     startApp();
   } catch(e) {
-    setErr('pw-error', 'Worker not updated yet — redeploy t212-proxy in Cloudflare dashboard');
+    setErr('pw-error', 'Error: ' + e.message);
   } finally { setBtnLoading('login-btn', false); }
 }
 
