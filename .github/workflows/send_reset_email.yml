@@ -1,0 +1,75 @@
+name: Send Password Reset Email
+
+on:
+  repository_dispatch:
+    types: [send_reset_email]
+
+jobs:
+  send-email:
+    name: Send Reset Email
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Send reset email
+        env:
+          GMAIL_USER: ${{ secrets.GMAIL_USER }}
+          GMAIL_APP_PASS: ${{ secrets.GMAIL_APP_PASS }}
+          RESET_TOKEN: ${{ github.event.client_payload.reset_token }}
+          DASHBOARD_URL: 'https://t212-monitor.pages.dev'
+          RESET_TO: '****@****.com'
+        run: |
+          python3 - <<'PYEOF'
+          import smtplib, os
+          from email.mime.text import MIMEText
+          from email.mime.multipart import MIMEMultipart
+
+          gmail_user  = os.environ["GMAIL_USER"]
+          gmail_pass  = os.environ["GMAIL_APP_PASS"]
+          reset_token = os.environ["RESET_TOKEN"]
+          dashboard   = os.environ["DASHBOARD_URL"]
+          to_email    = os.environ["RESET_TO"]
+
+          reset_link = f"{dashboard}?reset={reset_token}"
+
+          msg = MIMEMultipart("alternative")
+          msg["Subject"] = "T212 Monitor — Password Reset"
+          msg["From"]    = gmail_user
+          msg["To"]      = to_email
+
+          text = f"""Hi Cheran,
+
+          Someone requested a password reset for your T212 Monitor dashboard.
+
+          Reset link (valid for 1 hour):
+          {reset_link}
+
+          If you didn't request this, ignore this email.
+
+          — T212 Monitor
+          """
+
+          html = f"""<html><body style="font-family:sans-serif;color:#222;padding:24px">
+          <h2 style="color:#6366f1">T212 Monitor</h2>
+          <p>Hi Cheran,</p>
+          <p>Someone requested a password reset for your dashboard.</p>
+          <p>
+            <a href="{reset_link}"
+               style="display:inline-block;background:#6366f1;color:#fff;padding:12px 24px;
+                      border-radius:8px;text-decoration:none;font-weight:600">
+              Reset Password
+            </a>
+          </p>
+          <p style="color:#888;font-size:12px">Link expires in 1 hour. If you didn't request this, ignore this email.</p>
+          </body></html>"""
+
+          msg.attach(MIMEText(text, "plain"))
+          msg.attach(MIMEText(html, "html"))
+
+          with smtplib.SMTP_SSL("smtp.gmail.com", 465) as smtp:
+              smtp.login(gmail_user, gmail_pass)
+              smtp.sendmail(gmail_user, to_email, msg.as_string())
+              print(f"Reset email sent to {to_email}")
+          PYEOF

@@ -88,3 +88,29 @@ alter table if exists alerts add column if not exists title text;
 alter table if exists alerts add column if not exists body text;
 -- Unique constraint on dedup_key to prevent duplicates
 create unique index if not exists alerts_dedup_key_idx on alerts(dedup_key);
+
+-- ── DASHBOARD AUTH ───────────────────────────────────────────────────────────
+-- Single-user auth table for dashboard login
+create table if not exists dashboard_auth (
+  id           serial primary key,
+  username     text not null unique,
+  password_hash text not null,          -- bcrypt or SHA-256 hex
+  reset_token  text,
+  reset_expiry timestamptz,
+  updated_at   timestamptz default now()
+);
+
+-- RLS: only service role can read/write (Worker uses service key via proxy)
+alter table dashboard_auth enable row level security;
+drop policy if exists "no public access" on dashboard_auth;
+create policy "no public access" on dashboard_auth for all using (false);
+
+-- Seed the initial user (password: ***  — SHA-256 hash)
+-- SHA-256("***") = *** (pre-computed)
+insert into dashboard_auth (username, password_hash)
+values ('admin', '***')
+on conflict (username) do nothing;
+
+-- Add session + reset token columns to dashboard_auth
+alter table if exists dashboard_auth add column if not exists session_token text;
+alter table if exists dashboard_auth add column if not exists session_expiry timestamptz;
