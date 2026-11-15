@@ -88,59 +88,76 @@ def fetch_dividends():
 
 
 def process_orders(orders):
-    """Convert T212 order records to realised_pnl rows."""
+    """Convert T212 order records to realised_pnl rows.
+
+    T212 field reference (from API docs):
+      id, ticker, dateExecuted, dateModified, status, type,
+      fillPrice (instrument currency), fillCost (account currency),
+      fillResult (account currency — P&L on the fill),
+      filledQuantity, orderedQuantity,
+      taxes[] → {name, quantity, timeCharged}
+    """
     rows = []
     for o in orders:
         status = o.get("status", "")
         if status not in ("FILLED", "PARTIALLY_FILLED"):
             continue
-        ticker = o.get("ticker", "")
-        display = ticker.split("_")[0]
-        filled_at = o.get("dateModified") or o.get("dateCreated") or ""
+
+        ticker    = o.get("ticker", "")
+        display   = ticker.split("_")[0]
+        filled_at = o.get("dateExecuted") or o.get("dateModified") or o.get("dateCreated") or ""
         filled_date = filled_at[:10] if filled_at else None
 
-        fill_price = float(o.get("fillPrice") or o.get("fillCost") or 0)
-        quantity   = float(o.get("filledQuantity") or o.get("quantity") or 0)
-        avg_cost   = float(o.get("averagePrice") or 0)
+        # T212 docs: fillPrice = instrument currency, fillCost = account currency
+        fill_price  = float(o.get("fillPrice") or 0)
+        fill_cost   = float(o.get("fillCost") or 0)   # £ amount traded
+        fill_result = float(o.get("fillResult") or 0) # £ P&L on this fill
+        quantity    = float(o.get("filledQuantity") or o.get("orderedQuantity") or 0)
 
-        # T212 sometimes provides realised P&L directly
-        raw_pnl = o.get("result") or {}
-        realised = float(raw_pnl.get("realised") or 0) if isinstance(raw_pnl, dict) else 0
+        # taxes: sum all tax/fee charges
+        taxes = sum(float(t.get("quantity", 0)) for t in (o.get("taxes") or []))
 
-        # If not provided, estimate from fill vs avg cost (sell orders only)
-        side = o.get("type", "").upper()  # BUY / SELL / LIMIT_BUY etc
-        is_sell = "SELL" in side
-        if realised == 0 and is_sell and avg_cost > 0 and quantity > 0:
-            realised = (fill_price - avg_cost) * quantity
+        # fillResult is P&L before tax; subtract fees for net
+        realised     = fill_result - taxes
+        avg_cost_per = (fill_cost / quantity) if quantity > 0 else 0
+        realised_pct = round((realised / fill_cost * 100) if fill_cost > 0 else 0, 2)
 
-        realised_pct = round((realised / (avg_cost * quantity) * 100) if avg_cost > 0 and quantity > 0 else 0, 2)
+        # executor/type tells us direction — SELL orders have positive fillResult
+        order_type = o.get("type", "")
+        executor   = o.get("executor", "")
+        # T212 doesn't flag BUY/SELL explicitly on orders; use fillResult sign
+        # positive fillResult = sell (proceeds), negative = buy (cost)
+        side = "SELL" if fill_result > 0 else "BUY"
 
         rows.append({
-            "order_id":        str(o.get("id", "")),
-            "ticker":          ticker,
-            "display":         display,
-            "filled_date":     filled_date,
-            "quantity":        round(quantity, 6),
-            "fill_price":      round(fill_price, 4),
-            "avg_cost":        round(avg_cost, 4),
-            "realised_pnl":    round(realised, 2),
+            "order_id":         str(o.get("id", "")),
+            "ticker":           ticker,
+            "display":          display,
+            "filled_date":      filled_date,
+            "quantity":         round(quantity, 6),
+            "fill_price":       round(fill_price, 4),
+            "avg_cost":         round(avg_cost_per, 4),
+            "realised_pnl":     round(realised, 4),
             "realised_pnl_pct": realised_pct,
-            "side":            side,
+            "side":             side,
         })
     return rows
 
 
 def process_dividends(dividends):
-    """Convert T212 dividend records to dividend rows."""
+    """Convert T212 dividend records to dividend rows.
+
+    T212 fields: amount, amountInEuro, grossAmountPerShare,
+                 paidOn, quantity, reference, ticker, type
+    """
     rows = []
     for d in dividends:
-        ticker  = d.get("ticker", "")
-        display = ticker.split("_")[0]
-        paid_at = d.get("paidOn") or d.get("dateModified") or ""
-        paid_date = paid_at[:10] if paid_at else None
-        amount = float(d.get("amount") or d.get("grossAmount") or 0)
+        ticker    = d.get("ticker", "")
+        display   = ticker.split("_")[0]
+        paid_date = (d.get("paidOn") or "")[:10] or None
+        amount    = float(d.get("amount") or 0)  # account currency (£)
         rows.append({
-            "reference": str(d.get("reference") or d.get("id") or ""),
+            "reference": str(d.get("reference") or ""),
             "ticker":    ticker,
             "display":   display,
             "paid_date": paid_date,
@@ -155,16 +172,23 @@ def run():
     # Orders → realised P&L
     orders = fetch_orders()
     print(f"  {len(orders)} total orders fetched")
+    if orders:
+        print(f"  Sample order keys: {list(orders[0].keys())}")
+        print(f"  Sample order: {json.dumps(orders[0], default=str)[:300]}")
     order_rows = process_orders(orders)
-    sells = [r for r in order_rows if "SELL" in r["side"]]
-    print(f"  {len(sells)} sell orders with realised P&L")
-    sb_upsert("realised_pnl", order_rows, "order_id")
+    sells = [r for r in order_rows if r["side"] == "SELL"]
+    print(f"  {len(order_rows)} processed, {len(sells)} sells")
+    if order_rows:
+        sb_upsert("realised_pnl", order_rows, "order_id")
 
     # Dividends
     divs = fetch_dividends()
     print(f"  {len(divs)} dividends fetched")
+    if divs:
+        print(f"  Sample dividend: {json.dumps(divs[0], default=str)[:200]}")
     div_rows = process_dividends(divs)
-    sb_upsert("dividends", div_rows, "reference")
+    if div_rows:
+        sb_upsert("dividends", div_rows, "reference")
 
     # Summary stats
     total_realised = sum(r["realised_pnl"] for r in order_rows if "SELL" in r["side"])
