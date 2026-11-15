@@ -195,10 +195,18 @@ export default {
     const path = url.pathname;
 
     // Auth routes
-    if (path === '/auth/login')           return handleLogin(request, env);
-    if (path === '/auth/change-password') return handleChangePassword(request, env);
-    if (path === '/auth/reset-request')   return handleResetRequest(request, env);
-    if (path === '/auth/reset-confirm')   return handleResetConfirm(request, env);
+    if (path === '/auth/login')           return handleLogin(request, env).catch(e => json({ error: e.message }, 500));
+    if (path === '/auth/change-password') return handleChangePassword(request, env).catch(e => json({ error: e.message }, 500));
+    if (path === '/auth/reset-request')   return handleResetRequest(request, env).catch(e => json({ error: e.message }, 500));
+    if (path === '/auth/reset-confirm')   return handleResetConfirm(request, env).catch(e => json({ error: e.message }, 500));
+    if (path === '/auth/debug') return json({
+      has_supabase_url: !!env.SUPABASE_URL,
+      supabase_url_prefix: env.SUPABASE_URL ? env.SUPABASE_URL.substring(0, 30) : null,
+      has_service_key: !!env.SUPABASE_SERVICE_KEY,
+      has_supabase_key: !!env.SUPABASE_KEY,
+      has_gh_pat: !!env.GH_PAT,
+      gh_repo: env.GH_REPO || null,
+    });
 
     // ── Existing Supabase proxy ──────────────────────────────────────────────
     const table = path.replace(/^\//, '');
