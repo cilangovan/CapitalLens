@@ -222,9 +222,16 @@ export default {
     });
 
     const body = await resp.arrayBuffer();
+    // Build response headers: take upstream headers, strip any ACAO headers
+    // from Supabase, then apply our own CORS headers on top.
+    const respHeaders = Object.fromEntries(resp.headers);
+    delete respHeaders['access-control-allow-origin'];
+    delete respHeaders['access-control-allow-headers'];
+    delete respHeaders['access-control-allow-methods'];
+    delete respHeaders['set-cookie']; // don't forward Supabase cookies to browser
     return new Response(body, {
       status: resp.status,
-      headers: { ...Object.fromEntries(resp.headers), ...CORS },
+      headers: { ...respHeaders, ...CORS },
     });
   },
 };
