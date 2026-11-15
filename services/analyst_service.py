@@ -124,7 +124,22 @@ def fetch_yahoo_analyst_yf(yahoo_ticker):
     """Fetch analyst data via yfinance (handles auth automatically)."""
     try:
         t = yf.Ticker(yahoo_ticker)
-        info = t.info or {}
+        # Use fast_info first (lighter request) then fall to full info
+        try:
+            info = t.info or {}
+        except Exception as e1:
+            print(f"  info() failed for {yahoo_ticker}: {e1} — trying fast_info")
+            try:
+                fi = t.fast_info
+                # Build minimal info dict from fast_info
+                info = {
+                    "recommendationKey": getattr(fi, "recommendationKey", None) or getattr(fi, "recommendation_key", None),
+                    "targetMeanPrice": getattr(fi, "targetMeanPrice", None),
+                    "numberOfAnalystOpinions": getattr(fi, "numberOfAnalystOpinions", None),
+                }
+            except Exception as e2:
+                print(f"  fast_info also failed for {yahoo_ticker}: {e2}")
+                return None
 
         recommendation = (info.get("recommendationKey") or "none").lower()
         target_mean = info.get("targetMeanPrice")
