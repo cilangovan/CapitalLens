@@ -125,6 +125,7 @@ def get_snapshots():
 def build_cashflows(snapshots):
     """
     Build XIRR cashflow list from snapshots + monthly contributions.
+    Only uses months from the FIRST snapshot onwards (not before).
     - Monthly contributions are negative outflows (money invested)
     - Current portfolio value is positive inflow (terminal value)
     """
@@ -132,18 +133,23 @@ def build_cashflows(snapshots):
         return [], []
 
     first_snap = snapshots[0]
-    first_date = datetime.fromisoformat(first_snap["created_at"].replace("Z", "+00:00")).date()
+    first_dt = datetime.fromisoformat(first_snap["created_at"].replace("Z", "+00:00"))
+    first_date = first_dt.date()
     last_snap = snapshots[-1]
     current_value = float(last_snap["total_value"] or 0)
 
-    # Estimate start month
+    # Start from the month of the first snapshot
     start_month = first_date.replace(day=1)
     today = date.today()
+
+    # Safety: if we have < 30 days of data, XIRR is meaningless
+    if (today - first_date).days < 30:
+        return [], []
 
     cashflows = []
     dates = []
 
-    # Monthly contributions from start to today
+    # Monthly contributions from first snapshot month to today
     cur = start_month
     while cur <= today:
         key = cur.strftime("%Y-%m")
@@ -156,7 +162,7 @@ def build_cashflows(snapshots):
         else:
             cur = cur.replace(month=cur.month + 1)
 
-    # Terminal value = current portfolio
+    # Terminal value = current portfolio (positive inflow)
     cashflows.append(current_value)
     dates.append(today)
 
@@ -234,8 +240,16 @@ def run():
 
     # XIRR
     cashflows, dates = build_cashflows(snapshots)
-    xirr_rate = xirr(cashflows, dates)
-    xirr_pct = round(xirr_rate * 100, 2)
+    if cashflows:
+        xirr_rate = xirr(cashflows, dates)
+        # Guard against diverged result (XIRR should be between -100% and +1000%)
+        if abs(xirr_rate) > 10:
+            print(f"  XIRR diverged ({xirr_rate:.2f}), setting to 0")
+            xirr_rate = 0.0
+        xirr_pct = round(xirr_rate * 100, 2)
+    else:
+        xirr_pct = 0.0
+        print("  XIRR: insufficient data (<30 days)")
     print(f"  XIRR: {xirr_pct}%")
 
     # Simple annualised from first to last snapshot
@@ -248,7 +262,14 @@ def run():
     start_invested = float(first["invested"] or 1)
     end_value = float(last["total_value"] or 0)
     total_ret_pct = round((end_value - start_invested) / start_invested * 100, 2)
-    ann_pct = round(((end_value / start_invested) ** (365 / days) - 1) * 100, 2) if days >= 30 else 0.0
+    # Only annualise if we have 90+ days of history; otherwise it extrapolates wildly
+    if days >= 90 and start_invested > 0:
+        raw_ann = ((end_value / start_invested) ** (365 / days) - 1) * 100
+        # Cap at ±500% to avoid display insanity from short periods
+        ann_pct = round(max(-500, min(500, raw_ann)), 2)
+    else:
+        ann_pct = 0.0
+        print(f"  Annualised: insufficient history ({days} days < 90), setting to 0")
 
     print(f"  Annualised: {ann_pct}%  Total return: {total_ret_pct}%")
 
