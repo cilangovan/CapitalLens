@@ -142,6 +142,7 @@ def process_orders(orders):
       items[].order.instrument.ticker
     """
     rows = []
+    first_sell_logged = False
     for item in orders:
         fill  = item.get("fill") or {}
         order = item.get("order") or {}
@@ -151,6 +152,13 @@ def process_orders(orders):
             continue
 
         side    = order.get("side", "")   # BUY or SELL
+
+        # Log first SELL in full to see walletImpact structure
+        if side == "SELL" and not first_sell_logged:
+            first_sell_logged = True
+            print(f"  FIRST SELL fill keys: {list(fill.keys())}")
+            print(f"  FIRST SELL fill: {json.dumps(fill, default=str)[:500]}")
+            print(f"  FIRST SELL order keys: {list(order.keys())}")
         ticker  = order.get("ticker") or (order.get("instrument") or {}).get("ticker", "")
         display = ticker.split("_")[0]
 
