@@ -20,6 +20,7 @@ jobs:
       - name: Run history service
         env:
           T212_API_KEY:    ${{ secrets.T212_API_KEY }}
+          T212_API_SECRET: ${{ secrets.T212_API_SECRET }}
           SUPABASE_URL:    ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY:    ${{ secrets.SUPABASE_KEY }}
         run: python -m services.history_service
