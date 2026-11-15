@@ -747,23 +747,71 @@ async function loadStrategy() {
 
 // ── RETURNS ───────────────────────────────────────────────────
 async function loadReturns() {
-  const rows = await api('returns_summary','?select=*&limit=1');
+  const [rows, realisedRows, divRows] = await Promise.all([
+    api('returns_summary','?select=*&limit=1'),
+    api('realised_pnl','?select=*&order=filled_date.desc&limit=200'),
+    api('dividends','?select=*&order=paid_date.desc&limit=200'),
+  ]);
   const r = rows[0];
   const el = document.getElementById('returns-content');
-  if (!r) { el.innerHTML = '<div class="loading">No returns data yet. Run daily_services workflow.</div>'; return; }
 
-  const yearly = r.yearly_breakdown || {};
-  const monthly = r.monthly_breakdown || {};
+  // Aggregates from history
+  const totalRealised = realisedRows.reduce((s,x) => s + (parseFloat(x.realised_pnl)||0), 0);
+  const totalDivs     = divRows.reduce((s,x) => s + (parseFloat(x.amount)||0), 0);
+
+  if (!r && !realisedRows.length && !divRows.length) {
+    el.innerHTML = '<div class="loading">No returns data yet. Run daily_services workflow.</div>'; return;
+  }
+
+  const yearly = r ? (r.yearly_breakdown || {}) : {};
+  const monthly = r ? (r.monthly_breakdown || {}) : {};
 
   el.innerHTML = `
     <div class="grid3">
-      <div class="card xirr-banner"><div class="big ${clr(r.xirr_pct)}">${fmt(r.xirr_pct)}%</div><div class="label">XIRR (true IRR)</div></div>
-      <div class="card xirr-banner"><div class="big ${clr(r.annualised_pct)}">${fmt(r.annualised_pct)}%</div><div class="label">Annualised Return</div></div>
-      <div class="card xirr-banner"><div class="big ${clr(r.total_return_pct)}">${fmt(r.total_return_pct)}%</div><div class="label">Total Return</div></div>
+      <div class="card xirr-banner"><div class="big ${r ? clr(r.xirr_pct) : ''}">${r ? fmt(r.xirr_pct)+'%' : '—'}</div><div class="label">XIRR (true IRR)</div></div>
+      <div class="card xirr-banner"><div class="big ${r ? clr(r.annualised_pct) : ''}">${r ? fmt(r.annualised_pct)+'%' : '—'}</div><div class="label">Annualised Return</div></div>
+      <div class="card xirr-banner"><div class="big ${r ? clr(r.total_return_pct) : ''}">${r ? fmt(r.total_return_pct)+'%' : '—'}</div><div class="label">Total Return</div></div>
+    </div>
+    <div class="grid3" style="margin-top:0">
+      <div class="card"><div class="big ${clr(totalRealised)}">${IS_GUEST ? '***' : '£'+totalRealised.toFixed(2)}</div><div class="label">Realised P&amp;L (all time)</div></div>
+      <div class="card"><div class="big pos">£${IS_GUEST ? '***' : totalDivs.toFixed(2)}</div><div class="label">Dividends received</div></div>
+      <div class="card"><div class="big ${clr(totalRealised+totalDivs)}">${IS_GUEST ? '***' : '£'+(totalRealised+totalDivs).toFixed(2)}</div><div class="label">Total realised income</div></div>
     </div>
     <div class="grid2">
       <div class="card"><h3>Yearly Breakdown</h3><canvas id="yearly-chart"></canvas></div>
       <div class="card"><h3>Monthly Return %</h3><canvas id="monthly-chart"></canvas></div>
+    </div>
+    <div class="grid2" style="margin-top:16px">
+      <div class="card">
+        <h3>Realised P&amp;L — Closed Trades</h3>
+        ${realisedRows.filter(x => x.side && x.side.includes('SELL')).length === 0
+          ? '<div class="loading" style="font-size:13px">No closed sell orders yet.</div>'
+          : '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="color:var(--muted)"><th style="text-align:left;padding:4px 6px">Ticker</th><th style="padding:4px 6px">Date</th><th style="padding:4px 6px">Qty</th><th style="padding:4px 6px">P&amp;L</th><th style="padding:4px 6px">%</th></tr></thead><tbody>'
+          + realisedRows.filter(x => x.side && x.side.includes('SELL')).slice(0,30).map(x => {
+              const pnl = parseFloat(x.realised_pnl)||0;
+              const cls = pnl >= 0 ? 'pos' : 'neg';
+              return `<tr style="border-top:1px solid #1a2744">
+                <td style="padding:4px 6px;font-weight:600">${x.display||x.ticker}</td>
+                <td style="padding:4px 6px;color:var(--muted)">${x.filled_date||'—'}</td>
+                <td style="padding:4px 6px;text-align:right">${parseFloat(x.quantity||0).toFixed(3)}</td>
+                <td style="padding:4px 6px;text-align:right" class="${cls}">${IS_GUEST ? '***' : (pnl>=0?'+':'')+'£'+pnl.toFixed(2)}</td>
+                <td style="padding:4px 6px;text-align:right" class="${cls}">${(parseFloat(x.realised_pnl_pct)||0).toFixed(1)}%</td>
+              </tr>`;
+            }).join('') + '</tbody></table>'
+        }
+      </div>
+      <div class="card">
+        <h3>Dividends</h3>
+        ${divRows.length === 0
+          ? '<div class="loading" style="font-size:13px">No dividends received yet.</div>'
+          : '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="color:var(--muted)"><th style="text-align:left;padding:4px 6px">Ticker</th><th style="padding:4px 6px">Date</th><th style="padding:4px 6px;text-align:right">Amount</th></tr></thead><tbody>'
+          + divRows.slice(0,30).map(x => `<tr style="border-top:1px solid #1a2744">
+              <td style="padding:4px 6px;font-weight:600">${x.display||x.ticker}</td>
+              <td style="padding:4px 6px;color:var(--muted)">${x.paid_date||'—'}</td>
+              <td style="padding:4px 6px;text-align:right;color:#22c55e">${IS_GUEST ? '***' : '£'+(parseFloat(x.amount)||0).toFixed(4)}</td>
+            </tr>`).join('') + '</tbody></table>'
+        }
+      </div>
     </div>`;
 
   const years = Object.keys(yearly).sort();
