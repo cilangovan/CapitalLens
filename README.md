@@ -129,10 +129,23 @@ Edit `monitor.py` lines 25–30 to adjust.
 
 | Workflow | Schedule | Purpose |
 |----------|----------|---------|
-| `monitor.yml` | Every 15 min, Mon–Fri 07:00–17:00 UTC | Fetch T212, store snapshot, fire alerts |
+| `monitor.yml` | Smart schedule Mon–Fri (see below) | Fetch T212, store snapshot, fire alerts |
 | `daily_services.yml` | Daily 06:30 UTC | Analyst ratings, strategy recs, XIRR returns |
 | `deploy_worker.yml` | On push to `cloudflare-worker/worker.js` | Redeploy Cloudflare Worker |
 | `send_reset_email.yml` | `repository_dispatch: send_reset_email` | Send password reset email via Gmail |
+
+### Monitor schedule detail
+
+Schedule covers all relevant exchange open/close windows across LSE, XETRA/AMS, and US markets.
+
+| Window | Cron | Interval |
+|--------|------|----------|
+| LSE / XETRA open (08:00–08:30 UTC) | `0,15,30 8 * * 1-5` | 15 min |
+| NASDAQ open (14:30–15:00 UTC) | `30,45 14 * * 1-5` + `0 15 * * 1-5` | 15 min |
+| LSE / XETRA close (16:00–16:30 UTC) | `0,15,30 16 * * 1-5` | 15 min |
+| NASDAQ close (20:30–21:00 UTC) | `30,45 20 * * 1-5` + `0 21 * * 1-5` | 15 min |
+| Regular market hours (07–21 UTC, ex windows) | Various `0,45 H` | 45 min |
+| After-hours US (21:00–23:00 UTC) | `0,45 22 * * 1-5` + `0 23 * * 1-5` | 45 min |
 
 ---
 

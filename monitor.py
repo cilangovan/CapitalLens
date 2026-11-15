@@ -109,6 +109,7 @@ def save_snapshot_to_supabase(summary, pies, alerts, account, state):
             "ticker":       p["ticker"],
             "display":      p["display"],
             "pie":          p["pie"],
+            "exchange":     p.get("exchange", "LSE"),
             "current_price": p["current"],
             "avg_price":    p["avg"],
             "gain_pct":     p["gain_pct"],
@@ -257,6 +258,20 @@ def resolve_pie(ticker, pie_map):
         if k.startswith(base) or k.split("_")[0] == base: return v
     return "Solo holdings"
 
+def resolve_exchange(ticker):
+    """Infer exchange from T212 ticker suffix.
+    _US_EQ  → NASDAQ/NYSE  (14:30–21:00 UTC)
+    l_EQ    → LSE           (08:00–16:30 UTC)
+    d_EQ    → XETRA         (08:00–16:30 UTC)
+    a_EQ    → Euronext AMS  (08:00–16:30 UTC)
+    """
+    t = ticker.upper()
+    if "_US_EQ" in t:                   return "NASDAQ/NYSE"
+    if t.endswith("L_EQ"):              return "LSE"
+    if t.endswith("D_EQ"):              return "XETRA"
+    if t.endswith("A_EQ"):              return "AMS"
+    return "LSE"  # safe default for UK-listed ETFs
+
 # ── Analysis ──────────────────────────────────────────────────────────────────
 
 def analyse(positions, pies, pie_map, state):
@@ -271,30 +286,31 @@ def analyse(positions, pies, pie_map, state):
         high          = state["highs"].get(ticker, cur)
         dip_from_high = ((high - cur) / high) * 100 if high > 0 else 0
         pie_name      = resolve_pie(ticker, pie_map)
+        exchange      = resolve_exchange(ticker)
         display       = ticker.split("_")[0]
         summary.append({"ticker":ticker,"display":display,"current":cur,"avg":avg,
             "gain_pct":round(gain_pct,2),"dip_from_high":round(dip_from_high,2),
-            "ppl":round(ppl,2),"pie":pie_name})
+            "ppl":round(ppl,2),"pie":pie_name,"exchange":exchange})
         if dip_from_high >= DIP_FROM_HIGH_PCT:
             key = f"dip_{ticker}"
             if not cooldown(state, key, 6):
                 sev = "🔴 STRONG DIP" if dip_from_high >= BUY_SIGNAL_PCT else "🟡 DIP"
                 alerts.append({"type":"dip","ticker":display,"key":key,
                     "priority":"high" if dip_from_high>=BUY_SIGNAL_PCT else "default",
-                    "title":f"{sev} — {display}",
-                    "body":f"Down {dip_from_high:.1f}% from high · £{cur:.2f} now · avg £{avg:.2f} · {pie_name}"})
+                    "title":f"{sev} — {display} [{exchange}]",
+                    "body":f"Down {dip_from_high:.1f}% from high · £{cur:.2f} now · avg £{avg:.2f} · {pie_name} · {exchange}"})
             if dip_from_high >= BUY_SIGNAL_PCT:
                 key2 = f"buy_{ticker}"
                 if not cooldown(state, key2, 6):
                     alerts.append({"type":"buy","ticker":display,"key":key2,"priority":"high",
-                        "title":f"💡 BUY — {display}",
-                        "body":f"{dip_from_high:.1f}% dip · entry at £{cur:.2f} · {pie_name}"})
+                        "title":f"💡 BUY — {display} [{exchange}]",
+                        "body":f"{dip_from_high:.1f}% dip · entry at £{cur:.2f} · {pie_name} · {exchange}"})
         if gain_pct >= TRIM_GAIN_PCT:
             key = f"trim_{ticker}"
             if not cooldown(state, key, 24):
                 alerts.append({"type":"trim","ticker":display,"key":key,"priority":"default",
-                    "title":f"💰 TRIM — {display}",
-                    "body":f"Up {gain_pct:.1f}% · £{avg:.2f} → £{cur:.2f} · consider partial sell · {pie_name}"})
+                    "title":f"💰 TRIM — {display} [{exchange}]",
+                    "body":f"Up {gain_pct:.1f}% · £{avg:.2f} → £{cur:.2f} · consider partial sell · {pie_name} · {exchange}"})
     for pie in pies:
         if pie["drifts"]:
             key = f"rebalance_{pie['name']}"
