@@ -40,10 +40,11 @@ async function randomToken() {
 // ── Supabase helpers ─────────────────────────────────────────────────────────
 async function sbGet(env, table, query) {
   const url = `${env.SUPABASE_URL}/rest/v1/${table}?${query}`;
+  const key = env.SUPABASE_SERVICE_KEY || env.SUPABASE_KEY;
   const r = await fetch(url, {
     headers: {
-      apikey: env.SUPABASE_SERVICE_KEY,
-      Authorization: `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+      apikey: key,
+      Authorization: `Bearer ${key}`,
       Accept: 'application/json',
     },
   });
@@ -53,11 +54,12 @@ async function sbGet(env, table, query) {
 
 async function sbPatch(env, table, query, data) {
   const url = `${env.SUPABASE_URL}/rest/v1/${table}?${query}`;
+  const key = env.SUPABASE_SERVICE_KEY || env.SUPABASE_KEY;
   const r = await fetch(url, {
     method: 'PATCH',
     headers: {
-      apikey: env.SUPABASE_SERVICE_KEY,
-      Authorization: `Bearer ${env.SUPABASE_SERVICE_KEY}`,
+      apikey: key,
+      Authorization: `Bearer ${key}`,
       'Content-Type': 'application/json',
       Prefer: 'return=minimal',
     },
