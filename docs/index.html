@@ -791,22 +791,25 @@ async function loadReturns() {
           </select>
         </div>
         <div id="pnl-table-wrap">
-        ${(()=>{
-          const sells = realisedRows.filter(x => x.side && x.side.includes('SELL'));
-          if(!sells.length) return '<div class="loading" style="font-size:13px">No closed sell orders yet.</div>';
-          return '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="color:var(--muted)"><th style="text-align:left;padding:4px 6px">Ticker</th><th style="padding:4px 6px">Date</th><th style="padding:4px 6px">Qty</th><th style="padding:4px 6px">P&amp;L</th><th style="padding:4px 6px">%</th></tr></thead><tbody>'
-          + sells.slice(0,50).map(x => {
-              const pnl = parseFloat(x.realised_pnl)||0;
-              const cls = pnl >= 0 ? 'pos' : 'neg';
-              return `<tr style="border-top:1px solid #1a2744" data-year="${(x.filled_date||'').slice(0,4)}">
-                <td style="padding:4px 6px;font-weight:600">${x.display||x.ticker}</td>
-                <td style="padding:4px 6px;color:var(--muted)">${x.filled_date||'—'}</td>
-                <td style="padding:4px 6px;text-align:right">${parseFloat(x.quantity||0).toFixed(3)}</td>
-                <td style="padding:4px 6px;text-align:right" class="${cls}">${IS_GUEST ? '***' : (pnl>=0?'+':'')+'£'+pnl.toFixed(2)}</td>
-                <td style="padding:4px 6px;text-align:right" class="${cls}">${(parseFloat(x.realised_pnl_pct)||0).toFixed(1)}%</td>
-              </tr>`;
-            }).join('') + '</tbody></table>';
-        })()}
+        ${IS_GUEST
+          ? '<div class="loading" style="font-size:13px;color:var(--muted)">🔒 Sensitive data — sign in to view closed trades.</div>'
+          : (()=>{
+              const sells = realisedRows.filter(x => x.side && x.side.includes('SELL'));
+              if(!sells.length) return '<div class="loading" style="font-size:13px">No closed sell orders yet.</div>';
+              return '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="color:var(--muted)"><th style="text-align:left;padding:4px 6px">Ticker</th><th style="padding:4px 6px">Date</th><th style="padding:4px 6px">Qty</th><th style="padding:4px 6px">P&amp;L</th><th style="padding:4px 6px">%</th></tr></thead><tbody>'
+              + sells.slice(0,50).map(x => {
+                  const pnl = parseFloat(x.realised_pnl)||0;
+                  const cls = pnl >= 0 ? 'pos' : 'neg';
+                  return `<tr style="border-top:1px solid #1a2744" data-year="${(x.filled_date||'').slice(0,4)}">
+                    <td style="padding:4px 6px;font-weight:600">${x.display||x.ticker}</td>
+                    <td style="padding:4px 6px;color:var(--muted)">${x.filled_date||'—'}</td>
+                    <td style="padding:4px 6px;text-align:right">${parseFloat(x.quantity||0).toFixed(3)}</td>
+                    <td style="padding:4px 6px;text-align:right" class="${cls}">${(pnl>=0?'+':'')+'£'+pnl.toFixed(2)}</td>
+                    <td style="padding:4px 6px;text-align:right" class="${cls}">${(parseFloat(x.realised_pnl_pct)||0).toFixed(1)}%</td>
+                  </tr>`;
+                }).join('') + '</tbody></table>';
+            })()
+        }
         </div>
       </div>
       <div class="card">
@@ -818,14 +821,16 @@ async function loadReturns() {
           </select>
         </div>
         <div id="div-table-wrap">
-        ${divRows.length === 0
-          ? '<div class="loading" style="font-size:13px">No dividends received yet.</div>'
-          : '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="color:var(--muted)"><th style="text-align:left;padding:4px 6px">Ticker</th><th style="padding:4px 6px">Date</th><th style="padding:4px 6px;text-align:right">Amount</th></tr></thead><tbody>'
-          + divRows.slice(0,100).map(x => `<tr style="border-top:1px solid #1a2744" data-year="${(x.paid_date||'').slice(0,4)}">
-              <td style="padding:4px 6px;font-weight:600">${x.display||x.ticker}</td>
-              <td style="padding:4px 6px;color:var(--muted)">${x.paid_date||'—'}</td>
-              <td style="padding:4px 6px;text-align:right;color:#22c55e">${IS_GUEST ? '***' : '£'+(parseFloat(x.amount)||0).toFixed(4)}</td>
-            </tr>`).join('') + '</tbody></table>'
+        ${IS_GUEST
+          ? '<div class="loading" style="font-size:13px;color:var(--muted)">🔒 Sensitive data — sign in to view dividends.</div>'
+          : divRows.length === 0
+            ? '<div class="loading" style="font-size:13px">No dividends received yet.</div>'
+            : '<table style="width:100%;border-collapse:collapse;font-size:12px"><thead><tr style="color:var(--muted)"><th style="text-align:left;padding:4px 6px">Ticker</th><th style="padding:4px 6px">Date</th><th style="padding:4px 6px;text-align:right">Amount</th></tr></thead><tbody>'
+            + divRows.slice(0,100).map(x => `<tr style="border-top:1px solid #1a2744" data-year="${(x.paid_date||'').slice(0,4)}">
+                <td style="padding:4px 6px;font-weight:600">${x.display||x.ticker}</td>
+                <td style="padding:4px 6px;color:var(--muted)">${x.paid_date||'—'}</td>
+                <td style="padding:4px 6px;text-align:right;color:#22c55e">£${(parseFloat(x.amount)||0).toFixed(4)}</td>
+              </tr>`).join('') + '</tbody></table>'
         }
         </div>
       </div>
