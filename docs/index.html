@@ -15,10 +15,52 @@
   }
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; font-size: 14px; }
+
+  /* ── LOGIN SCREEN ── */
+  #login-screen {
+    position: fixed; inset: 0; background: var(--bg);
+    display: flex; align-items: center; justify-content: center; z-index: 999;
+  }
+  #login-screen.hidden { display: none; }
+  .login-box {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: 12px;
+    padding: 36px 32px; width: 340px; text-align: center;
+  }
+  .login-box h2 { font-size: 20px; margin-bottom: 6px; }
+  .login-box p { font-size: 13px; color: var(--muted); margin-bottom: 28px; }
+  .login-btn {
+    display: block; width: 100%; padding: 12px; border-radius: 8px; border: none;
+    font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: 10px; transition: opacity .15s;
+  }
+  .login-btn:hover { opacity: .85; }
+  .btn-master { background: var(--accent); color: #fff; }
+  .btn-guest  { background: var(--bg3); color: var(--muted); border: 1px solid var(--border); }
+  .pw-wrap { margin-bottom: 14px; display: none; }
+  .pw-wrap input {
+    width: 100%; padding: 10px 12px; background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); font-size: 14px; outline: none;
+  }
+  .pw-wrap input:focus { border-color: var(--accent); }
+  .pw-error { color: var(--red); font-size: 12px; margin-top: 6px; display: none; }
+  .login-divider { font-size: 11px; color: var(--muted); margin: 4px 0 10px; }
+  .guest-badge {
+    display: inline-flex; align-items: center; gap: 4px;
+    background: rgba(245,158,11,.15); color: var(--yellow);
+    font-size: 11px; padding: 2px 8px; border-radius: 999px; margin-left: 8px;
+  }
+
+  /* ── MAIN APP ── */
+  #app { display: none; }
+  #app.visible { display: block; }
   header { background: var(--bg2); border-bottom: 1px solid var(--border); padding: 12px 20px; display: flex; align-items: center; gap: 12px; }
   header h1 { font-size: 16px; font-weight: 600; color: var(--text); }
   header .pill { background: var(--accent); color: #fff; font-size: 11px; padding: 2px 8px; border-radius: 999px; }
   #last-updated { margin-left: auto; font-size: 11px; color: var(--muted); }
+  #logout-btn {
+    background: none; border: 1px solid var(--border); color: var(--muted);
+    font-size: 11px; padding: 3px 10px; border-radius: 6px; cursor: pointer; margin-left: 8px;
+  }
+  #logout-btn:hover { color: var(--text); border-color: var(--text); }
   nav { background: var(--bg2); border-bottom: 1px solid var(--border); display: flex; overflow-x: auto; }
   nav button { background: none; border: none; color: var(--muted); padding: 10px 16px; cursor: pointer; font-size: 13px; white-space: nowrap; border-bottom: 2px solid transparent; transition: all .15s; }
   nav button:hover { color: var(--text); }
@@ -42,13 +84,11 @@
   .alert-item .a-title { font-weight: 600; font-size: 13px; }
   .alert-item .a-body { font-size: 12px; color: var(--muted); margin-top: 2px; }
   .alert-item .a-time { font-size: 11px; color: var(--muted); margin-top: 4px; }
-  /* Heatmap */
   #heatmap-grid { display: flex; flex-wrap: wrap; gap: 8px; }
   .hm-tile { border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: default; transition: transform .1s; font-weight: 600; }
   .hm-tile:hover { transform: scale(1.04); }
   .hm-tile .hm-tick { font-size: 11px; opacity: .8; }
   .hm-tile .hm-pct { font-size: 15px; }
-  /* Positions accordion */
   .pie-group { margin-bottom: 10px; }
   .pie-header { background: var(--bg3); border: 1px solid var(--border); border-radius: 6px; padding: 10px 14px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; }
   .pie-header:hover { background: var(--bg2); }
@@ -59,7 +99,6 @@
   .pos-row { display: grid; grid-template-columns: 1fr 80px 80px 80px 80px 90px; gap: 8px; padding: 8px 14px; border-bottom: 1px solid var(--border); font-size: 12px; align-items: center; }
   .pos-row:last-child { border-bottom: none; }
   .pos-row .pos-head { color: var(--muted); font-size: 11px; font-weight: 600; }
-  /* Analyst */
   .analyst-table { width: 100%; border-collapse: collapse; font-size: 12px; }
   .analyst-table th { text-align: left; padding: 8px 10px; color: var(--muted); border-bottom: 1px solid var(--border); font-size: 11px; text-transform: uppercase; }
   .analyst-table td { padding: 8px 10px; border-bottom: 1px solid var(--border); }
@@ -70,7 +109,6 @@
   .badge.hold { background: rgba(245,158,11,.2); color: var(--yellow); }
   .badge.sell { background: rgba(239,68,68,.2); color: var(--red); }
   .badge.strong_buy { background: rgba(34,197,94,.35); color: var(--green); }
-  /* Strategy */
   .rec-card { background: var(--bg3); border: 1px solid var(--border); border-radius: 8px; padding: 14px; margin-bottom: 10px; display: flex; justify-content: space-between; align-items: flex-start; }
   .rec-card .rec-pie { font-weight: 700; font-size: 15px; }
   .rec-card .rec-reason { font-size: 12px; color: var(--muted); margin-top: 4px; }
@@ -78,20 +116,41 @@
   .priority-HIGH { border-left: 3px solid var(--green); }
   .priority-MEDIUM { border-left: 3px solid var(--yellow); }
   .priority-LOW { border-left: 3px solid var(--muted); }
-  /* Returns */
   .xirr-banner { text-align: center; padding: 24px; }
   .xirr-banner .big { font-size: 48px; font-weight: 800; }
   .xirr-banner .label { font-size: 13px; color: var(--muted); margin-top: 4px; }
   .loading { color: var(--muted); font-size: 13px; padding: 20px; text-align: center; }
+  .masked { color: var(--muted); letter-spacing: 2px; font-weight: 700; }
   canvas { max-width: 100%; }
 </style>
 </head>
 <body>
 
+<!-- ── LOGIN SCREEN ── -->
+<div id="login-screen">
+  <div class="login-box">
+    <h2>🌐 T212 Monitor</h2>
+    <p>Portfolio dashboard — choose how to view</p>
+
+    <div class="pw-wrap" id="pw-wrap">
+      <input type="password" id="pw-input" placeholder="Enter master password" onkeydown="if(event.key==='Enter')checkPw()">
+      <div class="pw-error" id="pw-error">Incorrect password</div>
+    </div>
+    <button class="login-btn btn-master" onclick="showPw()" id="master-btn">🔐 Master Login</button>
+    <div class="login-divider">or</div>
+    <button class="login-btn btn-guest" onclick="loginGuest()">👁 View as Guest</button>
+    <div style="font-size:11px;color:var(--muted);margin-top:16px">Guest mode masks financial figures</div>
+  </div>
+</div>
+
+<!-- ── MAIN APP ── -->
+<div id="app">
 <header>
   <h1>🌐 T212 Portfolio Monitor</h1>
   <span class="pill">LIVE</span>
+  <span id="guest-badge" class="guest-badge" style="display:none">👁 Guest</span>
   <span id="last-updated"></span>
+  <button id="logout-btn" onclick="logout()">Sign out</button>
 </header>
 
 <nav>
@@ -137,8 +196,87 @@
 <div id="alerts" class="tab">
   <div id="alerts-log"><div class="loading">Loading…</div></div>
 </div>
+</div><!-- /#app -->
 
 <script>
+// ── AUTH ──────────────────────────────────────────────────────
+const MASTER_HASH = '5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8'; // "password" — replace with your hash
+let IS_GUEST = false;
+
+async function sha256(str) {
+  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
+  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+}
+
+function showPw() {
+  const wrap = document.getElementById('pw-wrap');
+  const btn  = document.getElementById('master-btn');
+  if (wrap.style.display === 'block') {
+    checkPw();
+  } else {
+    wrap.style.display = 'block';
+    document.getElementById('pw-input').focus();
+    btn.textContent = '→ Confirm';
+  }
+}
+
+async function checkPw() {
+  const val = document.getElementById('pw-input').value;
+  const hash = await sha256(val);
+  if (hash === MASTER_HASH) {
+    loginMaster();
+  } else {
+    document.getElementById('pw-error').style.display = 'block';
+    document.getElementById('pw-input').value = '';
+    document.getElementById('pw-input').focus();
+  }
+}
+
+function loginMaster() {
+  IS_GUEST = false;
+  try { sessionStorage.setItem('t212_auth','master'); } catch(e){}
+  startApp();
+}
+
+function loginGuest() {
+  IS_GUEST = true;
+  try { sessionStorage.setItem('t212_auth','guest'); } catch(e){}
+  startApp();
+}
+
+function logout() {
+  try { sessionStorage.removeItem('t212_auth'); } catch(e){}
+  location.reload();
+}
+
+function startApp() {
+  document.getElementById('login-screen').classList.add('hidden');
+  document.getElementById('app').classList.add('visible');
+  if (IS_GUEST) document.getElementById('guest-badge').style.display = 'inline-flex';
+  loadTab('overview');
+}
+
+// Check session on load
+(function() {
+  try {
+    const saved = sessionStorage.getItem('t212_auth');
+    if (saved === 'master') { IS_GUEST = false; startApp(); }
+    else if (saved === 'guest') { IS_GUEST = true; startApp(); }
+  } catch(e) {}
+})();
+
+// ── MASKING ───────────────────────────────────────────────────
+function mask(val) {
+  // In guest mode return *** instead of financial value
+  if (IS_GUEST) return '<span class="masked">***</span>';
+  return val;
+}
+function maskPlain(val) {
+  if (IS_GUEST) return '***';
+  return val;
+}
+
+// ── API ───────────────────────────────────────────────────────
 const PROXY = 'https://t212-proxy.itsme-daf.workers.dev';
 let _cache = {};
 
@@ -161,7 +299,14 @@ function showTab(id, btn) {
 }
 
 function fmt(v, dec=2) { return v == null ? '—' : Number(v).toFixed(dec); }
-function fmtGbp(v) { return v == null ? '—' : '£' + Number(v).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,','); }
+function fmtGbp(v) {
+  if (IS_GUEST) return '<span class="masked">***</span>';
+  return v == null ? '—' : '£' + Number(v).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+}
+function fmtGbpPlain(v) {
+  if (IS_GUEST) return '***';
+  return v == null ? '—' : '£' + Number(v).toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g,',');
+}
 function clr(v) { return v > 0 ? 'green' : v < 0 ? 'red' : ''; }
 function stars(n) { return '★'.repeat(n || 0) + '☆'.repeat(5-(n||0)); }
 function badgeRec(r) {
@@ -171,9 +316,9 @@ function badgeRec(r) {
 
 // ── OVERVIEW ──────────────────────────────────────────────────
 async function loadOverview() {
-  const [snaps, positions, alerts] = await Promise.all([
+  const [snaps, , alerts] = await Promise.all([
     api('portfolio_snapshots','?select=*&order=created_at.desc&limit=1'),
-    api('positions','?select=*&order=gain_pct.desc&limit=1'),  // just to warm cache
+    api('positions','?select=*&order=gain_pct.desc&limit=1'),
     api('alerts','?select=*&order=created_at.desc&limit=5'),
   ]);
 
@@ -186,24 +331,31 @@ async function loadOverview() {
   const ts = snap.created_at ? new Date(snap.created_at).toLocaleString('en-GB') : '—';
   document.getElementById('last-updated').textContent = `Updated: ${ts}`;
 
+  // Count positions
+  const allPos = await api('positions', `?snapshot_id=eq.${snap.id}&select=gain_pct,ppl`).catch(()=>[]);
+  const winners = allPos.filter(p => (p.gain_pct||0) > 0).length;
+  const losers  = allPos.filter(p => (p.gain_pct||0) < 0).length;
+  const alertCount = alerts.length;
+
   document.getElementById('stats-strip').innerHTML = `
     <div class="stat-card"><div class="label">Total Value</div><div class="value">${fmtGbp(tv)}</div></div>
-    <div class="stat-card"><div class="label">Cash</div><div class="value">${fmtGbp(cash)}</div></div>
     <div class="stat-card"><div class="label">Invested</div><div class="value">${fmtGbp(inv)}</div></div>
-    <div class="stat-card"><div class="label">P&L</div><div class="value ${clr(ppl)}">${fmtGbp(ppl)}</div><div class="sub ${clr(pplPct)}">${fmt(pplPct)}%</div></div>
-    <div class="stat-card"><div class="label">Run #</div><div class="value">${snap.run_count || '—'}</div></div>
+    <div class="stat-card"><div class="label">Cash</div><div class="value">${fmtGbp(cash)}</div></div>
+    <div class="stat-card"><div class="label">Total P&amp;L</div><div class="value ${clr(ppl)}">${fmtGbp(ppl)}</div><div class="sub ${clr(pplPct)}">${IS_GUEST ? '' : fmt(pplPct)+'%'}</div></div>
+    <div class="stat-card"><div class="label">Winners</div><div class="value green">${winners}</div></div>
+    <div class="stat-card"><div class="label">Losers</div><div class="value red">${losers}</div></div>
+    <div class="stat-card"><div class="label">Positions</div><div class="value">${allPos.length}</div></div>
+    <div class="stat-card"><div class="label">Alerts</div><div class="value yellow">${alertCount}</div></div>
   `;
 
-  // Active alerts
   const alertsHtml = alerts.length
     ? alerts.map(a => {
-        const cls = a.type === 'buy' ? 'buy' : a.type === 'sell' ? 'sell' : '';
+        const cls = (a.alert_type||a.type) === 'buy' ? 'buy' : (a.alert_type||a.type) === 'sell' ? 'sell' : '';
         return `<div class="alert-item ${cls}"><div class="a-title">${a.title||''}</div><div class="a-body">${a.body||''}</div><div class="a-time">${a.created_at ? new Date(a.created_at).toLocaleString('en-GB') : ''}</div></div>`;
       }).join('')
     : '<div class="loading">No recent alerts</div>';
   document.getElementById('active-alerts').innerHTML = alertsHtml;
 
-  // Charts
   await loadOverviewCharts();
 }
 
@@ -212,7 +364,6 @@ async function loadOverviewCharts() {
   if (!snap) return;
   const positions = await api('positions', `?snapshot_id=eq.${snap.id}&select=*&order=gain_pct.desc`);
 
-  // Gain bar
   const ctx1 = document.getElementById('gain-bar').getContext('2d');
   if (ctx1._chart) ctx1._chart.destroy();
   ctx1._chart = new Chart(ctx1, {
@@ -228,7 +379,6 @@ async function loadOverviewCharts() {
     options: { plugins:{legend:{display:false}}, scales:{ x:{ticks:{color:'#8892a4',font:{size:9}},grid:{color:'#2d3353'}}, y:{ticks:{color:'#8892a4'},grid:{color:'#2d3353'}} }, responsive:true }
   });
 
-  // Doughnut — group by pie
   const pieMap = {};
   positions.forEach(p => {
     const pie = p.pie || 'Solo';
@@ -261,7 +411,6 @@ async function loadHeatmap() {
   const grid = document.getElementById('heatmap-grid');
   grid.innerHTML = '';
 
-  // Show snapshot date in header
   const snapDate = new Date(snap.created_at);
   const snapLabel = snapDate.toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
   document.getElementById('heatmap-updated').textContent = `· data as of ${snapLabel}`;
@@ -275,7 +424,9 @@ async function loadHeatmap() {
     const tile = document.createElement('div');
     tile.className = 'hm-tile';
     tile.style.cssText = `width:${size}px;height:${size}px;background:${bg};`;
-    tile.title = `${p.display||p.ticker} | Gain: ${fmt(gain)}% | P&L: ${fmtGbp(ppl)} | Dip: ${fmt(p.dip_from_high)}%`;
+    // Heatmap: gain% always shown (not sensitive), P&L in tooltip masked for guest
+    const tooltipPpl = IS_GUEST ? '***' : fmtGbpPlain(ppl);
+    tile.title = `${p.display||p.ticker} | Gain: ${fmt(gain)}% | P&L: ${tooltipPpl} | Dip: ${fmt(p.dip_from_high)}%`;
     tile.innerHTML = `<span class="hm-tick">${p.ticker||''}</span><span class="hm-pct">${fmt(gain,1)}%</span>`;
     grid.appendChild(tile);
   });
@@ -290,7 +441,6 @@ async function loadPositions() {
   const analystMap = {};
   analystRows.forEach(a => { analystMap[a.ticker] = a; });
 
-  // Group by pie
   const groups = {};
   positions.forEach(p => {
     const pie = p.pie || 'Solo';
@@ -308,7 +458,7 @@ async function loadPositions() {
     div.innerHTML = `
       <div class="pie-header" onclick="togglePie(this)">
         <span class="pie-name">${pieName}</span>
-        <span class="pie-meta">${pos.length} holdings · P&L <span class="${clr(totalPpl)}">${fmtGbp(totalPpl)}</span></span>
+        <span class="pie-meta">${pos.length} holdings · P&amp;L <span class="${clr(totalPpl)}">${fmtGbpPlain(totalPpl)}</span></span>
       </div>
       <div class="pie-body">
         <div class="pos-row">
@@ -324,11 +474,15 @@ async function loadPositions() {
           const analystHtml = a.star_rating
             ? `<span class="stars">${'★'.repeat(a.star_rating)}</span> ${badgeRec(a.recommendation)}`
             : '—';
+          // P&L column masked for guests
+          const pplCell = IS_GUEST
+            ? `<span class="masked">***</span>`
+            : `<span class="${clr(p.gain_pct)}">${fmt(p.gain_pct)}%</span>`;
           return `<div class="pos-row">
             <span>${p.display||p.ticker}</span>
             <span>${fmtGbp(p.current_price)}</span>
             <span>${fmtGbp(p.avg_price)}</span>
-            <span class="${clr(p.gain_pct)}">${fmt(p.gain_pct)}%</span>
+            ${pplCell}
             <span class="${clr(p.dip_from_high)}">${fmt(p.dip_from_high)}%</span>
             <span>${analystHtml}</span>
           </div>`;
@@ -339,15 +493,13 @@ async function loadPositions() {
 }
 
 function togglePie(header) {
-  const body = header.nextElementSibling;
-  body.classList.toggle('open');
+  header.nextElementSibling.classList.toggle('open');
 }
 
 // ── ANALYST ───────────────────────────────────────────────────
 async function loadAnalyst() {
   const rows = await api('analyst_ratings','?select=*&order=star_rating.desc');
 
-  // Pie summary cards
   const byPie = {};
   rows.forEach(r => {
     if (!byPie[r.pie]) byPie[r.pie] = [];
@@ -365,7 +517,6 @@ async function loadAnalyst() {
     </div>`;
   }).join('');
 
-  // Full table
   const tableHtml = `<table class="analyst-table">
     <thead><tr><th>Ticker</th><th>Pie</th><th>Rating</th><th>Stars</th><th>Target</th><th>Buy%</th><th>Hold%</th><th>Sell%</th></tr></thead>
     <tbody>${rows.map(r => `<tr>
@@ -396,14 +547,14 @@ async function loadStrategy() {
   el.innerHTML = `
     <div class="stats-strip" style="margin-bottom:16px">
       <div class="stat-card"><div class="label">Week</div><div class="value">${s.week_number} of 4</div><div class="sub">${weekNames[s.week_number]||''}</div></div>
-      <div class="stat-card"><div class="label">Suggested</div><div class="value green">£${s.total_suggested}</div></div>
+      <div class="stat-card"><div class="label">Suggested</div><div class="value green">${IS_GUEST ? '<span class="masked">***</span>' : '£'+s.total_suggested}</div></div>
       <div class="stat-card"><div class="label">Annualised</div><div class="value ${clr(s.annualised_return)}">${fmt(s.annualised_return)}%</div></div>
       <div class="stat-card"><div class="label">On Track?</div><div class="value ${onTrack?'green':'red'}">${onTrack?'✓ Yes':'✗ No'}</div><div class="sub">Target: 15%</div></div>
     </div>
     <div class="card"><h3>Recommendations</h3>
       ${recs.map(r => `<div class="rec-card priority-${r.priority||'LOW'}">
         <div><div class="rec-pie">${r.pie}</div><div class="rec-reason">${r.reason||''}</div></div>
-        <div class="rec-amount">£${r.amount}</div>
+        <div class="rec-amount">${IS_GUEST ? '<span class="masked">***</span>' : '£'+r.amount}</div>
       </div>`).join('')}
     </div>
     <div class="card"><h3>Notes</h3>
@@ -432,7 +583,6 @@ async function loadReturns() {
       <div class="card"><h3>Monthly Return %</h3><canvas id="monthly-chart"></canvas></div>
     </div>`;
 
-  // Yearly bar
   const years = Object.keys(yearly).sort();
   const ctx1 = document.getElementById('yearly-chart').getContext('2d');
   new Chart(ctx1, {
@@ -449,7 +599,6 @@ async function loadReturns() {
     options: { plugins:{legend:{display:false}}, scales:{ x:{ticks:{color:'#8892a4'},grid:{color:'#2d3353'}}, y:{ticks:{color:'#8892a4'},grid:{color:'#2d3353'}} }, responsive:true }
   });
 
-  // Monthly line
   const months = Object.keys(monthly).sort().slice(-24);
   const ctx2 = document.getElementById('monthly-chart').getContext('2d');
   new Chart(ctx2, {
@@ -476,11 +625,12 @@ async function loadAlerts() {
   const el = document.getElementById('alerts-log');
   if (!alerts.length) { el.innerHTML = '<div class="loading">No alerts yet.</div>'; return; }
   el.innerHTML = alerts.map(a => {
-    const cls = a.type === 'buy' ? 'buy' : a.type === 'sell' ? 'sell' : '';
+    const type = a.alert_type || a.type || 'info';
+    const cls = type === 'buy' ? 'buy' : type === 'sell' ? 'sell' : '';
     return `<div class="alert-item ${cls}">
       <div class="a-title">${a.title||''}</div>
       <div class="a-body">${a.body||''}</div>
-      <div class="a-time">${a.created_at ? new Date(a.created_at).toLocaleString('en-GB') : ''} · ${a.type||'info'}</div>
+      <div class="a-time">${a.created_at ? new Date(a.created_at).toLocaleString('en-GB') : ''} · ${type}</div>
     </div>`;
   }).join('');
 }
@@ -506,8 +656,6 @@ function loadTab(id) {
     if (el) el.innerHTML = `<div class="loading" style="color:var(--red)">Error: ${e.message}</div>`;
   });
 }
-
-loadTab('overview');
 </script>
 </body>
 </html>
