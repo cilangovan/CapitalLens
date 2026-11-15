@@ -33,8 +33,15 @@
     font-size: 14px; font-weight: 600; cursor: pointer; margin-bottom: 10px; transition: opacity .15s;
   }
   .login-btn:hover { opacity: .85; }
+  .login-btn:disabled { opacity: .5; cursor: not-allowed; }
   .btn-master { background: var(--accent); color: #fff; }
   .btn-guest  { background: var(--bg3); color: var(--muted); border: 1px solid var(--border); }
+  .login-field { margin-bottom: 10px; }
+  .login-field input {
+    width: 100%; padding: 10px 12px; background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 8px; color: var(--text); font-size: 14px; outline: none;
+  }
+  .login-field input:focus { border-color: var(--accent); }
   .pw-wrap { margin-bottom: 14px; display: none; }
   .pw-wrap input {
     width: 100%; padding: 10px 12px; background: var(--bg3); border: 1px solid var(--border);
@@ -43,6 +50,12 @@
   .pw-wrap input:focus { border-color: var(--accent); }
   .pw-error { color: var(--red); font-size: 12px; margin-top: 6px; display: none; }
   .login-divider { font-size: 11px; color: var(--muted); margin: 4px 0 10px; }
+  .login-link { font-size: 12px; color: var(--accent); cursor: pointer; text-decoration: underline; background: none; border: none; }
+  /* Change-password modal */
+  .modal-overlay { position: fixed; inset: 0; background: rgba(0,0,0,.7); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+  .modal-overlay.hidden { display: none; }
+  .modal-box { background: var(--bg2); border: 1px solid var(--border); border-radius: 12px; padding: 28px 24px; width: 320px; }
+  .modal-box h3 { font-size: 16px; margin-bottom: 16px; }
   .guest-badge {
     display: inline-flex; align-items: center; gap: 4px;
     background: rgba(245,158,11,.15); color: var(--yellow);
@@ -130,16 +143,65 @@
 <div id="login-screen">
   <div class="login-box">
     <h2>🌐 T212 Monitor</h2>
-    <p>Portfolio dashboard — choose how to view</p>
+    <p id="login-subtitle">Portfolio dashboard</p>
 
-    <div class="pw-wrap" id="pw-wrap">
-      <input type="password" id="pw-input" placeholder="Enter master password" onkeydown="if(event.key==='Enter')checkPw()">
-      <div class="pw-error" id="pw-error">Incorrect password</div>
+    <!-- Main login form -->
+    <div id="login-form">
+      <div class="login-field">
+        <input type="text" id="login-user" placeholder="Username" value="admin" autocomplete="username">
+      </div>
+      <div class="login-field">
+        <input type="password" id="login-pw" placeholder="Password" autocomplete="current-password"
+               onkeydown="if(event.key==='Enter')doLogin()">
+      </div>
+      <div class="pw-error" id="pw-error"></div>
+      <button class="login-btn btn-master" id="login-btn" onclick="doLogin()">🔐 Sign In</button>
+      <div style="text-align:center;margin-top:6px">
+        <button class="login-link" onclick="showResetForm()">Forgot password?</button>
+      </div>
+      <div class="login-divider">or</div>
+      <button class="login-btn btn-guest" onclick="loginGuest()">👁 View as Guest</button>
+      <div style="font-size:11px;color:var(--muted);margin-top:16px">Guest mode masks financial figures</div>
     </div>
-    <button class="login-btn btn-master" onclick="showPw()" id="master-btn">🔐 Master Login</button>
-    <div class="login-divider">or</div>
-    <button class="login-btn btn-guest" onclick="loginGuest()">👁 View as Guest</button>
-    <div style="font-size:11px;color:var(--muted);margin-top:16px">Guest mode masks financial figures</div>
+
+    <!-- Password reset request form -->
+    <div id="reset-form" style="display:none">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Enter your username to receive a reset link at ****@****.com</p>
+      <div class="login-field">
+        <input type="text" id="reset-user" placeholder="Username" value="admin">
+      </div>
+      <div class="pw-error" id="reset-error"></div>
+      <div id="reset-sent" style="display:none;color:var(--green);font-size:13px;margin-bottom:10px">✓ Reset link sent to your email</div>
+      <button class="login-btn btn-master" onclick="doResetRequest()">Send Reset Link</button>
+      <div style="text-align:center;margin-top:8px">
+        <button class="login-link" onclick="showLoginForm()">← Back to login</button>
+      </div>
+    </div>
+
+    <!-- Reset confirm form (shown when ?reset=TOKEN in URL) -->
+    <div id="reset-confirm-form" style="display:none">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:16px">Enter your new password</p>
+      <div class="login-field">
+        <input type="password" id="new-pw1" placeholder="New password (min 8 chars)">
+      </div>
+      <div class="login-field">
+        <input type="password" id="new-pw2" placeholder="Confirm new password">
+      </div>
+      <div class="pw-error" id="reset-confirm-error"></div>
+      <button class="login-btn btn-master" onclick="doResetConfirm()">Set New Password</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── CHANGE PASSWORD MODAL ── -->
+<div class="modal-overlay hidden" id="change-pw-modal">
+  <div class="modal-box">
+    <h3>🔑 Change Password</h3>
+    <div class="login-field"><input type="password" id="cpw-new1" placeholder="New password (min 8 chars)"></div>
+    <div class="login-field"><input type="password" id="cpw-new2" placeholder="Confirm new password"></div>
+    <div class="pw-error" id="cpw-error"></div>
+    <button class="login-btn btn-master" onclick="doChangePassword()" style="margin-top:4px">Update Password</button>
+    <button class="login-btn btn-guest" onclick="closeChangePw()" style="margin-top:4px">Cancel</button>
   </div>
 </div>
 
@@ -150,6 +212,7 @@
   <span class="pill">LIVE</span>
   <span id="guest-badge" class="guest-badge" style="display:none">👁 Guest</span>
   <span id="last-updated"></span>
+  <button id="change-pw-btn" onclick="openChangePw()" style="display:none;background:none;border:1px solid var(--border);color:var(--muted);font-size:11px;padding:3px 10px;border-radius:6px;cursor:pointer;margin-left:4px">🔑 Password</button>
   <button id="logout-btn" onclick="logout()">Sign out</button>
 </header>
 
@@ -200,68 +263,172 @@
 
 <script>
 // ── AUTH ──────────────────────────────────────────────────────
-const MASTER_HASH = '5e884898da28047151d0e56f8dc6292773603d0d6aabbdd62a11ef721d1542d8'; // "password" — replace with your hash
+const PROXY = 'https://t212-proxy.itsme-daf.workers.dev';
 let IS_GUEST = false;
+let SESSION_TOKEN = null;
 
-async function sha256(str) {
-  const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
-  return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2,'0')).join('');
+function setErr(id, msg) {
+  const el = document.getElementById(id);
+  if (el) { el.textContent = msg; el.style.display = msg ? 'block' : 'none'; }
+}
+function setBtnLoading(id, loading) {
+  const btn = document.getElementById(id);
+  if (btn) btn.disabled = loading;
 }
 
-function showPw() {
-  const wrap = document.getElementById('pw-wrap');
-  const btn  = document.getElementById('master-btn');
-  if (wrap.style.display === 'block') {
-    checkPw();
-  } else {
-    wrap.style.display = 'block';
-    document.getElementById('pw-input').focus();
-    btn.textContent = '→ Confirm';
-  }
-}
-
-async function checkPw() {
-  const val = document.getElementById('pw-input').value;
-  const hash = await sha256(val);
-  if (hash === MASTER_HASH) {
-    loginMaster();
-  } else {
-    document.getElementById('pw-error').style.display = 'block';
-    document.getElementById('pw-input').value = '';
-    document.getElementById('pw-input').focus();
-  }
-}
-
-function loginMaster() {
-  IS_GUEST = false;
-  try { sessionStorage.setItem('t212_auth','master'); } catch(e){}
-  startApp();
+async function doLogin() {
+  const username = document.getElementById('login-user').value.trim();
+  const password = document.getElementById('login-pw').value;
+  if (!username || !password) { setErr('pw-error', 'Enter username and password'); return; }
+  setErr('pw-error', '');
+  setBtnLoading('login-btn', true);
+  try {
+    const r = await fetch(`${PROXY}/auth/login`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username, password }),
+    });
+    const d = await r.json();
+    if (!r.ok || !d.ok) { setErr('pw-error', d.error || 'Invalid credentials'); return; }
+    SESSION_TOKEN = d.token;
+    try { sessionStorage.setItem('t212_token', d.token); sessionStorage.setItem('t212_auth','master'); } catch(e){}
+    IS_GUEST = false;
+    startApp();
+  } catch(e) {
+    setErr('pw-error', 'Network error — try again');
+  } finally { setBtnLoading('login-btn', false); }
 }
 
 function loginGuest() {
   IS_GUEST = true;
+  SESSION_TOKEN = null;
   try { sessionStorage.setItem('t212_auth','guest'); } catch(e){}
   startApp();
 }
 
 function logout() {
-  try { sessionStorage.removeItem('t212_auth'); } catch(e){}
+  try { sessionStorage.clear(); } catch(e){}
   location.reload();
 }
 
 function startApp() {
   document.getElementById('login-screen').classList.add('hidden');
   document.getElementById('app').classList.add('visible');
-  if (IS_GUEST) document.getElementById('guest-badge').style.display = 'inline-flex';
+  if (IS_GUEST) {
+    document.getElementById('guest-badge').style.display = 'inline-flex';
+  } else {
+    document.getElementById('change-pw-btn').style.display = 'inline-block';
+  }
+  // Check if first login (password is ***) — prompt change
+  if (!IS_GUEST) {
+    try {
+      const firstLogin = sessionStorage.getItem('t212_first_login');
+      if (firstLogin === '1') { sessionStorage.removeItem('t212_first_login'); openChangePw(true); }
+    } catch(e){}
+  }
   loadTab('overview');
 }
 
-// Check session on load
-(function() {
+// ── Reset password flow ───────────────────────────────────────
+function showResetForm() {
+  document.getElementById('login-form').style.display = 'none';
+  document.getElementById('reset-form').style.display = 'block';
+  document.getElementById('login-subtitle').textContent = 'Reset Password';
+}
+function showLoginForm() {
+  document.getElementById('login-form').style.display = 'block';
+  document.getElementById('reset-form').style.display = 'none';
+  document.getElementById('login-subtitle').textContent = 'Portfolio dashboard';
+}
+
+async function doResetRequest() {
+  const username = document.getElementById('reset-user').value.trim();
+  setErr('reset-error', '');
   try {
-    const saved = sessionStorage.getItem('t212_auth');
-    if (saved === 'master') { IS_GUEST = false; startApp(); }
-    else if (saved === 'guest') { IS_GUEST = true; startApp(); }
+    await fetch(`${PROXY}/auth/reset-request`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ username }),
+    });
+  } catch(e) {}
+  // Always show success (don't leak whether user exists)
+  document.getElementById('reset-sent').style.display = 'block';
+}
+
+async function doResetConfirm() {
+  const pw1 = document.getElementById('new-pw1').value;
+  const pw2 = document.getElementById('new-pw2').value;
+  const params = new URLSearchParams(location.search);
+  const token = params.get('reset');
+  if (pw1 !== pw2) { setErr('reset-confirm-error', 'Passwords do not match'); return; }
+  if (pw1.length < 8) { setErr('reset-confirm-error', 'Min 8 characters'); return; }
+  setErr('reset-confirm-error', '');
+  try {
+    const r = await fetch(`${PROXY}/auth/reset-confirm`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ resetToken: token, newPassword: pw1 }),
+    });
+    const d = await r.json();
+    if (!r.ok) { setErr('reset-confirm-error', d.error || 'Failed'); return; }
+    // Success — redirect to clean URL
+    document.getElementById('reset-confirm-form').style.display = 'none';
+    document.getElementById('login-form').style.display = 'block';
+    document.getElementById('login-subtitle').textContent = '✓ Password updated — sign in';
+    history.replaceState({}, '', '/');
+  } catch(e) { setErr('reset-confirm-error', 'Network error'); }
+}
+
+// ── Change password (while logged in) ────────────────────────
+function openChangePw(isFirst) {
+  document.getElementById('change-pw-modal').classList.remove('hidden');
+  if (isFirst) {
+    document.getElementById('cpw-error').textContent = 'First login — please change your password';
+    document.getElementById('cpw-error').style.display = 'block';
+    document.getElementById('cpw-error').style.color = 'var(--yellow)';
+  }
+}
+function closeChangePw() {
+  document.getElementById('change-pw-modal').classList.add('hidden');
+  setErr('cpw-error', '');
+  document.getElementById('cpw-new1').value = '';
+  document.getElementById('cpw-new2').value = '';
+}
+
+async function doChangePassword() {
+  const pw1 = document.getElementById('cpw-new1').value;
+  const pw2 = document.getElementById('cpw-new2').value;
+  if (pw1 !== pw2) { setErr('cpw-error', 'Passwords do not match'); document.getElementById('cpw-error').style.color='var(--red)'; return; }
+  if (pw1.length < 8) { setErr('cpw-error', 'Min 8 characters'); document.getElementById('cpw-error').style.color='var(--red)'; return; }
+  if (!SESSION_TOKEN) { setErr('cpw-error', 'No active session'); document.getElementById('cpw-error').style.color='var(--red)'; return; }
+  try {
+    const r = await fetch(`${PROXY}/auth/change-password`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: SESSION_TOKEN, newPassword: pw1 }),
+    });
+    const d = await r.json();
+    if (!r.ok) { setErr('cpw-error', d.error || 'Failed'); document.getElementById('cpw-error').style.color='var(--red)'; return; }
+    closeChangePw();
+    alert('✓ Password changed successfully');
+  } catch(e) { setErr('cpw-error', 'Network error'); }
+}
+
+// ── Check session on load ─────────────────────────────────────
+(function() {
+  // Check for reset token in URL
+  const params = new URLSearchParams(location.search);
+  if (params.get('reset')) {
+    document.getElementById('login-form').style.display = 'none';
+    document.getElementById('reset-confirm-form').style.display = 'block';
+    document.getElementById('login-subtitle').textContent = 'Set New Password';
+    return;
+  }
+  try {
+    const auth = sessionStorage.getItem('t212_auth');
+    const tok  = sessionStorage.getItem('t212_token');
+    if (auth === 'master' && tok) { SESSION_TOKEN = tok; IS_GUEST = false; startApp(); }
+    else if (auth === 'guest') { IS_GUEST = true; startApp(); }
   } catch(e) {}
 })();
 
@@ -277,7 +444,7 @@ function maskPlain(val) {
 }
 
 // ── API ───────────────────────────────────────────────────────
-const PROXY = 'https://t212-proxy.itsme-daf.workers.dev';
+// PROXY is declared in auth block above
 let _cache = {};
 
 async function api(table, params='') {
