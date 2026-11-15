@@ -8,21 +8,25 @@ Runs daily via GitHub Actions.
 import os
 import json
 import time
+import base64
 import urllib.request
 import urllib.error
 from datetime import datetime, timezone
 
-T212_BASE    = "https://live.trading212.com"
-T212_API_KEY = os.environ["T212_API_KEY"]
-SUPABASE_URL = os.environ["SUPABASE_URL"]
-SUPABASE_KEY = os.environ["SUPABASE_KEY"]
+T212_BASE       = "https://live.trading212.com"
+T212_API_KEY    = os.environ["T212_API_KEY"]
+T212_API_SECRET = os.environ["T212_API_SECRET"]
+SUPABASE_URL    = os.environ["SUPABASE_URL"]
+SUPABASE_KEY    = os.environ["SUPABASE_KEY"]
+
+_T212_CREDS = base64.b64encode(f"{T212_API_KEY}:{T212_API_SECRET}".encode()).decode()
 
 
 def t212_get(path, params=None):
     url = f"{T212_BASE}{path}"
     if params:
         url += "?" + "&".join(f"{k}={v}" for k, v in params.items())
-    req = urllib.request.Request(url, headers={"Authorization": T212_API_KEY})
+    req = urllib.request.Request(url, headers={"Authorization": f"Basic {_T212_CREDS}"})
     try:
         with urllib.request.urlopen(req, timeout=30) as resp:
             return json.loads(resp.read())
