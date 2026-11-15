@@ -1,0 +1,30 @@
+name: Deploy Cloudflare Worker
+
+on:
+  push:
+    paths:
+      - 'cloudflare-worker/worker.js'
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    name: Deploy t212-proxy Worker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Deploy via Cloudflare API
+        env:
+          CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
+          CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          GH_PAT: ${{ secrets.GH_DEPLOY_PAT }}
+        run: |
+          # Upload worker script via Cloudflare API
+          curl -s -X PUT \
+            "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/scripts/t212-proxy" \
+            -H "Authorization: Bearer ${CF_API_TOKEN}" \
+            -F "metadata={\"main_module\":\"worker.js\",\"bindings\":[{\"type\":\"plain_text\",\"name\":\"SUPABASE_URL\",\"text\":\"${SUPABASE_URL}\"},{\"type\":\"secret_text\",\"name\":\"SUPABASE_SERVICE_KEY\",\"text\":\"${SUPABASE_SERVICE_KEY}\"},{\"type\":\"secret_text\",\"name\":\"SUPABASE_KEY\",\"text\":\"${SUPABASE_KEY}\"},{\"type\":\"secret_text\",\"name\":\"GH_PAT\",\"text\":\"${GH_PAT}\"},{\"type\":\"plain_text\",\"name\":\"GH_REPO\",\"text\":\"cilangovan/t212-monitor\"}]};type=application/json" \
+            -F "worker.js=@cloudflare-worker/worker.js;type=application/javascript+module" \
+            | python3 -c "import sys,json; d=json.load(sys.stdin); print('✓ Deployed' if d.get('success') else f'✗ Failed: {d}')"
