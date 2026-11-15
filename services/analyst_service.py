@@ -112,39 +112,124 @@ def supabase_request(method, path, data=None):
         return None
 
 
-def fetch_yahoo_analyst(yahoo_ticker):
-    """Fetch analyst summary from Yahoo Finance v8 quoteSummary."""
-    try:
-        url = (
-            f"https://query1.finance.yahoo.com/v8/finance/quoteSummary/{yahoo_ticker}"
-            "?modules=recommendationTrend,financialData,defaultKeyStatistics"
-        )
-        req = urllib.request.Request(url, headers={"User-Agent": "Mozilla/5.0"})
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            data = json.loads(resp.read())
+def _yahoo_crumb_and_cookie():
+    """Get a crumb + session cookie from Yahoo Finance (required for v10 API)."""
+    req = urllib.request.Request(
+        "https://finance.yahoo.com/quote/AAPL",
+        headers={
+            "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+            "Accept": "text/html",
+            "Accept-Language": "en-US,en;q=0.9",
+        }
+    )
+    with urllib.request.urlopen(req, timeout=15) as resp:
+        cookie = resp.headers.get("Set-Cookie", "")
+        html = resp.read().decode("utf-8", errors="ignore")
 
-        result = data.get("quoteSummary", {}).get("result", [])
-        if not result:
+    # Extract crumb from page source
+    import re
+    m = re.search(r'"crumb":"([^"]+)"', html)
+    crumb = m.group(1) if m else None
+    return crumb, cookie
+
+
+_CRUMB = None
+_COOKIE = None
+
+
+def fetch_yahoo_analyst(yahoo_ticker):
+    """Fetch analyst summary using Yahoo Finance v10 quoteSummary (current working endpoint)."""
+    global _CRUMB, _COOKIE
+    try:
+        # Get crumb once per session
+        if not _CRUMB:
+            try:
+                _CRUMB, _COOKIE = _yahoo_crumb_and_cookie()
+            except Exception as e:
+                print(f"  crumb fetch failed: {e}")
+
+        # Try v10 with crumb first, fall back to v7 quote endpoint
+        data = None
+        for attempt in range(2):
+            try:
+                if attempt == 0 and _CRUMB:
+                    url = (
+                        f"https://query1.finance.yahoo.com/v10/finance/quoteSummary/{yahoo_ticker}"
+                        f"?modules=recommendationTrend%2CfinancialData&crumb={urllib.request.quote(_CRUMB)}"
+                    )
+                    headers = {
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                        "Accept": "application/json",
+                        "Cookie": _COOKIE or "",
+                    }
+                else:
+                    # v7 quote — simpler, just price + recommendation, no analyst counts
+                    url = (
+                        f"https://query1.finance.yahoo.com/v7/finance/quote"
+                        f"?symbols={yahoo_ticker}&fields=recommendationKey,targetMeanPrice,numberOfAnalystOpinions"
+                    )
+                    headers = {
+                        "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36",
+                        "Accept": "application/json",
+                    }
+
+                req = urllib.request.Request(url, headers=headers)
+                with urllib.request.urlopen(req, timeout=15) as resp:
+                    data = json.loads(resp.read())
+                break
+            except urllib.error.HTTPError as e:
+                if e.code in (401, 403, 404) and attempt == 0:
+                    _CRUMB = None  # reset crumb, retry with v7
+                    continue
+                raise
+
+        if not data:
             return None
 
-        r = result[0]
-        fd = r.get("financialData", {})
-        rt = r.get("recommendationTrend", {}).get("trend", [{}])
-        trend = rt[0] if rt else {}
+        # Parse v10 quoteSummary response
+        if "quoteSummary" in data:
+            result = data.get("quoteSummary", {}).get("result", [])
+            if not result:
+                return None
+            r = result[0]
+            fd = r.get("financialData", {})
+            rt = r.get("recommendationTrend", {}).get("trend", [{}])
+            trend = rt[0] if rt else {}
 
-        recommendation = fd.get("recommendationKey", "none").lower()
-        target_mean = fd.get("targetMeanPrice", {}).get("raw", None)
+            recommendation = fd.get("recommendationKey", "none").lower()
+            target_mean = fd.get("targetMeanPrice", {}).get("raw", None)
 
-        strong_buy = trend.get("strongBuy", 0)
-        buy = trend.get("buy", 0)
-        hold = trend.get("hold", 0)
-        sell = trend.get("sell", 0)
-        strong_sell = trend.get("strongSell", 0)
-        total = strong_buy + buy + hold + sell + strong_sell or 1
+            strong_buy = trend.get("strongBuy", 0)
+            buy = trend.get("buy", 0)
+            hold = trend.get("hold", 0)
+            sell = trend.get("sell", 0)
+            strong_sell = trend.get("strongSell", 0)
+            total = strong_buy + buy + hold + sell + strong_sell or 1
 
-        buy_pct = round((strong_buy + buy) / total * 100, 1)
-        hold_pct = round(hold / total * 100, 1)
-        sell_pct = round((sell + strong_sell) / total * 100, 1)
+            buy_pct = round((strong_buy + buy) / total * 100, 1)
+            hold_pct = round(hold / total * 100, 1)
+            sell_pct = round((sell + strong_sell) / total * 100, 1)
+
+        # Parse v7 quote response (fallback)
+        elif "quoteResponse" in data:
+            results = data.get("quoteResponse", {}).get("result", [])
+            if not results:
+                return None
+            q = results[0]
+            recommendation = q.get("recommendationKey", "none").lower()
+            target_mean = q.get("targetMeanPrice", None)
+            total = q.get("numberOfAnalystOpinions", 1) or 1
+            # v7 doesn't split buy/hold/sell — estimate from recommendation
+            rec_map = {
+                "strong_buy": (85, 10, 5),
+                "buy": (65, 25, 10),
+                "hold": (30, 50, 20),
+                "underperform": (15, 35, 50),
+                "sell": (10, 20, 70),
+            }
+            buy_pct, hold_pct, sell_pct = rec_map.get(recommendation, (40, 40, 20))
+        else:
+            return None
 
         # Star rating 1-5 based on buy %
         if buy_pct >= 70:
