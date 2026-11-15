@@ -77,3 +77,14 @@ create policy "allow all" on positions for all using (true) with check (true);
 alter table if exists alerts enable row level security;
 drop policy if exists "allow all" on alerts;
 create policy "allow all" on alerts for all using (true) with check (true);
+
+-- ── ALERTS TABLE EXTENSION ───────────────────────────────────────────────────
+-- Add columns needed by alert_service.py (safe to run multiple times)
+alter table if exists alerts add column if not exists alert_type text;
+alter table if exists alerts add column if not exists ticker text;
+alter table if exists alerts add column if not exists pie text;
+alter table if exists alerts add column if not exists dedup_key text;
+alter table if exists alerts add column if not exists title text;
+alter table if exists alerts add column if not exists body text;
+-- Unique constraint on dedup_key to prevent duplicates
+create unique index if not exists alerts_dedup_key_idx on alerts(dedup_key);
