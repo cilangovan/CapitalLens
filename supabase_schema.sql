@@ -94,7 +94,6 @@ create unique index if not exists alerts_dedup_key_idx on alerts(dedup_key);
 create table if not exists dashboard_auth (
   id           serial primary key,
   username     text not null unique,
-  password_hash text not null,          -- bcrypt or SHA-256 hex
   reset_token  text,
   reset_expiry timestamptz,
   updated_at   timestamptz default now()
@@ -105,10 +104,7 @@ alter table dashboard_auth enable row level security;
 drop policy if exists "no public access" on dashboard_auth;
 create policy "no public access" on dashboard_auth for all using (false);
 
--- Seed the initial user (password: ***  — SHA-256 hash)
--- SHA-256("***") = *** (pre-computed)
 insert into dashboard_auth (username, password_hash)
-values ('admin', '***')
 on conflict (username) do nothing;
 
 -- Add session + reset token columns to dashboard_auth

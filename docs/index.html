@@ -335,7 +335,7 @@ function startApp() {
   } else {
     document.getElementById('change-pw-btn').style.display = 'inline-block';
   }
-  // Check if first login (password is ***) — prompt change
+  // Check if first login — prompt password change
   if (!IS_GUEST) {
     try {
       const firstLogin = sessionStorage.getItem('t212_first_login');
