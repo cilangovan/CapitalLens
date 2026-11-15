@@ -84,6 +84,7 @@ def supabase_request(method, path, data=None):
         "Prefer": "return=minimal",
     }
     if method == "POST" and data:
+        # resolution=merge-duplicates triggers ON CONFLICT DO UPDATE (upsert)
         headers["Prefer"] = "resolution=merge-duplicates,return=minimal"
     body = json.dumps(data).encode() if data else None
     req = urllib.request.Request(url, data=body, headers=headers, method=method)
@@ -92,8 +93,46 @@ def supabase_request(method, path, data=None):
             content = resp.read()
             return json.loads(content) if content else {}
     except urllib.error.HTTPError as e:
-        body = e.read().decode()
-        print(f"  Supabase {method} {path} → {e.code}: {body}")
+        err_body = e.read().decode()
+        print(f"  Supabase {method} {path} → {e.code}: {err_body}")
+        # 409 duplicate key = table missing ON CONFLICT support, try DELETE+INSERT
+        if e.code == 409 and method == "POST" and data and "ticker" in data:
+            return supabase_upsert_fallback(path, data)
+        return None
+
+
+def supabase_upsert_fallback(path, data):
+    """Fallback upsert: DELETE existing row by ticker, then INSERT fresh."""
+    ticker = data.get("ticker", "")
+    # Delete existing
+    del_url = f"{SUPABASE_URL}/rest/v1/{path}?ticker=eq.{urllib.request.quote(ticker)}"
+    del_headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Prefer": "return=minimal",
+    }
+    del_req = urllib.request.Request(del_url, headers=del_headers, method="DELETE")
+    try:
+        with urllib.request.urlopen(del_req, timeout=15):
+            pass
+    except Exception:
+        pass  # ignore delete errors (row may not exist)
+    # Re-insert
+    ins_url = f"{SUPABASE_URL}/rest/v1/{path}"
+    ins_headers = {
+        "apikey": SUPABASE_KEY,
+        "Authorization": f"Bearer {SUPABASE_KEY}",
+        "Content-Type": "application/json",
+        "Prefer": "return=minimal",
+    }
+    ins_body = json.dumps(data).encode()
+    ins_req = urllib.request.Request(ins_url, data=ins_body, headers=ins_headers, method="POST")
+    try:
+        with urllib.request.urlopen(ins_req, timeout=15) as resp:
+            content = resp.read()
+            return json.loads(content) if content else {}
+    except urllib.error.HTTPError as e2:
+        print(f"  Supabase fallback INSERT → {e2.code}: {e2.read().decode()}")
         return None
 
 
