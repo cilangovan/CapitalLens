@@ -276,6 +276,27 @@ const PROXY = 'https://t212-proxy.itsme-daf.workers.dev';
 let IS_GUEST = false;
 let SESSION_TOKEN = null;
 
+// ── Inactivity auto-logout (45 min, master session only) ──────
+const INACTIVITY_MS = 45 * 60 * 1000;
+let _inactivityTimer = null;
+
+function resetInactivityTimer() {
+  if (IS_GUEST || !SESSION_TOKEN) return;
+  clearTimeout(_inactivityTimer);
+  _inactivityTimer = setTimeout(() => {
+    // Store flag so login screen can show a message
+    try { sessionStorage.setItem('t212_timeout', '1'); } catch(e){}
+    logout();
+  }, INACTIVITY_MS);
+}
+
+function startInactivityTimer() {
+  ['mousemove','keydown','mousedown','touchstart','scroll','click'].forEach(evt =>
+    document.addEventListener(evt, resetInactivityTimer, { passive: true })
+  );
+  resetInactivityTimer();
+}
+
 function toggleEye(inputId, btn) {
   const inp = document.getElementById(inputId);
   const show = inp.type === 'password';
@@ -323,6 +344,11 @@ function loginGuest() {
 }
 
 function logout() {
+  // Stop inactivity timer before clearing session
+  clearTimeout(_inactivityTimer);
+  ['mousemove','keydown','mousedown','touchstart','scroll','click'].forEach(evt =>
+    document.removeEventListener(evt, resetInactivityTimer)
+  );
   try { sessionStorage.clear(); } catch(e){}
   location.reload();
 }
@@ -342,6 +368,8 @@ function startApp() {
       if (firstLogin === '1') { sessionStorage.removeItem('t212_first_login'); openChangePw(true); }
     } catch(e){}
   }
+  // Start inactivity timer for master (non-guest) sessions
+  if (!IS_GUEST) startInactivityTimer();
   loadTab('overview');
 }
 
@@ -441,6 +469,16 @@ async function doChangePassword() {
     return;
   }
   try {
+    // Show timeout notice if auto-logged out due to inactivity
+    const timedOut = sessionStorage.getItem('t212_timeout');
+    if (timedOut) {
+      sessionStorage.removeItem('t212_timeout');
+      const sub = document.getElementById('login-subtitle');
+      if (sub) {
+        sub.textContent = 'Session expired due to inactivity';
+        sub.style.color = '#e8a838';
+      }
+    }
     const auth = sessionStorage.getItem('t212_auth');
     const tok  = sessionStorage.getItem('t212_token');
     if (auth === 'master' && tok) { SESSION_TOKEN = tok; IS_GUEST = false; startApp(); }
