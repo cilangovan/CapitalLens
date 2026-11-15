@@ -65,11 +65,46 @@ def fetch_all_pages(path, data_key="items", cursor_key="nextPagePath"):
         page += 1
         resp = t212_get(next_path)
         if not resp:
+            print(f"    page {page}: got None response — stopping")
             break
+
+        # DEBUG: show full response structure on first page
+        if page == 1:
+            print(f"  RAW RESPONSE TYPE: {type(resp).__name__}")
+            if isinstance(resp, dict):
+                print(f"  RAW KEYS: {list(resp.keys())}")
+                print(f"  RAW RESPONSE (first 500 chars): {json.dumps(resp, default=str)[:500]}")
+            elif isinstance(resp, list):
+                print(f"  RAW RESPONSE is a LIST of {len(resp)} items")
+                if resp:
+                    print(f"  First item keys: {list(resp[0].keys()) if isinstance(resp[0], dict) else resp[0]}")
+                    print(f"  First item: {json.dumps(resp[0], default=str)[:300]}")
+
+        # Handle case where response IS the list (not wrapped in dict)
+        if isinstance(resp, list):
+            all_items.extend(resp)
+            print(f"    page {page}: {len(resp)} items (total {len(all_items)}) [list response]")
+            break  # list responses don't paginate
+
         items = resp.get(data_key, [])
+        # Also try common alternative keys if items is empty
+        if not items and data_key == "items":
+            for alt_key in ["data", "results", "orders", "dividends", "transactions"]:
+                if alt_key in resp:
+                    print(f"    NOTE: '{data_key}' was empty, found '{alt_key}' instead with {len(resp[alt_key])} items")
+                    items = resp[alt_key]
+                    break
+
         all_items.extend(items)
         print(f"    page {page}: {len(items)} items (total {len(all_items)})")
         next_path = resp.get(cursor_key)
+        # Also try alternative cursor keys
+        if not next_path:
+            for alt_cursor in ["next", "cursor", "nextCursor", "nextPage", "paginationPath"]:
+                if resp.get(alt_cursor):
+                    print(f"    NOTE: cursor key '{alt_cursor}' found: {resp[alt_cursor]}")
+                    next_path = resp[alt_cursor]
+                    break
         if next_path:
             time.sleep(1)  # be kind to T212 rate limits
     return all_items
