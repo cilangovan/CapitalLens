@@ -57,33 +57,36 @@ async function loadHeatmap() {
     { label: 'All-time', refMap: null,     hasRef: true        },
   ];
 
-  // colour: red → yellow → green mapped to -1…0…+1
+  // colour: vivid indigo/purple → cyan → emerald (gain) | red→orange (loss)
   const pplColor = (val, maxAbs) => {
-    if (maxAbs === 0) return '#334155';
+    if (maxAbs === 0) return '#1e293b';
     const t = Math.max(-1, Math.min(1, val / maxAbs));
     if (t >= 0) {
-      // 0→green: yellow→lime→green
-      const r = Math.round(255 * (1 - t));
-      const g = Math.round(200 + 55 * t);
-      return `rgb(${r},${g},60)`;
+      // 0 → +1 : cyan #06b6d4 → emerald #10b981 → lime #84cc16
+      const r = Math.round(6   + (132 - 6)   * t);
+      const g = Math.round(182 + (204 - 182) * t);
+      const b = Math.round(212 + (22  - 212) * Math.min(t * 2, 1));
+      return `rgb(${r},${g},${b})`;
     } else {
-      // 0→red
-      const r = Math.round(220 + 35 * (-t));
-      const g = Math.round(80 * (1 + t));
-      return `rgb(${r},${g},60)`;
+      // 0 → -1 : amber #f59e0b → rose #f43f5e → crimson
+      const u = -t;
+      const r = Math.round(245 - (245 - 180) * u);
+      const g = Math.round(158 - (158 - 20)  * u);
+      const b = Math.round(11  + (60  - 11)  * u);
+      return `rgb(${r},${g},${b})`;
     }
   };
 
   // ── SVG radial chart ─────────────────────────────────────────
   const N        = tickers.length;
   const nRings   = periods.length;
-  const W        = 540;
+  const W        = 820;
   const cx       = W / 2;
   const cy       = W / 2;
-  const innerR   = 70;
-  const outerR   = 240;
+  const innerR   = 110;
+  const outerR   = 340;
   const ringW    = (outerR - innerR) / nRings;
-  const gap      = 0.018; // radians gap between segments
+  const gap      = 0.022; // radians gap between segments
 
   const anglePerTick  = (2 * Math.PI) / N;
   const startOffset   = -Math.PI / 2; // 12 o'clock
@@ -139,21 +142,27 @@ async function loadHeatmap() {
     });
 
     // ticker label at outer edge
-    const labelR = outerR + 14;
+    const labelR = outerR + 22;
     const lp = polarToXY(aMid, labelR);
     const deg = (aMid * 180 / Math.PI) + 90;
     const flip = aMid > Math.PI / 2 && aMid < 3 * Math.PI / 2;
     const p = curMap[ticker];
     const sym = (p.display || ticker).replace(/_EQ$/, '');
-    labels += `<text x="${lp.x}" y="${lp.y}" font-size="8" fill="#8892a4" text-anchor="middle" dominant-baseline="middle"
+    const gainPct = p.gain_pct != null ? (p.gain_pct >= 0 ? '+' : '') + p.gain_pct.toFixed(1) + '%' : '';
+    const labelColor = p.gain_pct >= 0 ? '#34d399' : '#f87171';
+    labels += `<text x="${lp.x}" y="${lp.y - 5}" font-size="11.5" font-weight="700" fill="#e2e8f0" text-anchor="middle" dominant-baseline="middle"
       transform="rotate(${flip ? deg + 180 : deg}, ${lp.x}, ${lp.y})">${sym}</text>`;
+    labels += `<text x="${lp.x}" y="${lp.y + 8}" font-size="9.5" fill="${labelColor}" text-anchor="middle" dominant-baseline="middle"
+      transform="rotate(${flip ? deg + 180 : deg}, ${lp.x}, ${lp.y})">${gainPct}</text>`;
   });
 
-  // ring labels (inside inner circle or alongside)
+  // ring labels — on left spine at each ring midpoint
   let ringLabels = '';
   periods.forEach((p, ri) => {
     const r = innerR + ri * ringW + ringW / 2;
-    ringLabels += `<text x="${cx}" y="${cy - r}" font-size="7.5" fill="#475569" text-anchor="middle" dominant-baseline="middle">${p.label}</text>`;
+    const lx = cx - r * Math.cos(Math.PI * 0.18);
+    const ly = cy - r * Math.sin(Math.PI * 0.18);
+    ringLabels += `<text x="${lx}" y="${ly}" font-size="10" font-weight="600" fill="#64748b" text-anchor="middle" dominant-baseline="middle">${p.label}</text>`;
   });
 
   // centre label
@@ -164,30 +173,30 @@ async function loadHeatmap() {
   const legend = `
     <defs>
       <linearGradient id="legGrad" x1="0" x2="0" y1="0" y2="1">
-        <stop offset="0%"   stop-color="rgb(60,200,60)"/>
-        <stop offset="50%"  stop-color="rgb(255,220,0)"/>
-        <stop offset="100%" stop-color="rgb(220,40,40)"/>
+        <stop offset="0%"   stop-color="#84cc16"/>
+        <stop offset="40%"  stop-color="#06b6d4"/>
+        <stop offset="60%"  stop-color="#f59e0b"/>
+        <stop offset="100%" stop-color="#b91c1c"/>
       </linearGradient>
     </defs>
-    <rect x="${W-28}" y="${cy-60}" width="10" height="120" fill="url(#legGrad)" rx="3"/>
-    <text x="${W-14}" y="${cy-60}" font-size="8" fill="#8892a4" dominant-baseline="middle">+</text>
-    <text x="${W-14}" y="${cy}"    font-size="8" fill="#8892a4" dominant-baseline="middle">0</text>
-    <text x="${W-14}" y="${cy+60}" font-size="8" fill="#8892a4" dominant-baseline="middle">−</text>
-    <text x="${W-16}" y="${cy+80}" font-size="7" fill="#475569" text-anchor="middle">P&amp;L</text>
+    <rect x="${W-36}" y="${cy-80}" width="14" height="160" fill="url(#legGrad)" rx="4"/>
+    <text x="${W-16}" y="${cy-80}" font-size="10" fill="#34d399" dominant-baseline="middle">Gain</text>
+    <text x="${W-16}" y="${cy}"    font-size="10" fill="#94a3b8" dominant-baseline="middle">Flat</text>
+    <text x="${W-16}" y="${cy+80}" font-size="10" fill="#f87171" dominant-baseline="middle">Loss</text>
   `;
 
   const svgH = W + 20;
   wrap.innerHTML = `
-    <div style="position:relative;width:100%;max-width:560px;margin:0 auto">
+    <div style="position:relative;width:100%;max-width:860px;margin:0 auto">
       <svg id="radial-svg" viewBox="0 0 ${W} ${svgH}" width="100%" style="display:block">
         ${legend}
         ${paths}
         ${labels}
         ${ringLabels}
-        <circle cx="${cx}" cy="${cy}" r="${innerR - 2}" fill="#0f1117"/>
-        <text x="${cx}" y="${cy - 10}" font-size="13" font-weight="700" fill="#e2e8f0" text-anchor="middle">Portfolio</text>
-        <text x="${cx}" y="${cy + 8}"  font-size="10" fill="#8892a4" text-anchor="middle">P&amp;L Rings</text>
-        <text x="${cx}" y="${cy + 22}" font-size="8"  fill="#475569" text-anchor="middle">${N} positions</text>
+        <circle cx="${cx}" cy="${cy}" r="${innerR - 2}" fill="#0d1117"/>
+        <text x="${cx}" y="${cy - 16}" font-size="17" font-weight="800" fill="#e2e8f0" text-anchor="middle">Portfolio</text>
+        <text x="${cx}" y="${cy + 6}"  font-size="13" fill="#8892a4" text-anchor="middle">P&amp;L Rings</text>
+        <text x="${cx}" y="${cy + 24}" font-size="11" fill="#475569" text-anchor="middle">${N} positions</text>
       </svg>
       <div id="rad-tooltip" style="
         position:absolute;pointer-events:none;display:none;
