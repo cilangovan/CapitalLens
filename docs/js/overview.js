@@ -50,31 +50,148 @@ async function loadOverview() {
   });
 }
 
+// ── GAIN CHART PERIOD FILTER ──────────────────────────────────
+const PERIODS = [
+  { key:'1D', label:'1D', days:1 },
+  { key:'1W', label:'1W', days:7 },
+  { key:'1M', label:'1M', days:30 },
+  { key:'3M', label:'3M', days:90 },
+  { key:'1Y', label:'1Y', days:365 },
+  { key:'ALL', label:'All', days:null },
+];
+let _gainPeriod = 'ALL';
+let _allSnapshots = null;
+let _latestPositions = null;
+let _latestSnap = null;
+
 async function loadOverviewCharts() {
   if (IS_GUEST) {
     document.getElementById('gain-bar').parentElement.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px 0">🔒 Sign in to view holdings chart</div>';
     document.getElementById('pie-doughnut').parentElement.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px 0">🔒 Sign in to view pie breakdown</div>';
     return;
   }
-  const snap = (await api('portfolio_snapshots','?select=*&order=created_at.desc&limit=1'))[0];
-  if (!snap) return;
-  const positions = await api('positions', `?snapshot_id=eq.${snap.id}&select=*&order=gain_pct.desc`);
+  _latestSnap = (await api('portfolio_snapshots','?select=*&order=created_at.desc&limit=1'))[0];
+  if (!_latestSnap) return;
+  _latestPositions = await api('positions', `?snapshot_id=eq.${_latestSnap.id}&select=*&order=gain_pct.desc`);
+
+  // Fetch all snapshots for period comparison (limit 500 to cover history)
+  _allSnapshots = await api('portfolio_snapshots','?select=id,created_at&order=created_at.asc').catch(()=>[]);
+
+  // Inject period filter buttons above the gain-bar card h3
+  const gainCard = document.getElementById('gain-bar').closest('.card');
+  if (gainCard && !gainCard.querySelector('.period-filter')) {
+    const h3 = gainCard.querySelector('h3');
+    const filterHtml = `<div class="period-filter" style="display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap">
+      ${PERIODS.map(p => `<button onclick="setGainPeriod('${p.key}')" id="pf-${p.key}"
+        style="background:${p.key===_gainPeriod?'var(--accent)':'var(--bg3)'};color:${p.key===_gainPeriod?'#fff':'var(--muted)'};
+        border:1px solid ${p.key===_gainPeriod?'var(--accent)':'var(--border)'};
+        border-radius:5px;padding:3px 10px;font-size:11px;cursor:pointer;transition:all .15s"
+        onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'"
+        >${p.label}</button>`).join('')}
+    </div>`;
+    if (h3) h3.insertAdjacentHTML('afterend', filterHtml);
+    else gainCard.insertAdjacentHTML('afterbegin', filterHtml);
+  }
+
+  await renderGainChart(_gainPeriod);
+  renderPieChart(_latestPositions);
+}
+
+async function setGainPeriod(key) {
+  _gainPeriod = key;
+  // Update button styles
+  PERIODS.forEach(p => {
+    const btn = document.getElementById(`pf-${p.key}`);
+    if (!btn) return;
+    btn.style.background = p.key === key ? 'var(--accent)' : 'var(--bg3)';
+    btn.style.color = p.key === key ? '#fff' : 'var(--muted)';
+    btn.style.borderColor = p.key === key ? 'var(--accent)' : 'var(--border)';
+  });
+  await renderGainChart(key);
+}
+
+async function renderGainChart(periodKey) {
+  const period = PERIODS.find(p => p.key === periodKey) || PERIODS[PERIODS.length-1];
+  let labels, data, colors;
+
+  if (!period.days) {
+    // ALL-TIME: use gain_pct directly
+    labels = _latestPositions.map(p => p.display || p.ticker || '?');
+    data   = _latestPositions.map(p => +(p.gain_pct || 0).toFixed(2));
+    colors = data.map(v => v >= 0 ? 'rgba(34,197,94,.7)' : 'rgba(239,68,68,.7)');
+  } else {
+    // PERIOD: find snapshot closest to N days ago
+    const cutoff = new Date(Date.now() - period.days * 86400000);
+    // find the snapshot with created_at closest to cutoff (but before it, prefer earliest after if none before)
+    let baseSnap = null;
+    if (_allSnapshots && _allSnapshots.length) {
+      // snapshots sorted asc — find last one before cutoff
+      const before = _allSnapshots.filter(s => new Date(s.created_at) <= cutoff);
+      const after  = _allSnapshots.filter(s => new Date(s.created_at) > cutoff && s.id !== _latestSnap.id);
+      baseSnap = before.length ? before[before.length-1] : (after.length ? after[0] : null);
+    }
+
+    if (!baseSnap) {
+      // No historical data for this period — show message on chart
+      const ctx1 = document.getElementById('gain-bar').getContext('2d');
+      if (ctx1._chart) ctx1._chart.destroy();
+      ctx1._chart = null;
+      // Draw placeholder text via chart
+      const noDataChart = new Chart(ctx1, {
+        type:'bar', data:{ labels:['No data yet for this period'], datasets:[{ data:[0], backgroundColor:'transparent' }] },
+        options:{ plugins:{ legend:{display:false} }, scales:{ x:{ticks:{color:'#8892a4'}}, y:{display:false} }, responsive:true }
+      });
+      ctx1._chart = noDataChart;
+      return;
+    }
+
+    // Fetch base snapshot positions
+    const basePositions = await api('positions', `?snapshot_id=eq.${baseSnap.id}&select=ticker,display,current_price`).catch(()=>[]);
+    const baseMap = {};
+    basePositions.forEach(p => { baseMap[p.display || p.ticker] = p.current_price; });
+
+    // Compute period gain for each current position
+    const computed = _latestPositions.map(p => {
+      const sym = p.display || p.ticker || '?';
+      const basePrice = baseMap[sym];
+      const curPrice  = p.current_price;
+      const pctChange = (basePrice && curPrice) ? ((curPrice - basePrice) / basePrice * 100) : null;
+      return { sym, pctChange };
+    }).filter(p => p.pctChange !== null).sort((a,b) => b.pctChange - a.pctChange);
+
+    if (!computed.length) {
+      labels = ['No matching data']; data = [0]; colors = ['transparent'];
+    } else {
+      labels = computed.map(p => p.sym);
+      data   = computed.map(p => +p.pctChange.toFixed(2));
+      colors = data.map(v => v >= 0 ? 'rgba(34,197,94,.7)' : 'rgba(239,68,68,.7)');
+    }
+  }
 
   const ctx1 = document.getElementById('gain-bar').getContext('2d');
   if (ctx1._chart) ctx1._chart.destroy();
   ctx1._chart = new Chart(ctx1, {
     type: 'bar',
     data: {
-      labels: positions.map(p => p.ticker || p.display || '?'),
+      labels,
       datasets: [{
-        data: positions.map(p => +(p.gain_pct || 0).toFixed(2)),
-        backgroundColor: positions.map(p => (p.gain_pct||0) >= 0 ? 'rgba(34,197,94,.7)' : 'rgba(239,68,68,.7)'),
+        data,
+        backgroundColor: colors,
         borderRadius: 3,
       }]
     },
-    options: { plugins:{legend:{display:false}}, scales:{ x:{ticks:{color:'#8892a4',font:{size:9}},grid:{color:'#2d3353'}}, y:{ticks:{color:'#8892a4'},grid:{color:'#2d3353'}} }, responsive:true }
+    options: {
+      plugins:{ legend:{display:false} },
+      scales:{
+        x:{ ticks:{color:'#8892a4',font:{size:9}}, grid:{color:'#2d3353'} },
+        y:{ ticks:{color:'#8892a4', callback: v => v+'%'}, grid:{color:'#2d3353'} }
+      },
+      responsive:true
+    }
   });
+}
 
+function renderPieChart(positions) {
   const pieMap = {};
   positions.forEach(p => {
     const pie = p.pie || 'Solo';
@@ -130,7 +247,6 @@ async function loadSectorMap() {
 
   const snap = (await api('portfolio_snapshots','?select=*&order=created_at.desc&limit=1'))[0];
   if (!snap) { el.innerHTML = '<div style="color:var(--muted)">No snapshot yet</div>'; return; }
-  // reuse cached positions fetch (same params as loadOverviewCharts)
   const positions = await api('positions', `?snapshot_id=eq.${snap.id}&select=*&order=gain_pct.desc`);
 
   const seen = new Set();
@@ -213,7 +329,6 @@ async function loadCountryMap() {
     return;
   }
 
-  // ETF → country exposure: flag, country name, approximate weight %
   const ETF_COUNTRY_MAP = {
     'QDVEd':  { label:'US Tech ETF',      countries:[
       { flag:'🇺🇸', name:'USA',         pct:100, note:'AAPL·NVDA·MSFT·GOOGL·AMZN' },
@@ -266,16 +381,14 @@ async function loadCountryMap() {
   if (!snap) { el.innerHTML = '<div style="color:var(--muted)">No snapshot yet</div>'; return; }
   const positions = await api('positions', `?snapshot_id=eq.${snap.id}&select=*&order=gain_pct.desc`);
 
-  // Build map of ticker → position data
   const posMap = {};
   positions.forEach(p => { posMap[p.display || p.ticker] = p; });
 
-  // Aggregate country exposure across all ETFs held
-  const countryAgg = {}; // countryName → { flag, etfs:[], totalPct, weightedGain, gainCount }
+  const countryAgg = {};
 
   for (const [etfTicker, etfDef] of Object.entries(ETF_COUNTRY_MAP)) {
     const pos = posMap[etfTicker];
-    if (!pos) continue; // not in portfolio
+    if (!pos) continue;
     const gainPct = pos.gain_pct != null ? +pos.gain_pct : null;
 
     for (const c of etfDef.countries) {
@@ -288,7 +401,6 @@ async function loadCountryMap() {
     }
   }
 
-  // Sort countries by weighted gain desc
   const sorted = Object.entries(countryAgg).sort(([,a],[,b]) => {
     const ag = a.gainCount ? a.gainSum / a.gainCount : -999;
     const bg = b.gainCount ? b.gainSum / b.gainCount : -999;
