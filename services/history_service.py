@@ -41,7 +41,7 @@ def t212_get(path, params=None):
 def sb_upsert(table, rows, conflict_col):
     if not rows:
         return
-    url = f"{SUPABASE_URL}/rest/v1/{table}"
+    url = f"{SUPABASE_URL}/rest/v1/{table}?on_conflict={conflict_col}"
     req = urllib.request.Request(
         url,
         data=json.dumps(rows).encode(),
