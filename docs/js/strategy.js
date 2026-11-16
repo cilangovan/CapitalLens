@@ -567,13 +567,15 @@ async function loadStrategy() {
     const recs = s.recommendations || [];
     const notes = s.notes || [];
     const onTrack = s.on_track;
-    const weekNames = {1:'Core',2:'Growth',3:'Dip Buy',4:'Concentrate'};
+    const mood = s.market_mood || {};
+    const moodIcon = ['😎','🙂','😨','😱'][mood.level ?? 1];
+    const annTxt = s.annualised_return == null ? '—' : fmt(s.annualised_return)+'%';
     stratHtml = `
       <div class="stats-strip" style="margin-bottom:16px">
-        <div class="stat-card"><div class="label">Week</div><div class="value">${s.week_number} of 4</div><div class="sub">${weekNames[s.week_number]||''}</div></div>
-        <div class="stat-card"><div class="label">Suggested</div><div class="value green">£${s.total_suggested}</div></div>
-        <div class="stat-card"><div class="label">Annualised</div><div class="value ${clr(s.annualised_return)}">${fmt(s.annualised_return)}%</div></div>
-        <div class="stat-card"><div class="label">On Track?</div><div class="value ${onTrack?'green':'red'}">${onTrack?'✓ Yes':'✗ No'}</div><div class="sub">Target: 15%</div></div>
+        <div class="stat-card"><div class="label">Week</div><div class="value">${s.week_number} of ${s.weeks_in_month||4}</div><div class="sub">Aggressive</div></div>
+        <div class="stat-card"><div class="label">This week</div><div class="value green">£${s.total_suggested}</div><div class="sub">of £300/month</div></div>
+        <div class="stat-card"><div class="label">Market mood</div><div class="value">${moodIcon} ${mood.label||'—'}</div><div class="sub">VIX ${mood.vix ?? '—'}</div></div>
+        <div class="stat-card"><div class="label">Annualised</div><div class="value ${s.annualised_return==null?'':clr(s.annualised_return)}">${annTxt}</div><div class="sub">${onTrack==null?'Building history':onTrack?'✓ Above 10% base':'✗ Below 10% base'} · stretch 15%</div></div>
       </div>
       <div class="card"><h3>Recommendations</h3>
         ${recs.map(r=>`<div class="rec-card priority-${r.priority||'LOW'}">

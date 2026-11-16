@@ -169,7 +169,7 @@ def run():
         sell_pct_a = float(analyst.get("sell_pct") or 0)
 
         # ── DIP ALERT ──────────────────────────────────────────
-        if dip_from_high <= -DIP_THRESHOLD:
+        if dip_from_high >= DIP_THRESHOLD:
             key = f"dip:{ticker}:{datetime.now(timezone.utc).date()}"
             if key not in seen_keys:
                 title = f"⬇️ Dip Alert: {display}"
@@ -179,7 +179,7 @@ def run():
                 alerts_fired += 1
 
         # ── BUY SIGNAL (dip + strong analyst backing) ──────────
-        if (dip_from_high <= -BUY_DIP_MIN
+        if (dip_from_high >= BUY_DIP_MIN
                 and star >= BUY_STAR_MIN
                 and buy_pct >= BUY_BUY_PCT_MIN):
             key = f"buy:{ticker}:{datetime.now(timezone.utc).date()}"

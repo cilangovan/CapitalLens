@@ -1,40 +1,57 @@
 #!/usr/bin/env python3
 """
-Strategy Service — 4-week rolling top-up recommendation engine.
-Reads analyst_ratings + portfolio_snapshots from Supabase.
-Writes strategy_recommendations.
-Target: 15% annual return. Monthly budget: £200–£300 (£30/pie default).
+Strategy Service — AGGRESSIVE weekly allocator.
+
+Each week it splits (monthly max budget ÷ Mondays in the month) across the live pies,
+weighted by:
+  1. Pie quality      — average star rating from analyst_ratings (analysts for stocks,
+                        aggressive trend rating for ETFs)
+  2. Dip size         — average drawdown from the 52-week high (buy quality dips)
+  3. Market mood      — VIX level, S&P 500 drawdown, and news-headline sentiment.
+                        Aggressive stance: fear → lean harder into quality dips;
+                        greed → avoid chasing stretched pies.
+  4. Growth pace      — portfolio annualised return vs 10% base / 15% stretch target.
+                        Behind base → tilt to fastest-growing pies.
+
+Reads:  analyst_ratings, portfolio_snapshots (+ raw.pies), positions, returns_summary
+Writes: strategy_recommendations (single latest row)
 """
 
 import os
 import json
-import math
+import calendar
 import urllib.request
 import urllib.error
 from datetime import datetime, timezone, date
 
+try:
+    import yfinance as yf
+except ImportError:
+    yf = None
+
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_KEY"]
 
-MONTHLY_BUDGET_MIN = 200
-MONTHLY_BUDGET_MAX = 300
-PER_PIE = 30
-TARGET_ANNUAL = 15.0
+# ── Settings ──────────────────────────────────────────────────────────────────
+MONTHLY_BUDGET_MAX = 300          # £ deployed per month, split evenly across Mondays
+TARGET_BASE        = 10.0         # % a year — the realistic baseline
+TARGET_STRETCH     = 15.0         # % a year — optimistic goal
+MIN_ALLOC          = 5            # £ — skip anything smaller and redistribute
+MAX_PIE_SHARE      = 0.35         # no pie gets more than 35% of a week
+TIER_1             = ["Magnificent 7", "Wider ETF", "Global ETF"]   # always-on core
+TIER_1_FLOOR       = 8            # £ minimum each core pie gets every week
+GROWTH_PIES        = ["Magnificent 7", "Semiconductor"]             # tilted up when behind pace
 
-# Tier classification
-TIER_1 = ["Magnificent 7", "Wider ETF", "Global ETF"]          # always top up
-TIER_2 = ["Semiconductor", "Atomic Resources", "Space x allied", "EM markets", "Country Etf"]  # conditional
-HOLD   = ["UK Gold & Silver"]                                    # no new money
+STAR_WEIGHT = {1: 0.0, 2: 0.5, 3: 1.5, 4: 2.5, 5: 3.5}
 
-# Week pattern (1-indexed, rolling)
-WEEK_FOCUS = {
-    1: "Core",
-    2: "Growth",
-    3: "Dip",
-    4: "Concentrate",
-}
+NEG_WORDS = ["crash", "selloff", "sell-off", "plunge", "tumble", "slump", "rout", "fear",
+             "recession", "war", "tariff", "downgrade", "panic", "sinks", "slides", "losses",
+             "bear", "volatility", "crisis", "default", "layoffs", "inflation surge"]
+POS_WORDS = ["rally", "record high", "surge", "soar", "gains", "rebound", "beat", "jumps",
+             "bull", "optimism", "upgrade", "rate cut", "climbs", "strong earnings"]
 
 
+# ── Supabase ──────────────────────────────────────────────────────────────────
 def supabase_request(method, path, data=None):
     url = f"{SUPABASE_URL}/rest/v1/{path}"
     headers = {
@@ -57,239 +74,262 @@ def supabase_request(method, path, data=None):
 
 
 def get_analyst_ratings():
-    """Fetch latest analyst ratings grouped by pie."""
-    rows = supabase_request("GET", "analyst_ratings?select=ticker,pie,recommendation,star_rating,buy_pct,target_mean") or []
+    rows = supabase_request("GET", "analyst_ratings?select=ticker,yahoo_ticker,pie,star_rating,buy_pct") or []
     by_pie = {}
     for r in rows:
-        pie = (r.get("pie") or "Solo").strip()
-        if pie not in by_pie:
-            by_pie[pie] = []
-        by_pie[pie].append(r)
+        by_pie.setdefault((r.get("pie") or "Solo").strip(), []).append(r)
     return by_pie
 
 
-def get_latest_snapshot():
-    """Fetch most recent portfolio snapshot."""
-    rows = supabase_request("GET", "portfolio_snapshots?select=*&order=created_at.desc&limit=1") or []
-    return rows[0] if rows else {}
-
-
-def get_latest_positions():
-    """Fetch positions from most recent snapshot."""
-    snap = get_latest_snapshot()
-    if not snap:
+def get_live_pies():
+    rows = supabase_request("GET", "portfolio_snapshots?select=raw&order=id.desc&limit=1") or []
+    if not rows:
         return []
-    snap_id = snap.get("id")
-    rows = supabase_request("GET", f"positions?snapshot_id=eq.{snap_id}&select=*") or []
-    return rows
+    pies = (rows[0].get("raw") or {}).get("pies") or []
+    return [p["name"].strip() for p in pies if p.get("name")]
 
 
 def get_returns():
-    """Fetch returns summary."""
     rows = supabase_request("GET", "returns_summary?select=*&limit=1") or []
     return rows[0] if rows else {}
 
 
-def week_number_of_year():
-    """Return ISO week number."""
-    return date.today().isocalendar()[1]
+# ── Calendar ──────────────────────────────────────────────────────────────────
+def mondays_in_month(d):
+    return sum(1 for wk in calendar.monthcalendar(d.year, d.month) if wk[calendar.MONDAY])
 
 
-def rolling_week():
-    """1-4 rolling week based on ISO week number."""
-    return (week_number_of_year() % 4) or 4
+def week_of_month(d):
+    return sum(1 for day in range(1, d.day + 1) if date(d.year, d.month, day).weekday() == 0) or 1
 
 
-def pie_avg_star(analyst_by_pie, pie_name):
-    """Average star rating for a pie."""
-    tickers = analyst_by_pie.get(pie_name, [])
-    if not tickers:
-        return 0.0
-    stars = [t.get("star_rating", 0) or 0 for t in tickers]
-    return round(sum(stars) / len(stars), 1)
+# ── Market data ───────────────────────────────────────────────────────────────
+def closes(symbol, period="1y"):
+    if not yf:
+        return []
+    try:
+        h = yf.Ticker(symbol).history(period=period, interval="1d")
+        return [float(c) for c in h["Close"].dropna().tolist()]
+    except Exception as e:
+        print(f"  history error {symbol}: {e}")
+        return []
 
 
-def pie_avg_buy_pct(analyst_by_pie, pie_name):
-    """Average buy% for a pie."""
-    tickers = analyst_by_pie.get(pie_name, [])
-    if not tickers:
-        return 0.0
-    buys = [t.get("buy_pct", 0) or 0 for t in tickers]
-    return round(sum(buys) / len(buys), 1)
+def ticker_stats(symbol):
+    """Drawdown from 52w high (%, positive) and annualised 6-month trend (%)."""
+    c = closes(symbol)
+    if len(c) < 60:
+        return None
+    dd = (max(c) - c[-1]) / max(c) * 100
+    base = c[-126] if len(c) >= 126 else c[0]
+    ret_6m = (c[-1] / base - 1) * 100
+    ann = ((1 + ret_6m / 100) ** 2 - 1) * 100
+    return {"dd": dd, "ann": ann}
 
 
-def has_dip(positions, pie_name):
-    """Check if any position in pie has dip_from_high <= -8%."""
-    for p in positions:
-        if (p.get("pie") or "").strip() == pie_name:
-            dip = p.get("dip_from_high", 0) or 0
-            if dip <= -8.0:
-                return True, dip
-    return False, 0
+def headline_sentiment():
+    if not yf:
+        return 0, 0
+    titles = []
+    for sym in ("^GSPC", "SPY", "QQQ"):
+        try:
+            for n in (yf.Ticker(sym).news or [])[:15]:
+                t = n.get("title") or (n.get("content") or {}).get("title") or ""
+                if t:
+                    titles.append(t.lower())
+        except Exception:
+            pass
+    titles = list(dict.fromkeys(titles))
+    neg = sum(any(w in t for w in NEG_WORDS) for t in titles)
+    pos = sum(any(w in t for w in POS_WORDS) for t in titles)
+    return pos - neg, len(titles)
 
 
-def best_pie_by_analyst(analyst_by_pie):
-    """Return pie name with highest avg star rating (excluding HOLD pies)."""
-    best_pie = None
-    best_star = 0
-    for pie in TIER_1 + TIER_2:
-        star = pie_avg_star(analyst_by_pie, pie)
-        if star > best_star:
-            best_star = star
-            best_pie = pie
-    return best_pie, best_star
+def market_mood():
+    vix_c = closes("^VIX", "1mo")
+    vix = vix_c[-1] if vix_c else None
+    spx = ticker_stats("^GSPC")
+    news_net, news_n = headline_sentiment()
+
+    level = 1  # 0 greed · 1 normal · 2 fear · 3 extreme fear
+    if vix is not None:
+        level = 0 if vix < 15 else 1 if vix < 20 else 2 if vix < 30 else 3
+    if spx and spx["dd"] >= 10:
+        level += 1
+    if news_n and news_net <= -3:
+        level += 1
+    if news_n and news_net >= 3 and level > 0:
+        level -= 1
+    level = max(0, min(3, level))
+    label = ["Greed / calm", "Normal", "Fear", "Extreme fear"][level]
+    return {
+        "level": level, "label": label,
+        "vix": round(vix, 1) if vix else None,
+        "spx_drawdown": round(spx["dd"], 1) if spx else None,
+        "news_net": news_net, "news_count": news_n,
+    }
 
 
-def build_recommendations(week, analyst_by_pie, positions, returns):
-    recs = []
-    notes = []
-    total = 0
-    ann_ret = returns.get("annualised_pct", 0) or 0
+# ── Allocation ────────────────────────────────────────────────────────────────
+def pie_profile(pie, ratings):
+    rows = ratings.get(pie, [])
+    stars = [r.get("star_rating") or 0 for r in rows]
+    stats = [s for s in (ticker_stats(r["yahoo_ticker"]) for r in rows if r.get("yahoo_ticker")) if s]
+    return {
+        "star": round(sum(stars) / len(stars), 1) if stars else None,
+        "dd":   round(sum(s["dd"] for s in stats) / len(stats), 1) if stats else 0.0,
+        "ann":  round(sum(s["ann"] for s in stats) / len(stats), 1) if stats else None,
+        "n":    len(rows),
+    }
 
-    if week == 1:
-        # Core — always Tier 1 pies £30 each
-        for pie in TIER_1:
-            star = pie_avg_star(analyst_by_pie, pie)
-            recs.append({
-                "pie": pie,
-                "amount": PER_PIE,
-                "reason": f"Core Tier 1 — always top up | ⭐{star}",
-                "priority": "HIGH",
-            })
-            total += PER_PIE
-        notes.append("Week 1: Core — Tier 1 pies unconditional top-up.")
 
-    elif week == 2:
-        # Growth — Tier 2 if analyst ⭐≥3.0 and buy%≥40%
-        notes.append("Week 2: Growth — Tier 2 pies conditional on analyst quality.")
-        for pie in TIER_2:
-            star = pie_avg_star(analyst_by_pie, pie)
-            buy_pct = pie_avg_buy_pct(analyst_by_pie, pie)
-            if star >= 3.0 and buy_pct >= 40.0:
-                recs.append({
-                    "pie": pie,
-                    "amount": PER_PIE,
-                    "reason": f"⭐{star} buy={buy_pct}% — qualifies for growth top-up",
-                    "priority": "MEDIUM",
-                })
-                total += PER_PIE
-            else:
-                notes.append(f"  ✗ {pie}: ⭐{star} buy={buy_pct}% — below threshold (skipped)")
+def star_weight(star):
+    lo = int(star)
+    hi = min(5, lo + 1)
+    frac = star - lo
+    return STAR_WEIGHT.get(lo, 0) * (1 - frac) + STAR_WEIGHT.get(hi, 0) * frac
 
-        if not recs:
-            # Fall back to Tier 1
-            for pie in TIER_1:
-                star = pie_avg_star(analyst_by_pie, pie)
-                recs.append({
-                    "pie": pie,
-                    "amount": PER_PIE,
-                    "reason": f"No Tier 2 qualifies — fallback to Tier 1 | ⭐{star}",
-                    "priority": "MEDIUM",
-                })
-                total += PER_PIE
-            notes.append("  Fallback: no Tier 2 pies qualified, using Tier 1.")
 
-    elif week == 3:
-        # Dip buying — any pie with confirmed -8% dip
-        notes.append("Week 3: Dip buying — looking for -8%+ dips.")
-        dip_found = False
-        for pie in TIER_1 + TIER_2:
-            dipped, worst_dip = has_dip(positions, pie)
-            if dipped:
-                recs.append({
-                    "pie": pie,
-                    "amount": PER_PIE,
-                    "reason": f"Dip confirmed {worst_dip:.1f}% from high — buy opportunity",
-                    "priority": "HIGH",
-                })
-                total += PER_PIE
-                dip_found = True
-
-        if not dip_found:
-            notes.append("  No dips detected. Defaulting to Tier 1 core top-up.")
-            for pie in TIER_1:
-                star = pie_avg_star(analyst_by_pie, pie)
-                recs.append({
-                    "pie": pie,
-                    "amount": PER_PIE,
-                    "reason": f"No dips this week — Tier 1 default | ⭐{star}",
-                    "priority": "LOW",
-                })
-                total += PER_PIE
-
-    elif week == 4:
-        # Concentrate — double up on best-rated pie
-        best_pie, best_star = best_pie_by_analyst(analyst_by_pie)
-        notes.append(f"Week 4: Concentrate — double up on {best_pie} (⭐{best_star}).")
-        if best_pie:
-            recs.append({
-                "pie": best_pie,
-                "amount": PER_PIE * 2,
-                "reason": f"Week 4 concentrate — best analyst rating ⭐{best_star}",
-                "priority": "HIGH",
-            })
-            total += PER_PIE * 2
-        # Also Tier 1 cores
-        for pie in TIER_1:
-            if pie != best_pie:
-                star = pie_avg_star(analyst_by_pie, pie)
-                recs.append({
-                    "pie": pie,
-                    "amount": PER_PIE,
-                    "reason": f"Tier 1 always-on | ⭐{star}",
-                    "priority": "MEDIUM",
-                })
-                total += PER_PIE
-
-    # Pace check
-    on_track = ann_ret >= (TARGET_ANNUAL * 0.5)  # at least half target = OK
-    if ann_ret < TARGET_ANNUAL * 0.5:
-        notes.append(f"⚠️ Growth lag: annualised {ann_ret:.1f}% vs target {TARGET_ANNUAL}%")
-    elif ann_ret >= TARGET_ANNUAL:
-        notes.append(f"✅ On track: annualised {ann_ret:.1f}% ≥ {TARGET_ANNUAL}% target")
+def weigh(pie, prof, mood, ann_ret):
+    why = []
+    if prof["star"] is None:
+        w = STAR_WEIGHT[3]
+        why.append("new pie — seed funding")
+        star = 3.0
     else:
-        notes.append(f"📈 Progress: annualised {ann_ret:.1f}% (target {TARGET_ANNUAL}%)")
+        star = prof["star"]
+        w = star_weight(star)
+        why.append(f"⭐{star}")
+    if w == 0:
+        return 0.0, why + ["weak trend — no new money"]
 
-    return recs, notes, total, on_track
+    dd, lvl = prof["dd"], mood["level"]
+    if star >= 3 and dd >= 4:
+        dip_mult = 1.8 if dd >= 15 else 1.4 if dd >= 8 else 1.15
+        if lvl >= 2:
+            dip_mult += 0.3                       # fear → buy quality dips harder
+        w *= dip_mult
+        why.append(f"{dd:.0f}% off high ×{dip_mult:.2f}")
+
+    if lvl >= 2:
+        if pie in TIER_1:
+            w *= 1.2; why.append("fear → core boost")
+        elif star < 3:
+            w *= 0.5; why.append("fear → trim weak")
+    elif lvl == 0 and dd < 2 and (prof["ann"] or 0) > 30:
+        w *= 0.8; why.append("greed → don't chase")
+
+    if ann_ret is not None and ann_ret < TARGET_BASE and pie in GROWTH_PIES:
+        w *= 1.25; why.append(f"behind {TARGET_BASE:.0f}% → growth tilt")
+
+    if prof["ann"] is not None:
+        tag = "≥15%" if prof["ann"] >= TARGET_STRETCH else "≥10%" if prof["ann"] >= TARGET_BASE else "<10%"
+        why.append(f"trend {prof['ann']:+.0f}%/yr ({tag})")
+    return w, why
+
+
+def allocate(weekly, weights):
+    total_w = sum(weights.values())
+    if total_w <= 0:
+        return {}
+    alloc = {p: weekly * w / total_w for p, w in weights.items() if w > 0}
+    for _ in range(5):  # cap, floor, and minimum passes
+        cap = weekly * MAX_PIE_SHARE
+        over = {p: a - cap for p, a in alloc.items() if a > cap}
+        for p in over:
+            alloc[p] = cap
+        for p in TIER_1:
+            if p in alloc and alloc[p] < TIER_1_FLOOR:
+                alloc[p] = TIER_1_FLOOR
+        alloc = {p: a for p, a in alloc.items() if a >= MIN_ALLOC or p in TIER_1}
+        spare = weekly - sum(alloc.values())
+        free = {p: weights[p] for p, a in alloc.items() if a < cap}
+        fw = sum(free.values())
+        if abs(spare) < 0.5 or fw <= 0:
+            break
+        for p, w in free.items():
+            alloc[p] += spare * w / fw
+    rounded = {p: int(round(a)) for p, a in alloc.items()}
+    diff = int(round(weekly)) - sum(rounded.values())
+    if rounded and diff:
+        top = max(rounded, key=lambda p: weights[p])
+        rounded[top] += diff
+    return {p: a for p, a in rounded.items() if a > 0}
 
 
 def run():
-    print(f"[strategy_service] Starting at {datetime.now(timezone.utc).isoformat()}")
+    print(f"[strategy_service] Aggressive allocator — {datetime.now(timezone.utc).isoformat()}")
+    today = date.today()
+    weeks = mondays_in_month(today)
+    week = week_of_month(today)
+    weekly = MONTHLY_BUDGET_MAX / weeks
+    print(f"  Budget £{MONTHLY_BUDGET_MAX}/month ÷ {weeks} Mondays = £{weekly:.2f} this week (week {week})")
 
-    analyst_by_pie = get_analyst_ratings()
-    print(f"  Analyst data: {sum(len(v) for v in analyst_by_pie.values())} tickers across {len(analyst_by_pie)} pies")
-
-    positions = get_latest_positions()
-    print(f"  Positions: {len(positions)}")
-
+    ratings = get_analyst_ratings()
+    pies = get_live_pies() or list(ratings.keys())
     returns = get_returns()
-    ann_ret = returns.get("annualised_pct", 0)
-    print(f"  Returns: annualised={ann_ret}%")
+    raw_ann = returns.get("annualised_pct")
+    ann_ret = float(raw_ann) if raw_ann not in (None, "", 0, "0", "0.0") else None  # None = not enough history yet
+    mood = market_mood()
+    print(f"  Mood: {mood}")
+    print(f"  Portfolio annualised: {ann_ret}%")
 
-    week = rolling_week()
-    focus = WEEK_FOCUS[week]
-    print(f"  Week {week} of 4 — {focus}")
+    weights, reasons, profiles = {}, {}, {}
+    for pie in pies:
+        prof = pie_profile(pie, ratings)
+        w, why = weigh(pie, prof, mood, ann_ret)
+        weights[pie], reasons[pie], profiles[pie] = w, why, prof
+        print(f"  {pie:<18} w={w:.2f}  {' | '.join(why)}")
 
-    recs, notes, total, on_track = build_recommendations(week, analyst_by_pie, positions, returns)
+    alloc = allocate(weekly, weights)
+    recs = []
+    for pie, amt in sorted(alloc.items(), key=lambda x: -x[1]):
+        share = amt / weekly
+        recs.append({
+            "pie": pie,
+            "amount": amt,
+            "reason": " · ".join(reasons[pie]),
+            "priority": "HIGH" if share >= 0.25 else "MEDIUM" if share >= 0.12 else "LOW",
+        })
+    skipped = [p for p in pies if p not in alloc]
+
+    notes = [
+        f"Aggressive mode · £{MONTHLY_BUDGET_MAX}/month → £{weekly:.0f} this week (week {week} of {weeks})",
+        f"Market mood: {mood['label']} — VIX {mood['vix']}, S&P {mood['spx_drawdown']}% off high, "
+        f"news {mood['news_net']:+d} across {mood['news_count']} headlines",
+    ]
+    if mood["level"] >= 2:
+        notes.append("😨 Fear in the market — leaning into quality dips and core pies.")
+    elif mood["level"] == 0:
+        notes.append("😎 Calm/greedy market — favouring pies off their highs over stretched ones.")
+    if ann_ret is None:
+        notes.append(f"ℹ️ Not enough history for an annualised return yet — pace tilt off until it builds up (targets {TARGET_BASE:.0f}% base / {TARGET_STRETCH:.0f}% stretch).")
+    elif ann_ret < TARGET_BASE:
+        notes.append(f"⚠️ Annualised {ann_ret:.1f}% is below the {TARGET_BASE:.0f}% base — tilting to growth pies.")
+    elif ann_ret < TARGET_STRETCH:
+        notes.append(f"📈 Annualised {ann_ret:.1f}% — above {TARGET_BASE:.0f}% base, chasing {TARGET_STRETCH:.0f}% stretch.")
+    else:
+        notes.append(f"✅ Annualised {ann_ret:.1f}% — at or above the {TARGET_STRETCH:.0f}% stretch target.")
+    if skipped:
+        notes.append("No money this week: " + ", ".join(f"{p} ({' · '.join(reasons[p][-1:])})" for p in skipped))
 
     row = {
         "week_number": week,
-        "total_suggested": total,
-        "on_track": on_track,
+        "total_suggested": sum(alloc.values()),
+        "on_track": (ann_ret >= TARGET_BASE) if ann_ret is not None else None,
         "annualised_return": ann_ret,
         "recommendations": recs,
         "notes": notes,
+        "weeks_in_month": weeks,
+        "weekly_budget": round(weekly, 2),
+        "market_mood": mood,
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
-
-    # Delete old + insert fresh
     supabase_request("DELETE", "strategy_recommendations?id=gt.0")
-    result = supabase_request("POST", "strategy_recommendations", row)
-    if result is not None:
-        print(f"  ✓ strategy_recommendations saved (week={week}, total=£{total})")
+    if supabase_request("POST", "strategy_recommendations", row) is not None:
+        print(f"  ✓ saved — £{row['total_suggested']} across {len(recs)} pies")
     else:
         print("  ✗ failed to save strategy_recommendations")
-
     print("[strategy_service] Done.")
 
 
