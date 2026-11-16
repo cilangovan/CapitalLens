@@ -40,7 +40,10 @@ async function loadOverview() {
   document.getElementById('active-alerts').innerHTML = alertsHtml;
 
   await loadOverviewCharts();
-  loadSectorMap();
+  loadSectorMap().catch(e => {
+    const el = document.getElementById('sector-map');
+    if (el) el.innerHTML = `<div style="color:var(--red);font-size:12px">Sector map error: ${e.message}</div>`;
+  });
 }
 
 async function loadOverviewCharts() {
@@ -123,7 +126,8 @@ async function loadSectorMap() {
 
   const snap = (await api('portfolio_snapshots','?select=*&order=created_at.desc&limit=1'))[0];
   if (!snap) { el.innerHTML = '<div style="color:var(--muted)">No snapshot yet</div>'; return; }
-  const positions = await api('positions', `?snapshot_id=eq.${snap.id}&select=ticker,display,pie,exchange,gain_pct,current_price,quantity`);
+  // reuse cached positions fetch (same params as loadOverviewCharts)
+  const positions = await api('positions', `?snapshot_id=eq.${snap.id}&select=*&order=gain_pct.desc`);
 
   const seen = new Set();
   const pos = positions.filter(p => { if(seen.has(p.ticker)) return false; seen.add(p.ticker); return true; });
