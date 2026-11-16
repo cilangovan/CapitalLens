@@ -11,6 +11,8 @@ import os, json, time, smtplib, urllib.request, urllib.error, base64
 from datetime import datetime, timezone
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
+import html as _html
+from services.alert_format import Section, render_text, render_push, friendly, pct, money, day_month
 
 # Load .env for local dev (ignored in GitHub Actions where secrets are set directly)
 try:
@@ -93,6 +95,7 @@ def save_snapshot_to_supabase(summary, pies, alerts, account, state):
             "pies":    pies,
             "account": acc,
             "highs":   state.get("highs", {}),
+            "instrument_meta": state.get("held_meta", {}),
         }
     })
 
@@ -124,6 +127,7 @@ def save_snapshot_to_supabase(summary, pies, alerts, account, state):
     if alerts:
         alert_rows = [{
             "type":   a["type"],
+            "alert_type": a["type"],
             "ticker": a.get("ticker", ""),
             "title":  a["title"],
             "body":   a["body"],
@@ -196,6 +200,28 @@ def fetch_account():
 
 def fetch_positions():
     d = t212_get("/api/v0/equity/portfolio"); rl(); return d or []
+
+def fetch_instrument_meta(state, held):
+    """Currency + name per held ticker (T212 metadata, cached 7 days in state)."""
+    cache = state.get("instrument_meta_cache") or {}
+    fresh = time.time() - cache.get("ts", 0) < 7 * 86400
+    missing = [t for t in held if t not in cache.get("data", {})]
+    if not fresh or missing:
+        rows = t212_get("/api/v0/equity/metadata/instruments", retries=3, base_wait=55); rl(5)
+        if rows:
+            cache = {"ts": time.time(), "data": {
+                r["ticker"]: {"ccy": r.get("currencyCode"), "name": r.get("shortName") or r.get("name")}
+                for r in rows if r.get("ticker")}}
+            state["instrument_meta_cache"] = cache
+            print(f"[fetch] instrument metadata: {len(cache['data'])} instruments")
+    data = cache.get("data", {})
+    state["held_meta"] = {t: data[t] for t in held if t in data}
+    return state["held_meta"]
+
+def unit_price(price, ccy):
+    """T212 quotes some LSE lines in pence (GBX). Returns (value, currency)."""
+    if ccy in ("GBX", "GBp"): return price / 100, "GBP"
+    return price, (ccy or "GBP")
 
 def fetch_pies_with_instruments():
     raw = t212_get("/api/v0/equity/pies"); rl(5)
@@ -289,8 +315,29 @@ def resolve_exchange(ticker):
 
 # ── Analysis ──────────────────────────────────────────────────────────────────
 
+def _price_section(title, ticker, meta, cur, avg, high, gain_pct, dip, pie_name, exchange, note):
+    m = meta.get(ticker) or {}
+    ccy = m.get("ccy")
+    s = Section(title)
+    if ccy:
+        c, u = unit_price(cur, ccy); h, _ = unit_price(high, ccy); a, _ = unit_price(avg, ccy)
+        rows = [(f"Live {u} price", money(c, u)), ("Tracked high", money(h, u)),
+                ("Drawdown from tracked high", pct(-dip)), ("Your average cost", money(a, u)),
+                ("Gain vs your average cost", pct(gain_pct))]
+    else:
+        rows = [("Drawdown from tracked high", pct(-dip)), ("Gain vs your average cost", pct(gain_pct))]
+    s.table("Measure", "Result", rows + [("Pie", pie_name), ("Exchange", exchange)])
+    now = datetime.now(timezone.utc)
+    src = f"Source: Trading 212 live quote, {day_month(now)} {now.strftime('%H:%M')} UTC."
+    if not ccy:
+        src += " Quote currency not verified, so prices are not shown."
+    s.line(src)
+    s.line(f"Review flag: {note}")
+    return s
+
 def analyse(positions, pies, pie_map, state):
     alerts, summary = [], []
+    meta = state.get("held_meta", {})
     for pos in positions:
         ticker = pos.get("ticker","UNKNOWN")
         avg    = float(pos.get("averagePrice",0))
@@ -303,37 +350,39 @@ def analyse(positions, pies, pie_map, state):
         pie_name      = resolve_pie(ticker, pie_map)
         exchange      = resolve_exchange(ticker)
         display       = ticker.split("_")[0]
+        label         = friendly(ticker, (meta.get(ticker) or {}).get("name"))
         summary.append({"ticker":ticker,"display":display,"current":cur,"avg":avg,
             "qty":float(pos.get("quantity",0) or 0),
             "gain_pct":round(gain_pct,2),"dip_from_high":round(dip_from_high,2),
             "ppl":round(ppl,2),"pie":pie_name,"exchange":exchange})
-        if dip_from_high >= DIP_FROM_HIGH_PCT:
+        args = (ticker, meta, cur, avg, high, gain_pct, dip_from_high, pie_name, exchange)
+        if dip_from_high >= BUY_SIGNAL_PCT:
+            key = f"buy_{ticker}"
+            if not cooldown(state, key, 6):
+                sec = _price_section(f"{label} — deep-dip threshold crossed", *args,
+                    note="Check the daily report for its weight vs target first. "
+                         "A large fall does not automatically make it a good entry.")
+                alerts.append({"type":"buy","ticker":display,"key":key,"priority":"high",
+                    "title":f"🔴 {label} — down {dip_from_high:.1f}% from tracked high",
+                    "body":render_text([sec]), "push":render_push([sec])})
+        elif dip_from_high >= DIP_FROM_HIGH_PCT:
             key = f"dip_{ticker}"
             if not cooldown(state, key, 6):
-                sev = "🔴 STRONG DIP" if dip_from_high >= BUY_SIGNAL_PCT else "🟡 DIP"
-                alerts.append({"type":"dip","ticker":display,"key":key,
-                    "priority":"high" if dip_from_high>=BUY_SIGNAL_PCT else "default",
-                    "title":f"{sev} — {display} [{exchange}]",
-                    "body":f"Down {dip_from_high:.1f}% from high · £{cur:.2f} now · avg £{avg:.2f} · {pie_name} · {exchange}"})
-            if dip_from_high >= BUY_SIGNAL_PCT:
-                key2 = f"buy_{ticker}"
-                if not cooldown(state, key2, 6):
-                    alerts.append({"type":"buy","ticker":display,"key":key2,"priority":"high",
-                        "title":f"💡 BUY — {display} [{exchange}]",
-                        "body":f"{dip_from_high:.1f}% dip · entry at £{cur:.2f} · {pie_name} · {exchange}"})
+                sec = _price_section(f"{label} — dip threshold crossed", *args,
+                    note="Watch only for now; review the news and analyst view before adding.")
+                alerts.append({"type":"dip","ticker":display,"key":key,"priority":"default",
+                    "title":f"🟡 {label} — down {dip_from_high:.1f}% from tracked high",
+                    "body":render_text([sec]), "push":render_push([sec])})
         if gain_pct >= TRIM_GAIN_PCT:
             key = f"trim_{ticker}"
             if not cooldown(state, key, 24):
+                sec = _price_section(f"{label} — profit target crossed", *args,
+                    note=f"Up {gain_pct:.1f}% on your average cost. Consider booking part of the profit "
+                         f"(see the Profit Booking tab).")
                 alerts.append({"type":"trim","ticker":display,"key":key,"priority":"default",
-                    "title":f"💰 TRIM — {display} [{exchange}]",
-                    "body":f"Up {gain_pct:.1f}% · £{avg:.2f} → £{cur:.2f} · consider partial sell · {pie_name} · {exchange}"})
-    for pie in pies:
-        if pie["drifts"]:
-            key = f"rebalance_{pie['name']}"
-            if not cooldown(state, key, 12):
-                alerts.append({"type":"rebalance","ticker":pie["name"],"key":key,"priority":"default",
-                    "title":f"⚖️ REBALANCE — {pie['name']}",
-                    "body":f"Drift: {', '.join(pie['drifts'])}. Rebalance in Trading 212."})
+                    "title":f"💰 {label} — up {gain_pct:.1f}% on your cost",
+                    "body":render_text([sec]), "push":render_push([sec])})
+    # Weight vs target is reported once a day by services/alert_service (no intraday spam)
     return alerts, summary
 
 # ── Notifications ─────────────────────────────────────────────────────────────
@@ -393,7 +442,7 @@ def build_email(summary, pies, alerts, account):
     alerts_html = "".join(
         f'<div style="margin:6px 0;padding:10px 14px;background:#1a2744;border-left:3px solid #ffa502;border-radius:4px">'
         f'<strong style="color:#e8edf5">{a["title"]}</strong><br>'
-        f'<span style="font-size:12px;color:#6b85a8">{a["body"]}</span></div>' for a in alerts
+        f'<pre style="font-size:12px;color:#9fb3cf;white-space:pre-wrap;font-family:ui-monospace,Menlo,monospace;margin:6px 0 0">{_html.escape(a["body"])}</pre></div>' for a in alerts
     ) or '<div style="color:#4a6080;font-size:13px">No alerts — all within thresholds.</div>'
     return f"""<html><body style="background:#060a14;font-family:system-ui,sans-serif;max-width:820px;margin:0 auto;padding:20px;color:#e8edf5">
     <div style="background:#0d1526;border:1px solid #1a2744;border-radius:10px;padding:18px 22px;margin-bottom:20px">
@@ -421,6 +470,7 @@ def main():
         print("[warn] No positions returned"); return
 
     state = update_highs(state, positions)
+    fetch_instrument_meta(state, [p.get("ticker") for p in positions if p.get("ticker")])
     alerts, summary = analyse(positions, pies, pie_map, state)
 
     print(f"[done] {len(alerts)} alerts · {len(summary)} positions · {len(pies)} pies")
@@ -431,7 +481,7 @@ def main():
     # Fire ntfy alerts
     for a in alerts:
         if not cooldown(state, a["key"]):
-            send_ntfy(a["title"], a["body"], a.get("priority","default"))
+            send_ntfy(a["title"], a.get("push") or a["body"], a.get("priority","default"))
             mark(state, a["key"]); time.sleep(1)
 
     # Send email
