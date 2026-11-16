@@ -73,40 +73,27 @@ async function loadOverviewCharts() {
   _latestSnap = (await api('portfolio_snapshots','?select=*&order=created_at.desc&limit=1'))[0];
   if (!_latestSnap) return;
   _latestPositions = await api('positions', `?snapshot_id=eq.${_latestSnap.id}&select=*&order=gain_pct.desc`);
-
-  // Fetch all snapshots for period comparison (limit 500 to cover history)
   _allSnapshots = await api('portfolio_snapshots','?select=id,created_at&order=created_at.asc').catch(()=>[]);
 
-  // Inject period filter buttons above the gain-bar card h3
-  const gainCard = document.getElementById('gain-bar').closest('.card');
-  if (gainCard && !gainCard.querySelector('.period-filter')) {
-    const h3 = gainCard.querySelector('h3');
-    const filterHtml = `<div class="period-filter" style="display:flex;gap:4px;margin-bottom:10px;flex-wrap:wrap">
-      ${PERIODS.map(p => `<button onclick="setGainPeriod('${p.key}')" id="pf-${p.key}"
-        style="background:${p.key===_gainPeriod?'var(--accent)':'var(--bg3)'};color:${p.key===_gainPeriod?'#fff':'var(--muted)'};
-        border:1px solid ${p.key===_gainPeriod?'var(--accent)':'var(--border)'};
-        border-radius:5px;padding:3px 10px;font-size:11px;cursor:pointer;transition:all .15s"
-        onmouseover="this.style.opacity='.8'" onmouseout="this.style.opacity='1'"
-        >${p.label}</button>`).join('')}
-    </div>`;
-    if (h3) h3.insertAdjacentHTML('afterend', filterHtml);
-    else gainCard.insertAdjacentHTML('afterbegin', filterHtml);
-  }
-
-  await renderGainChart(_gainPeriod);
+  // set ALL active on load
+  setGainPeriodStyle('ALL');
+  await renderGainChart('ALL');
   renderPieChart(_latestPositions);
+}
+
+function setGainPeriodStyle(key) {
+  PERIODS.forEach(p => {
+    const btn = document.getElementById(`pf-${p.key}`);
+    if (!btn) return;
+    btn.style.background   = p.key === key ? 'var(--accent)' : 'var(--bg3)';
+    btn.style.color        = p.key === key ? '#fff' : 'var(--muted)';
+    btn.style.borderColor  = p.key === key ? 'var(--accent)' : 'var(--border)';
+  });
 }
 
 async function setGainPeriod(key) {
   _gainPeriod = key;
-  // Update button styles
-  PERIODS.forEach(p => {
-    const btn = document.getElementById(`pf-${p.key}`);
-    if (!btn) return;
-    btn.style.background = p.key === key ? 'var(--accent)' : 'var(--bg3)';
-    btn.style.color = p.key === key ? '#fff' : 'var(--muted)';
-    btn.style.borderColor = p.key === key ? 'var(--accent)' : 'var(--border)';
-  });
+  setGainPeriodStyle(key);
   await renderGainChart(key);
 }
 
@@ -115,56 +102,41 @@ async function renderGainChart(periodKey) {
   let labels, data, colors;
 
   if (!period.days) {
-    // ALL-TIME: use gain_pct directly
+    // ALL-TIME
     labels = _latestPositions.map(p => p.display || p.ticker || '?');
     data   = _latestPositions.map(p => +(p.gain_pct || 0).toFixed(2));
     colors = data.map(v => v >= 0 ? 'rgba(34,197,94,.7)' : 'rgba(239,68,68,.7)');
   } else {
-    // PERIOD: find snapshot closest to N days ago
     const cutoff = new Date(Date.now() - period.days * 86400000);
-    // find the snapshot with created_at closest to cutoff (but before it, prefer earliest after if none before)
     let baseSnap = null;
     if (_allSnapshots && _allSnapshots.length) {
-      // snapshots sorted asc — find last one before cutoff
       const before = _allSnapshots.filter(s => new Date(s.created_at) <= cutoff);
       const after  = _allSnapshots.filter(s => new Date(s.created_at) > cutoff && s.id !== _latestSnap.id);
       baseSnap = before.length ? before[before.length-1] : (after.length ? after[0] : null);
     }
 
     if (!baseSnap) {
-      // No historical data for this period — show message on chart
-      const ctx1 = document.getElementById('gain-bar').getContext('2d');
-      if (ctx1._chart) ctx1._chart.destroy();
-      ctx1._chart = null;
-      // Draw placeholder text via chart
-      const noDataChart = new Chart(ctx1, {
-        type:'bar', data:{ labels:['No data yet for this period'], datasets:[{ data:[0], backgroundColor:'transparent' }] },
-        options:{ plugins:{ legend:{display:false} }, scales:{ x:{ticks:{color:'#8892a4'}}, y:{display:false} }, responsive:true }
-      });
-      ctx1._chart = noDataChart;
-      return;
-    }
-
-    // Fetch base snapshot positions
-    const basePositions = await api('positions', `?snapshot_id=eq.${baseSnap.id}&select=ticker,display,current_price`).catch(()=>[]);
-    const baseMap = {};
-    basePositions.forEach(p => { baseMap[p.display || p.ticker] = p.current_price; });
-
-    // Compute period gain for each current position
-    const computed = _latestPositions.map(p => {
-      const sym = p.display || p.ticker || '?';
-      const basePrice = baseMap[sym];
-      const curPrice  = p.current_price;
-      const pctChange = (basePrice && curPrice) ? ((curPrice - basePrice) / basePrice * 100) : null;
-      return { sym, pctChange };
-    }).filter(p => p.pctChange !== null).sort((a,b) => b.pctChange - a.pctChange);
-
-    if (!computed.length) {
-      labels = ['No matching data']; data = [0]; colors = ['transparent'];
+      labels = ['No data yet for this period']; data = [0]; colors = ['transparent'];
     } else {
-      labels = computed.map(p => p.sym);
-      data   = computed.map(p => +p.pctChange.toFixed(2));
-      colors = data.map(v => v >= 0 ? 'rgba(34,197,94,.7)' : 'rgba(239,68,68,.7)');
+      const basePositions = await api('positions', `?snapshot_id=eq.${baseSnap.id}&select=ticker,display,current_price`).catch(()=>[]);
+      const baseMap = {};
+      basePositions.forEach(p => { baseMap[p.display || p.ticker] = p.current_price; });
+
+      const computed = _latestPositions.map(p => {
+        const sym = p.display || p.ticker || '?';
+        const basePrice = baseMap[sym];
+        const curPrice  = p.current_price;
+        const pctChange = (basePrice && curPrice) ? ((curPrice - basePrice) / basePrice * 100) : null;
+        return { sym, pctChange };
+      }).filter(p => p.pctChange !== null).sort((a,b) => b.pctChange - a.pctChange);
+
+      if (!computed.length) {
+        labels = ['No matching data']; data = [0]; colors = ['transparent'];
+      } else {
+        labels = computed.map(p => p.sym);
+        data   = computed.map(p => +p.pctChange.toFixed(2));
+        colors = data.map(v => v >= 0 ? 'rgba(34,197,94,.7)' : 'rgba(239,68,68,.7)');
+      }
     }
   }
 
@@ -172,14 +144,7 @@ async function renderGainChart(periodKey) {
   if (ctx1._chart) ctx1._chart.destroy();
   ctx1._chart = new Chart(ctx1, {
     type: 'bar',
-    data: {
-      labels,
-      datasets: [{
-        data,
-        backgroundColor: colors,
-        borderRadius: 3,
-      }]
-    },
+    data: { labels, datasets: [{ data, backgroundColor: colors, borderRadius: 3 }] },
     options: {
       plugins:{ legend:{display:false} },
       scales:{
@@ -203,10 +168,7 @@ function renderPieChart(positions) {
   if (ctx2._chart) ctx2._chart.destroy();
   ctx2._chart = new Chart(ctx2, {
     type: 'doughnut',
-    data: {
-      labels: pienames,
-      datasets: [{ data: pienames.map(k => pieMap[k]), backgroundColor: COLORS }]
-    },
+    data: { labels: pienames, datasets: [{ data: pienames.map(k => pieMap[k]), backgroundColor: COLORS }] },
     options: { plugins:{ legend:{ position:'right', labels:{ color:'#e2e8f0', font:{size:11} } } }, responsive:true }
   });
 }
@@ -264,14 +226,12 @@ async function loadSectorMap() {
   });
 
   const SECTOR_ORDER = ['Technology','Broad Market','Country / Regional','Emerging Markets','Commodities','Other'];
-
   let html = `<div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">`;
 
   for (const sName of SECTOR_ORDER) {
     if (!sectors[sName]) continue;
     const sc = SECTOR_COLORS[sName] || { bg:'rgba(100,116,139,.12)', border:'#475569', text:'#94a3b8' };
     const pies = sectors[sName];
-
     let piecols = '';
     for (const [pieName, holdings] of Object.entries(pies)) {
       const pc = PIE_COLORS[pieName] || '#8892a4';
@@ -280,39 +240,23 @@ async function loadSectorMap() {
         const gpColor = gp == null ? '#475569' : gp >= 0 ? '#22c55e' : '#ef4444';
         const gpStr = gp == null ? '' : `${gp >= 0 ? '+' : ''}${gp.toFixed(1)}%`;
         const sym = (h.display || h.ticker || '').replace(/_EQ$/, '');
-        return `<div style="
-          display:inline-flex;align-items:center;gap:5px;
-          background:#0f1117;border:1px solid ${sc.border}44;
-          border-radius:6px;padding:4px 8px;font-size:11px;
-          transition:border-color .15s;cursor:default;
-          " title="${pieName}">
+        return `<div style="display:inline-flex;align-items:center;gap:5px;background:#0f1117;border:1px solid ${sc.border}44;border-radius:6px;padding:4px 8px;font-size:11px;cursor:default" title="${pieName}">
           <span style="font-weight:700;color:${sc.text}">${sym}</span>
           ${gpStr ? `<span style="font-size:10px;color:${gpColor}">${gpStr}</span>` : ''}
         </div>`;
       }).join('');
-
       piecols += `<div style="display:flex;flex-direction:column;gap:4px;min-width:0">
         <div style="font-size:9px;font-weight:700;color:${pc};text-transform:uppercase;letter-spacing:.06em;padding-left:2px">${pieName}</div>
         <div style="display:flex;flex-wrap:wrap;gap:4px">${chips}</div>
       </div>`;
     }
-
     const totalHoldings = Object.values(pies).flat().length;
-
-    html += `<div style="
-      border:1px solid ${sc.border}55;border-radius:10px;
-      background:${sc.bg};overflow:hidden;
-    ">
-      <div style="
-        display:flex;align-items:center;justify-content:space-between;
-        padding:8px 12px;border-bottom:1px solid ${sc.border}33;
-      ">
+    html += `<div style="border:1px solid ${sc.border}55;border-radius:10px;background:${sc.bg};overflow:hidden">
+      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid ${sc.border}33">
         <div style="font-size:12px;font-weight:700;color:${sc.text}">${sName}</div>
         <div style="font-size:10px;color:#334155">${totalHoldings} holding${totalHoldings!==1?'s':''} · ${Object.keys(pies).length} pie${Object.keys(pies).length!==1?'s':''}</div>
       </div>
-      <div style="display:flex;flex-wrap:wrap;gap:12px;padding:10px 12px">
-        ${piecols}
-      </div>
+      <div style="display:flex;flex-wrap:wrap;gap:12px;padding:10px 12px">${piecols}</div>
     </div>`;
   }
 
@@ -330,51 +274,31 @@ async function loadCountryMap() {
   }
 
   const ETF_COUNTRY_MAP = {
-    'QDVEd':  { label:'US Tech ETF',      countries:[
-      { flag:'🇺🇸', name:'USA',         pct:100, note:'AAPL·NVDA·MSFT·GOOGL·AMZN' },
-    ]},
-    'ITWNl':  { label:'Taiwan ETF',       countries:[
-      { flag:'🇹🇼', name:'Taiwan',      pct:100, note:'TSMC 32%·MediaTek 8%' },
-    ]},
-    'IMIBl':  { label:'Italy MIB ETF',    countries:[
-      { flag:'🇮🇹', name:'Italy',       pct:100, note:'UniCredit·Intesa·Eni·Enel' },
-    ]},
-    'IPOLl':  { label:'Poland ETF',       countries:[
-      { flag:'🇵🇱', name:'Poland',      pct:100, note:'PKO·Pekao·mBank·Orlen' },
-    ]},
-    'XDAXl':  { label:'Germany DAX ETF',  countries:[
-      { flag:'🇩🇪', name:'Germany',     pct:100, note:'Siemens·Allianz·SAP·Airbus' },
-    ]},
-    'IAEXl':  { label:'Netherlands AEX',  countries:[
-      { flag:'🇳🇱', name:'Netherlands', pct:100, note:'ASML·Shell·ING·Unilever·Adyen' },
-    ]},
+    'QDVEd':  { label:'US Tech ETF',      countries:[{ flag:'🇺🇸', name:'USA',         pct:100, note:'AAPL·NVDA·MSFT·GOOGL·AMZN' }]},
+    'ITWNl':  { label:'Taiwan ETF',       countries:[{ flag:'🇹🇼', name:'Taiwan',      pct:100, note:'TSMC 32%·MediaTek 8%' }]},
+    'IMIBl':  { label:'Italy MIB ETF',    countries:[{ flag:'🇮🇹', name:'Italy',       pct:100, note:'UniCredit·Intesa·Eni·Enel' }]},
+    'IPOLl':  { label:'Poland ETF',       countries:[{ flag:'🇵🇱', name:'Poland',      pct:100, note:'PKO·Pekao·mBank·Orlen' }]},
+    'XDAXl':  { label:'Germany DAX ETF',  countries:[{ flag:'🇩🇪', name:'Germany',     pct:100, note:'Siemens·Allianz·SAP·Airbus' }]},
+    'IAEXl':  { label:'Netherlands AEX',  countries:[{ flag:'🇳🇱', name:'Netherlands', pct:100, note:'ASML·Shell·ING·Unilever·Adyen' }]},
     'CS1l':   { label:'MSCI World ETF',   countries:[
-      { flag:'🇺🇸', name:'USA',         pct:67, note:'S&P 500 large cap' },
-      { flag:'🇯🇵', name:'Japan',       pct:6,  note:'Toyota·Sony·SoftBank' },
-      { flag:'🇬🇧', name:'UK',          pct:4,  note:'HSBC·AstraZeneca·BP' },
-      { flag:'🇫🇷', name:'France',      pct:3,  note:'LVMH·TotalEnergies' },
-      { flag:'🇨🇦', name:'Canada',      pct:3,  note:'Royal Bank·Shopify' },
-      { flag:'🌍', name:'Other DM',     pct:17, note:'Germany·Australia·Switzerland…' },
+      { flag:'🇺🇸', name:'USA',     pct:67, note:'S&P 500 large cap' },
+      { flag:'🇯🇵', name:'Japan',   pct:6,  note:'Toyota·Sony·SoftBank' },
+      { flag:'🇬🇧', name:'UK',      pct:4,  note:'HSBC·AstraZeneca·BP' },
+      { flag:'🇫🇷', name:'France',  pct:3,  note:'LVMH·TotalEnergies' },
+      { flag:'🇨🇦', name:'Canada',  pct:3,  note:'Royal Bank·Shopify' },
+      { flag:'🌍', name:'Other DM', pct:17, note:'Germany·Australia·Switzerland…' },
     ]},
-    'VUSAa':  { label:'S&P 500 ETF',      countries:[
-      { flag:'🇺🇸', name:'USA',         pct:100, note:'500 largest US companies' },
-    ]},
+    'VUSAa':  { label:'S&P 500 ETF',      countries:[{ flag:'🇺🇸', name:'USA',    pct:100, note:'500 largest US companies' }]},
     'VWCEd':  { label:'All-World ETF',    countries:[
-      { flag:'🇺🇸', name:'USA',         pct:63, note:'S&P 500 dominant' },
-      { flag:'🇯🇵', name:'Japan',       pct:6,  note:'Large cap' },
-      { flag:'🇬🇧', name:'UK',          pct:4,  note:'Large cap' },
-      { flag:'🇨🇳', name:'China',       pct:3,  note:'Alibaba·Tencent' },
-      { flag:'🌍', name:'Other',        pct:24, note:'EM + other DM' },
+      { flag:'🇺🇸', name:'USA',   pct:63, note:'S&P 500 dominant' },
+      { flag:'🇯🇵', name:'Japan', pct:6,  note:'Large cap' },
+      { flag:'🇬🇧', name:'UK',    pct:4,  note:'Large cap' },
+      { flag:'🇨🇳', name:'China', pct:3,  note:'Alibaba·Tencent' },
+      { flag:'🌍', name:'Other',  pct:24, note:'EM + other DM' },
     ]},
-    'SXRVd':  { label:'S&P 500 Financials',countries:[
-      { flag:'🇺🇸', name:'USA',         pct:100, note:'JPMorgan·BofA·Wells Fargo' },
-    ]},
-    'SGLNl':  { label:'Gold ETC',         countries:[
-      { flag:'🥇', name:'Gold',         pct:100, note:'Physical gold backed' },
-    ]},
-    'SSLNl':  { label:'Silver ETC',       countries:[
-      { flag:'🥈', name:'Silver',       pct:100, note:'Physical silver backed' },
-    ]},
+    'SXRVd':  { label:'S&P 500 Financials',countries:[{ flag:'🇺🇸', name:'USA',    pct:100, note:'JPMorgan·BofA·Wells Fargo' }]},
+    'SGLNl':  { label:'Gold ETC',          countries:[{ flag:'🥇', name:'Gold',   pct:100, note:'Physical gold backed' }]},
+    'SSLNl':  { label:'Silver ETC',        countries:[{ flag:'🥈', name:'Silver', pct:100, note:'Physical silver backed' }]},
   };
 
   const snap = (await api('portfolio_snapshots','?select=*&order=created_at.desc&limit=1'))[0];
@@ -385,12 +309,10 @@ async function loadCountryMap() {
   positions.forEach(p => { posMap[p.display || p.ticker] = p; });
 
   const countryAgg = {};
-
   for (const [etfTicker, etfDef] of Object.entries(ETF_COUNTRY_MAP)) {
     const pos = posMap[etfTicker];
     if (!pos) continue;
     const gainPct = pos.gain_pct != null ? +pos.gain_pct : null;
-
     for (const c of etfDef.countries) {
       if (!countryAgg[c.name]) countryAgg[c.name] = { flag:c.flag, etfs:[], gainSum:0, gainCount:0 };
       countryAgg[c.name].etfs.push({ ticker:etfTicker, label:etfDef.label, pct:c.pct, note:c.note, gain:gainPct });
@@ -414,7 +336,6 @@ async function loadCountryMap() {
   const perfLabel = g => g >= 10 ? 'Strong ▲' : g >= 3 ? 'Positive ▲' : g >= 0 ? 'Flat →' : g >= -5 ? 'Weak ▼' : 'Down ▼';
 
   let html = `<div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">`;
-
   for (const [country, data] of sorted) {
     const avgGain = data.gainCount ? data.gainSum / data.gainCount : null;
     const pc = avgGain != null ? perfColor(avgGain) : '#475569';
@@ -446,7 +367,6 @@ async function loadCountryMap() {
       </div>
     </div>`;
   }
-
   html += `</div>`;
   el.innerHTML = html;
 }
