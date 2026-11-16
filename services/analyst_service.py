@@ -361,22 +361,32 @@ def fetch_trend_rating(yahoo_ticker):
     base6 = closes[-126] if len(closes) >= 126 else closes[0]
     ret_6m = (price / base6 - 1) * 100
 
+    # AGGRESSIVE: lower momentum bars, reward dips inside an uptrend,
+    # only hard-penalise genuine falling knives (6m < -25%).
     points = 0
     if price > ma200: points += 1
     if ma50 > ma200:  points += 1
-    if ret_6m > 5:    points += 1
-    if ret_6m > 15:   points += 1
-    buy_pct = {0: 20.0, 1: 40.0, 2: 55.0, 3: 65.0, 4: 80.0}[points]
-    sell_pct = {0: 50.0, 1: 25.0, 2: 15.0, 3: 10.0, 4: 5.0}[points]
+    if ret_6m > 3:    points += 1
+    if ret_6m > 10:   points += 1
+    dip_in_uptrend = price < ma50 and price > ma200
+    if dip_in_uptrend: points += 1
+    points = min(points, 4)
+    falling_knife = ret_6m < -25
+    if falling_knife:
+        points = 0
+    buy_pct  = 15.0 if falling_knife else {0: 25.0, 1: 40.0, 2: 55.0, 3: 65.0, 4: 80.0}[points]
+    sell_pct = 55.0 if falling_knife else {0: 35.0, 1: 25.0, 2: 15.0, 3: 10.0, 4: 5.0}[points]
     hold_pct = round(100 - buy_pct - sell_pct, 1)
-    rec = "strong_buy" if points == 4 else "buy" if points >= 2 else "hold" if points == 1 else "underperform"
+    rec = ("sell" if falling_knife else "strong_buy" if points == 4 else
+           "buy" if points >= 2 else "hold" if points == 1 else "underperform")
     return {
         "recommendation": rec,
         "star_rating": stars_from_buy_pct(buy_pct),
         "target_mean": None,
         "buy_pct": buy_pct, "hold_pct": hold_pct, "sell_pct": sell_pct,
         "analyst_count": 0,
-        "_note": f"trend 6m={ret_6m:+.1f}% px{'>' if price > ma200 else '<'}MA200",
+        "_note": f"aggr trend 6m={ret_6m:+.1f}% px{'>' if price > ma200 else '<'}MA200"
+                 + (" dip-in-uptrend" if dip_in_uptrend else "") + (" FALLING KNIFE" if falling_knife else ""),
     }
 
 
