@@ -44,6 +44,10 @@ async function loadOverview() {
     const el = document.getElementById('sector-map');
     if (el) el.innerHTML = `<div style="color:var(--red);font-size:12px">Sector map error: ${e.message}</div>`;
   });
+  loadCountryMap().catch(e => {
+    const el = document.getElementById('country-map');
+    if (el) el.innerHTML = `<div style="color:var(--red);font-size:12px">Country map error: ${e.message}</div>`;
+  });
 }
 
 async function loadOverviewCharts() {
@@ -192,6 +196,141 @@ async function loadSectorMap() {
       </div>
       <div style="display:flex;flex-wrap:wrap;gap:12px;padding:10px 12px">
         ${piecols}
+      </div>
+    </div>`;
+  }
+
+  html += `</div>`;
+  el.innerHTML = html;
+}
+
+// ── COUNTRY MAP ───────────────────────────────────────────────
+async function loadCountryMap() {
+  const el = document.getElementById('country-map');
+  if (!el) return;
+  if (IS_GUEST) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px 0">🔒 Sign in to view country map</div>';
+    return;
+  }
+
+  // ETF → country exposure: flag, country name, approximate weight %
+  const ETF_COUNTRY_MAP = {
+    'QDVEd':  { label:'US Tech ETF',      countries:[
+      { flag:'🇺🇸', name:'USA',         pct:100, note:'AAPL·NVDA·MSFT·GOOGL·AMZN' },
+    ]},
+    'ITWNl':  { label:'Taiwan ETF',       countries:[
+      { flag:'🇹🇼', name:'Taiwan',      pct:100, note:'TSMC 32%·MediaTek 8%' },
+    ]},
+    'IMIBl':  { label:'Italy MIB ETF',    countries:[
+      { flag:'🇮🇹', name:'Italy',       pct:100, note:'UniCredit·Intesa·Eni·Enel' },
+    ]},
+    'IPOLl':  { label:'Poland ETF',       countries:[
+      { flag:'🇵🇱', name:'Poland',      pct:100, note:'PKO·Pekao·mBank·Orlen' },
+    ]},
+    'XDAXl':  { label:'Germany DAX ETF',  countries:[
+      { flag:'🇩🇪', name:'Germany',     pct:100, note:'Siemens·Allianz·SAP·Airbus' },
+    ]},
+    'IAEXl':  { label:'Netherlands AEX',  countries:[
+      { flag:'🇳🇱', name:'Netherlands', pct:100, note:'ASML·Shell·ING·Unilever·Adyen' },
+    ]},
+    'CS1l':   { label:'MSCI World ETF',   countries:[
+      { flag:'🇺🇸', name:'USA',         pct:67, note:'S&P 500 large cap' },
+      { flag:'🇯🇵', name:'Japan',       pct:6,  note:'Toyota·Sony·SoftBank' },
+      { flag:'🇬🇧', name:'UK',          pct:4,  note:'HSBC·AstraZeneca·BP' },
+      { flag:'🇫🇷', name:'France',      pct:3,  note:'LVMH·TotalEnergies' },
+      { flag:'🇨🇦', name:'Canada',      pct:3,  note:'Royal Bank·Shopify' },
+      { flag:'🌍', name:'Other DM',     pct:17, note:'Germany·Australia·Switzerland…' },
+    ]},
+    'VUSAa':  { label:'S&P 500 ETF',      countries:[
+      { flag:'🇺🇸', name:'USA',         pct:100, note:'500 largest US companies' },
+    ]},
+    'VWCEd':  { label:'All-World ETF',    countries:[
+      { flag:'🇺🇸', name:'USA',         pct:63, note:'S&P 500 dominant' },
+      { flag:'🇯🇵', name:'Japan',       pct:6,  note:'Large cap' },
+      { flag:'🇬🇧', name:'UK',          pct:4,  note:'Large cap' },
+      { flag:'🇨🇳', name:'China',       pct:3,  note:'Alibaba·Tencent' },
+      { flag:'🌍', name:'Other',        pct:24, note:'EM + other DM' },
+    ]},
+    'SXRVd':  { label:'S&P 500 Financials',countries:[
+      { flag:'🇺🇸', name:'USA',         pct:100, note:'JPMorgan·BofA·Wells Fargo' },
+    ]},
+    'SGLNl':  { label:'Gold ETC',         countries:[
+      { flag:'🥇', name:'Gold',         pct:100, note:'Physical gold backed' },
+    ]},
+    'SSLNl':  { label:'Silver ETC',       countries:[
+      { flag:'🥈', name:'Silver',       pct:100, note:'Physical silver backed' },
+    ]},
+  };
+
+  const snap = (await api('portfolio_snapshots','?select=*&order=created_at.desc&limit=1'))[0];
+  if (!snap) { el.innerHTML = '<div style="color:var(--muted)">No snapshot yet</div>'; return; }
+  const positions = await api('positions', `?snapshot_id=eq.${snap.id}&select=*&order=gain_pct.desc`);
+
+  // Build map of ticker → position data
+  const posMap = {};
+  positions.forEach(p => { posMap[p.display || p.ticker] = p; });
+
+  // Aggregate country exposure across all ETFs held
+  const countryAgg = {}; // countryName → { flag, etfs:[], totalPct, weightedGain, gainCount }
+
+  for (const [etfTicker, etfDef] of Object.entries(ETF_COUNTRY_MAP)) {
+    const pos = posMap[etfTicker];
+    if (!pos) continue; // not in portfolio
+    const gainPct = pos.gain_pct != null ? +pos.gain_pct : null;
+
+    for (const c of etfDef.countries) {
+      if (!countryAgg[c.name]) countryAgg[c.name] = { flag:c.flag, etfs:[], gainSum:0, gainCount:0 };
+      countryAgg[c.name].etfs.push({ ticker:etfTicker, label:etfDef.label, pct:c.pct, note:c.note, gain:gainPct });
+      if (gainPct != null) {
+        countryAgg[c.name].gainSum += gainPct * (c.pct / 100);
+        countryAgg[c.name].gainCount++;
+      }
+    }
+  }
+
+  // Sort countries by weighted gain desc
+  const sorted = Object.entries(countryAgg).sort(([,a],[,b]) => {
+    const ag = a.gainCount ? a.gainSum / a.gainCount : -999;
+    const bg = b.gainCount ? b.gainSum / b.gainCount : -999;
+    return bg - ag;
+  });
+
+  if (!sorted.length) { el.innerHTML = '<div style="color:var(--muted);font-size:12px">No matching ETFs in portfolio</div>'; return; }
+
+  const perfColor = g => g >= 10 ? '#22c55e' : g >= 3 ? '#86efac' : g >= 0 ? '#a3e635' : g >= -5 ? '#f97316' : '#ef4444';
+  const perfBg    = g => g >= 10 ? 'rgba(34,197,94,.15)' : g >= 3 ? 'rgba(34,197,94,.08)' : g >= 0 ? 'rgba(163,230,53,.07)' : g >= -5 ? 'rgba(249,115,22,.1)' : 'rgba(239,68,68,.12)';
+  const perfLabel = g => g >= 10 ? 'Strong ▲' : g >= 3 ? 'Positive ▲' : g >= 0 ? 'Flat →' : g >= -5 ? 'Weak ▼' : 'Down ▼';
+
+  let html = `<div style="display:flex;flex-direction:column;gap:8px;margin-top:4px">`;
+
+  for (const [country, data] of sorted) {
+    const avgGain = data.gainCount ? data.gainSum / data.gainCount : null;
+    const pc = avgGain != null ? perfColor(avgGain) : '#475569';
+    const bg = avgGain != null ? perfBg(avgGain) : 'rgba(71,85,105,.1)';
+    const lbl = avgGain != null ? perfLabel(avgGain) : '—';
+    const gainStr = avgGain != null ? `${avgGain >= 0 ? '+' : ''}${avgGain.toFixed(1)}%` : '';
+
+    const etfChips = data.etfs.map(e => {
+      const gc = e.gain != null ? perfColor(e.gain) : '#475569';
+      const gs = e.gain != null ? `${e.gain >= 0 ? '+' : ''}${e.gain.toFixed(1)}%` : '';
+      return `<div style="display:inline-flex;align-items:center;gap:4px;background:#0f1117;border:1px solid ${pc}33;border-radius:5px;padding:3px 7px;font-size:10px" title="${e.note}">
+        <span style="color:#a5b4fc;font-weight:700">${e.ticker}</span>
+        <span style="color:#334155">${e.pct < 100 ? e.pct+'%' : ''}</span>
+        ${gs ? `<span style="color:${gc}">${gs}</span>` : ''}
+      </div>`;
+    }).join('');
+
+    html += `<div style="border:1px solid ${pc}44;border-radius:9px;background:${bg};overflow:hidden">
+      <div style="display:flex;align-items:center;gap:10px;padding:8px 12px">
+        <div style="font-size:22px;line-height:1">${data.flag}</div>
+        <div style="flex:1">
+          <div style="font-size:13px;font-weight:700;color:#e2e8f0">${country}</div>
+          <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">${etfChips}</div>
+        </div>
+        <div style="text-align:right;min-width:70px">
+          <div style="font-size:14px;font-weight:800;color:${pc}">${gainStr}</div>
+          <div style="font-size:9px;color:${pc};opacity:.7">${lbl}</div>
+        </div>
       </div>
     </div>`;
   }
