@@ -41,6 +41,8 @@ def t212_get(path, params=None):
 def sb_upsert(table, rows, conflict_col):
     if not rows:
         return
+    # T212 pages can repeat items — dedupe on the conflict key (last wins)
+    rows = list({r.get(conflict_col): r for r in rows}.values())
     url = f"{SUPABASE_URL}/rest/v1/{table}?on_conflict={conflict_col}"
     req = urllib.request.Request(
         url,
