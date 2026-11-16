@@ -61,7 +61,7 @@ def get_analyst_ratings():
     rows = supabase_request("GET", "analyst_ratings?select=ticker,pie,recommendation,star_rating,buy_pct,target_mean") or []
     by_pie = {}
     for r in rows:
-        pie = r.get("pie", "Solo")
+        pie = (r.get("pie") or "Solo").strip()
         if pie not in by_pie:
             by_pie[pie] = []
         by_pie[pie].append(r)
@@ -121,7 +121,7 @@ def pie_avg_buy_pct(analyst_by_pie, pie_name):
 def has_dip(positions, pie_name):
     """Check if any position in pie has dip_from_high <= -8%."""
     for p in positions:
-        if p.get("pie") == pie_name:
+        if (p.get("pie") or "").strip() == pie_name:
             dip = p.get("dip_from_high", 0) or 0
             if dip <= -8.0:
                 return True, dip

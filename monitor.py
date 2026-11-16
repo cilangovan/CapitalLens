@@ -208,7 +208,7 @@ def fetch_pies_with_instruments():
         rl(8)
         if not detail:
             print(f"[warn] Skipping pie {pie_id}"); continue
-        name        = detail.get("settings", {}).get("name", f"Pie {pie_id}")
+        name        = (detail.get("settings", {}).get("name") or f"Pie {pie_id}").strip()
         instruments = detail.get("instruments", [])
         total_val   = sum(float(inst.get("currentValue", 0)) for inst in instruments)
         gain_pct    = float(detail.get("result", {}).get("priceAvgReturnPercentage", 0))
