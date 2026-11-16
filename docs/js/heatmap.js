@@ -141,19 +141,22 @@ async function loadHeatmap() {
       paths += `<path d="${path}" fill="${col}" stroke="#0f1117" stroke-width="0.8" data-tip="${tooltipStr}" class="rad-seg"/>`;
     });
 
-    // ticker label at outer edge
-    const labelR = outerR + 22;
+    // ticker label at outer edge — always reads outward, never flipped
+    const labelR = outerR + 26;
     const lp = polarToXY(aMid, labelR);
-    const deg = (aMid * 180 / Math.PI) + 90;
-    const flip = aMid > Math.PI / 2 && aMid < 3 * Math.PI / 2;
+    // rotate so baseline points away from centre; right half normal, left half +180 with flipped anchor
+    const leftHalf = aMid > Math.PI / 2 && aMid < 3 * Math.PI / 2;
+    const baseDeg  = aMid * 180 / Math.PI - 90; // -90 so text runs tangentially outward
+    const rotDeg   = leftHalf ? baseDeg + 180 : baseDeg;
+    const anchor   = leftHalf ? 'end' : 'start';
     const p = curMap[ticker];
     const sym = (p.display || ticker).replace(/_EQ$/, '');
     const gainPct = p.gain_pct != null ? (p.gain_pct >= 0 ? '+' : '') + p.gain_pct.toFixed(1) + '%' : '';
     const labelColor = p.gain_pct >= 0 ? '#34d399' : '#f87171';
-    labels += `<text x="${lp.x}" y="${lp.y - 5}" font-size="11.5" font-weight="700" fill="#e2e8f0" text-anchor="middle" dominant-baseline="middle"
-      transform="rotate(${flip ? deg + 180 : deg}, ${lp.x}, ${lp.y})">${sym}</text>`;
-    labels += `<text x="${lp.x}" y="${lp.y + 8}" font-size="9.5" fill="${labelColor}" text-anchor="middle" dominant-baseline="middle"
-      transform="rotate(${flip ? deg + 180 : deg}, ${lp.x}, ${lp.y})">${gainPct}</text>`;
+    labels += `<text x="${lp.x}" y="${lp.y}" font-size="13" font-weight="700" fill="#e2e8f0" text-anchor="${anchor}" dominant-baseline="middle"
+      transform="rotate(${rotDeg}, ${lp.x}, ${lp.y})" dy="-5">${sym}</text>`;
+    labels += `<text x="${lp.x}" y="${lp.y}" font-size="11" fill="${labelColor}" text-anchor="${anchor}" dominant-baseline="middle"
+      transform="rotate(${rotDeg}, ${lp.x}, ${lp.y})" dy="9">${gainPct}</text>`;
   });
 
   // ring labels — on left spine at each ring midpoint
