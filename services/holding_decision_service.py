@@ -383,7 +383,7 @@ def run():
             "report_date":   today,
             "ticker":        ticker,
             "display":       pos.get("display", ticker),
-            "pie":           pos.get("pie"),
+            "pie":           (pos.get("pie") or "").strip() or None,
             "exchange":      exchange,
             "score":         total,
             "decision":      decision,

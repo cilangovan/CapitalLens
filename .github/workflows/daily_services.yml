@@ -3,7 +3,7 @@ name: Daily Portfolio Services
 # Runs Mon–Fri: positions → analyst → returns/value_buy → strategy → holding_decisions → alerts
 on:
   schedule:
-    - cron: '0 8 * * 1-5'   # 08:00 UTC Mon–Fri
+    - cron: '20 8 * * 1-5'  # 08:20 UTC Mon–Fri — after the 08:00 monitor snapshot lands
   workflow_dispatch:
 
 jobs:

@@ -549,7 +549,7 @@ def run():
     for pos in positions:
         t212_ticker = pos["ticker"]
         exchange    = pos.get("exchange", "")
-        pie         = pos.get("pie") or "Individual"
+        pie         = (pos.get("pie") or "Individual").strip()
 
         yahoo, cur = t212_to_yahoo(t212_ticker, exchange)
         active_yahoo_tickers.append(yahoo)
