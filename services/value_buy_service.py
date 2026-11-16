@@ -519,23 +519,18 @@ def sb_delete_stale(active_yahoo_tickers):
 def run():
     print(f"[value_buy_service] Starting at {datetime.now(timezone.utc).isoformat()}")
 
-    # Load latest snapshot of positions from Supabase
+    # Get latest snapshot id from portfolio_snapshots
+    snapshots = sb_get("portfolio_snapshots", "?select=id&order=id.desc&limit=1")
+    if not snapshots:
+        print("  ERROR: no snapshots found — aborting")
+        exit(1)
+    snap_id = snapshots[0]["id"]
+    print(f"  Using snapshot id={snap_id}")
+
     positions_raw = sb_get(
         "positions",
-        "?select=ticker,display,pie,exchange,avg_price,quantity"
-        "&snapshot_id=eq.(select max(snapshot_id) from snapshots)"
-        "&order=pie,ticker"
+        f"?select=ticker,display,pie,exchange,avg_price,quantity&snapshot_id=eq.{snap_id}&order=pie,ticker"
     )
-
-    # Fallback: if nested select not supported, get latest snapshot_id first
-    if not positions_raw:
-        snapshots = sb_get("snapshots", "?select=id&order=id.desc&limit=1")
-        if snapshots:
-            snap_id = snapshots[0]["id"]
-            positions_raw = sb_get(
-                "positions",
-                f"?select=ticker,display,pie,exchange,avg_price,quantity&snapshot_id=eq.{snap_id}"
-            )
 
     if not positions_raw:
         print("  ERROR: no positions found — aborting")
