@@ -1,0 +1,51 @@
+name: Weekly Intelligence Report
+
+# Runs Saturday 06:00 UTC — full global institutional analysis
+# Report ready Sunday morning for weekly portfolio decisions
+#
+# Job order:
+#   institutional_flow  — scores USA/UK/Europe markets (100pts, 6 indicators)
+#   holding_decisions   — per-stock score using market scores from above
+#
+# institutional_flow fetches: benchmark indices, inst ETFs, foreign-flow ETFs,
+# 11 sector ETFs (yfinance). Runs weekly — daily ETF flows in daily_services
+# holding_decisions already runs daily (Mon–Fri); Saturday run refreshes
+# with the full weekly institutional_flow context.
+on:
+  schedule:
+    - cron: '0 6 * * 6'   # 06:00 UTC Saturday
+  workflow_dispatch:
+
+jobs:
+  institutional_flow:
+    name: Global Institutional Capital Tracker
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install deps
+        run: pip install -r requirements.txt
+      - name: Run institutional flow service
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python -m services.institutional_flow_service
+
+  holding_decisions:
+    name: Holding Decision Scores (weekly refresh)
+    runs-on: ubuntu-latest
+    needs: institutional_flow
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install deps
+        run: pip install -r requirements.txt
+      - name: Run holding decision service
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python -m services.holding_decision_service
