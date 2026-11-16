@@ -116,7 +116,7 @@ def sb_get(table, query=""):
 def sb_upsert(table, rows, conflict="ticker"):
     if not rows:
         return
-    url = f"{SUPABASE_URL}/rest/v1/{table}"
+    url = f"{SUPABASE_URL}/rest/v1/{table}?on_conflict={conflict}"
     req = urllib.request.Request(
         url,
         data=json.dumps(rows).encode(),
@@ -124,7 +124,7 @@ def sb_upsert(table, rows, conflict="ticker"):
             "apikey": SUPABASE_KEY,
             "Authorization": f"Bearer {SUPABASE_KEY}",
             "Content-Type": "application/json",
-            "Prefer": f"resolution=merge-duplicates,return=minimal",
+            "Prefer": "resolution=merge-duplicates,return=minimal",
         },
         method="POST",
     )
