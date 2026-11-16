@@ -440,7 +440,7 @@ def build_warning(d, avg_cost, week):
 def analyse_ticker(t212_ticker, yahoo, pie, cur, pos):
     """Full analysis pipeline for one ticker."""
     avg_cost = pos.get("avg_price") or pos.get("avg_cost") or None
-    quantity = pos.get("quantity") or 0
+    quantity = 0  # not stored in positions table
     display  = pos.get("display") or yahoo
     if avg_cost:
         avg_cost = round(float(avg_cost), 4)
@@ -529,7 +529,7 @@ def run():
 
     positions_raw = sb_get(
         "positions",
-        f"?select=ticker,display,pie,exchange,avg_price,quantity&snapshot_id=eq.{snap_id}&order=pie,ticker"
+        f"?select=ticker,display,pie,exchange,avg_price&snapshot_id=eq.{snap_id}&order=pie,ticker"
     )
 
     if not positions_raw:
