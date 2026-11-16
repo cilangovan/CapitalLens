@@ -172,21 +172,14 @@ async function loadHeatmap() {
   const snapLabel = now.toLocaleDateString('en-GB', { day:'numeric', month:'short' });
   document.getElementById('heatmap-updated').textContent = `· ${snapLabel}`;
 
-  // legend
-  const legend = `
-    <defs>
-      <linearGradient id="legGrad" x1="0" x2="0" y1="0" y2="1">
-        <stop offset="0%"   stop-color="#84cc16"/>
-        <stop offset="40%"  stop-color="#06b6d4"/>
-        <stop offset="60%"  stop-color="#f59e0b"/>
-        <stop offset="100%" stop-color="#b91c1c"/>
+  const legend = `<defs>
+      <linearGradient id="legGrad" x1="0" x2="1" y1="0" y2="0">
+        <stop offset="0%"   stop-color="#b91c1c"/>
+        <stop offset="40%"  stop-color="#f59e0b"/>
+        <stop offset="60%"  stop-color="#06b6d4"/>
+        <stop offset="100%" stop-color="#84cc16"/>
       </linearGradient>
-    </defs>
-    <rect x="${W-36}" y="${cy-80}" width="14" height="160" fill="url(#legGrad)" rx="4"/>
-    <text x="${W-16}" y="${cy-80}" font-size="10" fill="#34d399" dominant-baseline="middle">Gain</text>
-    <text x="${W-16}" y="${cy}"    font-size="10" fill="#94a3b8" dominant-baseline="middle">Flat</text>
-    <text x="${W-16}" y="${cy+80}" font-size="10" fill="#f87171" dominant-baseline="middle">Loss</text>
-  `;
+    </defs>`;
 
   const svgH = W + 20;
   wrap.innerHTML = `
@@ -201,6 +194,12 @@ async function loadHeatmap() {
         <text x="${cx}" y="${cy + 6}"  font-size="13" fill="#8892a4" text-anchor="middle">P&amp;L Rings</text>
         <text x="${cx}" y="${cy + 24}" font-size="11" fill="#475569" text-anchor="middle">${N} positions</text>
       </svg>
+      <!-- horizontal legend below chart -->
+      <div style="display:flex;align-items:center;justify-content:center;gap:12px;margin-top:8px;margin-bottom:4px">
+        <span style="font-size:11px;color:#f87171;font-weight:600">Loss</span>
+        <div style="width:180px;height:10px;border-radius:5px;background:linear-gradient(to right,#b91c1c,#f59e0b,#06b6d4,#84cc16)"></div>
+        <span style="font-size:11px;color:#34d399;font-weight:600">Gain</span>
+      </div>
       <div id="rad-tooltip" style="
         position:absolute;pointer-events:none;display:none;
         background:#1a1d27;border:1px solid #2d3353;border-radius:6px;
