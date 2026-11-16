@@ -211,16 +211,23 @@ def fetch_pies_with_instruments():
             print(f"[warn] Skipping pie {pie_id}"); continue
         name        = (detail.get("settings", {}).get("name") or f"Pie {pie_id}").strip()
         instruments = detail.get("instruments", [])
-        total_val   = sum(float(inst.get("currentValue", 0)) for inst in instruments)
-        gain_pct    = float(detail.get("result", {}).get("priceAvgReturnPercentage", 0))
+        def _inst_val(inst):
+            # T212 pie detail: value lives in result.priceAvgValue (no currentValue field)
+            r = inst.get("result") or {}
+            return float(r.get("priceAvgValue", inst.get("currentValue", 0)) or 0)
+        total_val   = sum(_inst_val(inst) for inst in instruments)
+        invested    = sum(float((inst.get("result") or {}).get("priceAvgInvestedValue", 0) or 0) for inst in instruments)
+        gain_pct    = ((total_val - invested) / invested * 100) if invested > 0 else 0.0
         for inst in instruments:
             t = inst.get("ticker", "")
             if t: pie_map[t] = name
         drifts = []
         for inst in instruments:
-            cur_val    = float(inst.get("currentValue", 0))
+            cur_val    = _inst_val(inst)
             actual_pct = (cur_val / total_val * 100) if total_val > 0 else 0
-            target_pct = float(inst.get("expectedShare", actual_pct))
+            exp        = inst.get("expectedShare")
+            # expectedShare is a 0–1 fraction
+            target_pct = float(exp) * 100 if exp is not None else actual_pct
             if abs(actual_pct - target_pct) >= REBALANCE_DRIFT_PCT:
                 drifts.append(f"{inst.get('ticker','')}: {abs(actual_pct-target_pct):.1f}%")
         targets = [{

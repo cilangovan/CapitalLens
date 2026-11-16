@@ -188,7 +188,15 @@ async function loadSectorMap() {
     'SPCX':'Technology',
     'SGLNl':'Commodities','SSLNl':'Commodities',
     'VUSAa':'Broad Market','VWCEd':'Broad Market','SXRVd':'Broad Market',
-    'QDVEd':'Emerging Markets',
+    'QDVEd':'Technology',
+    // EM markets pie
+    'VFEMl':'Emerging Markets',
+    'VEVEl':'Broad Market','SPYId':'Broad Market',
+    'JEPQl':'Income','JEQPl':'Income',
+    // Global ETF pie (thematic / factor)
+    'IWFVl':'Thematic / Factor','CYSEl':'Thematic / Factor','GNOGl':'Thematic / Factor',
+    'FLRKl':'Thematic / Factor','DRDRl':'Thematic / Factor','WCOBl':'Thematic / Factor',
+    'INTLl':'Thematic / Factor','SMGBl':'Thematic / Factor',
     'IAEXl':'Country / Regional','IPOLl':'Country / Regional',
     'ITWNl':'Country / Regional','XDAXl':'Country / Regional',
     'CS1l':'Country / Regional','IMIBl':'Country / Regional',
@@ -200,11 +208,14 @@ async function loadSectorMap() {
     'Broad Market':     { bg:'rgba(34,197,94,.12)',   border:'#22c55e', text:'#86efac' },
     'Emerging Markets': { bg:'rgba(6,182,212,.13)',   border:'#06b6d4', text:'#67e8f9' },
     'Country / Regional':{ bg:'rgba(167,139,250,.13)', border:'#a78bfa', text:'#c4b5fd'},
+    'Income':           { bg:'rgba(236,72,153,.12)',  border:'#ec4899', text:'#f9a8d4' },
+    'Thematic / Factor':{ bg:'rgba(20,184,166,.12)',  border:'#14b8a6', text:'#5eead4' },
   };
 
   const PIE_COLORS = {
     'Magnificent 7':'#6366f1','UK Gold & Silver':'#f59e0b',
     'Wider ETF':'#22c55e','Country Etf':'#a78bfa',
+    'EM markets':'#06b6d4','Global ETF':'#14b8a6','Semiconductor':'#ef4444',
   };
 
   const snap = (await api('portfolio_snapshots','?select=*&order=created_at.desc&limit=1'))[0];
@@ -225,7 +236,7 @@ async function loadSectorMap() {
     sectors[sector][pie].push(p);
   });
 
-  const SECTOR_ORDER = ['Technology','Broad Market','Country / Regional','Emerging Markets','Commodities','Other'];
+  const SECTOR_ORDER = ['Technology','Broad Market','Thematic / Factor','Country / Regional','Emerging Markets','Income','Commodities','Other'];
   let html = `<div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">`;
 
   for (const sName of SECTOR_ORDER) {
