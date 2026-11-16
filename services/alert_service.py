@@ -153,6 +153,26 @@ def fetch_verified_prices(sym, t212_price, today):
     }, None
 
 
+_FX = {}
+def gbp_rate(ccy):
+    """Units of ccy per 1 GBP (e.g. 1.32 for USD), or None if unavailable."""
+    if ccy == "GBP" or yf is None:
+        return None
+    if ccy not in _FX:
+        try:
+            h = yf.Ticker(f"GBP{ccy}=X").history(period="5d", interval="1d")
+            _FX[ccy] = float(h["Close"].dropna().iloc[-1]) if not h.empty else None
+        except Exception:
+            _FX[ccy] = None
+    return _FX[ccy]
+
+
+def money_gbp(v, ccy):
+    s = money(v, ccy)
+    r = gbp_rate(ccy)
+    return f"{s} (≈ {money(v / r, 'GBP')})" if r else s
+
+
 # ── Report building ───────────────────────────────────────────────────────────
 def review_flag(name, weight_state, price, gain, analyst):
     dip = price and price["drawdown"] <= DIP_DRAWDOWN
@@ -239,9 +259,9 @@ def build_pie_report(pie, positions_by_ticker, meta, analyst_map, snap_time, tod
             s.line(weight_src)
         if price:
             rows = [
-                (f"Latest {price['ccy']} price", money(price["last"], price["ccy"])),
+                (f"Latest {price['ccy']} price", money_gbp(price["last"], price["ccy"])),
                 ("Daily change", pct(price["daily"])),
-                ("20-day closing high", money(price["high20"], price["ccy"])),
+                ("20-day closing high", money_gbp(price["high20"], price["ccy"])),
                 ("Drawdown", pct(price["drawdown"])),
             ]
             if not weight_state:
