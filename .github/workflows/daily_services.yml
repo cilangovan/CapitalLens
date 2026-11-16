@@ -2,8 +2,10 @@ name: Daily Portfolio Services
 
 on:
   schedule:
-    # 08:00 UTC Mon-Fri
+    # 08:00 UTC Mon-Fri (daily services)
     - cron: '0 8 * * 1-5'
+    # 07:00 UTC Sunday (weekly institutional flow report)
+    - cron: '0 7 * * 0'
   workflow_dispatch:
 
 jobs:
@@ -90,6 +92,23 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: python -m services.value_buy_service
+
+  institutional_flow:
+    name: Global Institutional Capital Tracker
+    runs-on: ubuntu-latest
+    # Runs on Sunday schedule trigger or manual dispatch
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install deps
+        run: pip install -r requirements.txt
+      - name: Run institutional flow service
+        env:
+          SUPABASE_URL:         ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY:         ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python -m services.institutional_flow_service
 
   alerts:
     name: Alerts & Notifications
