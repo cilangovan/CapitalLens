@@ -23,56 +23,11 @@ except ImportError:
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_KEY"]
 
-# Only individual stocks that Yahoo Finance carries analyst ratings for.
-# ETFs (VWRL, SOXX, SMH, EWJ, VWO, etc) have NO analyst consensus — Yahoo returns 404.
-# Pie-level rating is derived by averaging the stocks within each pie that DO have ratings.
-TICKER_MAP = {
-    # Atomic Resources — individual stocks
-    "UEC_US_EQ":  "UEC",
-    "CCJ_US_EQ":  "CCJ",
-    "XOM_US_EQ":  "XOM",
-    # Space x allied — individual stocks
-    "SPCE_US_EQ": "SPCE",
-    "LMT_US_EQ":  "LMT",
-    "RTX_US_EQ":  "RTX",
-    "BA_US_EQ":   "BA",
-    "NOC_US_EQ":  "NOC",
-    # Magnificent 7 — all individual stocks
-    "AAPL_US_EQ":  "AAPL",
-    "MSFT_US_EQ":  "MSFT",
-    "GOOGL_US_EQ": "GOOGL",
-    "AMZN_US_EQ":  "AMZN",
-    "NVDA_US_EQ":  "NVDA",
-    "META_US_EQ":  "META",
-    "TSLA_US_EQ":  "TSLA",
-}
-
-# ETF-only pies get a synthetic "index" rating (held at 4★ buy — broad market always recommended)
-ETF_PIE_DEFAULTS = {
-    "Wider ETF":    {"recommendation": "buy", "star_rating": 4, "buy_pct": 65.0, "hold_pct": 25.0, "sell_pct": 10.0, "analyst_count": 0},
-    "Semiconductor":{"recommendation": "buy", "star_rating": 4, "buy_pct": 65.0, "hold_pct": 25.0, "sell_pct": 10.0, "analyst_count": 0},
-    "Country Etf":  {"recommendation": "hold","star_rating": 3, "buy_pct": 45.0, "hold_pct": 40.0, "sell_pct": 15.0, "analyst_count": 0},
-    "Global ETF":   {"recommendation": "buy", "star_rating": 4, "buy_pct": 65.0, "hold_pct": 25.0, "sell_pct": 10.0, "analyst_count": 0},
-    "EM markets":   {"recommendation": "hold","star_rating": 3, "buy_pct": 40.0, "hold_pct": 45.0, "sell_pct": 15.0, "analyst_count": 0},
-    "UK Gold & Silver":{"recommendation":"hold","star_rating":2, "buy_pct": 30.0, "hold_pct": 45.0, "sell_pct": 25.0, "analyst_count": 0},
-}
-
-# Pie assignment
-PIE_MAP = {
-    "VWRL.L": "Wider ETF", "IWDG.L": "Wider ETF", "VAPX.L": "Wider ETF", "VMID.L": "Wider ETF",
-    "SOXX": "Semiconductor", "SMH": "Semiconductor",
-    "URNM": "Atomic Resources", "UEC": "Atomic Resources", "CCJ": "Atomic Resources", "XOM": "Atomic Resources",
-    "EWJ": "Country Etf", "EWZ": "Country Etf", "EWY": "Country Etf",
-    "EWG": "Country Etf", "EWU": "Country Etf", "EWA": "Country Etf",
-    "ACWI": "Global ETF", "VT": "Global ETF", "VXUS": "Global ETF", "VEA": "Global ETF",
-    "VWO": "Global ETF", "IEMG": "Global ETF", "SCHF": "Global ETF", "VSS": "Global ETF",
-    "ARKX": "Space x allied", "SPCE": "Space x allied", "LMT": "Space x allied",
-    "RTX": "Space x allied", "BA": "Space x allied", "NOC": "Space x allied",
-    "EEM": "EM markets", "EMXC": "EM markets", "FM": "EM markets", "EEMV": "EM markets",
-    "SSLN.L": "UK Gold & Silver", "SGLN.L": "UK Gold & Silver",
-    "AAPL": "Magnificent 7", "MSFT": "Magnificent 7", "GOOGL": "Magnificent 7",
-    "AMZN": "Magnificent 7", "NVDA": "Magnificent 7", "META": "Magnificent 7", "TSLA": "Magnificent 7",
-}
+# Driven entirely by the latest positions snapshot — no hardcoded tickers or pies.
+#  • Individual stocks → real Yahoo analyst consensus (buy/hold/sell split, target price)
+#  • ETFs (no analyst coverage on Yahoo) → trend rating from the ETF's own price data
+#    (price vs 50/200-day MA, 6-month return). analyst_count = 0 marks a trend rating.
+from services.value_buy_service import t212_to_yahoo
 
 
 def supabase_request(method, path, data=None):
@@ -104,6 +59,7 @@ def supabase_request(method, path, data=None):
 def supabase_upsert_fallback(path, data):
     """Fallback upsert: DELETE existing row by ticker, then INSERT fresh."""
     ticker = data.get("ticker", "")
+    path = path.split("?")[0]
     # Delete existing
     del_url = f"{SUPABASE_URL}/rest/v1/{path}?ticker=eq.{urllib.request.quote(ticker)}"
     del_headers = {
@@ -379,74 +335,119 @@ def _fetch_yahoo_http(yahoo_ticker):
         return None
 
 
+def stars_from_buy_pct(buy_pct):
+    if buy_pct >= 70: return 5
+    if buy_pct >= 55: return 4
+    if buy_pct >= 40: return 3
+    if buy_pct >= 25: return 2
+    return 1
+
+
+def fetch_trend_rating(yahoo_ticker):
+    """Rating for ETFs / uncovered tickers from 1y price history."""
+    if not USE_YFINANCE:
+        return None
+    try:
+        hist = yf.Ticker(yahoo_ticker).history(period="1y", interval="1d")
+        closes = [float(c) for c in hist["Close"].dropna().tolist()]
+    except Exception as e:
+        print(f"  trend error for {yahoo_ticker}: {e}")
+        return None
+    if len(closes) < 60:
+        return None
+    price = closes[-1]
+    ma50  = sum(closes[-50:]) / 50
+    ma200 = sum(closes[-200:]) / min(len(closes), 200)
+    base6 = closes[-126] if len(closes) >= 126 else closes[0]
+    ret_6m = (price / base6 - 1) * 100
+
+    points = 0
+    if price > ma200: points += 1
+    if ma50 > ma200:  points += 1
+    if ret_6m > 5:    points += 1
+    if ret_6m > 15:   points += 1
+    buy_pct = {0: 20.0, 1: 40.0, 2: 55.0, 3: 65.0, 4: 80.0}[points]
+    sell_pct = {0: 50.0, 1: 25.0, 2: 15.0, 3: 10.0, 4: 5.0}[points]
+    hold_pct = round(100 - buy_pct - sell_pct, 1)
+    rec = "strong_buy" if points == 4 else "buy" if points >= 2 else "hold" if points == 1 else "underperform"
+    return {
+        "recommendation": rec,
+        "star_rating": stars_from_buy_pct(buy_pct),
+        "target_mean": None,
+        "buy_pct": buy_pct, "hold_pct": hold_pct, "sell_pct": sell_pct,
+        "analyst_count": 0,
+        "_note": f"trend 6m={ret_6m:+.1f}% px{'>' if price > ma200 else '<'}MA200",
+    }
+
+
+def load_positions():
+    snaps = supabase_request("GET", "portfolio_snapshots?select=id&order=id.desc&limit=1") or []
+    if not snaps:
+        return []
+    rows = supabase_request(
+        "GET", f"positions?snapshot_id=eq.{snaps[0]['id']}&select=ticker,display,pie,exchange") or []
+    seen = {}
+    for r in rows:
+        seen[r["ticker"]] = r
+    return list(seen.values())
+
+
 def run():
     print(f"[analyst_service] Starting at {datetime.now(timezone.utc).isoformat()}")
 
-    # Get unique Yahoo tickers (individual stocks only)
-    yahoo_tickers = {}
-    for t212_ticker, yahoo_ticker in TICKER_MAP.items():
-        if yahoo_ticker not in yahoo_tickers:
-            yahoo_tickers[yahoo_ticker] = t212_ticker
+    positions = load_positions()
+    if not positions:
+        print("  ERROR: no positions in latest snapshot — aborting (ratings left untouched)")
+        return
+    print(f"  Loaded {len(positions)} positions from latest snapshot")
 
-    upserted = 0
-    failed = 0
+    upserted = failed = 0
     now = datetime.now(timezone.utc).isoformat()
+    rated = []
 
-    # Fetch real analyst data for individual stocks
-    for yahoo_ticker, t212_ticker in yahoo_tickers.items():
-        pie = PIE_MAP.get(yahoo_ticker, "Solo")
-        print(f"  Fetching {yahoo_ticker} ({pie})...", end=" ", flush=True)
+    for pos in positions:
+        t212_ticker = pos["ticker"]
+        pie = (pos.get("pie") or "Solo holdings").strip()
+        yahoo_ticker, _ = t212_to_yahoo(t212_ticker, pos.get("exchange", ""))
+        print(f"  Rating {yahoo_ticker} ({pie})...", end=" ", flush=True)
+
         data = fetch_yahoo_analyst(yahoo_ticker)
-
-        if data:
-            row = {
-                "ticker": yahoo_ticker,
-                "yahoo_ticker": yahoo_ticker,
-                "pie": pie,
-                "recommendation": data["recommendation"],
-                "star_rating": data["star_rating"],
-                "target_mean": data["target_mean"],
-                "buy_pct": data["buy_pct"],
-                "hold_pct": data["hold_pct"],
-                "sell_pct": data["sell_pct"],
-                "analyst_count": data["analyst_count"],
-                "updated_at": now,
-            }
-            result = supabase_request("POST", "analyst_ratings", row)
-            if result is not None:
-                print(f"✓ {data['recommendation']} ⭐{data['star_rating']} buy={data['buy_pct']}%")
-                upserted += 1
-            else:
-                failed += 1
-        else:
+        source = "analysts"
+        if not data:
+            data = fetch_trend_rating(yahoo_ticker)
+            source = "trend"
+        if not data:
             print("✗ no data")
             failed += 1
+            continue
 
-        time.sleep(1)  # be kind to Yahoo
-
-    # Insert synthetic ratings for ETF-only pies (no real analyst data available)
-    print(f"\n  Inserting ETF pie defaults...")
-    for pie_name, defaults in ETF_PIE_DEFAULTS.items():
-        ticker_key = f"ETF:{pie_name.replace(' ','_')}"
         row = {
-            "ticker": ticker_key,
-            "yahoo_ticker": None,
-            "pie": pie_name,
-            "recommendation": defaults["recommendation"],
-            "star_rating": defaults["star_rating"],
-            "target_mean": None,
-            "buy_pct": defaults["buy_pct"],
-            "hold_pct": defaults["hold_pct"],
-            "sell_pct": defaults["sell_pct"],
-            "analyst_count": 0,
+            "ticker": t212_ticker,
+            "yahoo_ticker": yahoo_ticker,
+            "pie": pie,
+            "recommendation": data["recommendation"],
+            "star_rating": data["star_rating"],
+            "target_mean": data["target_mean"],
+            "buy_pct": data["buy_pct"],
+            "hold_pct": data["hold_pct"],
+            "sell_pct": data["sell_pct"],
+            "analyst_count": data["analyst_count"],
             "updated_at": now,
         }
-        result = supabase_request("POST", "analyst_ratings", row)
-        if result is not None:
-            print(f"  ✓ {pie_name} (synthetic) ⭐{defaults['star_rating']}")
+        if supabase_request("POST", "analyst_ratings?on_conflict=ticker", row) is not None:
+            extra = data.get("_note") or f"{data['analyst_count']} analysts"
+            print(f"✓ [{source}] {data['recommendation']} ⭐{data['star_rating']} buy={data['buy_pct']}% ({extra})")
             upserted += 1
+            rated.append(t212_ticker)
         else:
             failed += 1
+        time.sleep(1)  # be kind to Yahoo
+
+    # Drop ratings for anything not currently held (old placeholder tickers, ETF:* synthetic rows, sold pies)
+    if rated:
+        keep = ",".join(f'"{t}"' for t in rated)
+        supabase_request("DELETE", f"analyst_ratings?ticker=not.in.({urllib.request.quote(keep, safe=',()')})")
+        print(f"  ✓ removed ratings not in current positions")
 
     print(f"\n[analyst_service] Done. Upserted={upserted} Failed={failed}")
 

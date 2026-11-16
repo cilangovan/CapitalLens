@@ -9,14 +9,13 @@ async function loadAnalyst() {
   // Get current snapshot to filter analyst ratings to active positions only
   const snap = (await api('portfolio_snapshots','?select=id&order=created_at.desc&limit=1'))[0];
   const activeTickers = snap
-    ? new Set((await api('positions', `?snapshot_id=eq.${snap.id}&select=display`)).map(p => p.display))
+    ? new Set((await api('positions', `?snapshot_id=eq.${snap.id}&select=ticker`)).map(p => p.ticker))
     : new Set();
 
   const allRows = await api('analyst_ratings','?select=*&order=star_rating.desc');
-  // Keep row if: it's a pie-level ETF summary (ticker starts with "ETF:"), OR
-  // it's an individual stock ticker matching a current holding
+  // Keep only ratings for current holdings (keyed by T212 ticker)
   const rows = activeTickers.size
-    ? allRows.filter(r => r.ticker.startsWith('ETF:') || activeTickers.has(r.ticker))
+    ? allRows.filter(r => activeTickers.has(r.ticker))
     : allRows;
 
   const byPie = {};
