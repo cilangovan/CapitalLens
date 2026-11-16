@@ -13,9 +13,10 @@ async function loadAnalyst() {
     : new Set();
 
   const allRows = await api('analyst_ratings','?select=*&order=star_rating.desc');
-  // Filter to tickers present in current holdings (match on display symbol)
+  // Keep row if: it's a pie-level ETF summary (ticker starts with "ETF:"), OR
+  // it's an individual stock ticker matching a current holding
   const rows = activeTickers.size
-    ? allRows.filter(r => activeTickers.has(r.ticker))
+    ? allRows.filter(r => r.ticker.startsWith('ETF:') || activeTickers.has(r.ticker))
     : allRows;
 
   const byPie = {};
