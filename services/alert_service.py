@@ -12,6 +12,7 @@ Signals:
 """
 
 import os
+import base64
 import json
 import urllib.request
 import urllib.error
@@ -72,7 +73,7 @@ def ntfy_push(title, body, priority="default", tags=""):
         return
     url = f"https://ntfy.sh/{NTFY_TOPIC}"
     headers = {
-        "Title": title,
+        "Title": "=?UTF-8?B?" + base64.b64encode(title.encode()).decode() + "?=",
         "Priority": priority,
         "Tags": tags,
         "Content-Type": "text/plain",
