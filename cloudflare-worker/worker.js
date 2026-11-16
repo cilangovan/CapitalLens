@@ -208,8 +208,15 @@ export default {
       gh_repo: env.GH_REPO || null,
     });
 
-    // ── Existing Supabase proxy ──────────────────────────────────────────────
+    // ── Read-only Supabase proxy ─────────────────────────────────────────────
+    // Dashboard only reads. Block writes, RPC/nested paths and the auth table.
+    if (request.method !== 'GET' && request.method !== 'HEAD') {
+      return json({ error: 'Method not allowed' }, 405);
+    }
     const table = path.replace(/^\//, '');
+    if (!/^[a-z_]+$/.test(table) || table === 'dashboard_auth') {
+      return json({ error: 'Not found' }, 404);
+    }
     const supaUrl = `${env.SUPABASE_URL}/rest/v1/${table}${url.search}`;
     const headers = new Headers(request.headers);
     headers.set('apikey', env.SUPABASE_ANON_KEY || env.SUPABASE_SERVICE_KEY);

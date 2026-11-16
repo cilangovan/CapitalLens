@@ -38,7 +38,7 @@ jobs:
       - name: Run analyst service
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: python -m services.analyst_service
 
   returns:
@@ -55,7 +55,7 @@ jobs:
       - name: Run returns service
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: python -m services.returns_service
 
   value_buy:
@@ -88,7 +88,7 @@ jobs:
       - name: Run strategy service
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: python -m services.strategy_service
 
   holding_decisions:
@@ -139,6 +139,6 @@ jobs:
       - name: Run alert service
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
           NTFY_TOPIC:   ${{ secrets.NTFY_TOPIC }}
         run: python -m services.alert_service
