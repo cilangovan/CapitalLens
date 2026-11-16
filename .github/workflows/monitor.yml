@@ -60,7 +60,7 @@ jobs:
           GMAIL_APP_PASS:  ${{ secrets.GMAIL_APP_PASS }}
           NTFY_TOPIC:      ${{ secrets.NTFY_TOPIC }}
           SUPABASE_URL:    ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY:    ${{ secrets.SUPABASE_KEY }}
+          SUPABASE_KEY:    ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: python monitor.py
 
 
