@@ -222,7 +222,7 @@ def fetch_pies_with_instruments():
             t = inst.get("ticker", "")
             if t: pie_map[t] = name
         drifts = []
-        for inst in instruments:
+        for inst in (instruments if total_val > 0 else []):   # unfunded pie → no drift
             cur_val    = _inst_val(inst)
             actual_pct = (cur_val / total_val * 100) if total_val > 0 else 0
             exp        = inst.get("expectedShare")
@@ -341,7 +341,7 @@ def analyse(positions, pies, pie_map, state):
 def send_ntfy(title, body, priority="default"):
     pm = {"high":"urgent","default":"default","low":"low"}
     req = urllib.request.Request(NTFY_URL, data=body.encode(),
-        headers={"Title":title,"Priority":pm.get(priority,"default"),"Tags":"chart_with_upwards_trend"},
+        headers={"Title":"=?UTF-8?B?"+base64.b64encode(title.encode()).decode()+"?=","Priority":pm.get(priority,"default"),"Tags":"chart_with_upwards_trend"},
         method="POST")
     try:
         urllib.request.urlopen(req, timeout=10)
