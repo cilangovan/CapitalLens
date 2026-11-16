@@ -242,6 +242,7 @@
     <div class="card"><h3>Portfolio by Pie</h3><canvas id="pie-doughnut"></canvas></div>
   </div>
   <div class="card"><h3>Active Alerts</h3><div id="active-alerts"><div class="loading">Loading…</div></div></div>
+  <div class="card" id="sector-map-card"><h3>📐 Sector Map</h3><div id="sector-map"><div class="loading">Loading…</div></div></div>
 </div>
 
 <div id="heatmap" class="tab">
@@ -580,6 +581,7 @@ async function loadOverview() {
   document.getElementById('active-alerts').innerHTML = alertsHtml;
 
   await loadOverviewCharts();
+  loadSectorMap();
 }
 
 async function loadOverviewCharts() {
@@ -624,6 +626,127 @@ async function loadOverviewCharts() {
     },
     options: { plugins:{ legend:{ position:'right', labels:{ color:'#e2e8f0', font:{size:11} } } }, responsive:true }
   });
+}
+
+// ── SECTOR MAP ────────────────────────────────────────────────
+async function loadSectorMap() {
+  const el = document.getElementById('sector-map');
+  if (!el) return;
+  if (IS_GUEST) {
+    el.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:8px 0">🔒 Sign in to view sector map</div>';
+    return;
+  }
+
+  // Static sector classification — mapped from known tickers/ETFs
+  const SECTOR_MAP = {
+    // Tech
+    'NVDA':'Technology','MSFT':'Technology','AAPL':'Technology',
+    'GOOGL':'Technology','FB':'Technology','AMZN':'Technology',
+    'SPCX':'Technology',
+    // Commodities
+    'SGLNl':'Commodities','SSLNl':'Commodities',
+    // World / Broad ETF
+    'VUSAa':'Broad Market','VWCEd':'Broad Market','SXRVd':'Broad Market',
+    // EM / Country ETF
+    'QDVEd':'Emerging Markets',
+    'IAEXl':'Country / Regional','IPOLl':'Country / Regional',
+    'ITWNl':'Country / Regional','XDAXl':'Country / Regional',
+    'CS1l':'Country / Regional','IMIBl':'Country / Regional',
+  };
+
+  const SECTOR_COLORS = {
+    'Technology':       { bg:'rgba(99,102,241,.18)',  border:'#6366f1', text:'#a5b4fc' },
+    'Commodities':      { bg:'rgba(245,158,11,.15)',  border:'#f59e0b', text:'#fcd34d' },
+    'Broad Market':     { bg:'rgba(34,197,94,.12)',   border:'#22c55e', text:'#86efac' },
+    'Emerging Markets': { bg:'rgba(6,182,212,.13)',   border:'#06b6d4', text:'#67e8f9' },
+    'Country / Regional':{ bg:'rgba(167,139,250,.13)', border:'#a78bfa', text:'#c4b5fd'},
+  };
+
+  const PIE_COLORS = {
+    'Magnificent 7':'#6366f1','UK Gold & Silver':'#f59e0b',
+    'Wider ETF':'#22c55e','Country Etf':'#a78bfa',
+  };
+
+  const snap = (await api('portfolio_snapshots','?select=*&order=created_at.desc&limit=1'))[0];
+  if (!snap) { el.innerHTML = '<div style="color:var(--muted)">No snapshot yet</div>'; return; }
+  const positions = await api('positions', `?snapshot_id=eq.${snap.id}&select=ticker,display,pie,exchange,gain_pct,current_price,quantity`);
+
+  // Deduplicate
+  const seen = new Set();
+  const pos = positions.filter(p => { if(seen.has(p.ticker)) return false; seen.add(p.ticker); return true; });
+
+  // Group by sector → pie → holdings
+  const sectors = {};
+  pos.forEach(p => {
+    const sym = p.display || p.ticker || '';
+    // Strip trailing exchange letter for lookup
+    const cleanSym = sym.replace(/[ldaAS]$/, '') || sym;
+    const sector = SECTOR_MAP[sym] || SECTOR_MAP[cleanSym] || 'Other';
+    const pie = p.pie || 'Solo';
+    if (!sectors[sector]) sectors[sector] = {};
+    if (!sectors[sector][pie]) sectors[sector][pie] = [];
+    sectors[sector][pie].push(p);
+  });
+
+  const SECTOR_ORDER = ['Technology','Broad Market','Country / Regional','Emerging Markets','Commodities','Other'];
+
+  let html = `<div style="display:flex;flex-direction:column;gap:10px;margin-top:4px">`;
+
+  for (const sName of SECTOR_ORDER) {
+    if (!sectors[sName]) continue;
+    const sc = SECTOR_COLORS[sName] || { bg:'rgba(100,116,139,.12)', border:'#475569', text:'#94a3b8' };
+    const pies = sectors[sName];
+
+    // Build holding chips per pie
+    let piecols = '';
+    for (const [pieName, holdings] of Object.entries(pies)) {
+      const pc = PIE_COLORS[pieName] || '#8892a4';
+      const chips = holdings.map(h => {
+        const gp = h.gain_pct != null ? +h.gain_pct : null;
+        const gpColor = gp == null ? '#475569' : gp >= 0 ? '#22c55e' : '#ef4444';
+        const gpStr = gp == null ? '' : `${gp >= 0 ? '+' : ''}${gp.toFixed(1)}%`;
+        const sym = (h.display || h.ticker || '').replace(/_EQ$/, '');
+        return `<div style="
+          display:inline-flex;align-items:center;gap:5px;
+          background:#0f1117;border:1px solid ${sc.border}44;
+          border-radius:6px;padding:4px 8px;font-size:11px;
+          transition:border-color .15s;cursor:default;
+          " title="${pieName}">
+          <span style="font-weight:700;color:${sc.text}">${sym}</span>
+          ${gpStr ? `<span style="font-size:10px;color:${gpColor}">${gpStr}</span>` : ''}
+        </div>`;
+      }).join('');
+
+      piecols += `<div style="display:flex;flex-direction:column;gap:4px;min-width:0">
+        <div style="font-size:9px;font-weight:700;color:${pc};text-transform:uppercase;letter-spacing:.06em;padding-left:2px">${pieName}</div>
+        <div style="display:flex;flex-wrap:wrap;gap:4px">${chips}</div>
+      </div>`;
+    }
+
+    // Count totals
+    const totalHoldings = Object.values(pies).flat().length;
+
+    html += `<div style="
+      border:1px solid ${sc.border}55;border-radius:10px;
+      background:${sc.bg};overflow:hidden;
+    ">
+      <!-- Sector header -->
+      <div style="
+        display:flex;align-items:center;justify-content:space-between;
+        padding:8px 12px;border-bottom:1px solid ${sc.border}33;
+      ">
+        <div style="font-size:12px;font-weight:700;color:${sc.text}">${sName}</div>
+        <div style="font-size:10px;color:#334155">${totalHoldings} holding${totalHoldings!==1?'s':''} · ${Object.keys(pies).length} pie${Object.keys(pies).length!==1?'s':''}</div>
+      </div>
+      <!-- Pie columns -->
+      <div style="display:flex;flex-wrap:wrap;gap:12px;padding:10px 12px">
+        ${piecols}
+      </div>
+    </div>`;
+  }
+
+  html += `</div>`;
+  el.innerHTML = html;
 }
 
 // ── HEATMAP ───────────────────────────────────────────────────
