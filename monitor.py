@@ -115,6 +115,7 @@ def save_snapshot_to_supabase(summary, pies, alerts, account, state):
             "gain_pct":     p["gain_pct"],
             "dip_from_high": p["dip_from_high"],
             "ppl":          p["ppl"],
+            "quantity":     p.get("qty"),
         } for p in summary]
         sb_insert("positions", pos_rows)
         print(f"[supabase] {len(pos_rows)} positions saved")
@@ -222,8 +223,15 @@ def fetch_pies_with_instruments():
             target_pct = float(inst.get("expectedShare", actual_pct))
             if abs(actual_pct - target_pct) >= REBALANCE_DRIFT_PCT:
                 drifts.append(f"{inst.get('ticker','')}: {abs(actual_pct-target_pct):.1f}%")
+        targets = [{
+            "ticker":   inst.get("ticker", ""),
+            "expected": inst.get("expectedShare"),
+            "current":  inst.get("currentShare"),
+            "qty":      inst.get("ownedQuantity"),
+            "result":   inst.get("result"),
+        } for inst in instruments]
         pies.append({
-            "id": pie_id, "name": name, "value": round(total_val, 2),
+            "id": pie_id, "name": name, "value": round(total_val, 2), "instruments": targets,
             "gain_pct": round(gain_pct, 2), "holdings": len(instruments), "drifts": drifts,
         })
     print(f"[fetch] {len(pies)} pies, {len(pie_map)} tickers mapped")
@@ -289,6 +297,7 @@ def analyse(positions, pies, pie_map, state):
         exchange      = resolve_exchange(ticker)
         display       = ticker.split("_")[0]
         summary.append({"ticker":ticker,"display":display,"current":cur,"avg":avg,
+            "qty":float(pos.get("quantity",0) or 0),
             "gain_pct":round(gain_pct,2),"dip_from_high":round(dip_from_high,2),
             "ppl":round(ppl,2),"pie":pie_name,"exchange":exchange})
         if dip_from_high >= DIP_FROM_HIGH_PCT:
