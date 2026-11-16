@@ -1,146 +1,223 @@
-// ── BUBBLE CHART (replaces heatmap) ───────────────────────────
-
+// ── RADIAL P&L CHART ──────────────────────────────────────────
 async function loadHeatmap() {
   const wrap = document.getElementById('heatmap-grid');
   if (IS_GUEST) {
-    wrap.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px 0">🔒 Sign in to view P&L bubbles</div>';
+    wrap.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:16px 0">🔒 Sign in to view radial P&L</div>';
     return;
   }
 
-  // ── fetch snapshots ──────────────────────────────────────────
   const snaps = await api('portfolio_snapshots','?select=id,created_at&order=created_at.desc&limit=60');
   if (!snaps.length) { wrap.innerHTML = '<div class="loading">No snapshot data yet.</div>'; return; }
 
-  const now      = new Date(snaps[0].created_at);
-  const snapId   = snaps[0].id;
+  const latest   = snaps[0];
+  const now      = new Date(latest.created_at);
 
   const findSnap = (daysAgo) => {
     const target = now - daysAgo * 86400000;
-    return snaps.slice(1).reduce((best, s) => {
-      const d = Math.abs(new Date(s.created_at) - target);
-      return d < Math.abs(new Date(best.created_at) - target) ? s : best;
-    }, snaps[snaps.length - 1]);
+    const candidates = snaps.slice(1);
+    if (!candidates.length) return null;
+    return candidates.reduce((best, s) =>
+      Math.abs(new Date(s.created_at) - target) < Math.abs(new Date(best.created_at) - target) ? s : best
+    , candidates[0]);
   };
 
-  const daySnap   = snaps.length > 1 ? findSnap(1)  : null;
-  const weekSnap  = snaps.length > 1 ? findSnap(7)  : null;
-  const monthSnap = snaps.length > 1 ? findSnap(30) : null;
+  const daySnap   = findSnap(1);
+  const weekSnap  = findSnap(7);
+  const monthSnap = findSnap(30);
 
-  // ── fetch positions ──────────────────────────────────────────
-  const cur = await api('positions', `?snapshot_id=eq.${snapId}&select=ticker,display,pie,ppl,gain_pct`);
-
-  const posMap = (rows) => {
+  const fetchPos = async (snap) => {
+    if (!snap) return {};
+    const rows = await api('positions', `?snapshot_id=eq.${snap.id}&select=ticker,ppl`).catch(() => []);
     const m = {};
-    rows.forEach(r => { m[r.ticker] = r; });
+    rows.forEach(r => { m[r.ticker] = +r.ppl || 0; });
     return m;
   };
 
-  const fetchSnap = async (s) => {
-    if (!s) return {};
-    const rows = await api('positions', `?snapshot_id=eq.${s.id}&select=ticker,ppl`).catch(() => []);
-    return posMap(rows);
-  };
-
-  const [dayMap, weekMap, monthMap] = await Promise.all([
-    fetchSnap(daySnap),
-    fetchSnap(weekSnap),
-    fetchSnap(monthSnap),
+  const [curRows, dayMap, weekMap, monthMap] = await Promise.all([
+    api('positions', `?snapshot_id=eq.${latest.id}&select=ticker,display,pie,ppl,gain_pct`),
+    fetchPos(daySnap),
+    fetchPos(weekSnap),
+    fetchPos(monthSnap),
   ]);
 
-  const curMap = posMap(cur);
+  const tickers  = curRows.map(p => p.ticker);
+  const curMap   = {};
+  curRows.forEach(r => { curMap[r.ticker] = r; });
 
-  // ── build delta ppl per period ───────────────────────────────
   const delta = (ticker, refMap) => {
     const c = curMap[ticker]?.ppl ?? 0;
-    const r = refMap[ticker]?.ppl ?? c; // if no ref, delta = 0
+    const r = refMap[ticker] ?? c;
     return c - r;
   };
 
-  // ── render ───────────────────────────────────────────────────
-  const snapLabel = now.toLocaleDateString('en-GB', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' });
-  document.getElementById('heatmap-updated').textContent = `· as of ${snapLabel}`;
-
   const periods = [
-    { id: 'bubble-daily',   label: '📅 Daily P&L',   refMap: dayMap,   refSnap: daySnap,   days: 1  },
-    { id: 'bubble-weekly',  label: '📆 Weekly P&L',  refMap: weekMap,  refSnap: weekSnap,  days: 7  },
-    { id: 'bubble-monthly', label: '🗓️ Monthly P&L', refMap: monthMap, refSnap: monthSnap, days: 30 },
+    { label: 'Monthly',  refMap: monthMap, hasRef: !!monthSnap },
+    { label: 'Weekly',   refMap: weekMap,  hasRef: !!weekSnap  },
+    { label: 'Daily',    refMap: dayMap,   hasRef: !!daySnap   },
+    { label: 'All-time', refMap: null,     hasRef: true        },
   ];
 
-  wrap.innerHTML = periods.map(p => `
-    <div style="margin-bottom:24px">
-      <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">
-        <div style="font-size:13px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.5px">${p.label}</div>
-        <div style="font-size:11px;color:var(--muted)">${p.refSnap ? 'vs ' + new Date(p.refSnap.created_at).toLocaleDateString('en-GB',{day:'numeric',month:'short'}) : 'baseline snapshot only'}</div>
-      </div>
-      <div style="position:relative;height:260px"><canvas id="${p.id}"></canvas></div>
-    </div>
-  `).join('');
+  // colour: red → yellow → green mapped to -1…0…+1
+  const pplColor = (val, maxAbs) => {
+    if (maxAbs === 0) return '#334155';
+    const t = Math.max(-1, Math.min(1, val / maxAbs));
+    if (t >= 0) {
+      // 0→green: yellow→lime→green
+      const r = Math.round(255 * (1 - t));
+      const g = Math.round(200 + 55 * t);
+      return `rgb(${r},${g},60)`;
+    } else {
+      // 0→red
+      const r = Math.round(220 + 35 * (-t));
+      const g = Math.round(80 * (1 + t));
+      return `rgb(${r},${g},60)`;
+    }
+  };
 
-  // ── draw each bubble chart ───────────────────────────────────
-  periods.forEach(({ id, refMap, refSnap }) => {
-    const tickers = cur.map(p => p.ticker);
+  // ── SVG radial chart ─────────────────────────────────────────
+  const N        = tickers.length;
+  const nRings   = periods.length;
+  const W        = 540;
+  const cx       = W / 2;
+  const cy       = W / 2;
+  const innerR   = 70;
+  const outerR   = 240;
+  const ringW    = (outerR - innerR) / nRings;
+  const gap      = 0.018; // radians gap between segments
 
-    const deltas = tickers.map(t => delta(t, refMap));
-    const maxAbs = Math.max(...deltas.map(Math.abs), 0.01);
+  const anglePerTick  = (2 * Math.PI) / N;
+  const startOffset   = -Math.PI / 2; // 12 o'clock
 
-    // bubble radius: 4–28 scaled to max delta
-    const r = (v) => 4 + Math.abs(v) / maxAbs * 24;
+  const polarToXY = (angle, r) => ({
+    x: cx + r * Math.cos(angle),
+    y: cy + r * Math.sin(angle),
+  });
 
-    // x = gain_pct (spread left/right), y = random jitter for readability
-    const seed = (t) => { let h = 0; for (const c of t) h = (h * 31 + c.charCodeAt(0)) & 0xffff; return h; };
+  const arcPath = (startAngle, endAngle, r1, r2) => {
+    const s1 = polarToXY(startAngle, r1);
+    const e1 = polarToXY(endAngle,   r1);
+    const s2 = polarToXY(startAngle, r2);
+    const e2 = polarToXY(endAngle,   r2);
+    const large = (endAngle - startAngle) > Math.PI ? 1 : 0;
+    return [
+      `M ${s1.x} ${s1.y}`,
+      `A ${r1} ${r1} 0 ${large} 1 ${e1.x} ${e1.y}`,
+      `L ${e2.x} ${e2.y}`,
+      `A ${r2} ${r2} 0 ${large} 0 ${s2.x} ${s2.y}`,
+      'Z'
+    ].join(' ');
+  };
 
-    const datasets = tickers.map((t, i) => {
-      const d = deltas[i];
-      const p = curMap[t];
-      const gainPct = p?.gain_pct ?? 0;
-      const yJitter = ((seed(t) % 100) / 100) * 60 + 20; // 20–80
+  // per-ring max abs for colour scaling
+  const ringMaxAbs = periods.map(p => {
+    if (!p.refMap) {
+      return Math.max(...tickers.map(t => Math.abs(curMap[t]?.ppl || 0)), 0.01);
+    }
+    return Math.max(...tickers.map(t => Math.abs(delta(t, p.refMap))), 0.01);
+  });
 
-      return {
-        label: p?.display || t,
-        data: [{ x: gainPct, y: yJitter, r: r(d) }],
-        backgroundColor: d >= 0 ? 'rgba(34,197,94,0.75)' : 'rgba(239,68,68,0.75)',
-        borderColor:     d >= 0 ? '#22c55e' : '#ef4444',
-        borderWidth: 1,
-      };
+  let paths = '';
+  let labels = '';
+  let tooltipData = [];
+
+  tickers.forEach((ticker, ti) => {
+    const aStart = startOffset + ti * anglePerTick + gap;
+    const aEnd   = startOffset + (ti + 1) * anglePerTick - gap;
+    const aMid   = (aStart + aEnd) / 2;
+
+    periods.forEach((period, ri) => {
+      const r1 = innerR + ri * ringW;
+      const r2 = r1 + ringW - 1;
+      const val = period.refMap
+        ? delta(ticker, period.refMap)
+        : (curMap[ticker]?.ppl || 0);
+      const col = period.hasRef ? pplColor(val, ringMaxAbs[ri]) : '#1e2a3a';
+      const path = arcPath(aStart, aEnd, r1, r2);
+      const p = curMap[ticker];
+      const tooltipStr = `${p.display||ticker} | ${period.label}: ${val >= 0 ? '+' : ''}£${val.toFixed(2)}${period.refMap ? ' Δ' : ''}`;
+      paths += `<path d="${path}" fill="${col}" stroke="#0f1117" stroke-width="0.8" data-tip="${tooltipStr}" class="rad-seg"/>`;
     });
 
-    // filter out zero-delta tickers if reference exists
-    const hasRef = !!refSnap && Object.keys(refMap).length > 0;
+    // ticker label at outer edge
+    const labelR = outerR + 14;
+    const lp = polarToXY(aMid, labelR);
+    const deg = (aMid * 180 / Math.PI) + 90;
+    const flip = aMid > Math.PI / 2 && aMid < 3 * Math.PI / 2;
+    const p = curMap[ticker];
+    const sym = (p.display || ticker).replace(/_EQ$/, '');
+    labels += `<text x="${lp.x}" y="${lp.y}" font-size="8" fill="#8892a4" text-anchor="middle" dominant-baseline="middle"
+      transform="rotate(${flip ? deg + 180 : deg}, ${lp.x}, ${lp.y})">${sym}</text>`;
+  });
 
-    const ctx = document.getElementById(id).getContext('2d');
-    new Chart(ctx, {
-      type: 'bubble',
-      data: { datasets },
-      options: {
-        responsive: true,
-        maintainAspectRatio: false,
-        layout: { padding: { top: 10, bottom: 10 } },
-        scales: {
-          x: {
-            title: { display: true, text: 'All-time gain %', color: '#8892a4', font: { size: 10 } },
-            ticks: { color: '#8892a4', font: { size: 10 } },
-            grid: { color: '#2d3353' },
-          },
-          y: {
-            display: false,
-            min: 0, max: 100,
-          },
-        },
-        plugins: {
-          legend: { display: false },
-          tooltip: {
-            callbacks: {
-              label: (ctx) => {
-                const t = ctx.dataset.label;
-                const d = deltas[tickers.indexOf(t.includes('_') ? t : (cur.find(p => (p.display||p.ticker) === t)?.ticker || t))];
-                const gainPct = curMap[t]?.gain_pct ?? curMap[cur.find(p=>(p.display||p.ticker)===t)?.ticker]?.gain_pct ?? 0;
-                const dStr = hasRef ? ` | Δ ${d >= 0 ? '+' : ''}£${d.toFixed(2)}` : ' | (no prior data)';
-                return `${t} | ${gainPct.toFixed(1)}% gain${dStr}`;
-              },
-            },
-          },
-        },
-      },
+  // ring labels (inside inner circle or alongside)
+  let ringLabels = '';
+  periods.forEach((p, ri) => {
+    const r = innerR + ri * ringW + ringW / 2;
+    ringLabels += `<text x="${cx}" y="${cy - r}" font-size="7.5" fill="#475569" text-anchor="middle" dominant-baseline="middle">${p.label}</text>`;
+  });
+
+  // centre label
+  const snapLabel = now.toLocaleDateString('en-GB', { day:'numeric', month:'short' });
+  document.getElementById('heatmap-updated').textContent = `· ${snapLabel}`;
+
+  // legend
+  const legend = `
+    <defs>
+      <linearGradient id="legGrad" x1="0" x2="0" y1="0" y2="1">
+        <stop offset="0%"   stop-color="rgb(60,200,60)"/>
+        <stop offset="50%"  stop-color="rgb(255,220,0)"/>
+        <stop offset="100%" stop-color="rgb(220,40,40)"/>
+      </linearGradient>
+    </defs>
+    <rect x="${W-28}" y="${cy-60}" width="10" height="120" fill="url(#legGrad)" rx="3"/>
+    <text x="${W-14}" y="${cy-60}" font-size="8" fill="#8892a4" dominant-baseline="middle">+</text>
+    <text x="${W-14}" y="${cy}"    font-size="8" fill="#8892a4" dominant-baseline="middle">0</text>
+    <text x="${W-14}" y="${cy+60}" font-size="8" fill="#8892a4" dominant-baseline="middle">−</text>
+    <text x="${W-16}" y="${cy+80}" font-size="7" fill="#475569" text-anchor="middle">P&amp;L</text>
+  `;
+
+  const svgH = W + 20;
+  wrap.innerHTML = `
+    <div style="position:relative;width:100%;max-width:560px;margin:0 auto">
+      <svg id="radial-svg" viewBox="0 0 ${W} ${svgH}" width="100%" style="display:block">
+        ${legend}
+        ${paths}
+        ${labels}
+        ${ringLabels}
+        <circle cx="${cx}" cy="${cy}" r="${innerR - 2}" fill="#0f1117"/>
+        <text x="${cx}" y="${cy - 10}" font-size="13" font-weight="700" fill="#e2e8f0" text-anchor="middle">Portfolio</text>
+        <text x="${cx}" y="${cy + 8}"  font-size="10" fill="#8892a4" text-anchor="middle">P&amp;L Rings</text>
+        <text x="${cx}" y="${cy + 22}" font-size="8"  fill="#475569" text-anchor="middle">${N} positions</text>
+      </svg>
+      <div id="rad-tooltip" style="
+        position:absolute;pointer-events:none;display:none;
+        background:#1a1d27;border:1px solid #2d3353;border-radius:6px;
+        padding:6px 10px;font-size:12px;color:#e2e8f0;white-space:nowrap;z-index:10
+      "></div>
+    </div>
+    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-size:11px;color:#475569">
+      ${periods.map(p => `<span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:10px;height:10px;background:#334155;border-radius:2px"></span>${p.label}${!p.hasRef?' (no prior data)':''}</span>`).join('')}
+    </div>
+  `;
+
+  // tooltip interaction
+  const svg   = document.getElementById('radial-svg');
+  const tip   = document.getElementById('rad-tooltip');
+  const segs  = svg.querySelectorAll('.rad-seg');
+  segs.forEach(seg => {
+    seg.addEventListener('mouseenter', (e) => {
+      tip.textContent = seg.dataset.tip;
+      tip.style.display = 'block';
+      seg.setAttribute('opacity', '0.75');
+    });
+    seg.addEventListener('mousemove', (e) => {
+      const rect = svg.parentElement.getBoundingClientRect();
+      tip.style.left = (e.clientX - rect.left + 12) + 'px';
+      tip.style.top  = (e.clientY - rect.top  - 10) + 'px';
+    });
+    seg.addEventListener('mouseleave', () => {
+      tip.style.display = 'none';
+      seg.setAttribute('opacity', '1');
     });
   });
 }
