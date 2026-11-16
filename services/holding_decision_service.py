@@ -73,11 +73,10 @@ SECTOR_REGION_MAP = {
 def sb_get(table, query=""):
     url = f"{SUPABASE_URL}/rest/v1/{table}{query}"
     req = urllib.request.Request(url, headers={
-        "apikey": SUPABASE_URL and SUPABASE_KEY,
+        "apikey": SUPABASE_KEY,
         "Authorization": f"Bearer {SUPABASE_KEY}",
         "Accept": "application/json",
     })
-    req.add_header("apikey", SUPABASE_KEY)
     try:
         with urllib.request.urlopen(req, timeout=20) as r:
             return json.loads(r.read())
@@ -170,12 +169,34 @@ def exchange_to_region(exchange):
     return None
 
 
-def yf_symbol(ticker, exchange):
-    suffix = EXCHANGE_SUFFIX.get((exchange or "").upper(), "")
-    # Avoid double suffix (e.g. ticker already ends with .L)
-    if suffix and ticker.endswith(suffix):
-        return ticker
-    return ticker + suffix
+def yf_symbol(display, exchange):
+    """
+    Convert T212 display name to yfinance symbol.
+    T212 LSE tickers use trailing lowercase 'l' instead of '.L'
+    e.g. SSLNl → SSLN.L, IAEXl → IAEX.L
+    US tickers (display = AAPL, NVDA etc) need no suffix.
+    """
+    ex = (exchange or "").upper()
+    suffix = EXCHANGE_SUFFIX.get(ex, "")
+    sym = display
+
+    if suffix == ".L":
+        # Strip trailing lowercase l T212 appends to LSE tickers
+        if sym.endswith("l") and not sym.endswith(".L"):
+            sym = sym[:-1]
+        if not sym.endswith(".L"):
+            sym = sym + ".L"
+    elif suffix == ".DE":
+        if sym.endswith("d") and len(sym) > 2:
+            sym = sym[:-1]
+        sym = sym + ".DE"
+    elif suffix == ".AS":
+        # T212 AMS tickers sometimes end with 'a' e.g. VUSAa
+        if sym.endswith("a") and len(sym) > 2:
+            sym = sym[:-1]
+        sym = sym + ".AS"
+    # US: no suffix needed, display is already the clean symbol
+    return sym
 
 
 # ── Scoring engine ────────────────────────────────────────────────────────────
@@ -323,7 +344,8 @@ def run():
     for pos in positions_raw:
         ticker   = pos["ticker"]
         exchange = pos.get("exchange", "")
-        sym      = yf_symbol(ticker, exchange)
+        display  = pos.get("display") or ticker
+        sym      = yf_symbol(display, exchange)
         region   = exchange_to_region(exchange)
         print(f"  Scoring {ticker} ({sym})...")
 
