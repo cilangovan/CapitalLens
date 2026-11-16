@@ -13,6 +13,7 @@ const loaders = {
   positions: loadPositions,
   analyst:   loadAnalyst,
   strategy:  loadStrategy,
+  profit:    loadProfit,
   returns:   loadReturns,
   alerts:    loadAlerts,
 };

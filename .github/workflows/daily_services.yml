@@ -108,6 +108,23 @@ jobs:
           SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: python -m services.holding_decision_service
 
+  profit_booking:
+    name: Profit Booking & Capital Protection
+    runs-on: ubuntu-latest
+    needs: [analyst]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - name: Install deps
+        run: pip install -r requirements.txt
+      - name: Run profit booking service
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python -m services.profit_booking_service
+
   alerts:
     name: Alerts & Notifications
     runs-on: ubuntu-latest

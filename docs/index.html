@@ -147,6 +147,28 @@
   }
   .period-btn:hover { opacity: .8; }
   .period-btn.active { background: var(--accent); color: #fff; border-color: var(--accent); }
+  .pb-lvl { display:inline-block; padding:2px 8px; border-radius:999px; font-size:10px; font-weight:700; text-transform:uppercase; letter-spacing:.4px; }
+  .pb-run { background:rgba(34,197,94,.2); color:var(--green); }
+  .pb-hold { background:rgba(96,165,250,.18); color:#60a5fa; }
+  .pb-trim { background:rgba(245,158,11,.2); color:var(--yellow); }
+  .pb-rebalance { background:rgba(167,139,250,.2); color:#a78bfa; }
+  .pb-reassess { background:rgba(239,68,68,.2); color:var(--red); }
+  .pb-bar { height:8px; background:var(--bg3); border-radius:4px; overflow:hidden; position:relative; }
+  .pb-bar > i { display:block; height:100%; border-radius:4px; }
+  .pb-hold-card { background:var(--bg3); border:1px solid var(--border); border-radius:8px; margin-bottom:8px; overflow:hidden; }
+  .pb-hold-head { display:grid; grid-template-columns: 1fr 56px 70px 90px 18px; gap:8px; align-items:center; padding:10px 12px; cursor:pointer; }
+  .pb-hold-body { display:none; padding:4px 12px 12px; border-top:1px solid var(--border); font-size:12px; }
+  .pb-hold-body.open { display:block; }
+  .pb-score { font-weight:800; font-size:16px; text-align:center; }
+  .pb-ladder { display:flex; gap:6px; flex-wrap:wrap; margin:8px 0; }
+  .pb-step { flex:1; min-width:90px; border:1px solid var(--border); border-radius:6px; padding:6px 8px; font-size:11px; background:var(--bg2); }
+  .pb-step.hit { border-color:var(--yellow); background:rgba(245,158,11,.08); }
+  .pb-kv { display:grid; grid-template-columns: repeat(auto-fill,minmax(130px,1fr)); gap:8px; margin:8px 0; }
+  .pb-kv div { background:var(--bg2); border-radius:6px; padding:6px 8px; }
+  .pb-kv b { display:block; font-size:10px; color:var(--muted); font-weight:600; text-transform:uppercase; }
+  .pb-rules td, .pb-rules th { padding:6px 8px; border-bottom:1px solid var(--border); font-size:12px; text-align:left; }
+  .pb-rules th { color:var(--muted); font-size:11px; }
+  @media(max-width:640px){ .pb-hold-head { grid-template-columns: 1fr 44px 64px 18px; } .pb-hold-head .pb-hide-sm { display:none; } }
 </style>
 </head>
 <body>
@@ -237,6 +259,7 @@
   <button onclick="showTab('positions',this)">📋 Positions</button>
   <button onclick="showTab('analyst',this)">🔬 Analyst</button>
   <button onclick="showTab('strategy',this)">🎯 Strategy</button>
+  <button onclick="showTab('profit',this)">💰 Profit Booking</button>
   <button onclick="showTab('returns',this)">📈 Returns</button>
   <button onclick="showTab('alerts',this)">🔔 Alerts</button>
 </nav>
@@ -282,6 +305,10 @@
   <div id="strategy-content"><div class="loading">Loading…</div></div>
 </div>
 
+<div id="profit" class="tab">
+  <div id="profit-content"><div class="loading">Loading…</div></div>
+</div>
+
 <div id="returns" class="tab">
   <div id="returns-content"><div class="loading">Loading…</div></div>
 </div>
@@ -299,6 +326,7 @@
 <script src="js/positions.js"></script>
 <script src="js/analyst.js"></script>
 <script src="js/strategy.js"></script>
+<script src="js/profit.js"></script>
 <script src="js/returns.js"></script>
 <script src="js/alerts.js"></script>
 <script src="js/router.js"></script>
