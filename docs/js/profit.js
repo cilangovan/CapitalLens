@@ -112,7 +112,9 @@ async function loadProfit() {
         </div>`).join('')}</div>` : '';
     const protect = r.kind === 'stock' ? `
       <div class="pb-kv">
-        <div><b>Trailing exit (3×ATR)</b>${pbPrice(r.trailing_stop, (r.trim_plan[0] || {}).unit)}<br><span style="color:var(--muted)">${fmt(r.stop_distance_pct, 1)}% below price</span></div>
+        <div><b>Trailing exit (3×ATR)</b>${pbPrice(r.trailing_stop, (r.trim_plan[0] || {}).unit)}<br>${sig.trail_breached
+          ? `<span class="red">breached — price ${fmt(Math.abs(r.stop_distance_pct), 1)}% below</span>`
+          : `<span style="color:var(--muted)">${fmt(r.stop_distance_pct, 1)}% below price</span>`}</div>
         <div><b>Max size @1% risk</b>${fmtGbp(r.max_position_gbp)}<br><span class="${r.value_gbp > r.max_position_gbp ? 'red' : 'green'}">${r.value_gbp > r.max_position_gbp ? 'oversized' : 'within limit'}</span></div>
         <div><b>Analyst upside</b>${sig.upside_pct == null ? '—' : fmt(sig.upside_pct, 1) + '%'}</div>
       </div>` : `

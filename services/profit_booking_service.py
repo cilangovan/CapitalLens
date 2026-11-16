@@ -197,7 +197,7 @@ def classify_etf(yahoo, name):
     if yahoo in ETF_LOOKTHROUGH:
         lt = ETF_LOOKTHROUGH[yahoo]
         main = max((k for k in lt if k != "Other"), key=lambda k: lt[k], default="Broad market")
-        return main, lt
+        return (main if lt.get(main, 0) >= 0.5 else "Broad market"), lt
     n = f" {(name or '').lower()} "
     for words, sector in NAME_KEYWORDS:
         if any(w in n for w in words):
@@ -370,7 +370,7 @@ def run():
         breakdown = {"market": s_mkt, "sector": s_sec, "momentum": s_mom, "volume": s_vol,
                      "fundamentals": s_fun, "concentration": s_con}
         signals = {
-            "rule": combo_rule(s_mkt >= 12, s_sec >= 14, s_vol == 0),
+            "rule": combo_rule(s_mkt == 20, s_sec >= 14, s_vol == 0),
             "volume": vol_note,
             "sector_rel_3m": round(rel, 1) if rel is not None else None,
             "upside_pct": round(upside, 1) if upside is not None else None,
@@ -378,13 +378,13 @@ def run():
             "above50": tr["above50"] if tr else None, "above200": tr["above200"] if tr else None,
         }
 
-        trim_plan, trail, dist, max_pos = [], None, None, None
+        trim_plan, trail, dist, max_pos, breached = [], None, None, None, False
         if is_stock:
             # Staged ladder
             for lvl, label, pct_hi, pct_lo in STOCK_LADDER:
                 pct = (pct_hi if score >= 80 else pct_lo)
                 if pct is None:
-                    pct = min(1.0, iv.get("invested", 0) / value) if value else 0
+                    pct = 1 / (1 + lvl / 100)   # share of the position worth your original stake at this level
                 trim_plan.append({
                     "gain": lvl, "label": label, "price": round(avg * (1 + lvl / 100), 2), "unit": u,
                     "hit": gain >= lvl, "sell_pct": round(pct * 100),
@@ -395,18 +395,27 @@ def run():
                 a = atr(d)
                 hi = max(d["c"][-63:])
                 if a:
+                    py = d["c"][-1]
                     stop_y = hi - ATR_MULT * a
-                    dist = max(0.01, (d["c"][-1] - stop_y) / d["c"][-1])
-                    trail = round(cur * (1 - dist), 2)
-            if dist:
-                max_pos = round(total * RISK_PER_TRADE_PCT / 100 / dist, 2)
+                    dist = (py - stop_y) / py            # negative → price already below the exit
+                    trail = round(cur * stop_y / py, 2)
+                    breached = py < stop_y
+                    size_dist = ATR_MULT * a / py        # risk distance used for position sizing
+                    max_pos = round(total * RISK_PER_TRADE_PCT / 100 / size_dist, 2)
+            if breached:
+                notes.append(f"Trailing exit breached — price is {abs(dist)*100:.0f}% below the 3×ATR exit from the 3-month high; "
+                             f"trend has broken, decide hold vs exit on the thesis")
+                signals["trail_breached"] = True
+            if max_pos:
                 if value > max_pos:
-                    notes.append(f"Oversized for 1% risk: £{value:,.0f} vs £{max_pos:,.0f} max at a {dist*100:.0f}% stop")
+                    notes.append(f"Oversized for 1% risk: £{value:,.0f} vs £{max_pos:,.0f} max")
             hit = [x for x in trim_plan if x["hit"] and x["sell_pct"]]
             if hit and level != "reassess":
                 h = hit[-1]
                 action = f"{h['label']} — sell ~{h['sell_qty']} sh (≈£{h['sell_gbp']:.0f})" + (" · score strong, smaller trim" if score >= 80 else "")
                 level = "trim"
+            elif level == "trim" and gain <= 0:
+                action = "Score 50–64 while in a loss — don't add; reduce only if the thesis has weakened"
             elif gain >= 15 and level in ("run", "hold"):
                 notes.append("+15% reached — check momentum, volume and fundamentals before the +20% trim")
             if weight > MAX_STOCK_PCT:
