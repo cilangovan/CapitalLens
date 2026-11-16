@@ -326,7 +326,10 @@ def run():
     if not positions_raw:
         print("[holding_dec] No positions found — aborting.")
         return
-    print(f"  Loaded {len(positions_raw)} positions")
+    # Deduplicate by ticker (positions table sometimes returns duplicates)
+    seen = set()
+    positions_raw = [p for p in positions_raw if not (p["ticker"] in seen or seen.add(p["ticker"]))]
+    print(f"  Loaded {len(positions_raw)} positions (deduplicated)")
 
     # Load latest market scores from institutional_flow_reports for sector outlook
     region_scores = {}
