@@ -5,7 +5,18 @@ async function loadAnalyst() {
     document.getElementById('analyst-table-wrap').innerHTML = '';
     return;
   }
-  const rows = await api('analyst_ratings','?select=*&order=star_rating.desc');
+
+  // Get current snapshot to filter analyst ratings to active positions only
+  const snap = (await api('portfolio_snapshots','?select=id&order=created_at.desc&limit=1'))[0];
+  const activeTickers = snap
+    ? new Set((await api('positions', `?snapshot_id=eq.${snap.id}&select=display`)).map(p => p.display))
+    : new Set();
+
+  const allRows = await api('analyst_ratings','?select=*&order=star_rating.desc');
+  // Filter to tickers present in current holdings (match on display symbol)
+  const rows = activeTickers.size
+    ? allRows.filter(r => activeTickers.has(r.ticker))
+    : allRows;
 
   const byPie = {};
   rows.forEach(r => {
