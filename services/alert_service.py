@@ -163,9 +163,7 @@ def run():
         ppl = float(p.get("ppl") or 0)
         value = float(p.get("value") or 0)
 
-        # Strip exchange suffix for analyst lookup (e.g. "AAPL_US_EQ" → "AAPL")
-        yahoo_ticker = ticker.split("_")[0] if "_" in ticker else ticker
-        analyst = analyst_map.get(yahoo_ticker, {})
+        analyst = analyst_map.get(ticker, {})  # analyst_ratings keyed by T212 ticker
         star = analyst.get("star_rating", 0) or 0
         buy_pct = float(analyst.get("buy_pct") or 0)
         sell_pct_a = float(analyst.get("sell_pct") or 0)
