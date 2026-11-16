@@ -2,13 +2,15 @@
 """
 Value Buy Service — live analysis engine for all portfolio holdings.
 
-For each stock in TICKER_MAP:
-  1. Fetch current price, 52w range, RSI, MA20/MA50 from Yahoo Finance
-  2. Pull avg cost + quantity from Supabase (from analyst_ratings or T212 positions)
-  3. Calculate 5-band entry zones (based on 52w range + avg cost)
-  4. Generate this-week buy price target (RSI dip + MA support)
-  5. Score: business quality (analyst), momentum (RSI/MA), valuation (vs avg), risk
-  6. Upsert to value_buy_scores table
+Drives entirely from the positions table — no hardcoded tickers.
+For each distinct holding in the latest snapshot:
+  1. Derives Yahoo Finance symbol from T212 ticker + exchange
+  2. Fetches current price, 52w range, RSI, MA20/MA50 from Yahoo Finance
+  3. Pulls avg cost + quantity from the positions row
+  4. Calculates 5-band entry zones (based on 52w range + avg cost)
+  5. Generates this-week buy price target (RSI dip + MA support)
+  6. Scores: business quality, momentum, valuation, risk → 0-100
+  7. Upserts to value_buy_scores, deletes rows for tickers no longer held
 
 Run via: python -m services.value_buy_service
 Or triggered by daily_services.yml workflow.
@@ -33,57 +35,66 @@ except ImportError:
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_KEY") or os.environ["SUPABASE_KEY"]
 
-# ── Ticker → Yahoo symbol mapping (from analyst_service) ──────────────────────
-# ETFs are included — Yahoo has price data even without analyst ratings
-TICKER_MAP = {
-    # Atomic Resources
-    "UEC_US_EQ":   {"yahoo": "UEC",    "pie": "Atomic Resources",  "currency": "$"},
-    "CCJ_US_EQ":   {"yahoo": "CCJ",    "pie": "Atomic Resources",  "currency": "$"},
-    "XOM_US_EQ":   {"yahoo": "XOM",    "pie": "Atomic Resources",  "currency": "$"},
-    # Space x allied
-    "SPCE_US_EQ":  {"yahoo": "SPCE",   "pie": "Space x allied",    "currency": "$"},
-    "LMT_US_EQ":   {"yahoo": "LMT",    "pie": "Space x allied",    "currency": "$"},
-    "RTX_US_EQ":   {"yahoo": "RTX",    "pie": "Space x allied",    "currency": "$"},
-    "BA_US_EQ":    {"yahoo": "BA",     "pie": "Space x allied",    "currency": "$"},
-    "NOC_US_EQ":   {"yahoo": "NOC",    "pie": "Space x allied",    "currency": "$"},
-    # Magnificent 7
-    "AAPL_US_EQ":  {"yahoo": "AAPL",   "pie": "Magnificent 7",     "currency": "$"},
-    "MSFT_US_EQ":  {"yahoo": "MSFT",   "pie": "Magnificent 7",     "currency": "$"},
-    "GOOGL_US_EQ": {"yahoo": "GOOGL",  "pie": "Magnificent 7",     "currency": "$"},
-    "AMZN_US_EQ":  {"yahoo": "AMZN",   "pie": "Magnificent 7",     "currency": "$"},
-    "NVDA_US_EQ":  {"yahoo": "NVDA",   "pie": "Magnificent 7",     "currency": "$"},
-    "META_US_EQ":  {"yahoo": "META",   "pie": "Magnificent 7",     "currency": "$"},
-    "TSLA_US_EQ":  {"yahoo": "TSLA",   "pie": "Magnificent 7",     "currency": "$"},
-    # Wider ETF
-    "VWRL_L_EQ":   {"yahoo": "VWRL.L", "pie": "Wider ETF",         "currency": "£"},
-    "IWDG_L_EQ":   {"yahoo": "IWDG.L", "pie": "Wider ETF",         "currency": "£"},
-    "VAPX_L_EQ":   {"yahoo": "VAPX.L", "pie": "Wider ETF",         "currency": "£"},
-    "VMID_L_EQ":   {"yahoo": "VMID.L", "pie": "Wider ETF",         "currency": "£"},
-    # Semiconductor
-    "SOXX_US_EQ":  {"yahoo": "SOXX",   "pie": "Semiconductor",     "currency": "$"},
-    "SMH_US_EQ":   {"yahoo": "SMH",    "pie": "Semiconductor",     "currency": "$"},
-    # Country ETF
-    "EWJ_US_EQ":   {"yahoo": "EWJ",    "pie": "Country Etf",       "currency": "$"},
-    "EWZ_US_EQ":   {"yahoo": "EWZ",    "pie": "Country Etf",       "currency": "$"},
-    "EWY_US_EQ":   {"yahoo": "EWY",    "pie": "Country Etf",       "currency": "$"},
-    "EWG_US_EQ":   {"yahoo": "EWG",    "pie": "Country Etf",       "currency": "$"},
-    "EWU_US_EQ":   {"yahoo": "EWU",    "pie": "Country Etf",       "currency": "$"},
-    "EWA_US_EQ":   {"yahoo": "EWA",    "pie": "Country Etf",       "currency": "$"},
-    # Global ETF
-    "ACWI_US_EQ":  {"yahoo": "ACWI",   "pie": "Global ETF",        "currency": "$"},
-    "VT_US_EQ":    {"yahoo": "VT",     "pie": "Global ETF",        "currency": "$"},
-    "VXUS_US_EQ":  {"yahoo": "VXUS",   "pie": "Global ETF",        "currency": "$"},
-    "VEA_US_EQ":   {"yahoo": "VEA",    "pie": "Global ETF",        "currency": "$"},
-    "VWO_US_EQ":   {"yahoo": "VWO",    "pie": "Global ETF",        "currency": "$"},
-    # EM markets
-    "EEM_US_EQ":   {"yahoo": "EEM",    "pie": "EM markets",        "currency": "$"},
-    "EMXC_US_EQ":  {"yahoo": "EMXC",   "pie": "EM markets",        "currency": "$"},
-    # UK Gold & Silver
-    "SSLN_L_EQ":   {"yahoo": "SSLN.L", "pie": "UK Gold & Silver",  "currency": "£"},
-    "SGLN_L_EQ":   {"yahoo": "SGLN.L", "pie": "UK Gold & Silver",  "currency": "£"},
-    # Atomic Resources (uranium ETF)
-    "URNM_US_EQ":  {"yahoo": "URNM",   "pie": "Atomic Resources",  "currency": "$"},
-}
+
+# ── T212 ticker → Yahoo Finance symbol ───────────────────────────────────────
+def t212_to_yahoo(t212_ticker, exchange):
+    """
+    Convert a T212 ticker + exchange into a Yahoo Finance symbol.
+
+    T212 ticker format examples:
+      AAPL_US_EQ   → AAPL        (NASDAQ/NYSE)
+      FB_US_EQ     → META        (renamed)
+      SGLNl_EQ     → SGLN.L      (LSE, ticker ends in 'l' for pence-priced)
+      SSLNl_EQ     → SSLN.L
+      VWCEd_EQ     → VWCE.DE     (XETRA)
+      SXRVd_EQ     → SXRV.DE
+      QDVEd_EQ     → QDVE.DE
+      VUSAa_EQ     → VUSA.AS     (Euronext Amsterdam)
+      CS1l_EQ      → CS1.L
+      IAEXl_EQ     → IAEX.L
+      IMIBl_EQ     → IMIB.L
+      IPOLl_EQ     → IPOL.L
+      ITWNl_EQ     → ITWN.L
+      XDAXl_EQ     → XDAX.L
+      SPCX_US_EQ   → SPCX
+    """
+    # Known renames (T212 uses old ticker)
+    RENAMES = {
+        "FB_US_EQ": "META",
+    }
+    if t212_ticker in RENAMES:
+        base = RENAMES[t212_ticker]
+        return base, "$"
+
+    # Strip _EQ suffix
+    core = t212_ticker.replace("_EQ", "")
+
+    exchange_upper = (exchange or "").upper()
+
+    if exchange_upper in ("NASDAQ/NYSE", "NYSE", "NASDAQ"):
+        # e.g. AAPL_US → AAPL, SPCX_US → SPCX
+        sym = core.replace("_US", "")
+        return sym, "$"
+
+    if exchange_upper == "LSE":
+        # T212 uses lowercase 'l' suffix for LSE tickers
+        # e.g. SGLNl → SGLN.L, CS1l → CS1.L
+        sym = core.rstrip("l") + ".L"
+        return sym, "£"
+
+    if exchange_upper == "XETRA":
+        # e.g. VWCEd → VWCE.DE, SXRVd → SXRV.DE
+        sym = core.rstrip("d") + ".DE"
+        return sym, "€"
+
+    if exchange_upper == "AMS":
+        # e.g. VUSAa → VUSA.AS
+        sym = core.rstrip("a") + ".AS"
+        return sym, "€"
+
+    # Fallback: strip trailing exchange letter suffixes and return as-is
+    sym = core.split("_")[0]
+    return sym, "$"
 
 
 # ── Supabase helpers ──────────────────────────────────────────────────────────
@@ -426,11 +437,13 @@ def build_warning(d, avg_cost, week):
     return " ".join(warnings) if warnings else None
 
 
-def analyse_ticker(t212_ticker, meta, positions_map):
+def analyse_ticker(t212_ticker, yahoo, pie, cur, pos):
     """Full analysis pipeline for one ticker."""
-    yahoo = meta["yahoo"]
-    pie   = meta["pie"]
-    cur   = meta["currency"]
+    avg_cost = pos.get("avg_price") or pos.get("avg_cost") or None
+    quantity = pos.get("quantity") or 0
+    display  = pos.get("display") or yahoo
+    if avg_cost:
+        avg_cost = round(float(avg_cost), 4)
 
     print(f"  Analysing {yahoo} ({pie})...", end=" ", flush=True)
     d = fetch_yahoo_data(yahoo)
@@ -438,24 +451,15 @@ def analyse_ticker(t212_ticker, meta, positions_map):
         print("✗ no data")
         return None
 
-    # Get avg cost from positions if available
-    pos = positions_map.get(t212_ticker) or positions_map.get(yahoo) or {}
-    avg_cost = pos.get("avg_cost") or pos.get("averagePrice") or None
-    quantity = pos.get("quantity") or 0
-    if avg_cost: avg_cost = round(float(avg_cost), 4)
-
     current = d["current"]
     zones   = build_entry_zones(current, d["low_52w"], d["high_52w"], avg_cost, cur)
     week    = build_this_week_target(current, d.get("ma20"), d.get("ma50"), d.get("rsi"), d["low_52w"], d["high_52w"], avg_cost)
     score, verdict, scorecard = build_scorecard(d, avg_cost)
     warning = build_warning(d, avg_cost, week)
 
-    # Earnings snapshot from info (if available)
-    earnings = {}  # Yahoo doesn't have YoY growth easily — leave blank, populated manually if needed
-
     row = {
         "ticker":          yahoo,
-        "display":         d.get("short_name") or yahoo,
+        "display":         d.get("short_name") or display,
         "pie":             pie,
         "currency_symbol": cur,
         "score":           score,
@@ -463,7 +467,7 @@ def analyse_ticker(t212_ticker, meta, positions_map):
         "verdict":         verdict,
         "entry_zones":     json.dumps(zones),
         "scorecard":       json.dumps(scorecard),
-        "earnings":        json.dumps(earnings),
+        "earnings":        json.dumps({}),
         "this_week":       json.dumps({
             "action":     week["action"],
             "price":      week["price"],
@@ -489,18 +493,73 @@ def analyse_ticker(t212_ticker, meta, positions_map):
     return row
 
 
+def sb_delete_stale(active_yahoo_tickers):
+    """Delete rows from value_buy_scores that are no longer in the portfolio."""
+    if not active_yahoo_tickers:
+        return
+    # Build NOT IN filter
+    tickers_csv = ",".join(f'"{t}"' for t in active_yahoo_tickers)
+    url = f"{SUPABASE_URL}/rest/v1/value_buy_scores?ticker=not.in.({tickers_csv})"
+    req = urllib.request.Request(
+        url,
+        headers={
+            "apikey": SUPABASE_KEY,
+            "Authorization": f"Bearer {SUPABASE_KEY}",
+            "Prefer": "return=minimal",
+        },
+        method="DELETE",
+    )
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r:
+            print(f"  ✓ cleaned up stale rows (status {r.status})")
+    except Exception as e:
+        print(f"  ⚠ cleanup error: {e}")
+
+
 def run():
     print(f"[value_buy_service] Starting at {datetime.now(timezone.utc).isoformat()}")
 
-    # Load positions from Supabase (avg cost per ticker)
-    # Try the positions table first, fall back to empty
-    positions_raw = sb_get("positions", "?select=ticker,avg_cost,quantity")
-    positions_map = {p["ticker"]: p for p in positions_raw} if positions_raw else {}
-    print(f"  Loaded {len(positions_map)} positions from Supabase")
+    # Load latest snapshot of positions from Supabase
+    positions_raw = sb_get(
+        "positions",
+        "?select=ticker,display,pie,exchange,avg_price,quantity"
+        "&snapshot_id=eq.(select max(snapshot_id) from snapshots)"
+        "&order=pie,ticker"
+    )
+
+    # Fallback: if nested select not supported, get latest snapshot_id first
+    if not positions_raw:
+        snapshots = sb_get("snapshots", "?select=id&order=id.desc&limit=1")
+        if snapshots:
+            snap_id = snapshots[0]["id"]
+            positions_raw = sb_get(
+                "positions",
+                f"?select=ticker,display,pie,exchange,avg_price,quantity&snapshot_id=eq.{snap_id}"
+            )
+
+    if not positions_raw:
+        print("  ERROR: no positions found — aborting")
+        exit(1)
+
+    # Deduplicate by ticker (keep latest)
+    seen = {}
+    for p in positions_raw:
+        seen[p["ticker"]] = p
+    positions = list(seen.values())
+    print(f"  Loaded {len(positions)} distinct positions")
 
     rows = []
-    for t212_ticker, meta in TICKER_MAP.items():
-        row = analyse_ticker(t212_ticker, meta, positions_map)
+    active_yahoo_tickers = []
+
+    for pos in positions:
+        t212_ticker = pos["ticker"]
+        exchange    = pos.get("exchange", "")
+        pie         = pos.get("pie") or "Individual"
+
+        yahoo, cur = t212_to_yahoo(t212_ticker, exchange)
+        active_yahoo_tickers.append(yahoo)
+
+        row = analyse_ticker(t212_ticker, yahoo, pie, cur, pos)
         if row:
             rows.append(row)
         time.sleep(1.5)  # be kind to Yahoo
@@ -508,7 +567,10 @@ def run():
     if rows:
         sb_upsert("value_buy_scores", rows)
 
-    print(f"[value_buy_service] Done — {len(rows)}/{len(TICKER_MAP)} stocks analysed.")
+    # Remove any rows for tickers no longer in the portfolio
+    sb_delete_stale(active_yahoo_tickers)
+
+    print(f"[value_buy_service] Done — {len(rows)}/{len(positions)} stocks analysed.")
 
 
 if __name__ == "__main__":
