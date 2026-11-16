@@ -9,10 +9,14 @@ async function loadAlerts() {
   if (!alerts.length) { el.innerHTML = '<div class="loading">No alerts yet.</div>'; return; }
   el.innerHTML = alerts.map(a => {
     const type = a.alert_type || a.type || 'info';
-    const cls = type === 'buy' ? 'buy' : type === 'sell' ? 'sell' : '';
+    const t = a.title || '';
+    let cls = type === 'buy' ? 'buy' : (type === 'sell' || type === 'trim') ? 'sell' : '';
+    if (type === 'report') cls = t.startsWith('✅') ? 'buy' : t.startsWith('❔') ? 'muted' : '';
+    const esc = s => String(s||'').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+    const structured = /\nMeasure\s/.test('\n' + (a.body||'')) || type === 'report';
     return `<div class="alert-item ${cls}">
-      <div class="a-title">${a.title||''}</div>
-      <div class="a-body">${a.body||''}</div>
+      <div class="a-title">${esc(t)}</div>
+      <div class="a-body${structured ? ' a-report' : ''}">${esc(a.body)}</div>
       <div class="a-time">${a.created_at ? new Date(a.created_at).toLocaleString('en-GB') : ''} · ${type}</div>
     </div>`;
   }).join('');
