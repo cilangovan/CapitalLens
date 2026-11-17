@@ -79,6 +79,25 @@ def sb(method, path, data=None, prefer="return=minimal"):
         return json.loads(raw) if raw else True
 
 
+def sb_all(path, page=1000):
+    """GET every row (PostgREST caps a response at 1000 rows)."""
+    out, off = [], 0
+    sep = "&" if "?" in path else "?"
+    while True:
+        rows = sb("GET", f"{path}{sep}limit={page}&offset={off}") or []
+        out += rows
+        if len(rows) < page:
+            return out
+        off += page
+
+
+def count_rows(table):
+    req = urllib.request.Request(f"{SUPABASE_URL}/rest/v1/{table}?select=*", method="HEAD",
+        headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}", "Prefer": "count=exact"})
+    with urllib.request.urlopen(req, timeout=60) as r:
+        return int((r.headers.get("Content-Range") or "*/0").split("/")[-1])
+
+
 def upsert(table, rows, key):
     rows = list({r[key]: r for r in rows}.values())
     for i in range(0, len(rows), 500):
@@ -161,7 +180,7 @@ def sync(name, path, table, key, mapper):
             print("  reached already-stored history — stopping")
             break
         nxt = resp.get("nextPagePath") if isinstance(resp, dict) else None
-    total = len(sb("GET", f"{table}?select={key}") or [])
+    total = count_rows(table)
     upd = {"endpoint": name, "last_run": NOW(), "items_total": total, "status": "ok",
            "detail": f"{pages} pages, {seen} items read, {new} new"}
     if full:
@@ -173,7 +192,7 @@ def sync(name, path, table, key, mapper):
 
 def rebuild_derived():
     """realised_pnl and dividends (used by the dashboard) from the complete raw tables."""
-    orders = sb("GET", "t212_orders?select=id,ticker,side,status,filled_at,quantity,price,net_value,realised_pnl&order=filled_at") or []
+    orders = sb_all("t212_orders?select=id,ticker,side,status,filled_at,quantity,price,net_value,realised_pnl&order=filled_at,id")
     rows = []
     for o in orders:
         if o["status"] not in ("FILLED", "PARTIALLY_FILLED") or not o["ticker"]:
@@ -185,7 +204,7 @@ def rebuild_derived():
                      "realised_pnl_pct": round(rp / nv * 100, 2) if nv and o["side"] == "SELL" else 0,
                      "side": o["side"]})
     upsert("realised_pnl", rows, "order_id")
-    divs = sb("GET", "t212_dividends?select=reference,ticker,paid_on,amount") or []
+    divs = sb_all("t212_dividends?select=reference,ticker,paid_on,amount&order=reference")
     upsert("dividends", [{"reference": d["reference"], "ticker": d["ticker"], "display": (d["ticker"] or "").split("_")[0],
                           "paid_date": (d["paid_on"] or "")[:10] or None, "amount": round(d["amount"] or 0, 4)} for d in divs],
            "reference")

@@ -252,6 +252,30 @@
   .sr { position:absolute; width:1px; height:1px; overflow:hidden; clip:rect(0 0 0 0); }
   .dd-foot { margin-top:4px; }
   .green { color:var(--green); } .red { color:var(--red); }
+  /* positions drill-down */
+  #pd { position:fixed; inset:0; z-index:200; background:rgba(5,7,12,.7); display:none; overflow-y:auto; -webkit-overflow-scrolling:touch; }
+  #pd.show { display:block; }
+  .pd-panel { max-width:720px; }
+  .pd-tabs { display:flex; border-bottom:1px solid var(--border); margin:0 0 14px; }
+  .pd-tabs button { flex:1; background:none; border:none; color:var(--muted); font-size:15px; font-weight:600; padding:10px 0; border-bottom:3px solid transparent; cursor:pointer; }
+  .pd-tabs button.active { color:var(--text); border-bottom-color:var(--text); }
+  .pd-value { font-size:38px; font-weight:700; letter-spacing:-.5px; margin:4px 0 8px; }
+  .pd-kpis { display:flex; gap:32px; margin-bottom:14px; }
+  .pd-k { font-size:12px; font-weight:700; color:var(--muted); letter-spacing:.04em; }
+  .pd-v { font-size:18px; font-weight:700; }
+  .pd-chartcard { padding-bottom:8px; }
+  .pd-ranges { justify-content:space-between; margin-top:10px; } .pd-ranges button { flex:1; }
+  .pd-period { font-size:13px; margin-top:8px; text-align:center; } .pd-period:empty { display:none; }
+  .pd-verify { font-size:12px; padding:8px 10px; border-radius:8px; margin-bottom:12px; }
+  .pd-verify.ok { background:rgba(12,163,12,.10); color:#86efac; border:1px solid rgba(12,163,12,.3); }
+  .pd-verify.warn { background:rgba(245,158,11,.10); color:#fcd34d; border:1px solid rgba(245,158,11,.3); }
+  .pd-hold { display:flex; flex-direction:column; }
+  .pd-hrow { display:flex; align-items:center; gap:10px; padding:12px 4px; border-bottom:1px solid var(--border); cursor:pointer; }
+  .pd-hrow > div:first-child { flex:1; min-width:0; }
+  .pd-allcard { cursor:pointer; margin-bottom:12px; }
+  .pd-allrow { display:flex; align-items:baseline; gap:12px; flex-wrap:wrap; } .pd-allrow .w-chev { margin-left:auto; }
+  .pd-allval { font-size:24px; font-weight:700; }
+  .pd-chartbtn { background:none; border:1px solid var(--border); border-radius:5px; padding:1px 6px; margin-left:6px; cursor:pointer; font-size:12px; }
   .alert-item .a-time { font-size: 11px; color: var(--muted); margin-top: 4px; }
   #heatmap-grid { display: flex; flex-wrap: wrap; gap: 8px; }
   .hm-tile { border-radius: 6px; display: flex; flex-direction: column; align-items: center; justify-content: center; cursor: default; transition: transform .1s; font-weight: 600; }
@@ -487,6 +511,7 @@
 <script src="js/alerts.js"></script>
 <script src="js/watchlist.js"></script>
 <script src="js/drilldown.js"></script>
+<script src="js/pie_drill.js"></script>
 <script src="js/router.js"></script>
 </body>
 </html>
