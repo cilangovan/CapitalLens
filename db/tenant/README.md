@@ -58,3 +58,12 @@ Backwards compatible: the GitHub Actions pipeline and the Cloudflare worker are 
 default (the owner), and the old single-column unique keys stay next to the new per-user ones until cutover.
 Cutover still to do: per-user alerts and analytics, drop the old unique keys, retire the single-user worker.
 Until cutover the owner must not connect Trading 212 in the app, or snapshots would be written twice (legacy pipeline and new sync).
+
+## Test setup (current)
+
+- **Production project (`t212`)**: one real user, the owner. Do NOT add mock or second users here yet: the legacy pipeline and old
+  worker read tables without a `user_id` filter, so any extra rows would pollute the owner's returns and analytics.
+  (Tried once with a mock user; removed within minutes, owner data verified unchanged.)
+- **Demo project (`capitallens-demo`)**: `demo@capitallens.test` (5 holdings, about 1,300 position rows) and `demo-b@capitallens.test`
+  for isolation testing. Served at `/CapitalLens/demo/`.
+- Real second users come after the analytics pipeline is made per-user and the database is upgraded for launch.
