@@ -115,6 +115,23 @@ def live_checks():
     for t in PRIVATE + ["auth/debug", "rpc/archive_portfolio_history"]:
         st, _, _ = http(f"{WORKER_URL}/{t}?select=*&limit=1")
         check(st == 404, f"worker never serves /{t} (got {st})")
+    # the dashboard's own site must still be able to sign in (browser pre-check + login call)
+    site = "https://cilangovan.github.io"
+    st, h, body = http(f"{WORKER_URL}/auth/login", method="OPTIONS", headers={
+        "Origin": site, "Access-Control-Request-Method": "POST", "Access-Control-Request-Headers": "content-type"})
+    hl = {k.lower(): v for k, v in h.items()}
+    print(f"    preflight → {st} · allow-origin={hl.get('access-control-allow-origin')!r} · allow-headers={hl.get('access-control-allow-headers')!r} · body={body[:120]!r}")
+    check(st in (200, 204) and hl.get("access-control-allow-origin") == site, f"dashboard site passes the browser pre-check for sign-in (got {st})")
+    req = urllib.request.Request(f"{WORKER_URL}/auth/login", method="POST", data=json.dumps({"username": "no-such-user-ci", "password": "x"}).encode(),
+                                 headers={"User-Agent": UA, "Origin": site, "Content-Type": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=20) as r:
+            st, h, body = r.status, dict(r.headers), r.read().decode()
+    except urllib.error.HTTPError as e:
+        st, h, body = e.code, dict(e.headers), e.read().decode()
+    hl = {k.lower(): v for k, v in h.items()}
+    print(f"    login (unknown user) → {st} · allow-origin={hl.get('access-control-allow-origin')!r} · body={body[:160]!r}")
+    check(st == 401 and hl.get("access-control-allow-origin") == site, f"sign-in answers the dashboard site (got {st})")
     st, h, _ = http(f"{WORKER_URL}/positions", headers={"Origin": "https://evil.example"})
     acao = {k.lower(): v for k, v in h.items()}.get("access-control-allow-origin")
     check(acao is None, f"no CORS permission for other websites (got {acao!r})")
