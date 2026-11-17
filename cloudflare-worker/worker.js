@@ -8,6 +8,7 @@
  *   /search                POST {token, q, category} → {results:[…]}  stock: Yahoo global · crypto: Yahoo + T212 crypto ETPs · commodity: T212 ETCs + Yahoo futures
  *   /watchlist/add         POST {token, symbol, category} → {ok}  (bookmarks + triggers analysis)
  *   /watchlist/remove      POST {token, symbol} → {ok}  (stops tracking, deletes analysis)
+ *   /chart                 POST {token, symbol, range} → {meta, points}  live Yahoo chart (1d|5d|1mo|6mo|1y|5y)
  *   /settings/set          POST {token, key, value} → {ok}  (whitelisted keys only)
  *   /alerts/action         POST {token, ids:[..], action} → {ok, updated}  (read|unread|archive|dismiss|restore)
  *   /[table]               → proxy to Supabase (existing behaviour)
@@ -371,6 +372,40 @@ async function handleWatchlist(req, env, op) {
   return json({ ok: true, added: hit.symbol, category, t212_ticker: withT212.t212_ticker, alternatives, analysis_queued: queued });
 }
 
+// ── Live chart for the watchlist drill-down (authenticated) ─────────────────
+const CHART_RANGES = { '1d': '5m', '5d': '30m', '1mo': '1d', '6mo': '1d', '1y': '1d', '5y': '1wk' };
+const SUBUNIT = { GBp: ['GBP', 0.01], GBX: ['GBP', 0.01], ZAc: ['ZAR', 0.01], ILA: ['ILS', 0.01] };
+
+async function handleChart(req, env) {
+  const { token, symbol, range = '1d' } = await req.json().catch(() => ({}));
+  if (!(await verifySession(env, token))) return json({ error: 'Invalid or expired session' }, 401);
+  if (!symbol || !SYMBOL_RE.test(symbol)) return json({ error: 'Invalid symbol' }, 400);
+  const interval = CHART_RANGES[range];
+  if (!interval) return json({ error: 'Invalid range' }, 400);
+  const u = `https://query1.finance.yahoo.com/v8/finance/chart/${encodeURIComponent(symbol)}?range=${range}&interval=${interval}&includePrePost=false`;
+  const r = await fetch(u, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; T212-Watchlist/1.0)', Accept: 'application/json' },
+                             cf: { cacheTtl: range === '1d' ? 60 : 900, cacheEverything: true } });
+  if (!r.ok) return json({ error: `Yahoo chart ${r.status}` }, 502);
+  const res = (await r.json())?.chart?.result?.[0];
+  if (!res) return json({ error: 'No chart data' }, 404);
+  const m = res.meta || {};
+  const [ccy, k] = SUBUNIT[m.currency] || [m.currency, 1];
+  const closes = res.indicators?.quote?.[0]?.close || [];
+  const points = (res.timestamp || []).map((t, i) => closes[i] == null ? null : [t, +(closes[i] * k).toFixed(6)]).filter(Boolean);
+  const n = v => (typeof v === 'number' ? +(v * k).toFixed(6) : null);
+  return json({
+    symbol, range, interval,
+    meta: { currency: ccy, quote_currency: m.currency, exchange: m.fullExchangeName || m.exchangeName,
+            timezone: m.exchangeTimezoneName, gmtoffset: m.gmtoffset,
+            price: n(m.regularMarketPrice), prev_close: n(m.chartPreviousClose ?? m.previousClose),
+            day_high: n(m.regularMarketDayHigh), day_low: n(m.regularMarketDayLow),
+            high52: n(m.fiftyTwoWeekHigh), low52: n(m.fiftyTwoWeekLow), volume: m.regularMarketVolume ?? null,
+            market_time: m.regularMarketTime ?? null,
+            session: m.currentTradingPeriod?.regular ? { start: m.currentTradingPeriod.regular.start, end: m.currentTradingPeriod.regular.end } : null },
+    points,
+  });
+}
+
 // ── Settings (authenticated, whitelisted) ────────────────────────────────────
 function budgetCheck(v) { const n = Number(v); return Number.isFinite(n) && n >= 0 && n <= 100000 ? Math.round(n * 100) / 100 : undefined; }
 const SETTINGS = {
@@ -412,6 +447,7 @@ export default {
     if (path === '/search' && request.method === 'POST')           return handleSearch(request, env).catch(e => json({ error: e.message }, 500));
     if (path === '/watchlist/add' && request.method === 'POST')    return handleWatchlist(request, env, 'add').catch(e => json({ error: e.message }, 500));
     if (path === '/watchlist/remove' && request.method === 'POST') return handleWatchlist(request, env, 'remove').catch(e => json({ error: e.message }, 500));
+    if (path === '/chart' && request.method === 'POST')            return handleChart(request, env).catch(e => json({ error: e.message }, 500));
     if (path === '/settings/set' && request.method === 'POST')     return handleSetting(request, env).catch(e => json({ error: e.message }, 500));
     if (path === '/alerts/action' && request.method === 'POST') return handleAlertAction(request, env).catch(e => json({ error: e.message }, 500));
     if (path === '/auth/debug') return json({

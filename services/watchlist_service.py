@@ -76,6 +76,14 @@ def per_gbp(ccy):
     return _FX[ccy]
 
 
+def fmt_px(v, ccy, quote_ccy=None):
+    """Human price for messages: pence for London lines quoted in GBp, else currency symbol."""
+    if v is None: return "—"
+    if quote_ccy in ("GBp", "GBX"): return f"{v * 100:,.2f}p"
+    sym = {"GBP": "£", "USD": "$", "EUR": "€"}.get(ccy)
+    return f"{sym}{v:,.2f}" if sym else f"{v:,.2f} {ccy}"
+
+
 def rnd(v, ccy):
     if v is None: return None
     return round(v, 2 if v >= 1 else 4)
@@ -121,6 +129,7 @@ def fetch(sym, now, category="stock"):
         return None, "listing currency unknown"
     scale, ccy_out = (0.01, SUBUNITS[ccy]) if ccy in SUBUNITS else (1.0, ccy.upper())
     closes = (h["Close"].astype(float) * scale).tolist()
+    dates = [i.date().isoformat() for i in h.index]
     window = closes[-20:]
     jumps = [b / a for a, b in zip(window, window[1:]) if a > 0]
     if min(window) <= 0 or any(j > 8 or j < 1 / 8 for j in jumps):   # pence↔pound style 100× jumps
@@ -149,7 +158,8 @@ def fetch(sym, now, category="stock"):
         info = t.info or {}
     except Exception:
         pass
-    return {"closes": closes, "ccy": ccy_out, "last_date": last_date, "info": info, "scale": scale,
+    return {"closes": closes, "dates": dates, "ccy": ccy_out, "quote_ccy": ccy, "last_date": last_date, "info": info, "scale": scale,
+            "volumes": vols,
             "exchange": meta.get("fullExchangeName") or meta.get("exchangeName"),
             "vol_ratio": vol_ratio, "vol_last": vol_last, "vol_avg": vol_avg, "partial": partial}, None
 
@@ -296,7 +306,7 @@ def analyse(item, now):
         else:
             why.append("Not found on your Trading 212 exchanges — check the app or buy via another broker.")
     if upside is not None and verdict != "AVOID":
-        why.append(f"Analyst average target {rnd(tgt, ccy)} ({upside:+.0f}% from here).")
+        why.append(f"Analyst average target {fmt_px(tgt, ccy, d.get('quote_ccy'))} ({upside:+.0f}% from here).")
 
     levels = support_levels(price, ma20, ma50, ma200, low20, low52, high52)
     entries = []
@@ -325,7 +335,143 @@ def analyse(item, now):
         "entries_raw": [(n, rnd(v, ccy)) for n, v in entries],
         "invalidation": rnd(invalidation, ccy), "take_profit": rnd(take_profit, ccy),
         "sector": info.get("sector"),
+        "quote_ccy": d.get("quote_ccy"),
+        **build_drilldown(d, price, ccy, is_etf, category),
     }
+
+
+# ── Drill-down: profile, key stats, fundamentals, analyst detail, insights ────
+REC_LABEL = [(1.5, "Strong buy"), (2.5, "Buy"), (3.5, "Hold"), (4.5, "Sell"), (9, "Strong sell")]
+
+
+def _num(v):
+    try:
+        f = float(v)
+        return None if math.isnan(f) or math.isinf(f) else f
+    except (TypeError, ValueError):
+        return None
+
+
+def build_drilldown(d, price, ccy, is_etf, category):
+    """Everything the dashboard's detail page shows, from Yahoo Finance data. Prices in `ccy` (sub-units converted)."""
+    info, scale = d["info"], d["scale"]
+    px = lambda k: (_num(info.get(k)) * scale) if _num(info.get(k)) is not None else None
+    c = d["closes"]
+    shares = _num(info.get("sharesOutstanding"))
+    mcap = _num(info.get("marketCap"))
+    if shares and price:                                   # sanity: feed sometimes mixes pence/pounds
+        calc = shares * price
+        if not mcap or not (0.2 < mcap / calc < 5):
+            mcap = calc
+    stats = {
+        "prev_close": px("previousClose") or (c[-2] if len(c) > 1 else None),
+        "open": px("open") or px("regularMarketOpen"),
+        "day_low": px("dayLow"), "day_high": px("dayHigh"),
+        "volume": _num(info.get("volume")), "avg_volume": _num(info.get("averageVolume")),
+        "market_cap": mcap, "shares_out": shares,
+        "pe": _num(info.get("trailingPE")), "fwd_pe": _num(info.get("forwardPE")),
+        "eps": px("trailingEps"), "div_yield": _num(info.get("dividendYield")),
+        "beta": _num(info.get("beta")),
+        "high52": px("fiftyTwoWeekHigh") or max(c[-252:]), "low52": px("fiftyTwoWeekLow") or min(c[-252:]),
+    }
+    # discard feed values that disagree with the verified closes (unit mix-ups)
+    for k in ("prev_close", "open", "day_low", "day_high", "high52", "low52"):
+        if stats[k] and price and not (0.33 < stats[k] / price < 3):
+            stats[k] = None
+    stats["high52"] = stats["high52"] or max(c[-252:]); stats["low52"] = stats["low52"] or min(c[-252:])
+    f = {k: _num(info.get(k)) for k in ("profitMargins", "operatingMargins", "returnOnAssets", "returnOnEquity",
+                                         "debtToEquity", "currentRatio", "quickRatio", "revenueGrowth", "earningsGrowth")}
+    fundamentals = {"net_margin": f["profitMargins"], "op_margin": f["operatingMargins"], "roa": f["returnOnAssets"],
+                    "roe": f["returnOnEquity"], "debt_to_equity": f["debtToEquity"], "current_ratio": f["currentRatio"],
+                    "quick_ratio": f["quickRatio"], "revenue_growth": f["revenueGrowth"], "earnings_growth": f["earningsGrowth"]}
+    mean = _num(info.get("recommendationMean"))
+    tgt = lambda k: (_num(info.get(k)) * scale) if _num(info.get(k)) else None
+    analyst = {"mean": mean, "label": next((l for t, l in REC_LABEL if mean and mean <= t), None),
+               "count": int(info.get("numberOfAnalystOpinions") or 0),
+               "target_mean": tgt("targetMeanPrice"), "target_low": tgt("targetLowPrice"), "target_high": tgt("targetHighPrice")}
+    if analyst["target_mean"] and price and not (-90 < (analyst["target_mean"] / price - 1) * 100 < 300):
+        analyst.update(target_mean=None, target_low=None, target_high=None)   # unit mismatch in feed
+    summary = (info.get("longBusinessSummary") or "").strip()
+    profile = {"sector": info.get("sector") or info.get("category"), "industry": info.get("industry"),
+               "summary": summary[:900] + ("…" if len(summary) > 900 else ""), "website": info.get("website"),
+               "employees": info.get("fullTimeEmployees"), "country": info.get("country"),
+               "fund_family": info.get("fundFamily"), "expense_ratio": _num(info.get("annualReportExpenseRatio"))}
+    perf = {lbl: round((c[-1] / c[-n - 1] - 1) * 100, 1) for lbl, n in (("1M", 21), ("6M", 126), ("1Y", 251)) if len(c) > n}
+    return {"stats": stats, "fundamentals": fundamentals, "analyst_detail": analyst, "profile": profile,
+            "performance": perf, "insights": insights(stats, fundamentals, analyst, perf, price, is_etf, category),
+            "history": {"dates": d["dates"][-260:], "closes": [round(x, 6) for x in c[-260:]]}}
+
+
+def insights(st, fu, an, perf, price, is_etf, category):
+    """Rule-based insight bullets + 0–6 scores per area (valuation, earnings, growth, performance, health)."""
+    good, bad, score = [], [], {}
+    clamp = lambda x: max(0, min(6, round(x)))
+    # Analysts
+    if an["label"] in ("Strong buy", "Buy") and an["count"] >= 3:
+        good.append(f"Analysts rate it {an['label']} ({an['count']} analysts)")
+    elif an["label"] in ("Sell", "Strong sell"):
+        bad.append(f"Analysts rate it {an['label']} ({an['count']} analysts)")
+    if an["target_mean"] and price:
+        up = (an["target_mean"] / price - 1) * 100
+        if up >= 10:  good.append(f"Average analyst target {up:+.0f}% above today's price")
+        elif up < 0:  bad.append(f"Average analyst target {up:+.0f}% below today's price")
+    # Valuation
+    pe, fpe = st["pe"], st["fwd_pe"]
+    if pe is not None:
+        v = 6 if 0 < pe < 10 else 5 if pe < 15 else 4 if pe < 20 else 3 if pe < 25 else 2 if pe < 35 else 1 if pe < 60 else 0
+        if pe <= 0: v = 0
+        if fpe and pe and 0 < fpe < pe: v += 1; good.append(f"Earnings expected to grow (forward P/E {fpe:.1f} below trailing {pe:.1f})")
+        if 0 < pe < 15: good.append(f"Low P/E of {pe:.1f}")
+        elif pe > 40: bad.append(f"Expensive on earnings (P/E {pe:.1f})")
+        score["valuation"] = clamp(v)
+    # Earnings (profitability)
+    nm, roa, roe = fu["net_margin"], fu["roa"], fu["roe"]
+    if nm is not None or roa is not None:
+        e = 0
+        if nm is not None:
+            e += 3 if nm > .2 else 2 if nm > .1 else 1 if nm > 0 else 0
+            if nm > .1:    good.append(f"Healthy net profit margin ({nm*100:.1f}%)")
+            elif nm < .05: bad.append(f"Thin net profit margin ({nm*100:.1f}%)")
+        if roa is not None:
+            e += 2 if roa > .08 else 1 if roa > .03 else 0
+            if roa < .03: bad.append(f"Low return on assets ({roa*100:.1f}%)")
+        if roe is not None and roe > .15: e += 1; good.append(f"Strong return on equity ({roe*100:.0f}%)")
+        score["earnings"] = clamp(e)
+    # Growth
+    rg, eg = fu["revenue_growth"], fu["earnings_growth"]
+    if rg is not None or eg is not None:
+        g = 0
+        if rg is not None:
+            g += 3 if rg > .2 else 2 if rg > .08 else 1 if rg > 0 else 0
+            if rg > .08:  good.append(f"Revenue growing {rg*100:+.0f}% year on year")
+            elif rg < 0:  bad.append(f"Revenue shrinking {rg*100:+.0f}% year on year")
+        if eg is not None:
+            g += 3 if eg > .2 else 2 if eg > .05 else 1 if eg > 0 else 0
+            if eg < 0: bad.append(f"Earnings shrinking ({eg*100:+.0f}%)")
+        score["growth"] = clamp(g)
+    # Performance (price)
+    if perf:
+        y, m6 = perf.get("1Y"), perf.get("6M")
+        p = 3 + (1.5 if (y or 0) > 15 else .5 if (y or 0) > 0 else -1.5 if (y or 0) < -15 else -.5) + \
+            (1.5 if (m6 or 0) > 10 else .5 if (m6 or 0) > 0 else -1.5 if (m6 or 0) < -10 else -.5)
+        score["performance"] = clamp(p)
+        if y is not None:
+            (good if y > 0 else bad).append(f"{'Up' if y > 0 else 'Down'} {abs(y):.0f}% over the past year")
+    # Health (balance sheet)
+    cr, de = fu["current_ratio"], fu["debt_to_equity"]
+    if cr is not None or de is not None:
+        h = 3
+        if cr is not None:
+            if cr < 1: h -= 2; bad.append(f"Short-term liabilities exceed short-term assets (current ratio {cr:.2f})")
+            elif cr > 1.5: h += 1; good.append(f"Covers short-term liabilities comfortably (current ratio {cr:.2f})")
+        if de is not None:
+            if de > 150: h -= 2; bad.append(f"High debt (debt/equity {de:.0f}%)")
+            elif de < 50: h += 2; good.append(f"Low debt (debt/equity {de:.0f}%)")
+        score["health"] = clamp(h)
+    if (is_etf or category in ("commodity", "crypto")) and not score.get("valuation"):
+        good.append("Fund/asset: judged on price trend and volatility — no company fundamentals")
+    items = [{"good": True, "text": t} for t in good] + [{"good": False, "text": t} for t in bad]
+    return {"items": items, "scores": score}
 
 
 def size_positions(results, weekly, pool=None, category="stock"):
