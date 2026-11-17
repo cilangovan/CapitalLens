@@ -73,7 +73,8 @@ async function loadOverviewCharts() {
   _latestSnap = (await api('portfolio_snapshots','?select=*&order=created_at.desc&limit=1'))[0];
   if (!_latestSnap) return;
   _latestPositions = await api('positions', `?snapshot_id=eq.${_latestSnap.id}&select=*&order=gain_pct.desc`);
-  _allSnapshots = await api('portfolio_snapshots','?select=id,created_at&order=created_at.asc').catch(()=>[]);
+  // full history (live 45 days + archive) for 3M/6M/1Y comparisons
+  _allSnapshots = await api('portfolio_snapshots_all','?select=id,created_at&order=created_at.asc').catch(()=>[]);
 
   // set ALL active on load
   setGainPeriodStyle('ALL');
@@ -118,7 +119,7 @@ async function renderGainChart(periodKey) {
     if (!baseSnap) {
       labels = ['No data yet for this period']; data = [0]; colors = ['transparent'];
     } else {
-      const basePositions = await api('positions', `?snapshot_id=eq.${baseSnap.id}&select=ticker,display,current_price`).catch(()=>[]);
+      const basePositions = await api('positions_all', `?snapshot_id=eq.${baseSnap.id}&select=ticker,display,current_price`).catch(()=>[]);
       const baseMap = {};
       basePositions.forEach(p => { baseMap[p.display || p.ticker] = p.current_price; });
 

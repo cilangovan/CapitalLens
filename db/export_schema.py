@@ -96,8 +96,15 @@ select json_build_object(
   'functions', (select json_agg(pg_get_functiondef(p.oid)||';' order by p.proname) from pg_proc p join pg_namespace n on n.oid=p.pronamespace
                where n.nspname='public' and not exists (select 1 from pg_depend d where d.objid=p.oid and d.deptype='e')),
   'triggers', (select json_agg(pg_get_triggerdef(tg.oid)||';' order by tg.tgname) from pg_trigger tg join t on t.oid=tg.tgrelid where not tg.tgisinternal),
-  'views', (select json_agg(format(E'create or replace view public.%I as\n%s', c.relname, pg_get_viewdef(c.oid)) order by c.relname)
+  'views', (select json_agg(format(E'create or replace view public.%I%s as\n%s', c.relname,
+               case when c.reloptions is not null then ' with ('||array_to_string(c.reloptions, ', ')||')' else '' end,
+               rtrim(pg_get_viewdef(c.oid), ';')||';') order by c.relname)
                from pg_class c join pg_namespace n on n.oid=c.relnamespace where n.nspname='public' and c.relkind='v'),
+  'function_acl', (select json_agg(json_build_object('sig', p.oid::regprocedure::text,
+               'roles', (select json_agg(r) from unnest(array['anon','authenticated','service_role']) r
+                         where has_function_privilege(r, p.oid, 'execute'))) order by p.proname)
+               from pg_proc p join pg_namespace n on n.oid=p.pronamespace
+               where n.nspname='public' and not exists (select 1 from pg_depend d where d.objid=p.oid and d.deptype='e')),
   'migrations', (select json_agg(json_build_object('version', version, 'name', name, 'sql', array_to_string(statements, E';\n')) order by version)
                from supabase_migrations.schema_migrations)
 )::text
@@ -143,6 +150,8 @@ def render_schema(d, source):
         "",
         "begin;",
         "set local client_min_messages = warning;",
+        "create schema if not exists extensions;",
+        "set local search_path = public, extensions;",
     ]
     out += section("Extensions", exts)
     out += section("Roles (exist on Supabase; created here for plain Postgres)", [
@@ -175,6 +184,12 @@ def render_schema(d, source):
     out += section("Functions", d.get("functions"))
     out += section("Triggers", d.get("triggers"))
     out += section("Views", d.get("views"))
+    acl = []
+    for f in d.get("function_acl") or []:
+        sig = re.sub(r"^(public\.)?", "public.", f["sig"])
+        acl.append(f"revoke all on function {sig} from public, anon, authenticated;")
+        acl += [f"grant execute on function {sig} to {r};" for r in (f.get("roles") or [])]
+    out += section("Function privileges", acl)
     out += ["", "commit;", ""]
     return "\n".join(out)
 

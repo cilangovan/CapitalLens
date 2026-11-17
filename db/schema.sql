@@ -8,10 +8,12 @@
 
 begin;
 set local client_min_messages = warning;
+create schema if not exists extensions;
+set local search_path = public, extensions;
 
 -- ── Extensions ────────────────────────────────────────────────────────────
 -- (Supabase platform) create extension if not exists "pg_stat_statements" with schema extensions;
-create extension if not exists "pg_trgm" with schema public;
+create extension if not exists "pg_trgm" with schema extensions;
 -- (Supabase platform) create extension if not exists "pgcrypto" with schema extensions;
 -- (Supabase platform) create extension if not exists "supabase_vault" with schema vault;
 -- (Supabase platform) create extension if not exists "uuid-ossp" with schema extensions;
@@ -174,6 +176,18 @@ create table if not exists public.portfolio_snapshots (
   constraint portfolio_snapshots_pkey PRIMARY KEY (id)
 );
 
+create table if not exists public.portfolio_snapshots_archive (
+  id bigint default nextval('portfolio_snapshots_id_seq'::regclass) not null,
+  created_at timestamp with time zone default now(),
+  total_value numeric,
+  cash numeric,
+  invested numeric,
+  total_ppl numeric,
+  run_count integer,
+  raw jsonb,
+  constraint portfolio_snapshots_archive_pkey PRIMARY KEY (id)
+);
+
 create table if not exists public.positions (
   id bigint default nextval('positions_id_seq'::regclass) not null,
   snapshot_id bigint,
@@ -189,6 +203,23 @@ create table if not exists public.positions (
   exchange text default 'LSE'::text,
   quantity numeric,
   constraint positions_pkey PRIMARY KEY (id)
+);
+
+create table if not exists public.positions_archive (
+  id bigint default nextval('positions_id_seq'::regclass) not null,
+  snapshot_id bigint,
+  created_at timestamp with time zone default now(),
+  ticker text,
+  display text,
+  pie text,
+  current_price numeric,
+  avg_price numeric,
+  gain_pct numeric,
+  dip_from_high numeric,
+  ppl numeric,
+  exchange text default 'LSE'::text,
+  quantity numeric,
+  constraint positions_archive_pkey PRIMARY KEY (id)
 );
 
 create table if not exists public.profit_booking (
@@ -347,7 +378,9 @@ CREATE UNIQUE INDEX IF NOT EXISTS inst_flow_report_date_idx ON public.institutio
 CREATE INDEX IF NOT EXISTS instruments_name_trgm ON public.instruments USING gin (name gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS instruments_short_trgm ON public.instruments USING gin (short_name gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS portfolio_snapshots_created_at_idx ON public.portfolio_snapshots USING btree (created_at DESC);
+CREATE INDEX IF NOT EXISTS portfolio_snapshots_archive_created_at_idx ON public.portfolio_snapshots_archive USING btree (created_at DESC);
 CREATE INDEX IF NOT EXISTS positions_snapshot_id_idx ON public.positions USING btree (snapshot_id);
+CREATE INDEX IF NOT EXISTS positions_archive_snapshot_id_idx ON public.positions_archive USING btree (snapshot_id);
 CREATE UNIQUE INDEX IF NOT EXISTS value_buy_scores_ticker_idx ON public.value_buy_scores USING btree (ticker);
 
 -- ── Row level security ────────────────────────────────────────────────────
@@ -360,7 +393,9 @@ alter table public.holding_decisions enable row level security;
 alter table public.institutional_flow_reports enable row level security;
 alter table public.instruments enable row level security;
 alter table public.portfolio_snapshots enable row level security;
+alter table public.portfolio_snapshots_archive enable row level security;
 alter table public.positions enable row level security;
+alter table public.positions_archive enable row level security;
 alter table public.profit_booking enable row level security;
 alter table public.profit_booking_summary enable row level security;
 alter table public.realised_pnl enable row level security;
@@ -389,8 +424,12 @@ drop policy if exists public_read on public.instruments;
 create policy public_read on public.instruments as permissive for select to anon, authenticated using (true);
 drop policy if exists public_read on public.portfolio_snapshots;
 create policy public_read on public.portfolio_snapshots as permissive for select to anon, authenticated using (true);
+drop policy if exists public_read on public.portfolio_snapshots_archive;
+create policy public_read on public.portfolio_snapshots_archive as permissive for select to anon, authenticated using (true);
 drop policy if exists public_read on public.positions;
 create policy public_read on public.positions as permissive for select to anon, authenticated using (true);
+drop policy if exists public_read on public.positions_archive;
+create policy public_read on public.positions_archive as permissive for select to anon, authenticated using (true);
 drop policy if exists public_read on public.profit_booking;
 create policy public_read on public.profit_booking as permissive for select to anon, authenticated using (true);
 drop policy if exists public_read on public.profit_booking_summary;
@@ -419,5 +458,64 @@ comment on column public.analyst_ratings.source is 'analysts = Yahoo analyst con
 comment on column public.watchlist.alternatives is 'Trading 212 products giving the same exposure (crypto ETPs / commodity ETCs)';
 comment on column public.watchlist.t212_ticker is 'Matching Trading 212 instrument, if tradable there';
 comment on column public.watchlist.ticker is 'Yahoo Finance symbol (global)';
+comment on table public.portfolio_snapshots_archive is 'Snapshots older than 45 days, moved by archive_portfolio_history(). Same columns as portfolio_snapshots.';
+comment on table public.positions_archive is 'Positions of archived snapshots. Same columns as positions.';
+
+-- ── Functions ─────────────────────────────────────────────────────────────
+CREATE OR REPLACE FUNCTION public.archive_portfolio_history(keep_days integer DEFAULT 45)
+ RETURNS json
+ LANGUAGE plpgsql
+ SET search_path TO 'public'
+AS $function$
+declare
+  ids bigint[];
+  n_pos int;
+begin
+  if keep_days < 7 then raise exception 'keep_days must be >= 7'; end if;
+  select coalesce(array_agg(id), '{}') into ids from portfolio_snapshots
+   where created_at < now() - make_interval(days => keep_days)
+     and id <> (select max(id) from portfolio_snapshots);
+  if cardinality(ids) = 0 then return json_build_object('snapshots', 0, 'positions', 0); end if;
+  insert into portfolio_snapshots_archive select * from portfolio_snapshots where id = any(ids) on conflict (id) do nothing;
+  insert into positions_archive select * from positions where snapshot_id = any(ids) on conflict (id) do nothing;
+  get diagnostics n_pos = row_count;
+  delete from positions where snapshot_id = any(ids);
+  delete from portfolio_snapshots where id = any(ids);
+  return json_build_object('snapshots', cardinality(ids), 'positions', n_pos, 'cutoff', now() - make_interval(days => keep_days));
+end $function$
+;
+CREATE OR REPLACE FUNCTION public.purge_cleared_alerts(days integer DEFAULT 30)
+ RETURNS integer
+ LANGUAGE plpgsql
+ SET search_path TO 'public'
+AS $function$
+declare n int;
+begin
+  if days < 7 then raise exception 'days must be >= 7'; end if;
+  delete from alerts where dismissed_at is not null and dismissed_at < now() - make_interval(days => days);
+  get diagnostics n = row_count;
+  return n;
+end $function$
+;
+
+-- ── Views ─────────────────────────────────────────────────────────────────
+create or replace view public.portfolio_snapshots_all with (security_invoker=true) as
+ SELECT portfolio_snapshots.id, portfolio_snapshots.created_at, portfolio_snapshots.total_value, portfolio_snapshots.cash, portfolio_snapshots.invested, portfolio_snapshots.total_ppl, portfolio_snapshots.run_count, portfolio_snapshots.raw
+   FROM portfolio_snapshots
+UNION ALL
+ SELECT portfolio_snapshots_archive.id, portfolio_snapshots_archive.created_at, portfolio_snapshots_archive.total_value, portfolio_snapshots_archive.cash, portfolio_snapshots_archive.invested, portfolio_snapshots_archive.total_ppl, portfolio_snapshots_archive.run_count, portfolio_snapshots_archive.raw
+   FROM portfolio_snapshots_archive;
+create or replace view public.positions_all with (security_invoker=true) as
+ SELECT positions.id, positions.snapshot_id, positions.created_at, positions.ticker, positions.display, positions.pie, positions.current_price, positions.avg_price, positions.gain_pct, positions.dip_from_high, positions.ppl, positions.exchange, positions.quantity
+   FROM positions
+UNION ALL
+ SELECT positions_archive.id, positions_archive.snapshot_id, positions_archive.created_at, positions_archive.ticker, positions_archive.display, positions_archive.pie, positions_archive.current_price, positions_archive.avg_price, positions_archive.gain_pct, positions_archive.dip_from_high, positions_archive.ppl, positions_archive.exchange, positions_archive.quantity
+   FROM positions_archive;
+
+-- ── Function privileges ───────────────────────────────────────────────────
+revoke all on function public.archive_portfolio_history(integer) from public, anon, authenticated;
+grant execute on function public.archive_portfolio_history(integer) to service_role;
+revoke all on function public.purge_cleared_alerts(integer) from public, anon, authenticated;
+grant execute on function public.purge_cleared_alerts(integer) to service_role;
 
 commit;

@@ -1,0 +1,31 @@
+name: Database Maintenance
+
+# Daily housekeeping (decisions recorded in db/README.md):
+#  • portfolio history older than 45 days → moved to *_archive tables (nothing deleted; full history in *_all views)
+#  • alerts cleared more than 30 days ago → deleted (Archived and Inbox are kept)
+on:
+  schedule:
+    - cron: '23 2 * * *'          # 02:23 UTC daily
+  workflow_dispatch:
+
+jobs:
+  maintain:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    env:
+      SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+      KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+    steps:
+      - name: Archive portfolio history older than 45 days
+        run: |
+          set -euo pipefail
+          curl -fsS -X POST "$SUPABASE_URL/rest/v1/rpc/archive_portfolio_history" \
+            -H "apikey: $KEY" -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \
+            -d '{"keep_days": 45}'; echo
+      - name: Purge alerts cleared more than 30 days ago
+        run: |
+          set -euo pipefail
+          n=$(curl -fsS -X POST "$SUPABASE_URL/rest/v1/rpc/purge_cleared_alerts" \
+            -H "apikey: $KEY" -H "Authorization: Bearer $KEY" -H "Content-Type: application/json" \
+            -d '{"days": 30}')
+          echo "deleted $n cleared alert(s)"
