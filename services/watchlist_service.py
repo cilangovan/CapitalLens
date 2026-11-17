@@ -246,7 +246,11 @@ def analyse(item, now):
         else:
             verdict = "HOLD"; why.append("Downtrend (below falling 200-day average) — wait for the trend to turn.")
     elif rsi is not None and rsi < 35:
-        verdict = "ENTER"; why.append(f"RSI {rsi:.0f} is oversold while the longer trend holds — a reasonable entry.")
+        verdict = "ENTER"
+        if ma200 and price < ma200:
+            why.append(f"RSI {rsi:.0f} is oversold, but it's below its 200-day average — enter small and add only if it stabilises.")
+        else:
+            why.append(f"RSI {rsi:.0f} is oversold while the longer trend holds — a reasonable entry.")
     elif rsi is not None and rsi < 50:
         verdict = "ACCUMULATE"; why.append(f"RSI {rsi:.0f} — momentum has cooled; buy gradually at the price points.")
     elif rsi is not None and rsi < 60 and q_label == "Good" and not downtrend:
