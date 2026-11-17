@@ -48,6 +48,8 @@ jobs:
   pie_history:
     name: Pie History (drill-down charts)
     runs-on: ubuntu-latest
+    needs: history
+    if: ${{ !cancelled() }}        # a failed sync still leaves stored history to build from
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -64,7 +66,8 @@ jobs:
   returns:
     name: Returns Calculator
     runs-on: ubuntu-latest
-    needs: analyst
+    needs: [history, pie_history]
+    if: ${{ !cancelled() }}
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -76,7 +79,7 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-        run: python -m services.returns_service
+        run: python -u -m services.returns_service
 
   value_buy:
     name: Value Buy Scores (PWI Scout)
