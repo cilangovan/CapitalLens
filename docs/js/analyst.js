@@ -51,5 +51,19 @@ async function loadAnalyst() {
       <td class="yellow">${r.hold_pct != null ? r.hold_pct+'%' : '—'}</td>
       <td class="red">${r.sell_pct != null ? r.sell_pct+'%' : '—'}</td>`}
     </tr>`).join('')}</tbody></table>`;
-  document.getElementById('analyst-table-wrap').innerHTML = tableHtml;
+  // phones: one compact card per holding (the 9-column table doesn't fit a narrow screen)
+  const short = t => String(t).replace(/_(US_)?EQ$/, '').replace(/([a-z])$/, '');
+  const cardsHtml = `<div class="an-cards">${rows.map(r => {
+    const trend = r.source === 'trend';
+    const votes = trend ? '' : `<div class="an-bar" title="Buy ${r.buy_pct ?? 0}% · Hold ${r.hold_pct ?? 0}% · Sell ${r.sell_pct ?? 0}%">
+        <span style="width:${+r.buy_pct || 0}%" class="b"></span><span style="width:${+r.hold_pct || 0}%" class="h"></span><span style="width:${+r.sell_pct || 0}%" class="s"></span></div>
+      <div class="an-votes"><span class="green">Buy ${r.buy_pct ?? '—'}%</span><span class="yellow">Hold ${r.hold_pct ?? '—'}%</span><span class="red">Sell ${r.sell_pct ?? '—'}%</span></div>`;
+    return `<div class="an-card">
+      <div class="an-top"><strong>${short(r.ticker)}</strong><span class="stars">${stars(r.star_rating)}</span></div>
+      <div class="an-mid">${badgeRating(r)}<span class="an-meta">${r.pie || '—'}</span></div>
+      <div class="an-meta">${trend ? 'Trend score — no analyst coverage' : `${r.analyst_count || '—'} analysts · target ${fmtTarget(r.target_mean, r.yahoo_ticker)}`}</div>
+      ${votes}
+    </div>`;
+  }).join('')}</div>`;
+  document.getElementById('analyst-table-wrap').innerHTML = `<div class="an-tablewrap">${tableHtml}</div>${cardsHtml}`;
 }
