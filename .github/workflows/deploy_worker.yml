@@ -36,12 +36,13 @@ jobs:
             -H "Authorization: Bearer ${CF_API_TOKEN}" -H "Content-Type: application/json" \
             -d '{"enabled":true}' | python3 -c "import sys,json; d=json.load(sys.stdin); print('subdomain enabled' if d.get('success') else f'subdomain: {d}')"
           done
-      - name: Verify new worker answers
+      - name: Verify new worker answers like the old one
         run: |
+          old=$(curl -s -m 15 -o /tmp/old.txt -w "%{http_code}" https://t212-proxy.itsme-daf.workers.dev/auth/debug || true)
           for i in 1 2 3 4 5 6; do
-            code=$(curl -s -o /dev/null -m 15 -w "%{http_code}" https://capitallens-proxy.itsme-daf.workers.dev/auth/debug || true)
-            echo "attempt $i: HTTP $code"
-            [ "$code" = "200" ] && exit 0
+            new=$(curl -s -m 15 -o /tmp/new.txt -w "%{http_code}" https://capitallens-proxy.itsme-daf.workers.dev/auth/debug || true)
+            echo "attempt $i: old=$old new=$new"
+            if [ "$new" = "$old" ] && [ "$new" != "000" ] && ! grep -qiE "error code|nothing here" /tmp/new.txt; then exit 0; fi
             sleep 10
           done
-          echo "capitallens-proxy not reachable on workers.dev"; exit 1
+          echo "new body: $(head -c 200 /tmp/new.txt)"; exit 1
