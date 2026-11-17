@@ -59,7 +59,7 @@ jobs:
         env:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
-        run: python -m services.pie_history_service
+        run: python -u -m services.pie_history_service
 
   returns:
     name: Returns Calculator
