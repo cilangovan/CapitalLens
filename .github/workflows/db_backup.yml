@@ -150,10 +150,12 @@ jobs:
         run: |
           set -euo pipefail
           gpg --batch --pinentry-mode loopback --passphrase-fd 3 --decrypt "$FILE" 3<<<"$BACKUP_PASSPHRASE" | gzip -t
-          # sanity: a data-only dump of this DB always contains COPY blocks for these tables
-          gpg --batch --pinentry-mode loopback --passphrase-fd 3 --decrypt "$FILE" 3<<<"$BACKUP_PASSPHRASE" \
-            | gunzip | grep -q '^COPY public.t212_orders ' \
-            || { echo "::error::dump looks empty — t212_orders is missing"; exit 1; }
+          # sanity: a data-only dump of this DB always contains a COPY block for t212_orders.
+          # grep -c (not -q / >/dev/null): those exit at the first match, SIGPIPE the decrypt, and
+          # pipefail then reports a false failure.
+          n=$(gpg --batch --pinentry-mode loopback --passphrase-fd 3 --decrypt "$FILE" 3<<<"$BACKUP_PASSPHRASE" \
+                | gunzip | grep -c '^COPY public.t212_orders ' || true)
+          [ "${n:-0}" -ge 1 ] || { echo "::error::dump looks empty — t212_orders is missing"; exit 1; }
           echo "Backup decrypts and unzips cleanly."
 
       - name: Ship to Cloudflare R2 (7 daily / 5 weekly / 13 monthly)
