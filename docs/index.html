@@ -355,6 +355,14 @@
   .pb-kv b { display:block; font-size:10px; color:var(--muted); font-weight:600; text-transform:uppercase; }
   .pb-rules td, .pb-rules th { padding:6px 8px; border-bottom:1px solid var(--border); font-size:12px; text-align:left; }
   .pb-rules th { color:var(--muted); font-size:11px; }
+  /* phone safety net: two-column grids stack, wide tables scroll inside their card instead of widening the page */
+  .m-grid2 { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
+  .card, .card > * { min-width:0; } .card { overflow-wrap:break-word; }
+  @media (max-width:700px) {
+    .m-grid2 { grid-template-columns:minmax(0,1fr); }
+    .card table { display:block; max-width:100%; overflow-x:auto; }
+    .pb-rules td, .pb-rules th { padding:5px 6px; font-size:11px; }
+  }
   @media(max-width:640px){ .pb-hold-head { grid-template-columns: 1fr 44px 64px 18px; } .pb-hold-head .pb-hide-sm { display:none; } }
 </style>
 </head>
