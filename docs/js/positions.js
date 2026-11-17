@@ -7,7 +7,7 @@ async function loadPositions() {
   const snap = (await api('portfolio_snapshots','?select=*&order=created_at.desc&limit=1'))[0];
   if (!snap) return;
   const positions = await api('positions', `?snapshot_id=eq.${snap.id}&select=*`);
-  const analystRows = await api('analyst_ratings','?select=ticker,star_rating,recommendation').catch(()=>[]);
+  const analystRows = await api('analyst_ratings','?select=ticker,star_rating,recommendation,source').catch(()=>[]);
   const analystMap = {};
   analystRows.forEach(a => { analystMap[a.ticker] = a; });
 
@@ -42,7 +42,7 @@ async function loadPositions() {
         ${pos.map(p => {
           const a = analystMap[p.ticker] || {};
           const analystHtml = a.star_rating
-            ? `<span class="stars">${'★'.repeat(a.star_rating)}</span> ${badgeRec(a.recommendation)}`
+            ? `<span class="stars">${'★'.repeat(a.star_rating)}</span> ${badgeRating(a)}`
             : '—';
           const pplCell = IS_GUEST
             ? `<span class="masked">***</span>`

@@ -33,6 +33,19 @@ function fmtGbpPlain(v) {
 }
 function clr(v) { return v > 0 ? 'green' : v < 0 ? 'red' : ''; }
 function stars(n) { return '★'.repeat(n || 0) + '☆'.repeat(5-(n||0)); }
+// Target price in the listing's own currency (Yahoo suffix): none → $, .L → pence, .DE/.AS/.PA → €
+function fmtTarget(v, yahoo) {
+  if (v == null) return '—';
+  const s = yahoo || '';
+  if (/\.L$/.test(s)) return Number(v).toFixed(2) + 'p';
+  if (/\.(DE|AS|PA|MI|MC)$/.test(s)) return '€' + Number(v).toFixed(2);
+  return /\./.test(s) ? Number(v).toFixed(2) : '$' + Number(v).toFixed(2);
+}
+// Analyst consensus badge, or a clearly different "Trend" badge when there is no analyst coverage (ETFs)
+function badgeRating(r) {
+  if (r && r.source === 'trend') return `<span class="badge trend" title="No analyst coverage — score from the price trend (MA50/MA200, 6-month return)">📈 TREND ${(r.recommendation||'').replace('_',' ').toUpperCase()}</span>`;
+  return badgeRec(r && r.recommendation);
+}
 function badgeRec(r) {
   const cls = r === 'strong_buy' ? 'strong_buy' : r === 'buy' ? 'buy' : r === 'hold' ? 'hold' : 'sell';
   return `<span class="badge ${cls}">${(r||'—').replace('_',' ').toUpperCase()}</span>`;

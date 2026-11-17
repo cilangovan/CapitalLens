@@ -442,6 +442,7 @@ def run():
             "hold_pct": data["hold_pct"],
             "sell_pct": data["sell_pct"],
             "analyst_count": data["analyst_count"],
+            "source": "analysts" if (data.get("analyst_count") or 0) > 0 else "trend",
             "updated_at": now,
         }
         if supabase_request("POST", "analyst_ratings?on_conflict=ticker", row) is not None:

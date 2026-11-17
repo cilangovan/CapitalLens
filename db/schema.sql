@@ -69,6 +69,7 @@ create table if not exists public.analyst_ratings (
   sell_pct numeric,
   analyst_count integer,
   updated_at timestamp with time zone default now(),
+  source text,
   constraint analyst_ratings_ticker_key UNIQUE (ticker),
   constraint analyst_ratings_pkey PRIMARY KEY (id)
 );
@@ -339,11 +340,14 @@ alter table public.watchlist_analysis drop constraint if exists watchlist_analys
 alter table public.watchlist_analysis add constraint watchlist_analysis_ticker_fkey FOREIGN KEY (ticker) REFERENCES watchlist(ticker) ON DELETE CASCADE;
 
 -- ── Indexes ───────────────────────────────────────────────────────────────
+CREATE INDEX IF NOT EXISTS alerts_type_created_idx ON public.alerts USING btree (alert_type, created_at DESC);
+CREATE INDEX IF NOT EXISTS alerts_created_at_idx ON public.alerts USING btree (created_at DESC);
 CREATE UNIQUE INDEX IF NOT EXISTS alerts_dedup_key_idx ON public.alerts USING btree (dedup_key);
-CREATE INDEX IF NOT EXISTS alerts_state_idx ON public.alerts USING btree (archived_at, dismissed_at, created_at DESC);
 CREATE UNIQUE INDEX IF NOT EXISTS inst_flow_report_date_idx ON public.institutional_flow_reports USING btree (report_date);
 CREATE INDEX IF NOT EXISTS instruments_name_trgm ON public.instruments USING gin (name gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS instruments_short_trgm ON public.instruments USING gin (short_name gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS portfolio_snapshots_created_at_idx ON public.portfolio_snapshots USING btree (created_at DESC);
+CREATE INDEX IF NOT EXISTS positions_snapshot_id_idx ON public.positions USING btree (snapshot_id);
 CREATE UNIQUE INDEX IF NOT EXISTS value_buy_scores_ticker_idx ON public.value_buy_scores USING btree (ticker);
 
 -- ── Row level security ────────────────────────────────────────────────────
@@ -411,6 +415,7 @@ grant all on all tables in schema public to service_role;
 grant usage, select on all sequences in schema public to service_role;
 
 -- ── Comments ──────────────────────────────────────────────────────────────
+comment on column public.analyst_ratings.source is 'analysts = Yahoo analyst consensus; trend = price-trend score (no analyst coverage, e.g. ETFs)';
 comment on column public.watchlist.alternatives is 'Trading 212 products giving the same exposure (crypto ETPs / commodity ETCs)';
 comment on column public.watchlist.t212_ticker is 'Matching Trading 212 instrument, if tradable there';
 comment on column public.watchlist.ticker is 'Yahoo Finance symbol (global)';
