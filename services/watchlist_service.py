@@ -250,8 +250,15 @@ def analyse(item, now):
     selling = vol_label == "High" and daily <= -1.5
 
     why = []
-    if q_label == "Weak" and rec not in ("strong_buy", "buy"):
-        verdict = "AVOID"; why.append("Quality checks are weak — not worth the risk this week.")
+    trend_only = is_etf or category in ("commodity", "crypto")      # "quality" = trend/volatility, no fundamentals
+    small_coin = category == "crypto" and (info.get("marketCap") or 0) < 1e9
+    if q_label == "Weak" and (not trend_only or small_coin) and rec not in ("strong_buy", "buy"):
+        verdict = "AVOID"
+        why.append("Small, weak coin — not worth the risk." if small_coin else "Quality checks are weak — not worth the risk this week.")
+    elif q_label == "Weak" and trend_only:
+        verdict = "HOLD"
+        why.append("In a downtrend (below its 200-day average, negative 1-year return) — wait for it to turn; "
+                   "the price points below are where it gets interesting.")
     elif overbought:
         verdict = "HOLD"; why.append(f"Stretched: RSI {rsi:.0f} and trading near its highs — wait for a pullback.")
     elif downtrend:
