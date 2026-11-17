@@ -49,3 +49,12 @@ added to the demo project because the dashboard reads them.
   jobs: a portfolio snapshot every 15 minutes, and a paced walk of orders, dividends and transactions (4 pages per tick).
 - `05_broker_connect.sql` has the database side. Credentials never leave the function and are never returned to the browser.
 - Not yet: password reset, per-user alerts/analytics (phase 3), Zerodha (phase 4).
+
+## Phase 3: original project converted to multi-user (production)
+
+`06_convert_legacy.sql` was applied to the original `t212` project in place (owner id substituted for `:OWNER`), then `05_broker_connect.sql`
+with that project's ref. A full copy of every table taken beforehand is in the private `legacy_backup` schema.
+Backwards compatible: the GitHub Actions pipeline and the Cloudflare worker are unchanged. Their inserts get `user_id` from a column
+default (the owner), and the old single-column unique keys stay next to the new per-user ones until cutover.
+Cutover still to do: per-user alerts and analytics, drop the old unique keys, retire the single-user worker.
+Until cutover the owner must not connect Trading 212 in the app, or snapshots would be written twice (legacy pipeline and new sync).
