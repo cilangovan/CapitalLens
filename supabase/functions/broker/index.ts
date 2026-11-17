@@ -200,7 +200,43 @@ async function alerts(conn: any, rows: any[], last: Record<string, number>): Pro
       } catch { /* push is best-effort */ }
     }
   }
+  await sendEmail(conn.user_id, out);
   return next;
+}
+
+// ── email ───────────────────────────────────────────────────────────────────
+// Needs two function secrets: RESEND_API_KEY and ALERT_FROM_EMAIL (an address on a domain verified with Resend).
+// Without them this does nothing, so alerts still work in the app and via push.
+const esc = (v: string) => v.replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]!));
+
+async function sendEmail(userId: string, items: { type: string; title: string; body: string }[]) {
+  const key = Deno.env.get("RESEND_API_KEY"), from = Deno.env.get("ALERT_FROM_EMAIL");
+  if (!key || !from || !items.length) return;
+  try {
+    const { data: prof } = await ADMIN.from("profiles").select("email_alerts").eq("user_id", userId).maybeSingle();
+    if (prof && prof.email_alerts === false) return;
+    const { data: u } = await ADMIN.auth.admin.getUserById(userId);
+    const to = u?.user?.email;
+    if (!to) return;
+    const shown = items.slice(0, 10);
+    const html = `<div style="font-family:-apple-system,Segoe UI,sans-serif;max-width:560px;margin:auto;color:#111">
+<h2 style="margin:0 0 12px">CapitalLens alerts</h2>
+${shown.map((i) => `<div style="border:1px solid #ddd;border-radius:8px;padding:12px;margin-bottom:12px">
+<div style="font-weight:600;margin-bottom:6px">${esc(i.title)}</div>
+<pre style="margin:0;font:12px ui-monospace,Menlo,monospace;white-space:pre-wrap;color:#333">${esc(i.body)}</pre></div>`).join("")}
+${items.length > shown.length ? `<p>and ${items.length - shown.length} more in the app.</p>` : ""}
+<p style="font-size:12px;color:#666">These are signals from your own positions, not financial advice.
+Turn email alerts off any time under Accounts → Alert notifications.</p></div>`;
+    const text = shown.map((i) => `${i.title}\n${i.body}`).join("\n\n") + "\n\nNot financial advice. Turn email alerts off under Accounts → Alert notifications.";
+    await fetch("https://api.resend.com/emails", {
+      method: "POST", signal: AbortSignal.timeout(10_000),
+      headers: { Authorization: `Bearer ${key}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from, to: [to], text, html,
+        subject: items.length === 1 ? items[0].title.slice(0, 120) : `CapitalLens: ${items.length} alerts`,
+      }),
+    });
+  } catch { /* email is best-effort */ }
 }
 
 const STAGES = [
