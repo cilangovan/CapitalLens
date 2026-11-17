@@ -11,9 +11,14 @@ holdings) and the watchlist drill-down. For each view it checks:
     meant to scroll sideways (overflow-x: auto/scroll/hidden) and that container itself fits.
 It also fails on uncaught JavaScript errors.
 
-Safe to run anywhere: it never logs in, every POST (alerts actions, watchlist add/remove, settings,
-chart/search) is answered by a local stub and never reaches the worker, and it prints element
-selectors and pixel widths only — no portfolio values.
+Data: the worker only serves signed-in sessions, so the test answers the dashboard's read requests
+itself, straight from Supabase with the service key (SUPABASE_URL + SUPABASE_SERVICE_KEY, as in CI),
+using exactly the same table + query the page asked for. Every POST (alerts actions, watchlist
+add/remove, settings, chart/search) is answered by a local stub — nothing is ever changed. Output is
+element selectors and pixel widths only — no portfolio values.
+
+XSS pass (POISON): every text value in every response gets an attack payload appended
+(<img onerror=…>, quotes, backticks). The run fails if any payload executes or becomes a real element.
 
 Usage:
   python tests/ui_layout_test.py                 # serves docs/ on a free port
@@ -32,6 +37,27 @@ from pathlib import Path
 from playwright.sync_api import sync_playwright
 
 ROOT = Path(__file__).resolve().parent.parent
+SUPA_URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
+SUPA_KEY = os.environ.get("SUPABASE_SERVICE_KEY") or os.environ.get("SUPABASE_KEY", "")
+READABLE = {"alerts", "analyst_ratings", "app_settings", "dividends", "holding_decisions", "institutional_flow_reports",
+            "pie_history", "portfolio_snapshots", "portfolio_snapshots_all", "positions", "positions_all", "profit_booking",
+            "profit_booking_summary", "realised_pnl", "returns_summary", "strategy_recommendations", "value_buy_scores",
+            "watchlist", "watchlist_analysis"}
+PAYLOAD = """<img src=x onerror="window.__xss=(window.__xss||0)+1">'"`<script>window.__xss=(window.__xss||0)+1</script>"""
+CORS_H = {"Access-Control-Allow-Origin": "*", "Access-Control-Allow-Headers": "Content-Type,Authorization",
+          "Access-Control-Allow-Methods": "GET,POST,OPTIONS"}
+
+
+def poison(v):
+    """Append the attack payload to every text value except dates and number-like strings."""
+    import re
+    if isinstance(v, str):
+        return v if re.fullmatch(r"[\d\-:.TZ+ ]*", v) else v + PAYLOAD
+    if isinstance(v, list):
+        return [poison(x) for x in v]
+    if isinstance(v, dict):
+        return {k: poison(x) for k, x in v.items()}
+    return v
 WIDTHS = [int(w) for w in os.environ.get("WIDTHS", "360,390").split(",")]
 TIMEOUT = 25_000
 
@@ -92,11 +118,29 @@ def free_port():
     s = socket.socket(); s.bind(("127.0.0.1", 0)); p = s.getsockname()[1]; s.close(); return p
 
 
-def stub_post(route):
+def make_handler(api, poisoned):
+    def handler(route):
+        req = route.request
+        if req.method == "OPTIONS":
+            return route.fulfill(status=204, headers=CORS_H)
+        if req.method == "GET":
+            path = req.url.split("workers.dev", 1)[-1]
+            table, _, query = path.lstrip("/").partition("?")
+            if table not in READABLE:
+                return route.fulfill(status=404, headers=CORS_H, content_type="application/json", body='{"error":"Not found"}')
+            r = api.get(f"{SUPA_URL}/rest/v1/{table}" + (f"?{query}" if query else ""),
+                        headers={"apikey": SUPA_KEY, "Authorization": f"Bearer {SUPA_KEY}", "Accept": "application/json"})
+            body = r.text()
+            if poisoned and r.ok:
+                body = json.dumps(poison(json.loads(body)))
+            return route.fulfill(status=r.status, headers=CORS_H, content_type="application/json", body=body)
+        return stub_post(route, poisoned)
+    return handler
+
+
+def stub_post(route, poisoned=False):
     """Every write / authenticated call is answered locally — the test never changes anything."""
     req = route.request
-    if req.method == "GET":
-        return route.continue_()
     path = req.url.split("workers.dev", 1)[-1]
     if path.startswith("/search"):
         body = {"results": []}
@@ -105,7 +149,7 @@ def stub_post(route):
         body = {"meta": {"currency": "USD"}, "points": [{"t": now - (60 - i) * 300, "c": 100 + (i % 7) - 3} for i in range(60)]}
     else:
         body = {"ok": True, "updated": 0}
-    route.fulfill(status=200, content_type="application/json", body=json.dumps(body))
+    route.fulfill(status=200, headers=CORS_H, content_type="application/json", body=json.dumps(poison(body) if poisoned else body))
 
 
 def scenarios(page):
@@ -157,11 +201,11 @@ def scenarios(page):
     return out
 
 
-def run_width(browser, base, width):
+def run_width(browser, base, width, poisoned=False):
     ctx = browser.new_context(viewport={"width": width, "height": 800}, device_scale_factor=2, is_mobile=True, has_touch=True)
     # a signed-in session (token is never checked for reads; every write is stubbed)
     ctx.add_init_script("try { sessionStorage.setItem('t212_auth','master'); sessionStorage.setItem('t212_token','ui-test'); } catch(e) {}")
-    ctx.route("**/*.workers.dev/**", stub_post)
+    ctx.route("**/*.workers.dev/**", make_handler(ctx.request, poisoned))
     page = ctx.new_page()
     errors = []
     page.on("pageerror", lambda e: errors.append(str(e).splitlines()[0][:200]))
@@ -191,8 +235,13 @@ def run_width(browser, base, width):
             left = page.evaluate("(r) => [...(document.querySelector(r)||document.body).querySelectorAll('.loading')].filter(e => e.offsetParent).map(e => e.textContent.trim().slice(0,60))", root)
             failures.append((name, f"didn't finish loading: {str(e).splitlines()[0][:120]} · still showing {left[:3]}", []))
             continue
-        m = page.evaluate(MEASURE_JS, root)
         checked += 1
+        if poisoned:
+            x = page.evaluate("() => ({ ran: window.__xss || 0, nodes: document.querySelectorAll('img[src=\"x\"], script:not([src])').length })")
+            if x["ran"] or x["nodes"]:
+                failures.append((name, f"XSS: payload executed {x['ran']}× · {x['nodes']} injected element(s)", []))
+            continue
+        m = page.evaluate(MEASURE_JS, root)
         if m["items"] or m["page"] > m["screen"] + 1:
             failures.append((name, f"page {m['page']}px wide on a {m['screen']}px screen", m["items"]))
     # close pop-ups before the next width
@@ -204,6 +253,8 @@ def run_width(browser, base, width):
 def main():
     base = os.environ.get("BASE_URL")
     server = None
+    if not (SUPA_URL and SUPA_KEY):
+        sys.exit("Set SUPABASE_URL and SUPABASE_SERVICE_KEY (the test reads the dashboard data straight from Supabase).")
     if not base:
         port = free_port()
         server = subprocess.Popen([sys.executable, "-m", "http.server", str(port), "--bind", "127.0.0.1"],
@@ -215,10 +266,14 @@ def main():
     try:
         with sync_playwright() as p:
             browser = p.chromium.launch()
-            for w in WIDTHS:
-                checked, failures, errors = run_width(browser, base, w)
-                print(f"\n[{w}px] {checked} views checked · {len(failures)} with layout problems · {len(set(errors))} JS errors")
-                summary.append(f"**{w}px** — {checked} views · {len(failures)} layout problems · {len(set(errors))} JS errors")
+            runs = [(w, False) for w in WIDTHS] + ([(WIDTHS[-1], True)] if os.environ.get("POISON", "1") != "0" else [])
+            for w, poisoned in runs:
+                checked, failures, errors = run_width(browser, base, w, poisoned)
+                tag = f"{w}px · XSS attack pass" if poisoned else f"{w}px"
+                if poisoned:
+                    errors = []          # poisoned data legitimately breaks some views — only execution matters here
+                print(f"\n[{tag}] {checked} views checked · {len(failures)} problems · {len(set(errors))} JS errors")
+                summary.append(f"**{tag}** — {checked} views · {len(failures)} problems · {len(set(errors))} JS errors")
                 for name, why, items in failures:
                     ok = False
                     print(f"  ✗ {name}: {why}")

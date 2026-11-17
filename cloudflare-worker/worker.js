@@ -19,11 +19,35 @@
  *   GH_REPO (e.g. "cilangovan/t212-monitor")
  */
 
+// Only the dashboard's own site may call this worker from a browser (override with the ALLOWED_ORIGINS env var).
+const DEFAULT_ORIGINS = ['https://cilangovan.github.io'];
 const CORS = {
-  'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Methods': 'GET,POST,DELETE,OPTIONS',
-  'Access-Control-Allow-Headers': 'Content-Type,Authorization,apikey,Prefer',
+  'Access-Control-Allow-Methods': 'GET,POST,OPTIONS',
+  'Access-Control-Allow-Headers': 'Content-Type,Authorization',
+  'Access-Control-Max-Age': '600',
 };
+const SECURITY_HEADERS = {
+  'X-Content-Type-Options': 'nosniff',
+  'Referrer-Policy': 'no-referrer',
+  'Cache-Control': 'no-store',
+  'Cross-Origin-Resource-Policy': 'cross-origin',
+};
+function finalize(resp, request, env) {
+  const origin = request.headers.get('Origin');
+  const allowed = (env.ALLOWED_ORIGINS ? env.ALLOWED_ORIGINS.split(',') : DEFAULT_ORIGINS).map(s => s.trim());
+  const h = new Headers(resp.headers);
+  ['access-control-allow-origin', 'access-control-allow-headers', 'access-control-allow-methods', 'set-cookie'].forEach(k => h.delete(k));
+  for (const [k, v] of Object.entries(SECURITY_HEADERS)) h.set(k, v);
+  if (origin && allowed.includes(origin)) h.set('Access-Control-Allow-Origin', origin);
+  h.set('Vary', 'Origin');
+  return new Response(resp.body, { status: resp.status, headers: h });
+}
+
+// Tables the dashboard may read — everything else (login table, raw Trading 212 history) is never served.
+const READABLE = new Set(['alerts', 'analyst_ratings', 'app_settings', 'dividends', 'holding_decisions', 'institutional_flow_reports',
+  'pie_history', 'portfolio_snapshots', 'portfolio_snapshots_all', 'positions', 'positions_all', 'profit_booking',
+  'profit_booking_summary', 'realised_pnl', 'returns_summary', 'strategy_recommendations', 'value_buy_scores',
+  'watchlist', 'watchlist_analysis']);
 
 function json(body, status = 200) {
   return new Response(JSON.stringify(body), {
@@ -31,10 +55,40 @@ function json(body, status = 200) {
     headers: { 'Content-Type': 'application/json', ...CORS },
   });
 }
+const bearer = req => (req.headers.get('Authorization') || '').replace(/^Bearer\s+/i, '').trim();
 
 async function sha256hex(str) {
   const buf = await crypto.subtle.digest('SHA-256', new TextEncoder().encode(str));
   return Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+}
+
+// Constant-time string compare (hex hashes) — no early exit that leaks how many characters matched
+function safeEqual(a, b) {
+  a = String(a || ''); b = String(b || '');
+  let diff = a.length ^ b.length;
+  for (let i = 0; i < Math.max(a.length, b.length); i++) diff |= (a.charCodeAt(i) || 0) ^ (b.charCodeAt(i) || 0);
+  return diff === 0;
+}
+
+// Passwords: salted PBKDF2-SHA256 (100k iterations — the Workers maximum). Stored as pbkdf2$<iter>$<salt>$<hash>.
+// Old unsalted SHA-256 hashes still verify once and are upgraded on that sign-in.
+const PBKDF2_ITER = 100000;
+const hex = buf => Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
+async function pbkdf2(password, saltHex, iter) {
+  const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);
+  const salt = new Uint8Array(saltHex.match(/../g).map(h => parseInt(h, 16)));
+  return hex(await crypto.subtle.deriveBits({ name: 'PBKDF2', hash: 'SHA-256', salt, iterations: iter }, key, 256));
+}
+async function hashPassword(password) {
+  const salt = hex(crypto.getRandomValues(new Uint8Array(16)));
+  return `pbkdf2$${PBKDF2_ITER}$${salt}$${await pbkdf2(password, salt, PBKDF2_ITER)}`;
+}
+async function verifyPassword(password, stored) {
+  if (String(stored || '').startsWith('pbkdf2$')) {
+    const [, iter, salt, h] = stored.split('$');
+    return { ok: safeEqual(await pbkdf2(password, salt, +iter), h), upgrade: +iter < PBKDF2_ITER };
+  }
+  return { ok: safeEqual(await sha256hex(password), stored), upgrade: true };   // legacy
 }
 
 async function randomToken() {
@@ -89,14 +143,21 @@ async function issueSession(env) {
   return token;
 }
 
+// Verified sessions are cached for 60s per worker instance, so each page load isn't ~15 database lookups.
+const SESSION_CACHE = new Map();
 async function verifySession(env, token) {
-  if (!token) return false;
+  if (!token || typeof token !== 'string' || token.length > 200) return false;
   const hash = await sha256hex(token);
+  const hit = SESSION_CACHE.get(hash);
+  if (hit && hit > Date.now()) return true;
   const rows = await sbGet(env, 'dashboard_auth', 'username=eq.admin&select=session_token,session_expiry');
   if (!rows.length) return false;
   const { session_token, session_expiry } = rows[0];
-  if (session_token !== hash) return false;
-  if (new Date(session_expiry) < new Date()) return false;
+  if (!session_token || !safeEqual(session_token, hash)) return false;
+  const exp = new Date(session_expiry).getTime();
+  if (!(exp > Date.now())) return false;
+  SESSION_CACHE.set(hash, Math.min(exp, Date.now() + 60_000));
+  if (SESSION_CACHE.size > 50) SESSION_CACHE.delete(SESSION_CACHE.keys().next().value);
   return true;
 }
 
@@ -105,11 +166,25 @@ async function handleLogin(req, env) {
   const { username, password } = await req.json().catch(() => ({}));
   if (!username || !password) return json({ error: 'Missing fields' }, 400);
 
-  const rows = await sbGet(env, 'dashboard_auth', `username=eq.${encodeURIComponent(username)}&select=password_hash`);
-  if (!rows.length) return json({ error: 'Invalid credentials' }, 401);
+  if (typeof username !== 'string' || typeof password !== 'string' || username.length > 64 || password.length > 256)
+    return json({ error: 'Invalid credentials' }, 401);
+  const rows = await sbGet(env, 'dashboard_auth', `username=eq.${encodeURIComponent(username)}&select=username,password_hash,failed_logins,locked_until`);
+  if (!rows.length) { await sha256hex(password); return json({ error: 'Invalid credentials' }, 401); }
+  const u = rows[0], who = `username=eq.${encodeURIComponent(u.username)}`;
+  if (u.locked_until && new Date(u.locked_until) > new Date())
+    return json({ error: 'Too many attempts — try again in 15 minutes' }, 429);
 
-  const hash = await sha256hex(password);
-  if (hash !== rows[0].password_hash) return json({ error: 'Invalid credentials' }, 401);
+  const { ok, upgrade } = await verifyPassword(password, u.password_hash);
+  if (!ok) {
+    const n = (u.failed_logins || 0) + 1;
+    await sbPatch(env, 'dashboard_auth', who, n >= 5
+      ? { failed_logins: 0, locked_until: new Date(Date.now() + 15 * 60 * 1000).toISOString() }
+      : { failed_logins: n });
+    return json({ error: n >= 5 ? 'Too many attempts — try again in 15 minutes' : 'Invalid credentials' }, n >= 5 ? 429 : 401);
+  }
+  const patch = { failed_logins: 0, locked_until: null };
+  if (upgrade) patch.password_hash = await hashPassword(password);   // move old SHA-256 hash to PBKDF2
+  await sbPatch(env, 'dashboard_auth', who, patch);
 
   const token = await issueSession(env);
   return json({ ok: true, token });
@@ -118,12 +193,12 @@ async function handleLogin(req, env) {
 async function handleChangePassword(req, env) {
   const { token, newPassword } = await req.json().catch(() => ({}));
   if (!token || !newPassword) return json({ error: 'Missing fields' }, 400);
-  if (newPassword.length < 8) return json({ error: 'Password too short (min 8)' }, 400);
+  if (typeof newPassword !== 'string' || newPassword.length < 8 || newPassword.length > 256) return json({ error: 'Password must be 8–256 characters' }, 400);
 
   const valid = await verifySession(env, token);
   if (!valid) return json({ error: 'Invalid or expired session' }, 401);
 
-  const hash = await sha256hex(newPassword);
+  const hash = await hashPassword(newPassword);
   await sbPatch(env, 'dashboard_auth', 'username=eq.admin', {
     password_hash: hash,
     updated_at: new Date().toISOString(),
@@ -170,21 +245,25 @@ async function handleResetRequest(req, env) {
 async function handleResetConfirm(req, env) {
   const { resetToken, newPassword } = await req.json().catch(() => ({}));
   if (!resetToken || !newPassword) return json({ error: 'Missing fields' }, 400);
-  if (newPassword.length < 8) return json({ error: 'Password too short (min 8)' }, 400);
+  if (typeof newPassword !== 'string' || newPassword.length < 8 || newPassword.length > 256) return json({ error: 'Password must be 8–256 characters' }, 400);
+  if (typeof resetToken !== 'string' || resetToken.length > 200) return json({ error: 'Invalid token' }, 400);
 
   const hash = await sha256hex(resetToken);
   const rows = await sbGet(env, 'dashboard_auth', 'username=eq.admin&select=reset_token,reset_expiry');
   if (!rows.length) return json({ error: 'Invalid token' }, 400);
 
   const { reset_token, reset_expiry } = rows[0];
-  if (reset_token !== hash) return json({ error: 'Invalid token' }, 400);
+  if (!reset_token || !safeEqual(reset_token, hash)) return json({ error: 'Invalid token' }, 400);
   if (new Date(reset_expiry) < new Date()) return json({ error: 'Token expired' }, 400);
 
-  const pwHash = await sha256hex(newPassword);
+  const pwHash = await hashPassword(newPassword);
   await sbPatch(env, 'dashboard_auth', 'username=eq.admin', {
     password_hash: pwHash,
     reset_token: null,
     reset_expiry: null,
+    failed_logins: 0,
+    locked_until: null,
+    session_token: null,          // a reset signs out every existing session
     updated_at: new Date().toISOString(),
   });
   return json({ ok: true });
@@ -432,6 +511,12 @@ async function handleSetting(req, env) {
 // ── Main handler ──────────────────────────────────────────────────────────────
 export default {
   async fetch(request, env) {
+    const resp = await route(request, env).catch(e => { console.error(e); return json({ error: 'Server error' }, 500); });
+    return finalize(resp, request, env);
+  },
+};
+
+async function route(request, env) {
     if (request.method === 'OPTIONS') {
       return new Response(null, { status: 204, headers: CORS });
     }
@@ -440,56 +525,33 @@ export default {
     const path = url.pathname;
 
     // Auth routes
-    if (path === '/auth/login')           return handleLogin(request, env).catch(e => json({ error: e.message }, 500));
-    if (path === '/auth/change-password') return handleChangePassword(request, env).catch(e => json({ error: e.message }, 500));
-    if (path === '/auth/reset-request')   return handleResetRequest(request, env).catch(e => json({ error: e.message }, 500));
-    if (path === '/auth/reset-confirm')   return handleResetConfirm(request, env).catch(e => json({ error: e.message }, 500));
-    if (path === '/search' && request.method === 'POST')           return handleSearch(request, env).catch(e => json({ error: e.message }, 500));
-    if (path === '/watchlist/add' && request.method === 'POST')    return handleWatchlist(request, env, 'add').catch(e => json({ error: e.message }, 500));
-    if (path === '/watchlist/remove' && request.method === 'POST') return handleWatchlist(request, env, 'remove').catch(e => json({ error: e.message }, 500));
-    if (path === '/chart' && request.method === 'POST')            return handleChart(request, env).catch(e => json({ error: e.message }, 500));
-    if (path === '/settings/set' && request.method === 'POST')     return handleSetting(request, env).catch(e => json({ error: e.message }, 500));
-    if (path === '/alerts/action' && request.method === 'POST') return handleAlertAction(request, env).catch(e => json({ error: e.message }, 500));
-    if (path === '/auth/debug') return json({
-      has_supabase_url: !!env.SUPABASE_URL,
-      supabase_url_prefix: env.SUPABASE_URL ? env.SUPABASE_URL.substring(0, 30) : null,
-      has_service_key: !!env.SUPABASE_SERVICE_KEY,
-      has_supabase_key: !!env.SUPABASE_KEY,
-      has_gh_pat: !!env.GH_PAT,
-      gh_repo: env.GH_REPO || null,
-    });
+    if (path === '/auth/login')           return handleLogin(request, env).catch(e => { console.error(e); return json({ error: 'Server error' }, 500); });
+    if (path === '/auth/change-password') return handleChangePassword(request, env).catch(e => { console.error(e); return json({ error: 'Server error' }, 500); });
+    if (path === '/auth/reset-request')   return handleResetRequest(request, env).catch(e => { console.error(e); return json({ error: 'Server error' }, 500); });
+    if (path === '/auth/reset-confirm')   return handleResetConfirm(request, env).catch(e => { console.error(e); return json({ error: 'Server error' }, 500); });
+    if (path === '/search' && request.method === 'POST')           return handleSearch(request, env).catch(e => { console.error(e); return json({ error: 'Server error' }, 500); });
+    if (path === '/watchlist/add' && request.method === 'POST')    return handleWatchlist(request, env, 'add').catch(e => { console.error(e); return json({ error: 'Server error' }, 500); });
+    if (path === '/watchlist/remove' && request.method === 'POST') return handleWatchlist(request, env, 'remove').catch(e => { console.error(e); return json({ error: 'Server error' }, 500); });
+    if (path === '/chart' && request.method === 'POST')            return handleChart(request, env).catch(e => { console.error(e); return json({ error: 'Server error' }, 500); });
+    if (path === '/settings/set' && request.method === 'POST')     return handleSetting(request, env).catch(e => { console.error(e); return json({ error: 'Server error' }, 500); });
+    if (path === '/alerts/action' && request.method === 'POST') return handleAlertAction(request, env).catch(e => { console.error(e); return json({ error: 'Server error' }, 500); });
 
-    // ── Read-only Supabase proxy ─────────────────────────────────────────────
-    // Dashboard only reads. Block writes, RPC/nested paths and the auth table.
+    // ── Read-only Supabase proxy (signed-in only, allowlisted tables) ─────────
     if (request.method !== 'GET' && request.method !== 'HEAD') {
       return json({ error: 'Method not allowed' }, 405);
     }
     const table = path.replace(/^\//, '');
-    if (!/^[a-z_]+$/.test(table) || table === 'dashboard_auth') {
-      return json({ error: 'Not found' }, 404);
-    }
-    const supaUrl = `${env.SUPABASE_URL}/rest/v1/${table}${url.search}`;
-    const headers = new Headers(request.headers);
-    headers.set('apikey', env.SUPABASE_ANON_KEY || env.SUPABASE_SERVICE_KEY);
-    headers.set('Authorization', `Bearer ${env.SUPABASE_ANON_KEY || env.SUPABASE_SERVICE_KEY}`);
+    if (!READABLE.has(table)) return json({ error: 'Not found' }, 404);
+    if (!(await verifySession(env, bearer(request)))) return json({ error: 'Sign in required' }, 401);
+    if (url.search.length > 2000) return json({ error: 'Query too long' }, 414);
 
-    const resp = await fetch(supaUrl, {
+    const key = env.SUPABASE_SERVICE_KEY;
+    const resp = await fetch(`${env.SUPABASE_URL}/rest/v1/${table}${url.search}`, {
       method: request.method,
-      headers,
-      body: request.method !== 'GET' && request.method !== 'HEAD' ? request.body : undefined,
+      headers: { apikey: key, Authorization: `Bearer ${key}`, Accept: 'application/json' },   // nothing from the client is forwarded
     });
-
-    const body = await resp.arrayBuffer();
-    // Build response headers: take upstream headers, strip any ACAO headers
-    // from Supabase, then apply our own CORS headers on top.
-    const respHeaders = Object.fromEntries(resp.headers);
-    delete respHeaders['access-control-allow-origin'];
-    delete respHeaders['access-control-allow-headers'];
-    delete respHeaders['access-control-allow-methods'];
-    delete respHeaders['set-cookie']; // don't forward Supabase cookies to browser
-    return new Response(body, {
+    return new Response(await resp.arrayBuffer(), {
       status: resp.status,
-      headers: { ...respHeaders, ...CORS },
+      headers: { 'Content-Type': resp.headers.get('Content-Type') || 'application/json', ...CORS },
     });
-  },
-};
+}

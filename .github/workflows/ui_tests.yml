@@ -31,5 +31,8 @@ jobs:
           cache-dependency-path: tests/requirements.txt
       - run: pip install -r tests/requirements.txt
       - run: python -m playwright install --with-deps chromium
-      - name: Every view fits 360px and 390px screens
+      - name: Every view fits 360px and 390px screens · XSS attack pass
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: python -u tests/ui_layout_test.py

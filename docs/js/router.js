@@ -26,6 +26,6 @@ function loadTab(id) {
   loaders[id]().catch(e => {
     console.error(id, e);
     const el = document.querySelector(`#${id} .loading`) || document.getElementById(id);
-    if (el) el.innerHTML = `<div class="loading" style="color:var(--red)">Error: ${e.message}</div>`;
+    if (el) el.innerHTML = `<div class="loading" style="color:var(--red)">Error: ${esc(e.message)}</div>`;
   });
 }

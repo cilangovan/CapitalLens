@@ -74,7 +74,11 @@ function logout() {
   ['mousemove','keydown','mousedown','touchstart','scroll','click'].forEach(evt =>
     document.removeEventListener(evt, resetInactivityTimer)
   );
-  try { sessionStorage.clear(); } catch(e){}
+  try {
+    const keep = ['t212_timeout', 't212_expired'].filter(k => sessionStorage.getItem(k));   // sign-in screen messages
+    sessionStorage.clear();
+    keep.forEach(k => sessionStorage.setItem(k, '1'));
+  } catch(e){}
   location.reload();
 }
 
@@ -180,6 +184,9 @@ async function doChangePassword() {
   } catch(e) { setErr('cpw-error', 'Network error'); }
 }
 
+// ── Refuse to run inside someone else's frame (clickjacking) ─────
+if (window.top !== window.self) { try { window.top.location = window.self.location; } catch (e) { document.documentElement.style.display = 'none'; } }
+
 // ── Check session on load ─────────────────────────────────────
 // Runs after every script has loaded (startApp needs loadTab from router.js, loaded last).
 window.addEventListener('DOMContentLoaded', function() {
@@ -191,6 +198,11 @@ window.addEventListener('DOMContentLoaded', function() {
     return;
   }
   try {
+    if (sessionStorage.getItem('t212_expired')) {
+      sessionStorage.removeItem('t212_expired');
+      const sub = document.getElementById('login-subtitle');
+      if (sub) { sub.textContent = 'Session expired — please sign in again'; sub.style.color = '#e8a838'; }
+    }
     const timedOut = sessionStorage.getItem('t212_timeout');
     if (timedOut) {
       sessionStorage.removeItem('t212_timeout');
@@ -203,6 +215,6 @@ window.addEventListener('DOMContentLoaded', function() {
     const auth = sessionStorage.getItem('t212_auth');
     const tok  = sessionStorage.getItem('t212_token');
     if (auth === 'master' && tok) { SESSION_TOKEN = tok; IS_GUEST = false; startApp(); }
-    else if (auth === 'guest') { IS_GUEST = true; startApp(); }
+    // guest mode retired: every read now needs a signed-in session
   } catch(e) {}
 });
