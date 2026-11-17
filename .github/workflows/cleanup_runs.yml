@@ -1,0 +1,51 @@
+name: Cleanup old workflow runs
+
+# Deletes finished workflow runs (and their logs) older than N days. This repo is PUBLIC, so run
+# logs are world-readable; keeping them short-lived limits exposure if one ever prints something odd.
+# Never touches runs that are queued/in progress. Backups in R2 are NOT affected.
+
+on:
+  schedule:
+    - cron: '23 4 * * 0'          # Sundays 04:23 UTC
+  workflow_dispatch:
+    inputs:
+      days:
+        description: 'Delete runs older than this many days'
+        default: '14'
+      dry_run:
+        description: 'List what would be deleted, delete nothing'
+        type: boolean
+        default: false
+
+permissions:
+  actions: write
+  contents: read
+
+concurrency:
+  group: cleanup-runs
+  cancel-in-progress: false
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      REPO: ${{ github.repository }}
+      DAYS: ${{ inputs.days || '14' }}
+      DRY_RUN: ${{ inputs.dry_run && 'true' || 'false' }}
+    steps:
+      - name: Delete old runs
+        run: |
+          set -euo pipefail
+          cutoff="$(date -u -d "-${DAYS} days" +%Y-%m-%d)"
+          echo "Cutoff: runs created before $cutoff (dry_run=$DRY_RUN)"
+          ids="$(gh api --paginate "repos/${REPO}/actions/runs?status=completed&created=%3C${cutoff}&per_page=100" \
+                   --jq '.workflow_runs[].id')"
+          n=0
+          for id in $ids; do
+            n=$((n+1))
+            if [ "$DRY_RUN" = "true" ]; then echo "would delete run $id"; continue; fi
+            gh api -X DELETE "repos/${REPO}/actions/runs/${id}" --silent || echo "::warning::could not delete run $id"
+          done
+          echo "Processed $n run(s)."
