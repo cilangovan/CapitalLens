@@ -104,6 +104,8 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
+      - uses: actions/checkout@v4   # needed for db/r2_backup.sh
+
       - name: Require secrets
         env:
           BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
