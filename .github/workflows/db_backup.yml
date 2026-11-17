@@ -1,0 +1,140 @@
+name: Database Backup
+
+# Weekly schema snapshot into git (db/schema.sql + supabase/migrations/), plus an optional
+# encrypted data dump. This repo is PUBLIC: data is never committed — it is encrypted with
+# BACKUP_PASSPHRASE and attached to the run as a 30-day artifact until you choose a destination.
+#
+# Secrets (Settings → Secrets and variables → Actions):
+#   SUPABASE_DB_URL        Session-pooler connection string (Supabase → Connect → Session pooler, port 5432)
+#                          — enables pg_dump (full-fidelity dumps) and the schema export
+#   or SUPABASE_ACCESS_TOKEN  (+ repo variable SUPABASE_PROJECT_REF) — schema export only, via the Management API
+#   BACKUP_PASSPHRASE      required for data backups (gpg AES-256); keep a copy somewhere safe
+
+on:
+  schedule:
+    - cron: '17 3 * * 0'          # Sundays 03:17 UTC
+  workflow_dispatch:
+    inputs:
+      include_data:
+        description: 'Also take an encrypted data backup'
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+concurrency:
+  group: db-backup
+  cancel-in-progress: false
+
+env:
+  SUPABASE_DB_URL: ${{ secrets.SUPABASE_DB_URL }}
+  SUPABASE_ACCESS_TOKEN: ${{ secrets.SUPABASE_ACCESS_TOKEN }}
+  SUPABASE_PROJECT_REF: ${{ vars.SUPABASE_PROJECT_REF || 'kloqkcxchstfoljpqcbq' }}
+
+jobs:
+  schema:
+    name: Schema → git
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Check credentials
+        id: creds
+        run: |
+          if [ -n "$SUPABASE_DB_URL" ]; then echo "mode=db" >> "$GITHUB_OUTPUT";
+          elif [ -n "$SUPABASE_ACCESS_TOKEN" ]; then echo "mode=api" >> "$GITHUB_OUTPUT";
+          else
+            echo "::warning title=No database credentials::Add the SUPABASE_DB_URL secret (or SUPABASE_ACCESS_TOKEN) to enable backups — see db/README.md"
+            echo "mode=none" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Install PostgreSQL 17 client
+        if: steps.creds.outputs.mode == 'db'
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client-17
+          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+
+      - name: Export schema + migration history
+        if: steps.creds.outputs.mode != 'none'
+        run: python db/export_schema.py
+
+      - name: Full schema dump (pg_dump, for migration tools)
+        if: steps.creds.outputs.mode == 'db'
+        run: |
+          mkdir -p backup
+          pg_dump "$SUPABASE_DB_URL" --schema-only --no-owner --no-privileges \
+            --schema=public --file=backup/pg_dump_schema.sql
+          pg_dump "$SUPABASE_DB_URL" --data-only --schema=supabase_migrations \
+            --file=backup/supabase_migrations_history.sql
+          ls -la backup
+
+      - name: Upload pg_dump schema
+        if: steps.creds.outputs.mode == 'db'
+        uses: actions/upload-artifact@v4
+        with:
+          name: schema-${{ github.run_number }}
+          path: backup/
+          retention-days: 90
+
+      - name: Commit schema changes
+        if: steps.creds.outputs.mode != 'none'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add db/schema.sql supabase/migrations
+          if git diff --cached --quiet; then echo "Schema unchanged."; exit 0; fi
+          git commit -m "db: schema snapshot $(date -u +%Y-%m-%d)"
+          git pull --rebase -q origin "${GITHUB_REF_NAME}" && git push -q origin "HEAD:${GITHUB_REF_NAME}"
+
+  data:
+    name: Data → encrypted artifact
+    if: github.event_name == 'workflow_dispatch' && inputs.include_data
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Require secrets
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          [ -n "$SUPABASE_DB_URL" ]   || { echo "::error::SUPABASE_DB_URL secret is required for data backups"; exit 1; }
+          [ -n "$BACKUP_PASSPHRASE" ] || { echo "::error::BACKUP_PASSPHRASE secret is required — data is never stored unencrypted"; exit 1; }
+
+      - name: Install PostgreSQL 17 client
+        run: |
+          sudo install -d /usr/share/postgresql-common/pgdg
+          sudo curl -fsSL -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc https://www.postgresql.org/media/keys/ACCC4CF8.asc
+          echo "deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt $(lsb_release -cs)-pgdg main" \
+            | sudo tee /etc/apt/sources.list.d/pgdg.list >/dev/null
+          sudo apt-get update -qq && sudo apt-get install -y -qq postgresql-client-17
+          echo "/usr/lib/postgresql/17/bin" >> "$GITHUB_PATH"
+
+      - name: Dump, compress, encrypt
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          umask 077
+          f="t212-data-$(date -u +%Y%m%d-%H%M).sql.gz.gpg"
+          # login table is excluded: credentials never leave the database
+          pg_dump "$SUPABASE_DB_URL" --data-only --schema=public --no-owner --no-privileges \
+              --exclude-table-data=public.dashboard_auth \
+            | gzip -9 \
+            | gpg --batch --yes --symmetric --cipher-algo AES256 --pinentry-mode loopback \
+                  --passphrase-fd 3 --output "$f" 3<<<"$BACKUP_PASSPHRASE"
+          echo "FILE=$f" >> "$GITHUB_ENV"
+          ls -la "$f"
+
+      # ── Destination: undecided. The encrypted file is attached to this run for 30 days.
+      #    To ship it elsewhere later (S3 / Cloudflare R2 / Google Drive …), add an upload step here.
+      - name: Upload encrypted backup
+        uses: actions/upload-artifact@v4
+        with:
+          name: data-${{ github.run_number }}
+          path: ${{ env.FILE }}
+          retention-days: 30
