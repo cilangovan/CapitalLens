@@ -37,7 +37,7 @@ function finalize(resp, request, env) {
   const allowed = (env.ALLOWED_ORIGINS ? env.ALLOWED_ORIGINS.split(',') : DEFAULT_ORIGINS).map(s => s.trim());
   const h = new Headers(resp.headers);
   ['access-control-allow-origin', 'access-control-allow-headers', 'access-control-allow-methods', 'set-cookie'].forEach(k => h.delete(k));
-  for (const [k, v] of Object.entries(SECURITY_HEADERS)) h.set(k, v);
+  for (const [k, v] of Object.entries({ ...CORS, ...SECURITY_HEADERS })) h.set(k, v);   // our own CORS rules, re-applied after the strip
   if (origin && allowed.includes(origin)) h.set('Access-Control-Allow-Origin', origin);
   h.set('Vary', 'Origin');
   return new Response(resp.body, { status: resp.status, headers: h });
