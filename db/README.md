@@ -8,7 +8,8 @@ Postgres (currently Supabase, project `kloqkcxchstfoljpqcbq`, Postgres 17).
 | `supabase/migrations/` | Exact SQL of every change applied through Supabase, exported from `supabase_migrations.schema_migrations` (credential seeds redacted). This is **history**, not a full build — the original core tables (snapshots, positions, alerts, analyst ratings …) were created in the SQL editor before migrations were tracked, so replay these *on top of* `schema.sql`, never on an empty DB. |
 | `db/export_schema.py` | Regenerates both of the above from the live DB. `--check` reports drift. |
 | `db/legacy_migrations/` | Hand-written notes from before this export existed. Superseded; kept for reference. |
-| `.github/workflows/db_backup.yml` | Weekly schema snapshot → git, and an optional encrypted data backup. |
+| `.github/workflows/db_backup.yml` | Weekly schema snapshot → git, daily encrypted data backup → Cloudflare R2. |
+| `db/r2_backup.sh` | Uploads one encrypted backup to R2, verifies it, promotes to weekly/monthly, prunes old copies. |
 
 ## Making a schema change
 
@@ -25,15 +26,33 @@ Postgres (currently Supabase, project `kloqkcxchstfoljpqcbq`, Postgres 17).
 | `SUPABASE_DB_URL` | Supabase dashboard → **Connect** → *Session pooler* URI (port **5432**), with your DB password | schema export + `pg_dump` + data backups |
 | `SUPABASE_ACCESS_TOKEN` | supabase.com → Account → Access Tokens (alternative if you'd rather not store the DB password) | schema export only |
 | `BACKUP_PASSPHRASE` | a long random passphrase — **keep a copy outside GitHub**; without it a backup can't be opened | data backups |
+| `R2_ACCOUNT_ID` | Cloudflare dashboard → R2 → right-hand panel *Account ID* | R2 upload |
+| `R2_BUCKET` | the bucket name, e.g. `t212-backups` (create it with R2 → *Create bucket*; keep it **private**) | R2 upload |
+| `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | R2 → *Manage API tokens* → *Create API token* → **Object Read & Write**, scoped to that one bucket only | R2 upload |
 
-**Schedule:** Sundays 03:17 UTC → commits `db/schema.sql` if anything changed, and attaches a full `pg_dump --schema-only` (90-day artifact).
+If any `R2_*` secret is missing the upload is skipped with a warning and the encrypted file is only kept as a 7-day run artifact.
 
-**Data backup (on demand):** Actions → *Database Backup* → *Run workflow* → tick **Also take an encrypted data backup**.
-You get `t212-data-YYYYMMDD-HHMM.sql.gz.gpg` attached to the run for 30 days.
+**Schedule (UTC):**
+- Sundays 03:17 — commits `db/schema.sql` if anything changed, and attaches a full `pg_dump --schema-only` (90-day artifact).
+- **Daily 03:41** — encrypted data backup → R2 (runs after the 02:23 `db_maintenance`, so the day's archive move is included).
+- On demand: Actions → *Database Backup* → *Run workflow* → tick **Also take an encrypted data backup**.
 
-- This repository is **public**, so data is **never committed**. It's gzip'd and encrypted (AES-256, gpg symmetric) with `BACKUP_PASSPHRASE`; the run fails rather than store anything unencrypted.
+**What is in a data backup:** `pg_dump --data-only --schema=public`, i.e. every table including `portfolio_snapshots_archive`, `positions_archive` and the raw `t212_*` history. The run fails if the archive tables fall out of scope, if the file doesn't decrypt/unzip, or if the dump has no `t212_orders` block.
+
+**Retention in R2** (grandfather-father-son, pruned by `db/r2_backup.sh`):
+
+| Prefix | Made | Kept |
+|---|---|---|
+| `daily/` | every run | 7 days |
+| `weekly/` | Sundays | 35 days |
+| `monthly/` | 1st of the month | 400 days |
+
+Files are `t212-data-YYYYMMDD-HHMM.sql.gz.gpg`. Cost is ~£0 — about 23 small files, well inside R2's 10 GB free tier, and downloads (egress) are free.
+
+- This repository is **public**, so data is **never committed**. It's gzip'd and encrypted (AES-256, gpg symmetric) with `BACKUP_PASSPHRASE` before it leaves the runner; the run fails rather than store anything unencrypted. Keep the bucket private anyway.
 - `dashboard_auth` (login) rows are **excluded** — create a login on the new database instead.
-- **Where it goes long-term is undecided.** When you pick a destination (S3, Cloudflare R2, Google Drive …), add an upload step after "Dump, compress, encrypt" in the workflow.
+- A failed scheduled run emails you through GitHub's normal workflow-failure notification.
+- **Test a restore** into a scratch Supabase project once (steps below) — a backup you've never restored is a hope, not a backup.
 
 ## Restore / move to another Postgres
 
@@ -41,8 +60,8 @@ You get `t212-data-YYYYMMDD-HHMM.sql.gz.gpg` attached to the run for 30 days.
 # 1. Structure (any Postgres 15+, Supabase or not)
 psql "$NEW_DATABASE_URL" -v ON_ERROR_STOP=1 -f db/schema.sql
 
-# 2. Data (download the artifact from the Actions run first)
-gpg --decrypt t212-data-20261117-0317.sql.gz.gpg | gunzip | psql "$NEW_DATABASE_URL" -v ON_ERROR_STOP=1
+# 2. Data (download from R2 → dashboard → bucket → daily/ , or from the Actions run artifact)
+gpg --decrypt t212-data-20261117-0341.sql.gz.gpg | gunzip | psql "$NEW_DATABASE_URL" -v ON_ERROR_STOP=1
 
 # 3. A login for the dashboard (the worker hashes passwords with SHA-256)
 psql "$NEW_DATABASE_URL" -c "insert into dashboard_auth (username, password_hash)
