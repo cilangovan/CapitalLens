@@ -158,6 +158,13 @@ def fetch(sym, now, category="stock"):
         info = t.info or {}
     except Exception:
         pass
+    try:   # analyst breakdown (current month): strongBuy / buy / hold / sell / strongSell counts
+        rs = t.recommendations
+        if rs is not None and not rs.empty:
+            row = rs.iloc[0]
+            info["_rec_counts"] = {k: int(row.get(k, 0) or 0) for k in ("strongBuy", "buy", "hold", "sell", "strongSell")}
+    except Exception:
+        pass
     return {"closes": closes, "dates": dates, "ccy": ccy_out, "quote_ccy": ccy, "last_date": last_date, "info": info, "scale": scale,
             "volumes": vols,
             "exchange": meta.get("fullExchangeName") or meta.get("exchangeName"),
@@ -385,12 +392,16 @@ def build_drilldown(d, price, ccy, is_etf, category):
                     "roe": f["returnOnEquity"], "debt_to_equity": f["debtToEquity"], "current_ratio": f["currentRatio"],
                     "quick_ratio": f["quickRatio"], "revenue_growth": f["revenueGrowth"], "earnings_growth": f["earningsGrowth"]}
     mean = _num(info.get("recommendationMean"))
+    rc = info.get("_rec_counts") or {}
+    n_rc = sum(rc.values())
+    if mean is None and n_rc:   # consensus from the analyst breakdown (1 = strong buy … 5 = strong sell)
+        mean = round(sum(w * rc.get(k, 0) for w, k in enumerate(("strongBuy", "buy", "hold", "sell", "strongSell"), 1)) / n_rc, 2)
     if mean is None:   # some listings only carry the text consensus
         mean = {"strong_buy": 1.3, "buy": 2.0, "hold": 3.0, "underperform": 4.0, "sell": 4.5,
                 "strong_sell": 4.8}.get((info.get("recommendationKey") or "").lower())
     tgt = lambda k: (_num(info.get(k)) * scale) if _num(info.get(k)) else None
     analyst = {"mean": mean, "label": next((l for t, l in REC_LABEL if mean and mean <= t), None),
-               "count": int(info.get("numberOfAnalystOpinions") or 0),
+               "count": int(info.get("numberOfAnalystOpinions") or n_rc or 0), "breakdown": rc or None,
                "target_mean": tgt("targetMeanPrice"), "target_low": tgt("targetLowPrice"), "target_high": tgt("targetHighPrice")}
     if analyst["target_mean"] and price and not (-90 < (analyst["target_mean"] / price - 1) * 100 < 300):
         analyst.update(target_mean=None, target_low=None, target_high=None)   # unit mismatch in feed
