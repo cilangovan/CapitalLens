@@ -216,7 +216,12 @@ def run_width(browser, base, width, poisoned=False):
     page.on("requestfailed", lambda r: failed.append(f"{r.method} {r.url.split('?')[0][-80:]} ({r.failure})"))
     page.on("response", lambda r: failed.append(f"{r.request.method} {r.url.split('?')[0][-80:]} → {r.status}") if r.status >= 400 else None)
     page.on("console", lambda m: failed.append(f"console.{m.type}: {m.text[:160]}") if m.type == "error" else None)
-    page.goto(base + "/index.html", wait_until="networkidle", timeout=60_000)
+    try:
+        page.goto(base + "/index.html", wait_until="networkidle", timeout=60_000)
+    except Exception:
+        print("page never settled. errors:", errors[:5], "\nrequests:", failed[:15], "\npending:",
+              [u.split('?')[0][-60:] for u, st in reqs.items() if st == "pending"][:15])
+        raise
     try:
         page.wait_for_function(IDLE_JS, arg="#overview", timeout=TIMEOUT)
     except Exception:

@@ -88,8 +88,11 @@ def code_checks():
     check("new Headers(request.headers)" not in w, "client headers are never forwarded to the database")
 
 
+UA = "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0 Safari/537.36 t212-security-check"
+
+
 def http(url, method="GET", headers=None):
-    req = urllib.request.Request(url, method=method, headers=headers or {})
+    req = urllib.request.Request(url, method=method, headers={"User-Agent": UA, "Accept": "application/json", **(headers or {})})
     try:
         with urllib.request.urlopen(req, timeout=20) as r:
             return r.status, dict(r.headers), r.read().decode(errors="replace")
