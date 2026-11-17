@@ -1,0 +1,32 @@
+name: Security checks
+
+# Third-party scripts, CSP, XSS defences, worker hardening, and live probes of the worker and database
+# as an outsider (no session). Runs on every change to the dashboard / worker / tests and daily.
+on:
+  push:
+    paths: ['docs/**', 'cloudflare-worker/**', 'tests/**', '.github/workflows/security.yml']
+  pull_request:
+  schedule:
+    - cron: '17 6 * * *'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  security:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Wait for a fresh worker deploy to go live
+        if: github.event_name == 'push'
+        run: sleep 60
+      - name: Security checks
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_KEY }}
+        run: python -u tests/security_check.py
