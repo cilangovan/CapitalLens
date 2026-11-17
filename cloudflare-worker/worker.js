@@ -70,9 +70,11 @@ function safeEqual(a, b) {
   return diff === 0;
 }
 
-// Passwords: salted PBKDF2-SHA256 (100k iterations — the Workers maximum). Stored as pbkdf2$<iter>$<salt>$<hash>.
-// Old unsalted SHA-256 hashes still verify once and are upgraded on that sign-in.
-const PBKDF2_ITER = 100000;
+// Passwords: salted PBKDF2-SHA256, stored as pbkdf2$<iter>$<salt>$<hash>. Old unsalted SHA-256 hashes still
+// verify once and are upgraded on that sign-in. Iterations are sized for the Workers CPU budget (a worker that runs
+// too long is killed, and the browser just sees "Failed to fetch"); the per-user salt, the 5-attempt lockout and a
+// database no outsider can read are what stop guessing. Raise PBKDF2_ITER on a paid Workers plan.
+const PBKDF2_ITER = 5000;
 const hex = buf => Array.from(new Uint8Array(buf)).map(b => b.toString(16).padStart(2, '0')).join('');
 async function pbkdf2(password, saltHex, iter) {
   const key = await crypto.subtle.importKey('raw', new TextEncoder().encode(password), 'PBKDF2', false, ['deriveBits']);

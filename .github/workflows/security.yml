@@ -30,3 +30,18 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_KEY }}
         run: python -u tests/security_check.py
+
+  live-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r tests/requirements.txt && python -m playwright install --with-deps chromium
+      - name: Wait for a fresh deploy to go live
+        if: github.event_name == 'push'
+        run: sleep 90
+      - name: Live dashboard in a real browser — sign-in reaches the worker
+        run: python -u tests/live_smoke.py
