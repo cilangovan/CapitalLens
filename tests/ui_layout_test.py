@@ -166,8 +166,17 @@ def run_width(browser, base, width):
     errors = []
     page.on("pageerror", lambda e: errors.append(str(e).splitlines()[0][:200]))
     page.on("dialog", lambda d: d.dismiss())
+    failed = []
+    page.on("requestfailed", lambda r: failed.append(f"{r.method} {r.url.split('?')[0][-80:]} ({r.failure})"))
+    page.on("response", lambda r: failed.append(f"{r.request.method} {r.url.split('?')[0][-80:]} → {r.status}") if r.status >= 400 else None)
+    page.on("console", lambda m: failed.append(f"console.{m.type}: {m.text[:160]}") if m.type == "error" else None)
     page.goto(base + "/index.html", wait_until="networkidle", timeout=60_000)
-    page.wait_for_function(IDLE_JS, arg="#overview", timeout=TIMEOUT)
+    try:
+        page.wait_for_function(IDLE_JS, arg="#overview", timeout=TIMEOUT)
+    except Exception:
+        left = page.evaluate("[...document.querySelectorAll('.loading')].filter(e => e.offsetParent).map(e => (e.closest('[id]')||{}).id + ': ' + e.textContent.trim().slice(0,80))")
+        print("overview didn't finish loading. Still loading:", left, "\nerrors:", errors, "\nrequests:", failed[:20])
+        raise
 
     failures, checked = [], 0
     for name, root, js in scenarios(page):
@@ -177,7 +186,8 @@ def run_width(browser, base, width):
             page.wait_for_function(IDLE_JS, arg=root, timeout=TIMEOUT)
             page.wait_for_timeout(250)        # let charts draw
         except Exception as e:
-            failures.append((name, f"didn't finish loading: {str(e).splitlines()[0][:150]}", []))
+            left = page.evaluate("(r) => [...(document.querySelector(r)||document.body).querySelectorAll('.loading')].filter(e => e.offsetParent).map(e => e.textContent.trim().slice(0,60))", root)
+            failures.append((name, f"didn't finish loading: {str(e).splitlines()[0][:120]} · still showing {left[:3]}", []))
             continue
         m = page.evaluate(MEASURE_JS, root)
         checked += 1
