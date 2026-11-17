@@ -91,7 +91,7 @@ Bound automatically by `deploy_worker.yml` via Cloudflare REST API:
 | `SUPABASE_KEY` | secret_text | Supabase publishable key (anon, for public table reads) |
 | `SUPABASE_ANON_KEY` | secret_text | Same as `SUPABASE_KEY` (alias used in proxy section) |
 | `GH_PAT` | secret_text | GitHub PAT for `repository_dispatch` (reset email) |
-| `GH_REPO` | plain_text | `cilangovan/t212-monitor` |
+| `GH_REPO` | plain_text | `cilangovan/CapitalLens` |
 
 > **Never set these manually** — the deploy workflow overwrites all bindings on every deploy.
 

@@ -16,7 +16,7 @@
  * Env vars (set in Cloudflare dashboard → Workers → Settings → Variables):
  *   SUPABASE_URL, SUPABASE_SERVICE_KEY (service role key — NOT anon),
  *   GH_PAT (GitHub PAT with repo dispatch permission),
- *   GH_REPO (e.g. "cilangovan/t212-monitor")
+ *   GH_REPO (e.g. "cilangovan/CapitalLens")
  */
 
 // Only the dashboard's own site may call this worker from a browser (override with the ALLOWED_ORIGINS env var).

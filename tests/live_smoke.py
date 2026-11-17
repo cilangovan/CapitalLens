@@ -2,7 +2,7 @@
 """
 Live smoke test — the real published dashboard in a real browser, as a visitor would use it.
 
-  1. Opens https://cilangovan.github.io/t212-monitor/ (no stubs, real worker).
+  1. Opens https://cilangovan.github.io/CapitalLens/ (no stubs, real worker).
   2. Signs in with a username that doesn't exist → must show "Invalid credentials" (proves the browser can
      reach the worker: CSP, CORS pre-check, login call). Unknown users never count towards the lockout.
   3. With a fake session, data requests must be refused cleanly (401 → back to sign-in), never "Failed to fetch".
@@ -14,7 +14,7 @@ import sys
 
 from playwright.sync_api import sync_playwright
 
-SITE = os.environ.get("SITE_URL", "https://cilangovan.github.io/t212-monitor/")
+SITE = os.environ.get("SITE_URL", "https://cilangovan.github.io/CapitalLens/")
 
 
 def main():
