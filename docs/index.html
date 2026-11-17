@@ -355,6 +355,22 @@
   .pb-kv b { display:block; font-size:10px; color:var(--muted); font-weight:600; text-transform:uppercase; }
   .pb-rules td, .pb-rules th { padding:6px 8px; border-bottom:1px solid var(--border); font-size:12px; text-align:left; }
   .pb-rules th { color:var(--muted); font-size:11px; }
+  /* returns page */
+  .rt-hero .rt-big { font-size:34px; font-weight:700; margin:4px 0; }
+  .rt-sub { font-size:13px; color:var(--muted); } .rt-mid { font-size:24px; font-weight:700; margin:4px 0; }
+  .rt-unit { font-size:12px; font-weight:400; color:var(--muted); }
+  .rt-head h3 { margin:0 0 8px; } .rt-periods { margin:0 0 10px; }
+  .rt-prow { display:flex; align-items:baseline; gap:10px; } .rt-pp { font-size:15px; font-weight:600; }
+  .rt-chart { position:relative; height:240px; }
+  .rt-legend { display:flex; gap:14px; flex-wrap:wrap; font-size:12px; margin:-4px 0 8px; align-items:center; }
+  .rt-legend i { display:inline-block; width:14px; height:3px; border-radius:2px; vertical-align:middle; margin-right:5px; }
+  .rt-legend i.dash { background:repeating-linear-gradient(90deg,#8892a4 0 5px,transparent 5px 9px); }
+  .rt-part { display:grid; grid-template-columns:minmax(0,1.3fr) minmax(0,1fr) auto; gap:10px; align-items:center; padding:7px 0; border-bottom:1px solid var(--border); font-size:13px; }
+  .rt-part-bar { height:6px; background:var(--border); border-radius:3px; overflow:hidden; } .rt-part-bar span { display:block; height:100%; border-radius:3px; }
+  .rt-part-bar .up { background:#0ca30c; } .rt-part-bar .down { background:#e66767; }
+  .rt-part-v { text-align:right; white-space:nowrap; } .rt-total { border-bottom:none; }
+  .rt-kv { display:flex; justify-content:space-between; gap:10px; padding:7px 0; border-bottom:1px solid var(--border); font-size:13px; }
+  .rt-years td:not(:first-child), .rt-years th:not(:first-child) { text-align:right; }
   /* phone safety net: two-column grids stack, wide tables scroll inside their card instead of widening the page */
   .m-grid2 { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
   .card, .card > * { min-width:0; } .card { overflow-wrap:break-word; }
