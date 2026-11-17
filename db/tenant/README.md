@@ -30,3 +30,12 @@ project** (`capitallens-demo`), not the live single-user database, and is not wi
   realised P&L (the mock broker only places buys), and the Python sync services (still single-user).
 - Mock data is synthetic. Pie names and tickers mirror the owner's structure; weights, prices and
   amounts are invented. The seeded random walk is reproducible for a given Postgres version.
+
+## Demo dashboard
+
+`docs/demo/` is a copy of the dashboard that signs in with Supabase Auth and reads the demo project
+directly (row-level security does the scoping). It reuses the real `docs/js/*` files; only
+`demo-auth.js` (login) and `demo-shim.js` (data access) differ. Served at
+`https://cilangovan.github.io/CapitalLens/demo/`. Search, charts, watchlist edits and settings need
+the worker and are switched off in the demo. `portfolio_snapshots_all` / `positions_all` views are
+added to the demo project because the dashboard reads them.
