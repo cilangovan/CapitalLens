@@ -154,7 +154,12 @@ function renderWatchlist() {
   });
   sum.innerHTML = `<div class="w-summary">
     ${Object.keys(VERDICT).map(v => `<span class="w-pill ${VERDICT[v].cls}">${VERDICT[v].label.split(' ')[1]} ${counts[v] || 0}</span>`).join('')}
-    ${budget ? `<span class="w-dim">· Watchlist budget this week £${Math.round(budget.watchlist_pool)} of £${Math.round(budget.weekly_budget)} · suggested buys £${spend}</span>` : ''}
+  </div>
+  <div class="w-budget">
+    <label>💷 Watchlist budget per week £<input id="w-budget" type="number" min="0" step="5" inputmode="decimal"
+      value="${budget ? Math.round(budget.watchlist_pool) : ''}" placeholder="e.g. 100"></label>
+    <button onclick="wlSaveBudget()">Save</button>
+    ${budget ? `<span class="w-dim">${budget.pool_source === 'your setting' ? 'your setting' : 'default: ' + _wesc(budget.pool_source || '')} · suggested buys this week £${spend}</span>` : ''}
   </div>`;
   const order = { ENTER: 0, ACCUMULATE: 1, HOLD: 2, AVOID: 3 };
   const items = [...WL.items].sort((a, b) => (order[WL.analysis[a.ticker]?.verdict] ?? 4) - (order[WL.analysis[b.ticker]?.verdict] ?? 4));
@@ -196,7 +201,7 @@ function wlCard(i) {
       </div>
       <div class="w-why">${(a.why || []).map(w => `<div>• ${_wesc(w)}</div>`).join('')}</div>
       ${entries ? `<table class="w-table"><thead><tr><th>Price point</th><th>Price</th><th>vs now</th><th>Buy</th></tr></thead><tbody>${entries}</tbody></table>
-        <div class="w-dim w-small">How much: £${a.budget?.this_stock ?? 0} ${_wesc(a.budget?.basis || '')} — from the £${Math.round(a.budget?.watchlist_pool || 0)} watchlist share of this week's £${Math.round(a.budget?.weekly_budget || 0)} budget.</div>`
+        <div class="w-dim w-small">How much: £${a.budget?.this_stock ?? 0} ${_wesc(a.budget?.basis || '')} — from your £${Math.round(a.budget?.watchlist_pool || 0)}/week watchlist budget, shared across the stocks worth buying.</div>`
         : `<div class="w-dim w-small">No buy levels this week.</div>`}
       <div class="w-more" onclick="wlToggle('${_wesc(i.ticker)}')">${open ? '▲ Less' : '▼ Details: volume, quality, levels'}</div>
       ${open ? `<div class="w-details">
@@ -213,6 +218,20 @@ function wlCard(i) {
         <div class="w-dim w-small">Source: Yahoo Finance daily data (${_wesc(a.symbol)}), close ${_wesc(a.as_of)} · updated ${new Date(row.updated_at).toLocaleString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })} · not financial advice.</div>
       </div>` : ''}
     </div></div>`;
+}
+
+async function wlSaveBudget() {
+  const v = document.getElementById('w-budget').value;
+  try {
+    const r = await fetch(`${PROXY}/settings/set`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: SESSION_TOKEN, key: 'watchlist_weekly_budget', value: v }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
+    WL.items.forEach(i => WL.pending.add(i.ticker));
+    WL.items.forEach(i => { i.added_at = new Date().toISOString(); });   // wait for a fresh analysis
+    renderWatchlist(); wlSchedulePoll();
+    wlNote(`Budget £${d.value}/week saved — re-sizing your plans (about a minute).`);
+  } catch (e) { wlNote(`Couldn't save: ${e.message}`, true); }
 }
 
 function wlToggle(t) { WL.open.has(t) ? WL.open.delete(t) : WL.open.add(t); renderWatchlist(); }

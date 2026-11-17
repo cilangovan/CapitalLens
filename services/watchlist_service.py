@@ -36,7 +36,7 @@ from services.value_buy_service import calc_rsi
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_KEY") or os.environ["SUPABASE_KEY"]
 
-WATCHLIST_SHARE   = 0.35          # share of the weekly budget earmarked for watchlist buys
+WATCHLIST_SHARE   = 0.35          # default watchlist share of the weekly budget (if you haven't set one)
 FALLBACK_WEEKLY   = 300 / 4.33    # if no strategy row yet
 TRANCHES          = (0.40, 0.30, 0.30)
 MIN_SESSIONS      = 60
@@ -292,18 +292,20 @@ def analyse(item, now):
     }
 
 
-def size_positions(results, weekly):
+def size_positions(results, weekly, pool=None):
     """Split the watchlist pool across actionable names; attach £ per entry step."""
-    pool = weekly * WATCHLIST_SHARE
+    pool_set = pool is not None
+    pool = weekly * WATCHLIST_SHARE if pool is None else pool
     w = {"ENTER": 2, "ACCUMULATE": 1}
     total_w = sum(w.get(v, 0) for _, v, _ in results) or 1
+    n_hold = sum(1 for st, v, _ in results if st == "ok" and v == "HOLD")
     for status, verdict, data in results:
         if status != "ok": continue
         if verdict in w:
             amt = pool * w[verdict] / total_w
             basis = "this week"
         elif verdict == "HOLD":
-            amt = pool / max(total_w, 1)      # what you'd put in if it reaches the price points
+            amt = pool / max(total_w + n_hold, 1)   # what you'd put in if it reaches the price points
             basis = "only if the price points are hit"
         else:
             amt, basis = 0, "no buys"
@@ -315,6 +317,7 @@ def size_positions(results, weekly):
                           "shares": round(gbp * (data["per_gbp"] or 1) / px, 4) if px else None})
         data["entries"] = steps
         data["budget"] = {"weekly_budget": round(weekly, 2), "watchlist_pool": round(pool, 2),
+                          "pool_source": "your setting" if pool_set else f"{int(WATCHLIST_SHARE*100)}% of the weekly budget",
                           "this_stock": round(sum(s["amount_gbp"] for s in steps)), "basis": basis}
 
 
@@ -336,7 +339,9 @@ def run(only=None):
             status, verdict, data = "error", None, {"reason": f"{type(e).__name__}: {e}"[:200]}
         results.append((status, verdict, data))
         print(f"  {item['ticker']:<14} {status:<10} {verdict or '-':<11} {data.get('reason','')}")
-    size_positions(results, weekly)
+    st = sb("GET", "app_settings?select=value&key=eq.watchlist_weekly_budget") or []
+    pool = float(st[0]["value"]) if st and st[0].get("value") is not None else None
+    size_positions(results, weekly, pool)
     for item, (status, verdict, data) in zip(wl, results):
         sb("POST", "watchlist_analysis?on_conflict=ticker",
            {"ticker": item["ticker"], "updated_at": now.isoformat(), "status": status,

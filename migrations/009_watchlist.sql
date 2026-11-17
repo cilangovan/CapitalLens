@@ -21,3 +21,8 @@ create policy public_read on public.watchlist_analysis for select to anon, authe
 
 -- 009b: global watchlist — ticker holds the Yahoo Finance symbol; t212_ticker links to Trading 212 if tradable there
 alter table public.watchlist add column if not exists t212_ticker text, add column if not exists type text;
+
+-- 009c: dashboard settings (e.g. watchlist_weekly_budget). Public read; writes via worker /settings/set only.
+create table if not exists public.app_settings (key text primary key, value jsonb, updated_at timestamptz default now());
+alter table public.app_settings enable row level security;
+create policy public_read on public.app_settings for select to anon, authenticated using (true);
