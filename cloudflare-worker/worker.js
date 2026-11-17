@@ -239,7 +239,7 @@ function t212Candidates(sym) {
   const m = sym.match(/^([A-Z0-9\-]+)(?:\.([A-Z]+))?$/i);
   if (!m) return [];
   const base = m[1].toUpperCase(), suf = (m[2] || '').toUpperCase();
-  if (!suf) return [`${base}_US_EQ`, `${base.replace(/-/g, '.')}_US_EQ`];
+  if (!suf) return [...new Set([`${base}_US_EQ`, `${base.replace(/-/g, '_')}_US_EQ`, `${base.replace(/-/g, '/')}_US_EQ`, `${base.replace(/-/g, '.')}_US_EQ`])];
   const map = { L: 'l', DE: 'd', AS: 'a' };
   return map[suf] ? [`${base}${map[suf]}_EQ`] : [];
 }
