@@ -1,0 +1,35 @@
+name: UI tests (mobile layout)
+
+# Every dashboard view must fit a phone screen — no sideways scrolling, nothing past the edge.
+# Runs on every dashboard change, and daily after the data refresh (new data can break a layout too).
+on:
+  push:
+    paths: ['docs/**', 'tests/**', '.github/workflows/ui_tests.yml']
+  pull_request:
+    paths: ['docs/**', 'tests/**']
+  schedule:
+    - cron: '47 7 * * 1-5'     # after the morning data refresh
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ui-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  mobile-layout:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: tests/requirements.txt
+      - run: pip install -r tests/requirements.txt
+      - run: python -m playwright install --with-deps chromium
+      - name: Every view fits 360px and 390px screens
+        run: python -u tests/ui_layout_test.py
