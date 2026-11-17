@@ -1,0 +1,232 @@
+#!/usr/bin/env python3
+"""
+Mobile layout test: nothing on any dashboard may be wider than a phone screen.
+
+Opens the real dashboard (served locally from docs/) at phone widths, with the live data the
+dashboard reads (the worker's public read-only table endpoints). Then it walks every tab, every
+expandable section, the positions pop-up (whole account, each pie, untagged holdings, single
+holdings) and the watchlist drill-down. For each view it checks:
+  • the page never scrolls sideways (document wider than the screen), and
+  • no visible element sticks out past the screen edge, unless it sits inside a container that is
+    meant to scroll sideways (overflow-x: auto/scroll/hidden) and that container itself fits.
+It also fails on uncaught JavaScript errors.
+
+Safe to run anywhere: it never logs in, every POST (alerts actions, watchlist add/remove, settings,
+chart/search) is answered by a local stub and never reaches the worker, and it prints element
+selectors and pixel widths only — no portfolio values.
+
+Usage:
+  python tests/ui_layout_test.py                 # serves docs/ on a free port
+  BASE_URL=http://localhost:8000 python tests/ui_layout_test.py
+  WIDTHS=360,390 python tests/ui_layout_test.py
+"""
+
+import json
+import os
+import socket
+import subprocess
+import sys
+import time
+from pathlib import Path
+
+from playwright.sync_api import sync_playwright
+
+ROOT = Path(__file__).resolve().parent.parent
+WIDTHS = [int(w) for w in os.environ.get("WIDTHS", "360,390").split(",")]
+TIMEOUT = 25_000
+
+# Finds the outermost elements that stick out past the right/left screen edge and aren't clipped
+# by a sideways-scrolling container. Returns [{sel, left, right, width}].
+MEASURE_JS = r"""
+(rootSel) => {
+  const W = document.documentElement.clientWidth;
+  const root = document.querySelector(rootSel) || document.body;
+  const visible = el => { const s = getComputedStyle(el); return s.display !== 'none' && s.visibility !== 'hidden'; };
+  const clipped = el => {
+    for (let p = el.parentElement; p && p !== document.documentElement; p = p.parentElement) {
+      const ox = getComputedStyle(p).overflowX;
+      if (/(auto|scroll|hidden|clip)/.test(ox)) {
+        const r = p.getBoundingClientRect();
+        return r.right <= W + 1 && r.left >= -1;       // a fitting scroller/clipper contains it
+      }
+    }
+    return false;
+  };
+  const sticksOut = el => {
+    if (!visible(el)) return false;
+    const r = el.getBoundingClientRect();
+    if (!r.width || !r.height) return false;
+    return (r.right > W + 1 || r.left < -1) && !clipped(el);
+  };
+  const bad = new Set([root, ...root.querySelectorAll('*')].filter(sticksOut));
+  const path = el => {
+    const parts = [];
+    for (let e = el, i = 0; e && e !== document.body && i < 5; e = e.parentElement, i++) {
+      let s = e.tagName.toLowerCase();
+      if (e.id) { s += '#' + e.id; parts.unshift(s); break; }
+      const cls = [...e.classList].filter(c => !/^(green|red|yellow|active|open|show)$/.test(c)).slice(0, 2);
+      if (cls.length) s += '.' + cls.join('.');
+      parts.unshift(s);
+    }
+    return parts.join(' > ');
+  };
+  const out = [];
+  bad.forEach(el => {
+    if (el.parentElement && bad.has(el.parentElement)) return;   // report the outermost only
+    const r = el.getBoundingClientRect();
+    out.push({ sel: path(el), left: Math.round(r.left), right: Math.round(r.right), width: Math.round(r.width) });
+  });
+  return { screen: W, page: document.documentElement.scrollWidth, items: out.slice(0, 12) };
+}
+"""
+
+IDLE_JS = r"""
+(rootSel) => {
+  const root = document.querySelector(rootSel) || document.body;
+  return ![...root.querySelectorAll('.loading')].some(el => el.offsetParent !== null && /Loading/i.test(el.textContent));
+}
+"""
+
+
+def free_port():
+    s = socket.socket(); s.bind(("127.0.0.1", 0)); p = s.getsockname()[1]; s.close(); return p
+
+
+def stub_post(route):
+    """Every write / authenticated call is answered locally — the test never changes anything."""
+    req = route.request
+    if req.method == "GET":
+        return route.continue_()
+    path = req.url.split("workers.dev", 1)[-1]
+    if path.startswith("/search"):
+        body = {"results": []}
+    elif path.startswith("/chart"):
+        now = int(time.time())
+        body = {"meta": {"currency": "USD"}, "points": [{"t": now - (60 - i) * 300, "c": 100 + (i % 7) - 3} for i in range(60)]}
+    else:
+        body = {"ok": True, "updated": 0}
+    route.fulfill(status=200, content_type="application/json", body=json.dumps(body))
+
+
+def scenarios(page):
+    """(name, root selector, js to run before measuring). Built from what the live data contains."""
+    tabs = ["overview", "heatmap", "positions", "analyst", "strategy", "profit", "returns", "watchlist", "alerts"]
+    out = [(f"tab:{t}", f"#{t}", f"showTab('{t}', document.querySelector(\"nav button[onclick*=\\\"'{t}'\\\"]\"))") for t in tabs]
+    out += [
+        ("positions:all-expanded", "#positions",
+         "showTab('positions', document.querySelector(\"nav button[onclick*=\\\"'positions'\\\"]\")); "
+         "document.querySelectorAll('#positions .pie-body').forEach(b => b.classList.add('open'))"),
+        ("profit:all-expanded", "#profit",
+         "showTab('profit', document.querySelector(\"nav button[onclick*=\\\"'profit'\\\"]\")); "
+         "document.querySelectorAll('[id^=pb-body-]').forEach(b => b.classList.add('open'))"),
+    ]
+    for cat in ("stock", "commodity", "crypto"):
+        out.append((f"watchlist:{cat}:expanded", "#watchlist",
+                    f"showTab('watchlist', document.querySelector(\"nav button[onclick*=\\\"'watchlist'\\\"]\")); "
+                    f"wlSetCat('{cat}'); WL.items.forEach(i => {{ WL.expanded.add(i.ticker); WL.open.add(i.ticker); }}); renderWatchlist()"))
+    for view in ("inbox", "archived", "cleared"):
+        out.append((f"alerts:{view}:opened", "#alerts",
+                    f"showTab('alerts', document.querySelector(\"nav button[onclick*=\\\"'alerts'\\\"]\")); "
+                    f"alertsView('{view}'); ALERTS.items.forEach(a => ALERTS.open.add(a.id)); renderAlerts()"))
+
+    # positions pop-up: whole account, each pie, untagged, and single holdings
+    page.evaluate("showTab('positions', document.querySelector(\"nav button[onclick*=\\\"'positions'\\\"]\"))")
+    page.wait_for_function(IDLE_JS, arg="#positions", timeout=TIMEOUT)
+    info = page.evaluate("""async () => {
+      const s = (await api('portfolio_snapshots', '?select=*&order=created_at.desc&limit=1'))[0] || {};
+      const pies = (s.raw?.pies || []).filter(p => (p.instruments || []).some(i => +i.qty > 0)).map(p => p.name);
+      const first = (s.raw?.pies || []).flatMap(p => (p.instruments || []).filter(i => +i.qty > 0).map(i => [p.name, i.ticker]))[0];
+      return { pies, first };
+    }""")
+    keys = ["__ALL__", "__DIRECT__"] + info["pies"]
+    for k in keys:
+        for rng in ("1d", "1y"):
+            out.append((f"popup:{k}:{rng}", "#pd", f"pdClose && pdClose(); pdOpen({json.dumps(k)}).then(() => {{ PD.range='{rng}'; pdRender(); }})"))
+        if not k.startswith("__") or k == "__ALL__":
+            out.append((f"popup:{k}:holdings", "#pd", f"pdClose && pdClose(); pdOpen({json.dumps(k)}).then(() => {{ PD.tab='holdings'; pdRender(); }})"))
+    if info.get("first"):
+        pie, t = info["first"]
+        out.append((f"popup:holding", "#pd", f"pdClose && pdClose(); pdOpen({json.dumps(pie)}, {json.dumps(t)})"))
+        out.append((f"popup:holding-in-all", "#pd", f"pdClose && pdClose(); pdOpen('__ALL__', {json.dumps(t)})"))
+    out.append(("popup:untagged-holding", "#pd",
+                "pdClose && pdClose(); pdOpen('__DIRECT__').then(() => { const h = pdLive(PD.snapObj, '__DIRECT__').holdings[0]; if (h) return pdOpen('__DIRECT__', h.ticker); })"))
+    # watchlist drill-down (first bookmarked item of each category)
+    out.append(("drilldown:watchlist", "#dd",
+                "pdClose && pdClose(); showTab('watchlist', document.querySelector(\"nav button[onclick*=\\\"'watchlist'\\\"]\")); "
+                "if (WL.items[0]) wlOpenDetail(null, WL.items[0].ticker)"))
+    return out
+
+
+def run_width(browser, base, width):
+    ctx = browser.new_context(viewport={"width": width, "height": 800}, device_scale_factor=2, is_mobile=True, has_touch=True)
+    # a signed-in session (token is never checked for reads; every write is stubbed)
+    ctx.add_init_script("try { sessionStorage.setItem('t212_auth','master'); sessionStorage.setItem('t212_token','ui-test'); } catch(e) {}")
+    ctx.route("**/*.workers.dev/**", stub_post)
+    page = ctx.new_page()
+    errors = []
+    page.on("pageerror", lambda e: errors.append(str(e).splitlines()[0][:200]))
+    page.on("dialog", lambda d: d.dismiss())
+    page.goto(base + "/index.html", wait_until="networkidle", timeout=60_000)
+    page.wait_for_function(IDLE_JS, arg="#overview", timeout=TIMEOUT)
+
+    failures, checked = [], 0
+    for name, root, js in scenarios(page):
+        try:
+            page.evaluate(f"(async () => {{ {js} }})()")
+            page.wait_for_load_state("networkidle", timeout=TIMEOUT)
+            page.wait_for_function(IDLE_JS, arg=root, timeout=TIMEOUT)
+            page.wait_for_timeout(250)        # let charts draw
+        except Exception as e:
+            failures.append((name, f"didn't finish loading: {str(e).splitlines()[0][:150]}", []))
+            continue
+        m = page.evaluate(MEASURE_JS, root)
+        checked += 1
+        if m["items"] or m["page"] > m["screen"] + 1:
+            failures.append((name, f"page {m['page']}px wide on a {m['screen']}px screen", m["items"]))
+    # close pop-ups before the next width
+    page.evaluate("try { pdClose(); ddClose(); } catch (e) {}")
+    ctx.close()
+    return checked, failures, errors
+
+
+def main():
+    base = os.environ.get("BASE_URL")
+    server = None
+    if not base:
+        port = free_port()
+        server = subprocess.Popen([sys.executable, "-m", "http.server", str(port), "--bind", "127.0.0.1"],
+                                  cwd=ROOT / "docs", stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+        base = f"http://127.0.0.1:{port}"
+        time.sleep(1)
+    ok = True
+    summary = ["## Mobile layout test", ""]
+    try:
+        with sync_playwright() as p:
+            browser = p.chromium.launch()
+            for w in WIDTHS:
+                checked, failures, errors = run_width(browser, base, w)
+                print(f"\n[{w}px] {checked} views checked · {len(failures)} with layout problems · {len(set(errors))} JS errors")
+                summary.append(f"**{w}px** — {checked} views · {len(failures)} layout problems · {len(set(errors))} JS errors")
+                for name, why, items in failures:
+                    ok = False
+                    print(f"  ✗ {name}: {why}")
+                    summary.append(f"- ✗ `{name}`: {why}")
+                    for it in items:
+                        print(f"      {it['sel']}  (x {it['left']}→{it['right']}, {it['width']}px)")
+                        summary.append(f"  - `{it['sel']}` x {it['left']}→{it['right']} ({it['width']}px)")
+                for e in sorted(set(errors)):
+                    ok = False
+                    print(f"  ✗ JS error: {e}")
+                    summary.append(f"- ✗ JS error: `{e}`")
+            browser.close()
+    finally:
+        if server:
+            server.terminate()
+    if os.environ.get("GITHUB_STEP_SUMMARY"):
+        Path(os.environ["GITHUB_STEP_SUMMARY"]).write_text("\n".join(summary) + "\n")
+    print("\nPASS — every view fits the screen" if ok else "\nFAIL — see the views above")
+    sys.exit(0 if ok else 1)
+
+
+if __name__ == "__main__":
+    main()
