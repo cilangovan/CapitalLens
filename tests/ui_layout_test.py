@@ -205,7 +205,7 @@ def run_width(browser, base, width, poisoned=False):
     ctx = browser.new_context(viewport={"width": width, "height": 800}, device_scale_factor=2, is_mobile=True, has_touch=True)
     # a signed-in session (token is never checked for reads; every write is stubbed)
     ctx.add_init_script("try { sessionStorage.setItem('t212_auth','master'); sessionStorage.setItem('t212_token','ui-test'); } catch(e) {}")
-    ctx.route("**/*.workers.dev/**", make_handler(ctx.request, poisoned))
+    ctx.route(lambda url: "workers.dev" in url, make_handler(ctx.request, poisoned))
     page = ctx.new_page()
     errors = []
     page.on("pageerror", lambda e: errors.append(str(e).splitlines()[0][:200]))
