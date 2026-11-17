@@ -1,4 +1,4 @@
-name: T212 Portfolio Monitor
+name: CapitalLens
 
 on:
   schedule:
@@ -66,7 +66,7 @@ jobs:
 
       - name: Push dashboard data
         run: |
-          git config user.name  "T212 Monitor Bot"
+          git config user.name  "CapitalLens Bot"
           git config user.email "bot@t212monitor"
           git add docs/
           git diff --staged --quiet || git commit -m "chore: update dashboard data [skip ci]"

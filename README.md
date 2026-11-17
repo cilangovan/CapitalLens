@@ -1,4 +1,4 @@
-# T212 Portfolio Monitor
+# CapitalLens
 
 Live portfolio dashboard for Trading 212 — positions, pies, alerts, analyst ratings, strategy recommendations, and returns analysis.
 

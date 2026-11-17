@@ -1,5 +1,5 @@
 /**
- * T212 Monitor — Cloudflare Worker
+ * CapitalLens — Cloudflare Worker
  * Routes:
  *   /auth/login            POST {username, password}  → {ok, token} or 401
  *   /auth/change-password  POST {token, newPassword}  → {ok} or 401

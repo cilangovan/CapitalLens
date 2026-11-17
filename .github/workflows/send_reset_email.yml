@@ -35,24 +35,24 @@ jobs:
           reset_link = f"{dashboard}?reset={reset_token}"
 
           msg = MIMEMultipart("alternative")
-          msg["Subject"] = "T212 Monitor — Password Reset"
+          msg["Subject"] = "CapitalLens — Password Reset"
           msg["From"]    = gmail_user
           msg["To"]      = to_email
 
           text = f"""Hi Cheran,
 
-          Someone requested a password reset for your T212 Monitor dashboard.
+          Someone requested a password reset for your CapitalLens dashboard.
 
           Reset link (valid for 1 hour):
           {reset_link}
 
           If you didn't request this, ignore this email.
 
-          — T212 Monitor
+          — CapitalLens
           """
 
           html = f"""<html><body style="font-family:sans-serif;color:#222;padding:24px">
-          <h2 style="color:#6366f1">T212 Monitor</h2>
+          <h2 style="color:#6366f1">CapitalLens</h2>
           <p>Hi Cheran,</p>
           <p>Someone requested a password reset for your dashboard.</p>
           <p>

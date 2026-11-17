@@ -1,4 +1,4 @@
--- T212 Monitor — Supabase Schema
+-- CapitalLens — Supabase Schema
 -- Run this in Supabase SQL Editor to create/update all tables
 -- Existing tables (portfolio_snapshots, positions, alerts) are unaffected
 

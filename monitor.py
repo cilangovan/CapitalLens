@@ -478,7 +478,7 @@ def build_email(summary, pies, alerts, account):
     ) or '<div style="color:#4a6080;font-size:13px">No alerts — all within thresholds.</div>'
     return f"""<html><body style="background:#060a14;font-family:system-ui,sans-serif;max-width:820px;margin:0 auto;padding:20px;color:#e8edf5">
     <div style="background:#0d1526;border:1px solid #1a2744;border-radius:10px;padding:18px 22px;margin-bottom:20px">
-      <h2 style="margin:0 0 4px;font-size:17px">📊 T212 Portfolio Monitor</h2>
+      <h2 style="margin:0 0 4px;font-size:17px">📊 CapitalLens</h2>
       <p style="margin:0;font-size:12px;color:#4a6080">{now} · Cash £{cash:.2f} · Total £{total:.2f}</p>
     </div>
     <div style="margin-bottom:20px"><h3 style="font-size:11px;color:#4a6080;text-transform:uppercase;letter-spacing:.06em;margin:0 0 10px">Alerts</h3>{alerts_html}</div>
@@ -490,7 +490,7 @@ def build_email(summary, pies, alerts, account):
 # ── Main ──────────────────────────────────────────────────────────────────────
 
 def main():
-    print(f"\n{'='*55}\nT212 Monitor v6 — {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}\n{'='*55}")
+    print(f"\n{'='*55}\nCapitalLens v6 — {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M UTC')}\n{'='*55}")
     state = load_state()
     state["run_count"] = state.get("run_count",0) + 1
 
