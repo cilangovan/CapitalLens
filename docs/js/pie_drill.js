@@ -139,7 +139,6 @@ function pdRender() {
   const h = PD.hist[PD.key];
   const ver = (h?.series?.verification || []).filter(v => !PD.ticker || v.ticker === PD.ticker);
   const bad = ver.filter(v => !v.ok), exc = (h?.series?.excluded || []).filter(v => !PD.ticker || v.ticker === PD.ticker);
-  const approx = ver.filter(v => v.ok && v.split === 'apportioned');
 
   el.innerHTML = `<div class="dd-panel pd-panel" role="dialog" aria-label="${pdEsc(pdTitle())}">
     <div class="dd-top">
@@ -163,10 +162,8 @@ function pdRender() {
       <div class="dd-ranges pd-ranges">${PD_RANGES.map(([k, l]) => `<button class="${PD.range === k ? 'active' : ''}" onclick="PD.range='${k}'; pdRender()">${l}</button>`).join('')}</div>
       <div id="pd-period" class="pd-period"></div>
     </div>
-    <div class="pd-verify ${bad.length || exc.length ? 'warn' : 'ok'}">${h ? (bad.length || exc.length
-      ? `⚠ ${bad.length + exc.length} holding${bad.length + exc.length > 1 ? 's' : ''} couldn't be fully matched to Trading 212 — ${[...bad.map(v => `${pdName(v.ticker)}: ${v.issue}`), ...exc.map(v => `${pdName(v.ticker)}: ${v.reason}`)].map(pdEsc).join('; ')}`
-      : `✓ Rebuilt from your Trading 212 trades — share counts match Trading 212${ver.length ? ` for all ${ver.length} holding${ver.length > 1 ? 's' : ''}` : ''}${approx.length ? `. ${approx.map(v => pdName(v.ticker)).join(', ')}: shares were moved between pie and direct holdings, so the daily pie/direct split is approximate` : ''}`)
-      : 'History not built yet — runs after the daily Trading 212 sync.'}</div>
+    ${!h ? '<div class="pd-verify warn">History not built yet — runs after the daily Trading 212 sync.</div>'
+      : bad.length || exc.length ? `<div class="pd-verify warn">⚠ ${bad.length + exc.length} holding${bad.length + exc.length > 1 ? 's' : ''} couldn't be fully matched to Trading 212 — ${[...bad.map(v => `${pdName(v.ticker)}: ${v.issue}`), ...exc.map(v => `${pdName(v.ticker)}: ${v.reason}`)].map(pdEsc).join('; ')}</div>` : ''}
     ${PD.ticker ? pdHoldingFacts(live) : ''}`}
     <div class="w-dim w-small dd-foot">1D from your portfolio snapshots (every ~15–45 min in market hours). Longer ranges: holdings rebuilt from your Trading 212 order history, valued at daily closing prices${h ? ` · built ${new Date(h.updated_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` : ''}.</div>
   </div>`;
