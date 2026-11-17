@@ -15,6 +15,7 @@ const loaders = {
   strategy:  loadStrategy,
   profit:    loadProfit,
   returns:   loadReturns,
+  watchlist: loadWatchlist,
   alerts:    loadAlerts,
 };
 const loaded = {};

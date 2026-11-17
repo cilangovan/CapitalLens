@@ -1,0 +1,31 @@
+name: Watchlist Analysis
+
+# Daily after the strategy engine, plus on demand when you add a stock on the dashboard
+on:
+  schedule:
+    - cron: '40 8 * * 1-5'     # 08:40 UTC Mon–Fri
+  repository_dispatch:
+    types: [watchlist_refresh]
+  workflow_dispatch:
+
+concurrency:
+  group: watchlist
+  cancel-in-progress: false
+
+jobs:
+  analyse:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+          cache: pip
+      - run: pip install -r requirements.txt
+      - name: Analyse watchlist
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+          TICKER: ${{ github.event.client_payload.ticker }}
+        run: python -m services.watchlist_service $TICKER

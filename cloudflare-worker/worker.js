@@ -5,6 +5,9 @@
  *   /auth/change-password  POST {token, newPassword}  → {ok} or 401
  *   /auth/reset-request    POST {username}             → {ok} (triggers GH Actions email)
  *   /auth/reset-confirm    POST {resetToken, newPassword} → {ok} or 400
+ *   /search                POST {token, q}      → {results:[{symbol,name,exchange,type,t212_ticker}]}  (Yahoo, global)
+ *   /watchlist/add         POST {token, symbol} → {ok}  (bookmarks + triggers analysis)
+ *   /watchlist/remove      POST {token, symbol} → {ok}  (stops tracking, deletes analysis)
  *   /alerts/action         POST {token, ids:[..], action} → {ok, updated}  (read|unread|archive|dismiss|restore)
  *   /[table]               → proxy to Supabase (existing behaviour)
  *
@@ -205,6 +208,108 @@ async function handleAlertAction(req, env) {
   return json({ ok: true, updated: clean.length, action });
 }
 
+// ── Watchlist (authenticated) ────────────────────────────────────────────────
+async function sbWrite(env, method, table, query, data) {
+  const key = env.SUPABASE_SERVICE_KEY;
+  const r = await fetch(`${env.SUPABASE_URL}/rest/v1/${table}${query ? '?' + query : ''}`, {
+    method,
+    headers: { apikey: key, Authorization: `Bearer ${key}`, 'Content-Type': 'application/json',
+               Prefer: 'resolution=ignore-duplicates,return=minimal' },
+    body: data ? JSON.stringify(data) : undefined,
+  });
+  if (!r.ok) throw new Error(`${method} ${table} ${r.status}: ${await r.text()}`);
+  return true;
+}
+
+async function triggerWatchlistRun(env, ticker) {
+  if (!env.GH_PAT || !env.GH_REPO) return false;
+  const r = await fetch(`https://api.github.com/repos/${env.GH_REPO}/dispatches`, {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${env.GH_PAT}`, Accept: 'application/vnd.github.v3+json',
+               'Content-Type': 'application/json', 'User-Agent': 'T212-Worker' },
+    body: JSON.stringify({ event_type: 'watchlist_refresh', client_payload: { ticker } }),
+  });
+  return r.ok;
+}
+
+const SYMBOL_RE = /^[A-Za-z0-9.\-^=&]{1,24}$/;
+
+// Yahoo symbol → candidate Trading 212 tickers (exchanges T212 lists that we sync)
+function t212Candidates(sym) {
+  const m = sym.match(/^([A-Z0-9\-]+)(?:\.([A-Z]+))?$/i);
+  if (!m) return [];
+  const base = m[1].toUpperCase(), suf = (m[2] || '').toUpperCase();
+  if (!suf) return [`${base}_US_EQ`, `${base.replace(/-/g, '.')}_US_EQ`];
+  const map = { L: 'l', DE: 'd', AS: 'a' };
+  return map[suf] ? [`${base}${map[suf]}_EQ`] : [];
+}
+
+async function yahooSearch(q) {
+  const u = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}` +
+            `&quotesCount=20&newsCount=0&listsCount=0&enableFuzzyQuery=true`;
+  const r = await fetch(u, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; T212-Watchlist/1.0)', Accept: 'application/json' } });
+  if (!r.ok) throw new Error(`Yahoo search ${r.status}`);
+  const d = await r.json();
+  return (d.quotes || [])
+    .filter(x => x.symbol && ['EQUITY', 'ETF'].includes(x.quoteType))
+    .map(x => ({ symbol: x.symbol, name: x.longname || x.shortname || x.symbol,
+                 exchange: x.exchDisp || x.exchange || '', type: x.quoteType === 'ETF' ? 'ETF' : 'Stock' }));
+}
+
+async function attachT212(env, rows) {
+  const cands = [...new Set(rows.flatMap(r => t212Candidates(r.symbol)))];
+  if (!cands.length) return rows;
+  const found = await sbGet(env, 'instruments',
+    `ticker=in.(${cands.map(c => `"${c}"`).map(encodeURIComponent).join(',')})&select=ticker`).catch(() => []);
+  const have = new Set(found.map(f => f.ticker));
+  return rows.map(r => ({ ...r, t212_ticker: t212Candidates(r.symbol).find(c => have.has(c)) || null }));
+}
+
+async function handleSearch(req, env) {
+  const { token, q } = await req.json().catch(() => ({}));
+  if (!(await verifySession(env, token))) return json({ error: 'Invalid or expired session' }, 401);
+  const query = String(q || '').trim().slice(0, 60);
+  if (query.length < 2) return json({ results: [] });
+  try {
+    return json({ source: 'yahoo', results: await attachT212(env, await yahooSearch(query)) });
+  } catch (e) {
+    // fallback: Trading 212's own universe (US/LSE/XETRA/AMS)
+    const pat = encodeURIComponent(`"*${query.replace(/[*,()"]/g, ' ')}*"`);
+    const rows = await sbGet(env, 'instruments',
+      `select=ticker,name,short_name,type,exchange&or=(short_name.ilike.${pat},name.ilike.${pat})&limit=20`);
+    const toY = t => t.endsWith('_US_EQ') ? t.slice(0, -6) : t.replace(/l_EQ$/, '.L').replace(/d_EQ$/, '.DE').replace(/a_EQ$/, '.AS');
+    return json({ source: 'trading212', note: `Global search unavailable (${e.message}) — showing Trading 212 matches`,
+      results: rows.map(r => ({ symbol: toY(r.ticker), name: r.name || r.short_name, exchange: r.exchange,
+                                type: r.type === 'ETF' ? 'ETF' : 'Stock', t212_ticker: r.ticker })) });
+  }
+}
+
+async function handleWatchlist(req, env, op) {
+  const { token, symbol } = await req.json().catch(() => ({}));
+  if (!(await verifySession(env, token))) return json({ error: 'Invalid or expired session' }, 401);
+  if (!symbol || !SYMBOL_RE.test(symbol)) return json({ error: 'Invalid symbol' }, 400);
+  const t = encodeURIComponent(symbol);
+  if (op === 'remove') {
+    await sbWrite(env, 'DELETE', 'watchlist_analysis', `ticker=eq.${t}`);
+    await sbWrite(env, 'DELETE', 'watchlist', `ticker=eq.${t}`);
+    return json({ ok: true, removed: symbol });
+  }
+  // Confirm the symbol server-side (don't trust client-supplied name/exchange)
+  let hit = null;
+  try { hit = (await yahooSearch(symbol)).find(r => r.symbol.toUpperCase() === symbol.toUpperCase()); } catch (e) {}
+  if (!hit) {
+    const cand = t212Candidates(symbol);
+    const inst = cand.length ? await sbGet(env, 'instruments', `ticker=in.(${cand.map(c => encodeURIComponent(`"${c}"`)).join(',')})&select=ticker,name,type,exchange`) : [];
+    if (!inst.length) return json({ error: 'Symbol not found on Yahoo Finance' }, 404);
+    hit = { symbol, name: inst[0].name, exchange: inst[0].exchange, type: inst[0].type === 'ETF' ? 'ETF' : 'Stock' };
+  }
+  const [withT212] = await attachT212(env, [hit]);
+  await sbWrite(env, 'POST', 'watchlist', 'on_conflict=ticker',
+    { ticker: hit.symbol, name: hit.name, exchange: hit.exchange, type: hit.type, t212_ticker: withT212.t212_ticker });
+  const queued = await triggerWatchlistRun(env, hit.symbol);
+  return json({ ok: true, added: hit.symbol, t212_ticker: withT212.t212_ticker, analysis_queued: queued });
+}
+
 // ── Main handler ──────────────────────────────────────────────────────────────
 export default {
   async fetch(request, env) {
@@ -220,6 +325,9 @@ export default {
     if (path === '/auth/change-password') return handleChangePassword(request, env).catch(e => json({ error: e.message }, 500));
     if (path === '/auth/reset-request')   return handleResetRequest(request, env).catch(e => json({ error: e.message }, 500));
     if (path === '/auth/reset-confirm')   return handleResetConfirm(request, env).catch(e => json({ error: e.message }, 500));
+    if (path === '/search' && request.method === 'POST')           return handleSearch(request, env).catch(e => json({ error: e.message }, 500));
+    if (path === '/watchlist/add' && request.method === 'POST')    return handleWatchlist(request, env, 'add').catch(e => json({ error: e.message }, 500));
+    if (path === '/watchlist/remove' && request.method === 'POST') return handleWatchlist(request, env, 'remove').catch(e => json({ error: e.message }, 500));
     if (path === '/alerts/action' && request.method === 'POST') return handleAlertAction(request, env).catch(e => json({ error: e.message }, 500));
     if (path === '/auth/debug') return json({
       has_supabase_url: !!env.SUPABASE_URL,

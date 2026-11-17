@@ -204,7 +204,7 @@ def fetch_positions():
 def fetch_instrument_meta(state, held):
     """Currency + name per held ticker (T212 metadata, cached 7 days in state)."""
     cache = state.get("instrument_meta_cache") or {}
-    fresh = time.time() - cache.get("ts", 0) < 7 * 86400
+    fresh = (time.time() - cache.get("ts", 0) < 7 * 86400) and state.get("instruments_synced_ts")
     missing = [t for t in held if t not in cache.get("data", {})]
     if not fresh or missing:
         rows = t212_get("/api/v0/equity/metadata/instruments", retries=3, base_wait=55); rl(5)
@@ -214,9 +214,41 @@ def fetch_instrument_meta(state, held):
                 for r in rows if r.get("ticker")}}
             state["instrument_meta_cache"] = cache
             print(f"[fetch] instrument metadata: {len(cache['data'])} instruments")
+            sync_instruments(rows, state)
     data = cache.get("data", {})
     state["held_meta"] = {t: data[t] for t in held if t in data}
     return state["held_meta"]
+
+def exchange_of(ticker):
+    t = ticker or ""
+    if t.endswith("_US_EQ"): return "NASDAQ/NYSE"
+    if t.endswith("l_EQ"):   return "LSE"
+    if t.endswith("d_EQ"):   return "XETRA"
+    if t.endswith("a_EQ"):   return "AMS"
+    return None
+
+def sync_instruments(rows, state):
+    """Searchable universe for the dashboard watchlist: stocks + ETFs on the exchanges you use."""
+    out = []
+    for r in rows or []:
+        ex = exchange_of(r.get("ticker"))
+        if not ex or r.get("type") not in ("STOCK", "ETF"): continue
+        out.append({"ticker": r["ticker"], "name": r.get("name"), "short_name": r.get("shortName"),
+                    "currency": r.get("currencyCode"), "type": r.get("type"), "isin": r.get("isin"),
+                    "exchange": ex, "synced_at": datetime.now(timezone.utc).isoformat()})
+    ok = 0
+    for i in range(0, len(out), 1000):
+        req = urllib.request.Request(f"{SUPABASE_URL}/rest/v1/instruments?on_conflict=ticker",
+            data=json.dumps(out[i:i+1000]).encode(), method="POST",
+            headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}",
+                     "Content-Type": "application/json", "Prefer": "resolution=merge-duplicates,return=minimal"})
+        try:
+            urllib.request.urlopen(req, timeout=60); ok += len(out[i:i+1000])
+        except urllib.error.HTTPError as e:
+            print(f"[instruments] HTTP {e.code}: {e.read().decode()[:200]}")
+    if ok:
+        state["instruments_synced_ts"] = time.time()
+    print(f"[instruments] synced {ok}/{len(out)} searchable instruments")
 
 def unit_price(price, ccy):
     """T212 quotes some LSE lines in pence (GBX). Returns (value, currency)."""
