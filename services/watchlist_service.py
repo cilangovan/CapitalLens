@@ -297,7 +297,8 @@ def size_positions(results, weekly, pool=None):
     pool_set = pool is not None
     pool = weekly * WATCHLIST_SHARE if pool is None else pool
     w = {"ENTER": 2, "ACCUMULATE": 1}
-    total_w = sum(w.get(v, 0) for _, v, _ in results) or 1
+    raw_w = sum(w.get(v, 0) for st, v, _ in results if st == "ok")
+    total_w = raw_w or 1
     n_hold = sum(1 for st, v, _ in results if st == "ok" and v == "HOLD")
     for status, verdict, data in results:
         if status != "ok": continue
@@ -305,7 +306,7 @@ def size_positions(results, weekly, pool=None):
             amt = pool * w[verdict] / total_w
             basis = "this week"
         elif verdict == "HOLD":
-            amt = pool / max(total_w + n_hold, 1)   # what you'd put in if it reaches the price points
+            amt = pool / max(raw_w + n_hold, 1)   # what you'd put in if it reaches the price points
             basis = "only if the price points are hit"
         else:
             amt, basis = 0, "no buys"
