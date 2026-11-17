@@ -121,8 +121,17 @@ async function loadNotify() {
   } catch (e) { /* leave blank */ }
 }
 async function saveNotify() {
-  const msg = document.getElementById('notify-msg'), v = document.getElementById('ntfy-topic').value.trim();
-  if (v && !/^[A-Za-z0-9_-]{6,64}$/.test(v)) { msg.style.color = 'var(--red)'; msg.textContent = 'Use 6 to 64 letters, numbers, dashes or underscores.'; return; }
+  const msg = document.getElementById('notify-msg'), box = document.getElementById('ntfy-topic');
+  // accept what people paste: a full ntfy link (https://ntfy.sh/name), "ntfy.sh/name", "@name", trailing slashes
+  const v = box.value.trim().replace(/^https?:\/\//i, '').replace(/^(www\.)?ntfy\.sh\//i, '').replace(/^[@#]/, '').replace(/[\/?#].*$/, '');
+  box.value = v;
+  if (v) {
+    const why = v.length < 6 ? `too short (${v.length} characters — needs at least 6)`
+      : v.length > 64 ? `too long (${v.length} characters — max 64)`
+      : /\s/.test(v) ? 'it has a space'
+      : /[^A-Za-z0-9_-]/.test(v) ? `it has "${v.match(/[^A-Za-z0-9_-]/)[0]}" — only letters, numbers, - and _ are allowed` : '';
+    if (why) { msg.style.color = 'var(--red)'; msg.textContent = `Topic not saved: ${why}. Example: hoop-alerts-7k2x`; return; }
+  }
   const r = await fetch(`${SUPABASE_URL}/rest/v1/profiles?user_id=not.is.null`, {
     method: 'PATCH', headers: _authHeaders({ 'Content-Type': 'application/json', Prefer: 'return=minimal' }),
     body: JSON.stringify({ ntfy_topic: v || null, email_alerts: document.getElementById('email-alerts').checked }),
