@@ -537,6 +537,18 @@
     <p class="acct-meta">Your key is stored encrypted and is never shown again. You can disconnect at any time, which deletes it.
     Trading 212 limits how fast we can read history, so a large account can take several minutes to import fully.</p>
   </div>
+  <div class="card">
+    <h3>Phone alerts (optional)</h3>
+    <p class="acct-meta" style="margin-bottom:10px">Alerts always appear in the Alerts tab. To also get them as push notifications, install the free
+    <b>ntfy</b> app, subscribe to a private topic name only you know (for example <code>capitallens-yourname-7k2x9</code>), and enter the same name here.
+    Anyone who knows the topic name can read the alerts sent to it, so make it hard to guess.</p>
+    <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+      <input id="ntfy-topic" type="text" placeholder="ntfy topic name" autocomplete="off" spellcheck="false"
+        style="flex:1;min-width:220px;padding:9px 12px;background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:13px">
+      <button class="acct-btn primary" onclick="saveNotify()">Save</button>
+    </div>
+    <div class="acct-meta" id="notify-msg" style="margin-top:6px"></div>
+  </div>
 </div>
 
 <div id="overview" class="tab active">

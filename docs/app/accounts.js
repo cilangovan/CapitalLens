@@ -110,3 +110,23 @@ async function submitConnect() {
 }
 
 loaders.accounts = async () => loadAccounts(false);
+
+// ── phone alerts (ntfy topic) ─────────────────────────────────────────────────
+async function loadNotify() {
+  try {
+    const r = await fetch(`${SUPABASE_URL}/rest/v1/profiles?select=ntfy_topic`, { headers: _authHeaders() });
+    const rows = await r.json();
+    document.getElementById('ntfy-topic').value = (rows[0] && rows[0].ntfy_topic) || '';
+  } catch (e) { /* leave blank */ }
+}
+async function saveNotify() {
+  const msg = document.getElementById('notify-msg'), v = document.getElementById('ntfy-topic').value.trim();
+  if (v && !/^[A-Za-z0-9_-]{6,64}$/.test(v)) { msg.style.color = 'var(--red)'; msg.textContent = 'Use 6 to 64 letters, numbers, dashes or underscores.'; return; }
+  const r = await fetch(`${SUPABASE_URL}/rest/v1/profiles?user_id=not.is.null`, {
+    method: 'PATCH', headers: _authHeaders({ 'Content-Type': 'application/json', Prefer: 'return=minimal' }),
+    body: JSON.stringify({ ntfy_topic: v || null }),
+  });
+  msg.style.color = r.ok ? 'var(--green)' : 'var(--red)';
+  msg.textContent = r.ok ? (v ? 'Saved. New alerts will also be pushed to this topic.' : 'Phone alerts turned off.') : 'Could not save. Try again.';
+}
+loaders.accounts = async () => { loadAccounts(false); loadNotify(); };

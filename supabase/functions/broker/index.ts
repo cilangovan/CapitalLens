@@ -110,7 +110,7 @@ async function snapshot(conn: any, c: Creds) {
     highs[p.ticker] = Math.max(highs[p.ticker] ?? cur, cur);
     const high = highs[p.ticker];
     rows.push({
-      user_id: conn.user_id, ticker: p.ticker, display: String(p.ticker).split("_")[0],
+      user_id: conn.user_id, ticker: p.ticker, display: baseSymbol(p.ticker),
       current_price: cur, avg_price: avg,
       gain_pct: Math.round(((cur - avg) / avg) * 10000) / 100,
       dip_from_high: high > 0 ? Math.round(((high - cur) / high) * 10000) / 100 : 0,
@@ -127,10 +127,80 @@ async function snapshot(conn: any, c: Creds) {
     const { error: pe } = await ADMIN.from("positions").insert(rows.map((r) => ({ ...r, snapshot_id: snap.id })));
     if (pe) throw new Error("positions insert failed");
   }
+  const lastAlerts = await alerts(conn, rows, st.last_alerts ?? {});
   await ADMIN.from("broker_connections").update({
     status: "active", last_ok_at: new Date().toISOString(), last_error: null,
-    sync_state: { ...st, highs, runs: (st.runs ?? 0) + 1, snapshot_at: new Date().toISOString(), positions: rows.length },
+    sync_state: { ...st, highs, last_alerts: lastAlerts, runs: (st.runs ?? 0) + 1, snapshot_at: new Date().toISOString(), positions: rows.length },
   }).eq("id", conn.id);
+}
+
+// ── alerts ──────────────────────────────────────────────────────────────────
+// Same thresholds and cooldowns as the original single-user monitor.
+const DIP_PCT = 8, BUY_PCT = 12, TRIM_PCT = 40;
+const COOLDOWN_H = { buy: 6, dip: 6, trim: 24 } as const;
+const SYMBOL: Record<string, string> = { GBP: "£", USD: "$", EUR: "€" };
+
+// ITWNl_EQ → ITWN, AAPL_US_EQ → AAPL
+function baseSymbol(t: string): string {
+  let core = t.replace(/_EQ$/, "");
+  if (core.endsWith("_US")) return core.slice(0, -3);
+  return core.replace(/[a-z]+$/, "") || core;
+}
+const pct = (v: number) => `${v >= 0 ? "+" : "−"}${Math.abs(v).toFixed(1)}%`;
+
+// deno-lint-ignore no-explicit-any
+async function alerts(conn: any, rows: any[], last: Record<string, number>): Promise<Record<string, number>> {
+  const now = Date.now();
+  const sym = SYMBOL[conn.native_currency] ?? "";
+  const out: { type: "buy" | "dip" | "trim"; ticker: string; title: string; body: string; key: string }[] = [];
+  for (const r of rows) {
+    const name = baseSymbol(r.ticker);
+    const high = r.dip_from_high < 100 ? r.current_price / (1 - r.dip_from_high / 100) : r.current_price;
+    const lines = [
+      `Price now         ${sym}${r.current_price.toFixed(2)}`,
+      `Tracked high      ${sym}${high.toFixed(2)}`,
+      `Your avg cost     ${sym}${r.avg_price.toFixed(2)}`,
+      `Gain on cost      ${pct(r.gain_pct)}`,
+      `Drop from high    ${r.dip_from_high.toFixed(1)}%`,
+    ].join("\n");
+    const add = (type: "buy" | "dip" | "trim", title: string, note: string) => {
+      const key = `${type}_${r.ticker}`;
+      if (now - (last[key] ?? 0) < COOLDOWN_H[type] * 3_600_000) return;
+      out.push({ type, ticker: name, title, key, body: `${lines}\n\n${note}` });
+    };
+    if (r.dip_from_high >= BUY_PCT)
+      add("buy", `🔴 ${name} — down ${r.dip_from_high.toFixed(1)}% from tracked high`,
+        "Deep-dip threshold crossed. A large fall is not automatically a good entry: check its weight against your plan first.");
+    else if (r.dip_from_high >= DIP_PCT)
+      add("dip", `🟡 ${name} — down ${r.dip_from_high.toFixed(1)}% from tracked high`,
+        "Dip threshold crossed. Watch only for now; review the news and analyst view before acting.");
+    if (r.gain_pct >= TRIM_PCT)
+      add("trim", `💰 ${name} — up ${r.gain_pct.toFixed(1)}% on your cost`,
+        "Profit target crossed. Consider whether to book part of the profit.");
+  }
+  if (!out.length) return last;
+
+  const { error } = await ADMIN.from("alerts").insert(out.map((a) => ({
+    user_id: conn.user_id, type: a.type, alert_type: a.type, ticker: a.ticker, title: a.title, body: a.body,
+  })));
+  if (error) return last;               // do not start the cooldown if the alert was not saved
+  const next = { ...last };
+  for (const a of out) next[a.key] = now;
+
+  // Optional phone push via the user's own ntfy topic.
+  const { data: prof } = await ADMIN.from("profiles").select("ntfy_topic").eq("user_id", conn.user_id).maybeSingle();
+  const topic = String(prof?.ntfy_topic ?? "").trim();
+  if (/^[A-Za-z0-9_-]{6,64}$/.test(topic)) {
+    for (const a of out.slice(0, 5)) {
+      try {
+        await fetch(`https://ntfy.sh/${topic}`, {
+          method: "POST", body: a.body, signal: AbortSignal.timeout(8_000),
+          headers: { Title: "=?UTF-8?B?" + btoa(String.fromCharCode(...new TextEncoder().encode(a.title))) + "?=", Priority: a.type === "buy" ? "urgent" : "default" },
+        });
+      } catch { /* push is best-effort */ }
+    }
+  }
+  return next;
 }
 
 const STAGES = [
