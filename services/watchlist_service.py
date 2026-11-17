@@ -125,8 +125,14 @@ def fetch(sym, now):
     vols = h["Volume"].astype(float).tolist() if "Volume" in h else []
     # exclude today's unfinished session from volume stats while that market is open
     reg = (meta.get("currentTradingPeriod") or {}).get("regular") or {}
-    ts = now.timestamp()
-    partial = bool(reg.get("start") and reg.get("end") and reg["start"] <= ts < reg["end"])
+    def _epoch(x):   # yfinance gives epoch ints or pandas Timestamps depending on version
+        if x is None: return None
+        try: return float(x)
+        except (TypeError, ValueError):
+            try: return x.timestamp()
+            except Exception: return None
+    st, en = _epoch(reg.get("start")), _epoch(reg.get("end"))
+    partial = bool(st and en and st <= now.timestamp() < en)
     vser = vols[:-1] if partial else vols
     vol_ratio = vol_last = vol_avg = None
     if len(vser) >= 21 and np.mean(vser[-21:-1]) > 0:
