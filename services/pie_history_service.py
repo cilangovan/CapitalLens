@@ -145,7 +145,7 @@ def run():
             acc += daily.get(k, 0.0); out.append(acc if abs(acc) > 1e-9 else 0.0)
         return out
 
-    T, excluded, verification = {}, [], []
+    T, excluded, verification, fill_checks, notes = {}, [], [], [], []
     for t in tickers:
         sym = sym_of[t]
         try:
@@ -156,6 +156,7 @@ def run():
             closes, splits = pd.Series(dtype=float), pd.Series(dtype=float)
         split_list = [(i.date().isoformat(), float(v)) for i, v in splits.items() if v and v > 0] if len(splits) else []
 
+        fill_px = []
         q = {"pie": defaultdict(float), "direct": defaultdict(float)}
         iv = {"pie": defaultdict(float), "direct": defaultdict(float)}
         for f in by_t.get(t, []):
@@ -164,6 +165,9 @@ def run():
             ch = "pie" if f.get("channel") == "AUTOINVEST" else "direct"
             sign = 1 if f["side"] == "BUY" else -1
             q[ch][d] += sign * abs(float(f["quantity"])) * factor
+            sq = abs(float(f["quantity"])) * factor
+            if sq > 0 and float(f["net_value"] or 0) > 0:
+                fill_px.append((d, abs(float(f["net_value"])) / sq))     # £ per share Trading 212 actually traded at
             iv[ch][d] += sign * abs(float(f["net_value"] or 0))
         qp, qd = cumulate(q["pie"]), cumulate(q["direct"])
         ip, idr = cumulate(iv["pie"]), cumulate(iv["direct"])
@@ -203,6 +207,17 @@ def run():
                     else:
                         excluded.append({"ticker": t, "reason": f"market price £{pps[-1]:.4f} doesn't match Trading 212's £{live_pps:.4f} — valued at cost"})
                         pps = None
+                # check against the prices you actually traded at (covers sold instruments too)
+                if pps is not None and fill_px:
+                    di = {k: i for i, k in enumerate(dkeys)}
+                    ratios = sorted(fp / pps[di[d]] for d, fp in fill_px if d in di and pps[di[d]])
+                    if ratios:
+                        med = ratios[len(ratios) // 2]
+                        fill_checks.append((t, med, len(ratios)))
+                        if t not in pie_inst and abs(med - 1) > 0.12:
+                            k = next((k for k in (100, 0.01) if abs(med / k - 1) <= 0.12), med)
+                            pps = [p * k if p is not None else None for p in pps]
+                            notes.append({"ticker": t, "note": f"history rescaled ×{k:.4g} to match the prices you traded at"})
             else:
                 excluded.append({"ticker": t, "reason": f"no FX history for {ccy} — valued at cost while held"})
         elif any(qt):
@@ -282,6 +297,13 @@ def run():
         keep = ",".join(f'"{r["pie"]}"' for r in rows)
         sb("DELETE", f"pie_history?pie=not.in.({urllib.parse.quote(keep, safe=',()')})")   # derived rows only
 
+    good = [c for c in fill_checks if abs(c[1] - 1) <= 0.05]
+    print(f"  trade-price check: {len(good)}/{len(fill_checks)} instruments' price history within 5% of the prices you traded at")
+    for t, med, n in sorted(fill_checks, key=lambda c: -abs(c[1] - 1)):
+        if abs(med - 1) > 0.05:
+            print(f"    • {t}: traded at {med:.3f}× the history price (median of {n} trades)")
+    for n_ in notes:
+        print(f"    ↺ {n_['ticker']}: {n_['note']}")
     held = [v for v in verification if v["qty_t212"] > 0]
     print(f"  verification: {sum(v['ok'] for v in held)}/{len(held)} held instruments match Trading 212 quantities; "
           f"{sum(v['split'] == 'exact' for v in held)} with an exact pie/direct split")
