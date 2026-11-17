@@ -18,7 +18,7 @@ jobs:
           GMAIL_USER: ${{ secrets.GMAIL_USER }}
           GMAIL_APP_PASS: ${{ secrets.GMAIL_APP_PASS }}
           RESET_TOKEN: ${{ github.event.client_payload.reset_token }}
-          DASHBOARD_URL: 'https://t212-monitor.pages.dev'
+          DASHBOARD_URL: 'https://cilangovan.github.io/CapitalLens/'
           RESET_TO: '****@****.com'
         run: |
           python3 - <<'PYEOF'

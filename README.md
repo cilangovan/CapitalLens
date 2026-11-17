@@ -50,7 +50,7 @@ Live portfolio dashboard for Trading 212 — positions, pies, alerts, analyst ra
                                  │  HTTPS
                                  ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│          Cloudflare Pages  (t212-monitor.pages.dev)                 │
+│          GitHub Pages  (cilangovan.github.io/CapitalLens)            │
 │              docs/index.html — Single-page dashboard                │
 │                                                                     │
 │  Auth modes:                                                        │
@@ -155,7 +155,7 @@ Schedule covers all relevant exchange open/close windows across LSE, XETRA/AMS, 
 monitor.py                              main fetch + alert script
 daily_services.py                       analyst ratings + strategy + returns
 cloudflare-worker/worker.js             Cloudflare Worker (auth + Supabase proxy)
-docs/index.html                         dashboard SPA (served by Cloudflare Pages)
+docs/index.html                         dashboard SPA (served by GitHub Pages)
 .github/workflows/monitor.yml           main cron workflow
 .github/workflows/daily_services.yml    daily enrichment workflow
 .github/workflows/deploy_worker.yml     worker deploy via CF REST API
