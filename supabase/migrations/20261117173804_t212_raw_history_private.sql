@@ -5,4 +5,4 @@ do $$ declare t text; begin
     execute format('drop policy if exists public_read on public.%I', t);
     execute format('revoke all on public.%I from anon, authenticated', t);
   end loop;
-end $$
+end $$;

@@ -8,4 +8,4 @@ create table if not exists public.pie_history (
 );
 comment on table public.pie_history is 'Per-pie daily series for the positions drill-down. Rebuilt daily by services/pie_history_service.py.';
 alter table public.pie_history enable row level security;
-create policy public_read on public.pie_history for select to anon, authenticated using (true)
+create policy public_read on public.pie_history for select to anon, authenticated using (true);

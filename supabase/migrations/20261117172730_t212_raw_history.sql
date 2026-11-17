@@ -61,4 +61,4 @@ do $$ declare t text; begin
     execute format('alter table public.%I enable row level security', t);
     execute format('create policy public_read on public.%I for select to anon, authenticated using (true)', t);
   end loop;
-end $$
+end $$;
