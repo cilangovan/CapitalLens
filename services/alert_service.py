@@ -181,6 +181,8 @@ def review_flag(name, weight_state, price, gain, analyst):
     sharp = price and price["daily"] <= SHARP_DAILY_DROP
     falling = dip or sharp
     star = (analyst or {}).get("star_rating") or 0
+    if (analyst or {}).get("source") == "trend":
+        star = 0          # trend score, not analysts — don't quote it as an analyst view
 
     if weight_state == "overweight":
         msg = f"Keep regular {name} additions paused while it remains overweight."
@@ -270,7 +272,9 @@ def build_pie_report(pie, positions_by_ticker, meta, analyst_map, snap_time, tod
             if gain is not None:
                 rows.append(("Gain vs your average cost", pct(gain)))
             a = analyst_map.get(ticker) or {}
-            if a.get("star_rating"):
+            if a.get("star_rating") and a.get("source") == "trend":
+                rows.append(("Trend rating", f"⭐{a['star_rating']} (no analyst coverage)"))
+            elif a.get("star_rating"):
                 rows.append(("Analyst view", f"⭐{a['star_rating']} · {float(a.get('buy_pct') or 0):.0f}% buy"))
             s.table("Measure", "Result", rows)
             s.line(f"Source: Yahoo Finance daily closes ({price['symbol']}), "
@@ -317,7 +321,7 @@ def run():
     positions = sb_get(f"positions?snapshot_id=eq.{snap['id']}&select=*")
     pos_by_ticker = {p["ticker"]: p for p in positions}
     analyst_map = {r["ticker"]: r for r in
-                   sb_get("analyst_ratings?select=ticker,star_rating,buy_pct,sell_pct")}
+                   sb_get("analyst_ratings?select=ticker,star_rating,buy_pct,sell_pct,source")}
     today = datetime.now(timezone.utc).date()
     day_start = datetime.combine(today, datetime.min.time(), tzinfo=timezone.utc).isoformat()
     todays = sb_get("alerts?select=id,pie,dedup_key,archived_at,dismissed_at&alert_type=eq.report"
