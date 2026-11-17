@@ -218,7 +218,9 @@ def scenarios(page):
 
 
 def run_width(browser, base, width, poisoned=False):
-    ctx = browser.new_context(viewport={"width": width, "height": 800}, device_scale_factor=2, is_mobile=True, has_touch=True)
+    # bypass_csp: the page's Content-Security-Policy (correctly) blocks the test tool's own injected checks.
+    # The XSS pass still tests the real defence — defuse() — since the CSP allows inline handlers either way.
+    ctx = browser.new_context(viewport={"width": width, "height": 800}, device_scale_factor=2, is_mobile=True, has_touch=True, bypass_csp=True)
     # a signed-in session (token is never checked for reads; every write is stubbed)
     ctx.add_init_script("try { sessionStorage.setItem('t212_auth','master'); sessionStorage.setItem('t212_token','ui-test'); } catch(e) {}")
     ctx.route(lambda url: "workers.dev" in url, make_handler(ctx.request, poisoned))
