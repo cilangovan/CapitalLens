@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
 """
+DEPRECATED — superseded by services/t212_sync_service.py (lossless, rate-limited, raw storage). Kept for reference.
+
 History Service — fetches realised P&L (closed orders) and dividends
 from Trading 212 history API and stores in Supabase.
 Runs daily via GitHub Actions.
 """
+DEPRECATED — superseded by services/t212_sync_service.py (lossless, rate-limited, raw storage). Kept for reference.
+
 
 import os
 import json
