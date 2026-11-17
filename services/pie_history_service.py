@@ -99,7 +99,8 @@ def run():
             pie_live[p["name"]] = {"value": round(tv, 2), "invested": round(ti, 2), "result": round(tr, 2)}
 
     fills = sb_all("t212_orders?select=ticker,side,status,filled_at,quantity,net_value&status=in.(FILLED,PARTIALLY_FILLED)&order=filled_at.asc,id.asc")
-    fills = [f for f in fills if f["ticker"] and f["filled_at"] and (f["quantity"] or 0) > 0]
+    # T212 records SELL quantities as negative numbers — keep every non-zero fill; the side decides the sign
+    fills = [f for f in fills if f["ticker"] and f["filled_at"] and float(f["quantity"] or 0) != 0]
     if not fills:
         print("  no fills synced yet — run the T212 sync first"); return
     tickers = sorted({f["ticker"] for f in fills} | set(live))
@@ -153,7 +154,7 @@ def run():
                 if sd.isoformat() > d:
                     factor *= ratio
             sign = 1 if f["side"] == "BUY" else -1
-            dq[d] += sign * float(f["quantity"]) * factor
+            dq[d] += sign * abs(float(f["quantity"])) * factor
             di[d] += sign * abs(float(f["net_value"] or 0))
         qty, inv, q, iv = [], [], 0.0, 0.0
         for k in dkeys:
@@ -163,15 +164,15 @@ def run():
         ccy, unit = SUBUNIT.get(q_ccy, (q_ccy, 1.0))
         if closes.empty:
             if any(qty):
-                excluded.append({"ticker": t, "reason": f"no price history for {sym}"})
-            T[t] = {"qty": qty, "invested": inv, "value": None}
+                excluded.append({"ticker": t, "reason": f"no price data for {sym} (likely delisted) — valued at cost while held"})
+            T[t] = {"qty": qty, "invested": inv, "value": [max(iv, 0.0) if q else 0.0 for q, iv in zip(qty, inv)], "at_cost": True}
             continue
         c = closes.copy(); c.index = c.index.date
         c = c.reindex(days).ffill()
         fxs = fx(ccy)
         if fxs is None and ccy != "GBP":
-            excluded.append({"ticker": t, "reason": f"no FX history for {ccy}"})
-            T[t] = {"qty": qty, "invested": inv, "value": None}
+            excluded.append({"ticker": t, "reason": f"no FX history for {ccy} — valued at cost while held"})
+            T[t] = {"qty": qty, "invested": inv, "value": [max(iv, 0.0) if q else 0.0 for q, iv in zip(qty, inv)], "at_cost": True}
             continue
         vals = []
         for i, k in enumerate(dkeys):
@@ -235,14 +236,19 @@ def run():
         rows.append({"pie": pie, "series": series(pie, members, cur)})
     sold = [t for t in tickers if t not in pie_of]
     if sold:
-        rows.append({"pie": "__SOLD__", "series": series("__SOLD__", sold, None)})
+        rows.append({"pie": "__SOLD__", "series": series("__SOLD__", sold, None, per_ticker=False)})
     tot = {k: round(sum(c[k] for c in pie_live.values()), 2) for k in ("value", "invested", "result")}
     rows.append({"pie": "__ALL__", "series": series("__ALL__", tickers, tot, per_ticker=False)})
 
     now = datetime.now(timezone.utc).isoformat()
     for r in rows:
         r["updated_at"] = now
-    sb("POST", "pie_history?on_conflict=pie", rows, prefer="resolution=merge-duplicates,return=minimal")
+    saved = 0
+    for r in rows:   # one row per request — keeps each statement small
+        if sb("POST", "pie_history?on_conflict=pie", [r], prefer="resolution=merge-duplicates,return=minimal") is not None:
+            saved += 1
+    if saved != len(rows):
+        raise SystemExit(f"saved {saved}/{len(rows)} pie_history rows — see errors above")
     keep = ",".join(f'"{r["pie"]}"' for r in rows)
     sb("DELETE", f"pie_history?pie=not.in.({urllib.parse.quote(keep, safe=',()')})")   # derived rows for pies you no longer have
 
