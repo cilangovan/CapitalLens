@@ -1,8 +1,26 @@
 #!/usr/bin/env python3
 """
-Returns Service — calculates XIRR, annualised return, yearly/monthly breakdowns
-from portfolio_snapshots in Supabase.
-Runs daily after analyst_service.
+Returns Service — your real returns, rebuilt from Trading 212 money flows.
+
+Sources (all synced from Trading 212 by t212_sync_service):
+  t212_transactions  deposits / withdrawals (money you put in or took out) + interest on cash, fees
+  t212_orders        every buy and sell (£ impact, realised P&L)
+  t212_dividends     every dividend (£)
+  pie_history        '__ALL__' row: value of everything you held, day by day (pie_history_service)
+  portfolio_snapshots  latest Trading 212 account totals (today's value)
+
+How:
+  cash(day)    = deposits − withdrawals − buys + sells + dividends + interest/fees, replayed in date order
+                 (reconciles to Trading 212's free + reserved + pie cash)
+  value(day)   = holdings(day) + cash(day); today = Trading 212's own account total
+  profit       = value − net money put in (deposits − withdrawals)
+  XIRR         = money-weighted yearly rate: counts when each deposit/withdrawal happened
+  time-weighted return = how the investments performed, ignoring deposit timing (daily-linked)
+
+Writes one returns_summary row: xirr_pct, annualised_pct (= XIRR), total_return_pct (profit ÷ net put in),
+yearly/monthly breakdowns, and `details` (everything the Returns page shows).
+
+Run via: python -m services.returns_service
 """
 
 import os
@@ -10,291 +28,239 @@ import json
 import math
 import urllib.request
 import urllib.error
-from datetime import datetime, timezone, date
+import urllib.parse
 from collections import defaultdict
+from datetime import datetime, timezone, date, timedelta
 
 SUPABASE_URL = os.environ["SUPABASE_URL"]
-SUPABASE_KEY = os.environ["SUPABASE_KEY"]
-
-# Approximate monthly contributions (£) — used for XIRR cashflow estimation
-# Format: "YYYY-MM" → amount contributed that month
-# If not in map, default to £200
-MONTHLY_CONTRIBUTIONS = {
-    "2024-01": 200,
-    "2024-02": 200,
-    "2024-03": 200,
-    "2024-04": 200,
-    "2024-05": 200,
-    "2024-06": 200,
-    "2024-07": 200,
-    "2024-08": 200,
-    "2024-09": 200,
-    "2024-10": 200,
-    "2024-11": 200,
-    "2024-12": 200,
-    "2025-01": 200,
-    "2025-02": 200,
-    "2025-03": 200,
-    "2025-04": 200,
-    "2025-05": 200,
-    "2025-06": 200,
-    "2025-07": 200,
-    "2025-08": 200,
-    "2025-09": 200,
-    "2025-10": 200,
-    "2025-11": 200,
-    "2025-12": 200,
-    "2026-01": 200,
-    "2026-02": 200,
-    "2026-03": 200,
-    "2026-04": 200,
-    "2026-05": 200,
-    "2026-06": 200,
-    "2026-07": 200,
-    "2026-08": 200,
-    "2026-09": 200,
-    "2026-10": 200,
-    "2026-11": 300,
-}
+SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_KEY") or os.environ["SUPABASE_KEY"]
 
 
-def supabase_request(method, path, data=None):
-    url = f"{SUPABASE_URL}/rest/v1/{path}"
-    headers = {
-        "apikey": SUPABASE_KEY,
-        "Authorization": f"Bearer {SUPABASE_KEY}",
-        "Content-Type": "application/json",
-        "Prefer": "return=minimal",
-    }
-    if method == "POST" and data:
-        headers["Prefer"] = "resolution=merge-duplicates,return=minimal"
-    body = json.dumps(data).encode() if data else None
-    req = urllib.request.Request(url, data=body, headers=headers, method=method)
+def sb(method, path, data=None, prefer="return=minimal"):
+    req = urllib.request.Request(
+        f"{SUPABASE_URL}/rest/v1/{path}", method=method,
+        data=json.dumps(data, allow_nan=False).encode() if data is not None else None,
+        headers={"apikey": SUPABASE_KEY, "Authorization": f"Bearer {SUPABASE_KEY}",
+                 "Content-Type": "application/json", "Accept": "application/json", "Prefer": prefer})
     try:
-        with urllib.request.urlopen(req, timeout=15) as resp:
-            content = resp.read()
-            return json.loads(content) if content else []
+        with urllib.request.urlopen(req, timeout=60) as r:
+            raw = r.read()
+            return json.loads(raw) if raw else True
     except urllib.error.HTTPError as e:
-        print(f"  Supabase {method} {path} → {e.code}: {e.read().decode()}")
+        print(f"  Supabase {method} {path[:70]} → {e.code}: {e.read().decode()[:300]}")
         return None
 
 
-def xirr(cashflows, dates, guess=0.1):
-    """
-    Pure-Python XIRR calculation.
-    cashflows: list of floats (negative = outflow, positive = inflow)
-    dates: list of date objects
-    Returns annualised rate as decimal (e.g. 0.15 = 15%)
-    """
-    if not cashflows or not dates:
-        return 0.0
+def sb_all(path, page=1000):
+    out, off = [], 0
+    while True:
+        rows = sb("GET", f"{path}&limit={page}&offset={off}") or []
+        out += rows
+        if len(rows) < page:
+            return out
+        off += page
 
-    base_date = dates[0]
-    day_fracs = [(d - base_date).days / 365.0 for d in dates]
 
-    def npv(rate):
-        return sum(cf / ((1 + rate) ** t) for cf, t in zip(cashflows, day_fracs))
+def r2(v):
+    return None if v is None or (isinstance(v, float) and (math.isnan(v) or math.isinf(v))) else round(float(v), 2)
 
-    def dnpv(rate):
-        return sum(-t * cf / ((1 + rate) ** (t + 1)) for cf, t in zip(cashflows, day_fracs))
 
-    rate = guess
+def pct(v):
+    return None if v is None else round(v * 100, 2)
+
+
+def xirr(flows):
+    """flows: [(date, amount)] — negative = money in, positive = money out/terminal value. Bisection (robust)."""
+    flows = [(d, a) for d, a in flows if abs(a) > 1e-9]
+    if len(flows) < 2 or not any(a < 0 for _, a in flows) or not any(a > 0 for _, a in flows):
+        return None
+    d0 = min(d for d, _ in flows)
+    def npv(r):
+        return sum(a / (1 + r) ** ((d - d0).days / 365.0) for d, a in flows)
+    lo, hi = -0.99, 10.0
+    flo, fhi = npv(lo), npv(hi)
+    if flo * fhi > 0:
+        return None
     for _ in range(200):
-        try:
-            f = npv(rate)
-            df = dnpv(rate)
-            if abs(df) < 1e-12:
-                break
-            new_rate = rate - f / df
-            if abs(new_rate - rate) < 1e-8:
-                return new_rate
-            rate = new_rate
-            if rate <= -1:
-                rate = -0.9999
-        except (OverflowError, ZeroDivisionError):
+        mid = (lo + hi) / 2
+        fm = npv(mid)
+        if abs(fm) < 1e-7:
             break
-    return rate
-
-
-def get_snapshots():
-    """Fetch all portfolio snapshots ordered by time."""
-    # full history: live table (last 45 days) + archive
-    path = "portfolio_snapshots_all?select=id,created_at,total_value,invested,cash&order=created_at.asc"
-    return supabase_request("GET", path) or []
-
-
-def build_cashflows(snapshots):
-    """
-    Build XIRR cashflow list from snapshots + monthly contributions.
-    Only uses months from the FIRST snapshot onwards (not before).
-    - Monthly contributions are negative outflows (money invested)
-    - Current portfolio value is positive inflow (terminal value)
-    """
-    if not snapshots:
-        return [], []
-
-    first_snap = snapshots[0]
-    first_dt = datetime.fromisoformat(first_snap["created_at"].replace("Z", "+00:00"))
-    first_date = first_dt.date()
-    last_snap = snapshots[-1]
-    current_value = float(last_snap["total_value"] or 0)
-
-    # Start from the month of the first snapshot
-    start_month = first_date.replace(day=1)
-    today = date.today()
-
-    # Safety: if we have < 30 days of data, XIRR is meaningless
-    if (today - first_date).days < 30:
-        return [], []
-
-    cashflows = []
-    dates = []
-
-    # Monthly contributions from first snapshot month to today
-    cur = start_month
-    while cur <= today:
-        key = cur.strftime("%Y-%m")
-        amount = MONTHLY_CONTRIBUTIONS.get(key, 200)
-        cashflows.append(-amount)  # outflow
-        dates.append(cur)
-        # advance month
-        if cur.month == 12:
-            cur = cur.replace(year=cur.year + 1, month=1)
+        if flo * fm < 0:
+            hi, fhi = mid, fm
         else:
-            cur = cur.replace(month=cur.month + 1)
-
-    # Terminal value = current portfolio (positive inflow)
-    cashflows.append(current_value)
-    dates.append(today)
-
-    return cashflows, dates
+            lo, flo = mid, fm
+    return (lo + hi) / 2
 
 
-def build_yearly_breakdown(snapshots):
-    """Group snapshots by year, compute start/end values and return %."""
-    if not snapshots:
-        return {}
-
-    by_year = defaultdict(list)
-    for s in snapshots:
-        dt = datetime.fromisoformat(s["created_at"].replace("Z", "+00:00"))
-        by_year[dt.year].append(s)
-
-    result = {}
-    for year in sorted(by_year.keys()):
-        year_snaps = by_year[year]
-        start_val = float(year_snaps[0]["invested"] or 0)
-        end_val = float(year_snaps[-1]["total_value"] or 0)
-        end_invested = float(year_snaps[-1]["invested"] or 0)
-        ppl = end_val - end_invested if end_invested else 0
-        ppl_pct = round((ppl / end_invested * 100) if end_invested else 0, 2)
-        result[str(year)] = {
-            "total_value": round(end_val, 2),
-            "invested": round(end_invested, 2),
-            "ppl": round(ppl, 2),
-            "ppl_pct": ppl_pct,
-            "snapshot_count": len(year_snaps),
-        }
-    return result
-
-
-def build_monthly_breakdown(snapshots):
-    """Last snapshot per month → monthly return %."""
-    if not snapshots:
-        return {}
-
-    by_month = defaultdict(list)
-    for s in snapshots:
-        dt = datetime.fromisoformat(s["created_at"].replace("Z", "+00:00"))
-        key = dt.strftime("%Y-%m")
-        by_month[key].append(s)
-
-    result = {}
-    prev_value = None
-    for month in sorted(by_month.keys()):
-        last = by_month[month][-1]
-        total_val = float(last["total_value"] or 0)
-        invested = float(last["invested"] or 0)
-        ppl = total_val - invested if invested else 0
-        monthly_ret = None
-        if prev_value and prev_value > 0:
-            monthly_ret = round((total_val - prev_value) / prev_value * 100, 2)
-        result[month] = {
-            "total_value": round(total_val, 2),
-            "invested": round(invested, 2),
-            "ppl": round(ppl, 2),
-            "monthly_ret_pct": monthly_ret,
-        }
-        prev_value = total_val
-    return result
+def day(s):
+    return date.fromisoformat(s[:10])
 
 
 def run():
-    print(f"[returns_service] Starting at {datetime.now(timezone.utc).isoformat()}")
+    print(f"[returns] {datetime.now(timezone.utc).isoformat()}")
+    snap = (sb("GET", "portfolio_snapshots?select=total_value,cash,raw&order=id.desc&limit=1") or [None])[0]
+    if not snap:
+        print("  no snapshot"); return
+    acc = (snap.get("raw") or {}).get("account") or {}
+    live_total = float(acc.get("total") or snap.get("total_value") or 0)
+    live_cash = float(acc.get("free") or snap.get("cash") or 0) + float(acc.get("blocked") or 0) + float(acc.get("pieCash") or 0)
+    unrealised = float(acc.get("ppl") or 0)
 
-    snapshots = get_snapshots()
-    print(f"  Fetched {len(snapshots)} snapshots")
+    txns = sb_all("t212_transactions?select=type,amount,date_time&order=date_time.asc")
+    divs = sb_all("t212_dividends?select=amount,paid_on&order=paid_on.asc")
+    orders = sb_all("t212_orders?select=side,net_value,realised_pnl,filled_at&status=in.(FILLED,PARTIALLY_FILLED)&order=filled_at.asc")
+    hist = (sb("GET", "pie_history?pie=eq.__ALL__&select=series") or [None])[0]
+    if not txns:
+        print("  no Trading 212 transactions synced yet — run the T212 sync first"); return
 
-    if not snapshots:
-        print("  No snapshots — skipping")
-        return
+    # ── daily money flows ────────────────────────────────────────────────────
+    ext = defaultdict(float)          # money you put in (+) / took out (−)
+    cashd = defaultdict(float)        # every movement of cash inside the account
+    dep = defaultdict(float); wdr = defaultdict(float); intr = defaultdict(float); other = defaultdict(float)
+    divd = defaultdict(float); real = defaultdict(float); buys = defaultdict(float); sells = defaultdict(float)
+    for t in txns:
+        if not t.get("date_time") or t.get("amount") is None:
+            continue
+        d, a, ty = day(t["date_time"]), float(t["amount"]), (t.get("type") or "").upper()
+        cashd[d] += a
+        if ty == "DEPOSIT":
+            ext[d] += a; dep[d] += a
+        elif ty in ("WITHDRAW", "WITHDRAWAL"):
+            ext[d] += a; wdr[d] += a
+        elif "INTEREST" in ty:
+            intr[d] += a
+        else:
+            other[d] += a                  # fees, transfers, adjustments
+    for x in divs:
+        if x.get("paid_on") and x.get("amount") is not None:
+            d = day(x["paid_on"]); cashd[d] += float(x["amount"]); divd[d] += float(x["amount"])
+    for o in orders:
+        if not o.get("filled_at"):
+            continue
+        d, v = day(o["filled_at"]), abs(float(o.get("net_value") or 0))
+        if o["side"] == "BUY":
+            cashd[d] -= v; buys[d] += v
+        else:
+            cashd[d] += v; sells[d] += v
+        if o.get("realised_pnl") is not None:
+            real[d] += float(o["realised_pnl"])
 
-    # XIRR
-    cashflows, dates = build_cashflows(snapshots)
-    if cashflows:
-        xirr_rate = xirr(cashflows, dates)
-        # Guard against diverged result (XIRR should be between -100% and +1000%)
-        if abs(xirr_rate) > 10:
-            print(f"  XIRR diverged ({xirr_rate:.2f}), setting to 0")
-            xirr_rate = 0.0
-        xirr_pct = round(xirr_rate * 100, 2)
-    else:
-        xirr_pct = 0.0
-        print("  XIRR: insufficient data (<30 days)")
-    print(f"  XIRR: {xirr_pct}%")
+    today = date.today()
+    start = min(min(ext), min(cashd))
+    days = [start + timedelta(n) for n in range((today - start).days + 1)]
 
-    # Simple annualised from first to last snapshot
-    first = snapshots[0]
-    last = snapshots[-1]
-    first_dt = datetime.fromisoformat(first["created_at"].replace("Z", "+00:00"))
-    last_dt = datetime.fromisoformat(last["created_at"].replace("Z", "+00:00"))
-    days = (last_dt - first_dt).days or 1
+    # holdings value per day (business days in pie_history → carried over weekends/holidays)
+    hv = {}
+    if hist:
+        s = hist["series"]
+        for d, v in zip(s.get("dates") or [], s.get("value") or []):
+            if v is not None:
+                hv[date.fromisoformat(d)] = float(v)
 
-    start_invested = float(first["invested"] or 1)
-    end_value = float(last["total_value"] or 0)
-    total_ret_pct = round((end_value - start_invested) / start_invested * 100, 2)
-    # Only annualise if we have 90+ days of history; otherwise it extrapolates wildly
-    if days >= 90 and start_invested > 0:
-        raw_ann = ((end_value / start_invested) ** (365 / days) - 1) * 100
-        # Cap at ±500% to avoid display insanity from short periods
-        ann_pct = round(max(-500, min(500, raw_ann)), 2)
-    else:
-        ann_pct = 0.0
-        print(f"  Annualised: insufficient history ({days} days < 90), setting to 0")
+    V, C, H, F, netin = [], [], [], [], []
+    c = h = n = 0.0
+    for d in days:
+        c += cashd.get(d, 0.0)
+        if d in hv:
+            h = hv[d]
+        n += ext.get(d, 0.0)
+        C.append(c); H.append(h); F.append(ext.get(d, 0.0)); netin.append(n); V.append(h + c)
+    cash_gap = C[-1] - live_cash
+    rebuilt_total = V[-1]
+    V[-1] = live_total                                 # today: Trading 212's own account total
+    print(f"  cash replay £{C[-1]:.2f} vs Trading 212 £{live_cash:.2f} (diff £{cash_gap:.2f}); "
+          f"rebuilt account £{rebuilt_total:.2f} vs live £{live_total:.2f}")
 
-    print(f"  Annualised: {ann_pct}%  Total return: {total_ret_pct}%")
+    # time-weighted daily returns (deposits land at the start of the day)
+    R = [0.0]
+    for i in range(1, len(days)):
+        base = V[i - 1] + F[i]
+        R.append(V[i] / base - 1 if base > 1 else 0.0)
 
-    yearly = build_yearly_breakdown(snapshots)
-    monthly = build_monthly_breakdown(snapshots)
+    def idx(d):
+        return max(0, min(len(days) - 1, (d - start).days))
 
-    row = {
-        "xirr_pct": xirr_pct,
-        "annualised_pct": ann_pct,
-        "total_return_pct": total_ret_pct,
-        "yearly_breakdown": yearly,
-        "monthly_breakdown": monthly,
-        "updated_at": datetime.now(timezone.utc).isoformat(),
+    def period(d0, d1, label):
+        """profit and returns between the end of d0 (exclusive) and d1 (inclusive)."""
+        i0, i1 = (idx(d0) if d0 >= start else -1), idx(d1)
+        v0 = V[i0] if i0 >= 0 else 0.0
+        flows = sum(F[i0 + 1:i1 + 1])
+        profit = V[i1] - v0 - flows
+        g = 1.0
+        for r in R[i0 + 1:i1 + 1]:
+            g *= 1 + r
+        avg_cap = v0 + sum(F[i] * (i1 - i) / max(i1 - i0, 1) for i in range(i0 + 1, i1 + 1))   # Modified Dietz base
+        return {"label": label, "from": (d0 + timedelta(1)).isoformat() if i0 >= 0 else start.isoformat(), "to": d1.isoformat(),
+                "start_value": r2(v0), "end_value": r2(V[i1]), "net_added": r2(flows), "profit": r2(profit),
+                "twr_pct": pct(g - 1), "dietz_pct": pct(profit / avg_cap) if avg_cap > 1 else None}
+
+    def ago(**k):
+        return today - timedelta(**k)
+
+    ytd0 = date(today.year, 1, 1) - timedelta(1)
+    periods = [period(ago(days=7), today, "1W"), period(ago(days=30), today, "1M"), period(ago(days=91), today, "3M"),
+               period(ytd0, today, "YTD"), period(ago(days=365), today, "1Y"), period(start - timedelta(1), today, "All")]
+
+    total_profit = V[-1] - netin[-1]
+    years_held = max((today - start).days / 365.25, 1e-9)
+    twr_all = math.prod(1 + r for r in R) - 1
+    twr_ann = (1 + twr_all) ** (1 / years_held) - 1 if years_held >= 1 else None
+    flows = [(d, -a) for d, a in sorted(ext.items())] + [(today, V[-1])]
+    x = xirr(flows)
+
+    def sum_in(m, d0, d1):
+        return sum(v for d, v in m.items() if d0 <= d <= d1)
+
+    yearly, monthly = {}, {}
+    for y in range(start.year, today.year + 1):
+        a, b = date(y, 1, 1), min(date(y, 12, 31), today)
+        p = period(a - timedelta(1), b, str(y))
+        p.update({"deposited": r2(sum_in(dep, a, b)), "withdrawn": r2(-sum_in(wdr, a, b)), "realised": r2(sum_in(real, a, b)),
+                  "dividends": r2(sum_in(divd, a, b)), "interest": r2(sum_in(intr, a, b))})
+        yearly[str(y)] = p
+    m = date(today.year, today.month, 1)
+    for _ in range(24):
+        if m < date(start.year, start.month, 1):
+            break
+        nxt = date(m.year + (m.month == 12), m.month % 12 + 1, 1)
+        p = period(m - timedelta(1), min(nxt - timedelta(1), today), m.strftime("%Y-%m"))
+        monthly[m.strftime("%Y-%m")] = p
+        m = date(m.year - (m.month == 1), (m.month - 2) % 12 + 1, 1)
+
+    # value vs money put in — weekly points (+ today) for the chart
+    series = {"dates": [], "value": [], "net_in": []}
+    for i, d in enumerate(days):
+        if i % 7 == 0 or i == len(days) - 1:
+            series["dates"].append(d.isoformat()); series["value"].append(r2(V[i])); series["net_in"].append(r2(netin[i]))
+
+    realised = sum(real.values()); dividends = sum(divd.values()); interest = sum(intr.values()); others = sum(other.values())
+    explained = unrealised + realised + dividends + interest + others
+    details = {
+        "as_of": datetime.now(timezone.utc).isoformat(), "since": start.isoformat(), "years": round(years_held, 2),
+        "account_value": r2(V[-1]), "holdings_value": r2(V[-1] - live_cash), "cash": r2(live_cash),
+        "money_in": {"deposited": r2(sum(dep.values())), "withdrawn": r2(-sum(wdr.values())), "net": r2(netin[-1]),
+                     "deposits": sum(1 for v in dep.values() if v), "first": start.isoformat()},
+        "profit": {"total": r2(total_profit), "pct_of_net_in": pct(total_profit / netin[-1]) if netin[-1] > 0 else None,
+                   "unrealised": r2(unrealised), "realised": r2(realised), "dividends": r2(dividends), "interest": r2(interest),
+                   "other": r2(others), "costs": r2(total_profit - explained)},
+        "xirr_pct": pct(x), "twr_pct": pct(twr_all), "twr_annual_pct": pct(twr_ann),
+        "periods": periods, "series": series,
+        "check": {"cash_rebuilt": r2(C[-1]), "cash_t212": r2(live_cash), "account_rebuilt": r2(rebuilt_total), "account_t212": r2(live_total)},
     }
-
-    # Upsert (single row — delete old, insert new)
-    supabase_request("DELETE", "returns_summary?id=gt.0")
-    result = supabase_request("POST", "returns_summary", row)
-    if result is not None:
-        print("  ✓ returns_summary upserted")
-    else:
-        print("  ✗ failed to upsert returns_summary")
-
-    print(f"[returns_service] Done.")
+    row = {"xirr_pct": pct(x), "annualised_pct": pct(x), "total_return_pct": details["profit"]["pct_of_net_in"],
+           "yearly_breakdown": yearly, "monthly_breakdown": monthly, "details": details,
+           "updated_at": datetime.now(timezone.utc).isoformat()}
+    if sb("POST", "returns_summary", [row]) is None:
+        raise SystemExit("could not save returns_summary")
+    sb("DELETE", f"returns_summary?updated_at=lt.{urllib.parse.quote(row['updated_at'])}")
+    print(f"  net put in £{netin[-1]:.2f} · value £{V[-1]:.2f} · profit £{total_profit:.2f} ({details['profit']['pct_of_net_in']}%)")
+    print(f"  XIRR {pct(x)}%/yr · time-weighted {pct(twr_all)}% total, {pct(twr_ann)}%/yr · since {start}")
+    print(f"  breakdown: unrealised £{unrealised:.2f} · realised £{realised:.2f} · dividends £{dividends:.2f} · "
+          f"interest £{interest:.2f} · other £{others:.2f} · costs £{total_profit - explained:.2f}")
+    for p in periods:
+        print(f"    {p['label']:<4} profit £{p['profit']} · TWR {p['twr_pct']}% · net added £{p['net_added']}")
+    print("[returns] done")
 
 
 if __name__ == "__main__":
