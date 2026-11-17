@@ -164,6 +164,13 @@ create table if not exists public.instruments (
   constraint instruments_pkey PRIMARY KEY (ticker)
 );
 
+create table if not exists public.pie_history (
+  pie text not null,
+  updated_at timestamp with time zone default now(),
+  series jsonb not null,
+  constraint pie_history_pkey PRIMARY KEY (pie)
+);
+
 create table if not exists public.portfolio_snapshots (
   id bigint default nextval('portfolio_snapshots_id_seq'::regclass) not null,
   created_at timestamp with time zone default now(),
@@ -304,6 +311,58 @@ create table if not exists public.strategy_recommendations (
   constraint strategy_recommendations_pkey PRIMARY KEY (id)
 );
 
+create table if not exists public.t212_dividends (
+  reference text not null,
+  ticker text,
+  paid_on timestamp with time zone,
+  amount numeric,
+  quantity numeric,
+  type text,
+  raw jsonb not null,
+  first_seen timestamp with time zone default now(),
+  last_seen timestamp with time zone default now(),
+  constraint t212_dividends_pkey PRIMARY KEY (reference)
+);
+
+create table if not exists public.t212_orders (
+  id text not null,
+  order_id text,
+  ticker text,
+  side text,
+  status text,
+  filled_at timestamp with time zone,
+  quantity numeric,
+  price numeric,
+  net_value numeric,
+  realised_pnl numeric,
+  fx_rate numeric,
+  raw jsonb not null,
+  first_seen timestamp with time zone default now(),
+  last_seen timestamp with time zone default now(),
+  constraint t212_orders_pkey PRIMARY KEY (id)
+);
+
+create table if not exists public.t212_sync_state (
+  endpoint text not null,
+  last_run timestamp with time zone,
+  last_full timestamp with time zone,
+  items_total integer,
+  status text,
+  detail text,
+  constraint t212_sync_state_pkey PRIMARY KEY (endpoint)
+);
+
+create table if not exists public.t212_transactions (
+  reference text not null,
+  type text,
+  amount numeric,
+  date_time timestamp with time zone,
+  raw jsonb not null,
+  first_seen timestamp with time zone default now(),
+  last_seen timestamp with time zone default now(),
+  constraint t212_transactions_pkey PRIMARY KEY (reference)
+);
+
 create table if not exists public.value_buy_scores (
   id bigint default nextval('value_buy_scores_id_seq'::regclass) not null,
   ticker text not null,
@@ -371,16 +430,20 @@ alter table public.watchlist_analysis drop constraint if exists watchlist_analys
 alter table public.watchlist_analysis add constraint watchlist_analysis_ticker_fkey FOREIGN KEY (ticker) REFERENCES watchlist(ticker) ON DELETE CASCADE;
 
 -- ── Indexes ───────────────────────────────────────────────────────────────
-CREATE INDEX IF NOT EXISTS alerts_type_created_idx ON public.alerts USING btree (alert_type, created_at DESC);
 CREATE INDEX IF NOT EXISTS alerts_created_at_idx ON public.alerts USING btree (created_at DESC);
-CREATE UNIQUE INDEX IF NOT EXISTS alerts_dedup_key_idx ON public.alerts USING btree (dedup_key);
-CREATE UNIQUE INDEX IF NOT EXISTS inst_flow_report_date_idx ON public.institutional_flow_reports USING btree (report_date);
+CREATE INDEX IF NOT EXISTS alerts_type_created_idx ON public.alerts USING btree (alert_type, created_at DESC);
 CREATE INDEX IF NOT EXISTS instruments_name_trgm ON public.instruments USING gin (name gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS instruments_short_trgm ON public.instruments USING gin (short_name gin_trgm_ops);
-CREATE INDEX IF NOT EXISTS portfolio_snapshots_created_at_idx ON public.portfolio_snapshots USING btree (created_at DESC);
 CREATE INDEX IF NOT EXISTS portfolio_snapshots_archive_created_at_idx ON public.portfolio_snapshots_archive USING btree (created_at DESC);
-CREATE INDEX IF NOT EXISTS positions_snapshot_id_idx ON public.positions USING btree (snapshot_id);
+CREATE INDEX IF NOT EXISTS portfolio_snapshots_created_at_idx ON public.portfolio_snapshots USING btree (created_at DESC);
 CREATE INDEX IF NOT EXISTS positions_archive_snapshot_id_idx ON public.positions_archive USING btree (snapshot_id);
+CREATE INDEX IF NOT EXISTS positions_snapshot_id_idx ON public.positions USING btree (snapshot_id);
+CREATE INDEX IF NOT EXISTS t212_dividends_paid_idx ON public.t212_dividends USING btree (paid_on);
+CREATE INDEX IF NOT EXISTS t212_orders_filled_idx ON public.t212_orders USING btree (filled_at);
+CREATE INDEX IF NOT EXISTS t212_orders_ticker_filled_idx ON public.t212_orders USING btree (ticker, filled_at);
+CREATE INDEX IF NOT EXISTS t212_transactions_dt_idx ON public.t212_transactions USING btree (date_time);
+CREATE UNIQUE INDEX IF NOT EXISTS alerts_dedup_key_idx ON public.alerts USING btree (dedup_key);
+CREATE UNIQUE INDEX IF NOT EXISTS inst_flow_report_date_idx ON public.institutional_flow_reports USING btree (report_date);
 CREATE UNIQUE INDEX IF NOT EXISTS value_buy_scores_ticker_idx ON public.value_buy_scores USING btree (ticker);
 
 -- ── Row level security ────────────────────────────────────────────────────
@@ -392,6 +455,7 @@ alter table public.dividends enable row level security;
 alter table public.holding_decisions enable row level security;
 alter table public.institutional_flow_reports enable row level security;
 alter table public.instruments enable row level security;
+alter table public.pie_history enable row level security;
 alter table public.portfolio_snapshots enable row level security;
 alter table public.portfolio_snapshots_archive enable row level security;
 alter table public.positions enable row level security;
@@ -401,19 +465,23 @@ alter table public.profit_booking_summary enable row level security;
 alter table public.realised_pnl enable row level security;
 alter table public.returns_summary enable row level security;
 alter table public.strategy_recommendations enable row level security;
+alter table public.t212_dividends enable row level security;
+alter table public.t212_orders enable row level security;
+alter table public.t212_sync_state enable row level security;
+alter table public.t212_transactions enable row level security;
 alter table public.value_buy_scores enable row level security;
 alter table public.watchlist enable row level security;
 alter table public.watchlist_analysis enable row level security;
 
 -- ── Policies (anon = dashboard reads; writes only via service role) ───────
+drop policy if exists "no public access" on public.dashboard_auth;
+create policy "no public access" on public.dashboard_auth as permissive for all to public using (false);
 drop policy if exists public_read on public.alerts;
 create policy public_read on public.alerts as permissive for select to anon, authenticated using (true);
 drop policy if exists public_read on public.analyst_ratings;
 create policy public_read on public.analyst_ratings as permissive for select to anon, authenticated using (true);
 drop policy if exists public_read on public.app_settings;
 create policy public_read on public.app_settings as permissive for select to anon, authenticated using (true);
-drop policy if exists "no public access" on public.dashboard_auth;
-create policy "no public access" on public.dashboard_auth as permissive for all to public using (false);
 drop policy if exists public_read on public.dividends;
 create policy public_read on public.dividends as permissive for select to anon, authenticated using (true);
 drop policy if exists public_read on public.holding_decisions;
@@ -422,6 +490,8 @@ drop policy if exists public_read on public.institutional_flow_reports;
 create policy public_read on public.institutional_flow_reports as permissive for select to anon, authenticated using (true);
 drop policy if exists public_read on public.instruments;
 create policy public_read on public.instruments as permissive for select to anon, authenticated using (true);
+drop policy if exists public_read on public.pie_history;
+create policy public_read on public.pie_history as permissive for select to anon, authenticated using (true);
 drop policy if exists public_read on public.portfolio_snapshots;
 create policy public_read on public.portfolio_snapshots as permissive for select to anon, authenticated using (true);
 drop policy if exists public_read on public.portfolio_snapshots_archive;
@@ -458,8 +528,12 @@ comment on column public.analyst_ratings.source is 'analysts = Yahoo analyst con
 comment on column public.watchlist.alternatives is 'Trading 212 products giving the same exposure (crypto ETPs / commodity ETCs)';
 comment on column public.watchlist.t212_ticker is 'Matching Trading 212 instrument, if tradable there';
 comment on column public.watchlist.ticker is 'Yahoo Finance symbol (global)';
+comment on table public.pie_history is 'Per-pie daily series for the positions drill-down. Rebuilt daily by services/pie_history_service.py.';
 comment on table public.portfolio_snapshots_archive is 'Snapshots older than 45 days, moved by archive_portfolio_history(). Same columns as portfolio_snapshots.';
 comment on table public.positions_archive is 'Positions of archived snapshots. Same columns as positions.';
+comment on table public.t212_dividends is 'Raw Trading 212 dividend history (append-only).';
+comment on table public.t212_orders is 'Raw Trading 212 order/fill history (append-only, never deleted). Source for rebuilt holdings history.';
+comment on table public.t212_transactions is 'Raw Trading 212 cash transactions — deposits, withdrawals, fees (append-only).';
 
 -- ── Functions ─────────────────────────────────────────────────────────────
 CREATE OR REPLACE FUNCTION public.archive_portfolio_history(keep_days integer DEFAULT 45)

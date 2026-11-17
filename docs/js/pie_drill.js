@@ -46,7 +46,10 @@ function pdLive(src, key, ticker) {
       if (dq <= 1e-6 || (ticker && ps.ticker !== ticker)) return;
       let v = pps[ps.ticker] ? dq * pps[ps.ticker].pps : null;
       if (v == null) { const t = dh[ps.ticker]; v = t?.value?.length ? t.value[t.value.length - 1] : null; }
-      direct.push({ ticker: ps.ticker, pie: 'Direct', key: '__DIRECT__', qty: dq, value: v, invested: null, result: null });
+      // T212 P&L for the whole position − the pie's part = the direct shares' P&L
+      const pieRes = pies.reduce((a, p) => a + (p.instruments || []).filter(i => i.ticker === ps.ticker).reduce((b, i) => b + pdSum(i).result, 0), 0);
+      const res = ps.ppl != null && v != null ? +ps.ppl - pieRes : null;
+      direct.push({ ticker: ps.ticker, pie: 'Direct', key: '__DIRECT__', qty: dq, value: v, invested: res == null ? null : v - res, result: res });
     });
   }
   // T212 account split: holdings = invested + P&L (total − free cash would also count blocked/pie cash)
@@ -55,8 +58,10 @@ function pdLive(src, key, ticker) {
   const accV = !hasAcc ? null : a && a.invested != null ? +a.invested + accR : +src.total_value - (+src.cash || 0);
   if (key === '__ALL__') {
     if (ticker || !hasAcc) {                         // one instrument: pie part + direct part
-      const extra = direct.reduce((a, d) => a + (d.value || 0), 0);
-      return { ...pieAcc, value: pieAcc.value + extra, holdings: [...pieAcc.holdings, ...direct] };
+      const sum = k => direct.reduce((a, d) => a + (d[k] || 0), 0);
+      const known = direct.every(d => d.result != null);
+      return { value: pieAcc.value + sum('value'), invested: known ? pieAcc.invested + sum('invested') : null,
+               result: known ? pieAcc.result + sum('result') : null, holdings: [...pieAcc.holdings, ...direct] };
     }
     return { value: accV, invested: accV - accR, result: accR, holdings: [...pieAcc.holdings, ...direct] };
   }
@@ -64,7 +69,7 @@ function pdLive(src, key, ticker) {
   const allPies = pdLive({ pies }, '__ALL__', null);
   if (!hasAcc) return { value: direct.reduce((a, d) => a + (d.value || 0), 0), invested: 0, result: 0, holdings: direct };
   const dv = accV - allPies.value, dr = accR - allPies.result;
-  if (ticker) { const d = direct[0]; return { value: d?.value || 0, invested: null, result: null, holdings: direct }; }
+  if (ticker) { const d = direct[0]; return { value: d?.value || 0, invested: d?.invested ?? null, result: d?.result ?? null, holdings: direct }; }
   return { value: dv, invested: dv - dr, result: dr, holdings: direct };
 }
 
@@ -78,7 +83,7 @@ async function pdLoadSnapshotData() {
   PD.snapObj = PD.snap ? { pies: PD.snap.raw?.pies || [], total_value: PD.snap.total_value, cash: PD.snap.cash, total_ppl: PD.snap.total_ppl, acc: PD.snap.raw?.account } : null;
   PD.meta = PD.snap?.raw?.instrument_meta || {};
   PD.intraday = intra || [];
-  PD.positions = PD.snap ? await api('positions', `?snapshot_id=eq.${PD.snap.id}&select=ticker,quantity`).catch(() => []) : [];
+  PD.positions = PD.snap ? await api('positions', `?snapshot_id=eq.${PD.snap.id}&select=ticker,quantity,ppl`).catch(() => []) : [];
 }
 
 async function pdHist(key) {
