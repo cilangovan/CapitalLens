@@ -370,7 +370,7 @@ def build_drilldown(d, price, ccy, is_etf, category):
         "volume": _num(info.get("volume")), "avg_volume": _num(info.get("averageVolume")),
         "market_cap": mcap, "shares_out": shares,
         "pe": _num(info.get("trailingPE")), "fwd_pe": _num(info.get("forwardPE")),
-        "eps": px("trailingEps"), "div_yield": _num(info.get("dividendYield")),
+        "div_yield": _num(info.get("dividendYield")),
         "beta": _num(info.get("beta")),
         "high52": px("fiftyTwoWeekHigh") or max(c[-252:]), "low52": px("fiftyTwoWeekLow") or min(c[-252:]),
     }
@@ -385,6 +385,9 @@ def build_drilldown(d, price, ccy, is_etf, category):
                     "roe": f["returnOnEquity"], "debt_to_equity": f["debtToEquity"], "current_ratio": f["currentRatio"],
                     "quick_ratio": f["quickRatio"], "revenue_growth": f["revenueGrowth"], "earnings_growth": f["earningsGrowth"]}
     mean = _num(info.get("recommendationMean"))
+    if mean is None:   # some listings only carry the text consensus
+        mean = {"strong_buy": 1.3, "buy": 2.0, "hold": 3.0, "underperform": 4.0, "sell": 4.5,
+                "strong_sell": 4.8}.get((info.get("recommendationKey") or "").lower())
     tgt = lambda k: (_num(info.get(k)) * scale) if _num(info.get(k)) else None
     analyst = {"mean": mean, "label": next((l for t, l in REC_LABEL if mean and mean <= t), None),
                "count": int(info.get("numberOfAnalystOpinions") or 0),
@@ -444,7 +447,7 @@ def insights(st, fu, an, perf, price, is_etf, category):
         if rg is not None:
             g += 3 if rg > .2 else 2 if rg > .08 else 1 if rg > 0 else 0
             if rg > .08:  good.append(f"Revenue growing {rg*100:+.0f}% year on year")
-            elif rg < 0:  bad.append(f"Revenue shrinking {rg*100:+.0f}% year on year")
+            elif rg < -.01: bad.append(f"Revenue shrinking {rg*100:+.0f}% year on year")
         if eg is not None:
             g += 3 if eg > .2 else 2 if eg > .05 else 1 if eg > 0 else 0
             if eg < 0: bad.append(f"Earnings shrinking ({eg*100:+.0f}%)")
