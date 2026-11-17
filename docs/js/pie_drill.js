@@ -49,8 +49,10 @@ function pdLive(src, key, ticker) {
       direct.push({ ticker: ps.ticker, pie: 'Direct', key: '__DIRECT__', qty: dq, value: v, invested: null, result: null });
     });
   }
-  const hasAcc = src && src.total_value != null;
-  const accV = hasAcc ? +src.total_value - (+src.cash || 0) : null, accR = hasAcc ? +src.total_ppl || 0 : null;
+  // T212 account split: holdings = invested + P&L (total − free cash would also count blocked/pie cash)
+  const a = src?.acc, hasAcc = !!(a && a.invested != null) || (src && src.total_value != null);
+  const accR = !hasAcc ? null : a && a.invested != null ? +a.ppl || 0 : +src.total_ppl || 0;
+  const accV = !hasAcc ? null : a && a.invested != null ? +a.invested + accR : +src.total_value - (+src.cash || 0);
   if (key === '__ALL__') {
     if (ticker || !hasAcc) {                         // one instrument: pie part + direct part
       const extra = direct.reduce((a, d) => a + (d.value || 0), 0);
@@ -70,10 +72,10 @@ async function pdLoadSnapshotData() {
   const since = new Date(Date.now() - 26 * 3600e3).toISOString();
   const [latest, intra] = await Promise.all([
     api('portfolio_snapshots', '?select=id,created_at,raw,total_value,cash,total_ppl&order=created_at.desc&limit=1'),
-    fetch(`${PROXY}/portfolio_snapshots_all?select=created_at,total_value,cash,total_ppl,pies:raw->pies&created_at=gte.${encodeURIComponent(since)}&order=created_at.asc`).then(r => r.ok ? r.json() : []),
+    fetch(`${PROXY}/portfolio_snapshots_all?select=created_at,total_value,cash,total_ppl,acc:raw->account,pies:raw->pies&created_at=gte.${encodeURIComponent(since)}&order=created_at.asc`).then(r => r.ok ? r.json() : []),
   ]);
   PD.snap = latest[0] || null;
-  PD.snapObj = PD.snap ? { pies: PD.snap.raw?.pies || [], total_value: PD.snap.total_value, cash: PD.snap.cash, total_ppl: PD.snap.total_ppl } : null;
+  PD.snapObj = PD.snap ? { pies: PD.snap.raw?.pies || [], total_value: PD.snap.total_value, cash: PD.snap.cash, total_ppl: PD.snap.total_ppl, acc: PD.snap.raw?.account } : null;
   PD.meta = PD.snap?.raw?.instrument_meta || {};
   PD.intraday = intra || [];
   PD.positions = PD.snap ? await api('positions', `?snapshot_id=eq.${PD.snap.id}&select=ticker,quantity`).catch(() => []) : [];

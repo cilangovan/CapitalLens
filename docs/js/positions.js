@@ -30,7 +30,7 @@ async function loadPositions() {
     const sym = { GBP: '£', USD: '$', EUR: '€' }[c];
     return sym ? sym + Number(v).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : Number(v).toFixed(2) + (c ? ' ' + c : '');
   };
-  const src = { pies: snap.raw?.pies || [], total_value: snap.total_value, cash: snap.cash, total_ppl: snap.total_ppl };
+  const src = { pies: snap.raw?.pies || [], total_value: snap.total_value, cash: snap.cash, total_ppl: snap.total_ppl, acc: snap.raw?.account };
   const pieLive = name => (typeof pdLive === 'function') ? pdLive(src, name) : null;
   const all = pieLive('__ALL__');
   if (all && all.value) {

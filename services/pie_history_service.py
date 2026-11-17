@@ -249,9 +249,14 @@ def run():
                                 "invested": [r2(x) for x in T[t][channel]["invested"][start:]]} for t in members}
         return s
 
-    # live account totals (value = total − cash; return = T212 unrealised P&L on open positions)
-    acc_value = float(snap.get("total_value") or 0) - float(snap.get("cash") or 0)
-    acc_result = float(snap.get("total_ppl") or 0)
+    # live account totals: holdings value and T212 unrealised P&L on open positions
+    # use T212's own account split: total − free cash also includes blocked cash (pending orders) and pie cash
+    a = raw.get("account") or {}
+    if a.get("invested") is not None:
+        acc_result = float(a.get("ppl") or 0); acc_value = float(a["invested"]) + acc_result
+    else:
+        acc_value = float(snap.get("total_value") or 0) - float(snap.get("cash") or 0)
+        acc_result = float(snap.get("total_ppl") or 0)
     acc = {"value": round(acc_value, 2), "invested": round(acc_value - acc_result, 2), "result": round(acc_result, 2)}
     pies_tot = {k: sum(c[k] for c in pie_live.values()) for k in ("value", "invested", "result")}
     direct_live = {k: round(acc[k] - pies_tot[k], 2) for k in ("value", "invested", "result")}
