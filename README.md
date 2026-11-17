@@ -38,7 +38,7 @@ Live portfolio dashboard for Trading 212 — positions, pies, alerts, analyst ra
          │  REST API
          ▼
 ┌─────────────────────────────────────────────────────────────────────┐
-│              Cloudflare Worker  (t212-proxy)                        │
+│              Cloudflare Worker  (capitallens-proxy)                        │
 │                                                                     │
 │  /auth/login            POST → verify password, issue session       │
 │  /auth/change-password  POST → update password (session required)   │

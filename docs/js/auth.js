@@ -1,5 +1,5 @@
 // ── AUTH ──────────────────────────────────────────────────────
-const PROXY = 'https://t212-proxy.itsme-daf.workers.dev';
+const PROXY = 'https://capitallens-proxy.itsme-daf.workers.dev';
 let IS_GUEST = false;
 let SESSION_TOKEN = null;
 

@@ -31,7 +31,7 @@ import urllib.request
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-WORKER_URL = os.environ.get("WORKER_URL", "https://t212-proxy.itsme-daf.workers.dev")
+WORKER_URL = os.environ.get("WORKER_URL", "https://capitallens-proxy.itsme-daf.workers.dev")
 DASH_TABLES = ["positions", "portfolio_snapshots", "portfolio_snapshots_all", "realised_pnl", "dividends", "alerts",
                "returns_summary", "pie_history", "watchlist", "profit_booking", "strategy_recommendations"]
 PRIVATE = ["dashboard_auth", "t212_orders", "t212_transactions", "t212_dividends", "t212_sync_state"]
@@ -63,7 +63,7 @@ def code_checks():
         pol = dict((d.split(" ", 1) + [""])[:2] for d in [x.strip() for x in csp.group(1).split(";") if x.strip()])
         check("http" not in pol.get("script-src", "x") and "*" not in pol.get("script-src", "*"), "CSP: scripts only from this site")
         conn = pol.get("connect-src", "*").split()
-        check("*" not in conn and all(c in ("'self'",) or c.startswith("https://t212-proxy.") for c in conn),
+        check("*" not in conn and all(c in ("'self'",) or c.startswith("https://capitallens-proxy.") for c in conn),
               "CSP: data can only be sent to this site / the dashboard worker")
         check(pol.get("default-src") == "'none'" and pol.get("object-src") == "'none'" and pol.get("base-uri") == "'none'",
               "CSP: default-src, object-src and base-uri locked to 'none'")
