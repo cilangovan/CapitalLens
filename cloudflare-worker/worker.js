@@ -8,6 +8,7 @@
  *   /search                POST {token, q}      → {results:[{symbol,name,exchange,type,t212_ticker}]}  (Yahoo, global)
  *   /watchlist/add         POST {token, symbol} → {ok}  (bookmarks + triggers analysis)
  *   /watchlist/remove      POST {token, symbol} → {ok}  (stops tracking, deletes analysis)
+ *   /settings/set          POST {token, key, value} → {ok}  (whitelisted keys only)
  *   /alerts/action         POST {token, ids:[..], action} → {ok, updated}  (read|unread|archive|dismiss|restore)
  *   /[table]               → proxy to Supabase (existing behaviour)
  *
@@ -310,6 +311,26 @@ async function handleWatchlist(req, env, op) {
   return json({ ok: true, added: hit.symbol, t212_ticker: withT212.t212_ticker, analysis_queued: queued });
 }
 
+// ── Settings (authenticated, whitelisted) ────────────────────────────────────
+const SETTINGS = {
+  watchlist_weekly_budget: v => { const n = Number(v); return Number.isFinite(n) && n >= 0 && n <= 100000 ? Math.round(n * 100) / 100 : undefined; },
+};
+async function handleSetting(req, env) {
+  const { token, key, value } = await req.json().catch(() => ({}));
+  if (!(await verifySession(env, token))) return json({ error: 'Invalid or expired session' }, 401);
+  const check = SETTINGS[key];
+  if (!check) return json({ error: 'Unknown setting' }, 400);
+  const v = check(value);
+  if (v === undefined) return json({ error: 'Invalid value' }, 400);
+  const k = env.SUPABASE_SERVICE_KEY;
+  const r = await fetch(`${env.SUPABASE_URL}/rest/v1/app_settings?on_conflict=key`, { method: 'POST',
+    headers: { apikey: k, Authorization: `Bearer ${k}`, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' },
+    body: JSON.stringify({ key, value: v, updated_at: new Date().toISOString() }) });
+  if (!r.ok) throw new Error(`settings ${r.status}: ${await r.text()}`);
+  if (key === 'watchlist_weekly_budget') await triggerWatchlistRun(env, '');
+  return json({ ok: true, key, value: v });
+}
+
 // ── Main handler ──────────────────────────────────────────────────────────────
 export default {
   async fetch(request, env) {
@@ -328,6 +349,7 @@ export default {
     if (path === '/search' && request.method === 'POST')           return handleSearch(request, env).catch(e => json({ error: e.message }, 500));
     if (path === '/watchlist/add' && request.method === 'POST')    return handleWatchlist(request, env, 'add').catch(e => json({ error: e.message }, 500));
     if (path === '/watchlist/remove' && request.method === 'POST') return handleWatchlist(request, env, 'remove').catch(e => json({ error: e.message }, 500));
+    if (path === '/settings/set' && request.method === 'POST')     return handleSetting(request, env).catch(e => json({ error: e.message }, 500));
     if (path === '/alerts/action' && request.method === 'POST') return handleAlertAction(request, env).catch(e => json({ error: e.message }, 500));
     if (path === '/auth/debug') return json({
       has_supabase_url: !!env.SUPABASE_URL,
