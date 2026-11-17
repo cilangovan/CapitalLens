@@ -36,7 +36,10 @@ from services.value_buy_service import calc_rsi
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_KEY") or os.environ["SUPABASE_KEY"]
 
-WATCHLIST_SHARE   = 0.35          # default watchlist share of the weekly budget (if you haven't set one)
+# Default share of the strategy engine's weekly budget per section, until you set your own on the dashboard
+DEFAULT_SHARE     = {"stock": 0.35, "commodity": 0.15, "crypto": 0.10}
+BUDGET_KEY        = {"stock": "watchlist_weekly_budget", "commodity": "commodity_weekly_budget",
+                     "crypto": "crypto_weekly_budget"}
 FALLBACK_WEEKLY   = 300 / 4.33    # if no strategy row yet
 TRANCHES          = (0.40, 0.30, 0.30)
 MIN_SESSIONS      = 60
@@ -101,7 +104,7 @@ def classify_volume(ratio, daily):
 
 
 # ── data ──────────────────────────────────────────────────────────────────────
-def fetch(sym, now):
+def fetch(sym, now, category="stock"):
     t = yf.Ticker(sym)
     h = t.history(period="1y", interval="1d", auto_adjust=False)
     meta = getattr(t, "history_metadata", None) or {}
@@ -111,7 +114,7 @@ def fetch(sym, now):
     if len(h) < MIN_SESSIONS:
         return None, f"only {len(h)} sessions of history (need {MIN_SESSIONS})"
     last_date = h.index[-1].date()
-    if (now.date() - last_date).days > MAX_STALE_DAYS:
+    if (now.date() - last_date).days > (2 if category == "crypto" else MAX_STALE_DAYS):
         return None, f"latest close is stale ({last_date:%d %b})"
     ccy = (meta.get("currency") or "").strip()
     if not ccy:
@@ -119,7 +122,8 @@ def fetch(sym, now):
     scale, ccy_out = (0.01, SUBUNITS[ccy]) if ccy in SUBUNITS else (1.0, ccy.upper())
     closes = (h["Close"].astype(float) * scale).tolist()
     window = closes[-20:]
-    if min(window) <= 0 or max(window) / min(window) >= 1.5:
+    jumps = [b / a for a, b in zip(window, window[1:]) if a > 0]
+    if min(window) <= 0 or any(j > 8 or j < 1 / 8 for j in jumps):   # pence↔pound style 100× jumps
         return None, "inconsistent price units in history"
 
     vols = h["Volume"].astype(float).tolist() if "Volume" in h else []
@@ -133,6 +137,8 @@ def fetch(sym, now):
             except Exception: return None
     st, en = _epoch(reg.get("start")), _epoch(reg.get("end"))
     partial = bool(st and en and st <= now.timestamp() < en)
+    if category == "crypto":           # 24/7 market: today's bar is always unfinished
+        partial = last_date == now.date()
     vser = vols[:-1] if partial else vols
     vol_ratio = vol_last = vol_avg = None
     if len(vser) >= 21 and np.mean(vser[-21:-1]) > 0:
@@ -149,9 +155,10 @@ def fetch(sym, now):
 
 
 # ── analysis ──────────────────────────────────────────────────────────────────
-def quality(info, price, ma200, closes, is_etf):
+def quality(info, price, ma200, closes, is_etf, category="stock"):
     reasons, score = [], 0
-    if is_etf:
+    if category in ("crypto", "commodity") or is_etf:
+        calm, wild = {"crypto": (60, 100), "commodity": (25, 45)}.get(category, (22, 35))
         if ma200 and price > ma200: score += 1; reasons.append("✓ Above its 200-day average (uptrend)")
         elif ma200: score -= 1; reasons.append("✗ Below its 200-day average (downtrend)")
         r1y = (closes[-1] / closes[0] - 1) * 100
@@ -159,8 +166,13 @@ def quality(info, price, ma200, closes, is_etf):
         else: score -= 1; reasons.append(f"✗ 1-year return {r1y:+.1f}%")
         rets = np.diff(closes) / np.array(closes[:-1])
         vol = float(np.std(rets) * math.sqrt(252) * 100)
-        if vol < 22: score += 1; reasons.append(f"✓ Moderate volatility ({vol:.0f}%/yr)")
-        elif vol > 35: score -= 1; reasons.append(f"✗ High volatility ({vol:.0f}%/yr)")
+        if vol < calm: score += 1; reasons.append(f"✓ Moderate volatility for its class ({vol:.0f}%/yr)")
+        elif vol > wild: score -= 1; reasons.append(f"✗ Very volatile ({vol:.0f}%/yr)")
+        else: reasons.append(f"• Volatility {vol:.0f}%/yr")
+        if category == "crypto":
+            mc = info.get("marketCap")
+            if mc and mc >= 10e9: score += 1; reasons.append(f"✓ Large market cap (${mc/1e9:,.0f}bn)")
+            elif mc and mc < 1e9: score -= 1; reasons.append(f"✗ Small market cap (${mc/1e9:,.2f}bn) — higher risk")
         label = "Good" if score >= 2 else "Mixed" if score >= 0 else "Weak"
         return label, score, reasons
     rec = (info.get("recommendationKey") or "none").lower()
@@ -205,9 +217,11 @@ def support_levels(price, ma20, ma50, ma200, low20, low52, high52):
 
 def analyse(item, now):
     sym = item["ticker"]                      # Yahoo Finance symbol
-    d, reason = fetch(sym, now)
+    category = item.get("category") or "stock"
+    d, reason = fetch(sym, now, category)
     base = {"symbol": sym, "exchange": item.get("exchange"), "name": item.get("name"),
-            "t212_ticker": item.get("t212_ticker")}
+            "t212_ticker": item.get("t212_ticker"), "category": category,
+            "alternatives": item.get("alternatives") or []}
     if reason:
         return "unverified", None, {**base, "reason": reason}
 
@@ -222,7 +236,7 @@ def analyse(item, now):
     range_pos = (price - low52) / (high52 - low52) if high52 > low52 else 0.5
     is_etf = (item.get("type") == "ETF") or (info.get("quoteType") == "ETF")
     if d.get("exchange"): base["exchange"] = d["exchange"]
-    q_label, q_score, q_reasons = quality(info, price, ma200, c, is_etf)
+    q_label, q_score, q_reasons = quality(info, price, ma200, c, is_etf, category)
     vol_label, vol_note = classify_volume(d["vol_ratio"], daily)
     rsi_label = classify_rsi(rsi)
     rec = (info.get("recommendationKey") or "none").lower()
@@ -261,8 +275,19 @@ def analyse(item, now):
         verdict = "ACCUMULATE"; why.append("Heavy selling volume today — stage the buys instead of all at once.")
     if verdict in ("ENTER", "ACCUMULATE") and q_label == "Mixed":
         why.append("Quality is mixed — keep the position small.")
+    alts = item.get("alternatives") or []
+    if category == "crypto":
+        why.append("Crypto swings hard — keep it a small slice of the portfolio.")
     if not item.get("t212_ticker") and verdict in ("ENTER", "ACCUMULATE", "HOLD"):
-        why.append("Not found on your Trading 212 exchanges — check the app or buy via another broker.")
+        if alts:
+            why.append("On Trading 212 buy it via " + ", ".join(a.get("symbol", "").replace(".L", "") for a in alts[:3]) +
+                       (" (ETPs that track the coin)" if category == "crypto" else " (ETCs that track the price)") + ".")
+        elif category == "crypto":
+            why.append("Not buyable directly on Trading 212 Invest — use a crypto exchange, or check the app for an ETP.")
+        elif category == "commodity":
+            why.append("This is the futures price (for reference) — buy exposure through an ETC on Trading 212.")
+        else:
+            why.append("Not found on your Trading 212 exchanges — check the app or buy via another broker.")
     if upside is not None and verdict != "AVOID":
         why.append(f"Analyst average target {rnd(tgt, ccy)} ({upside:+.0f}% from here).")
 
@@ -296,10 +321,10 @@ def analyse(item, now):
     }
 
 
-def size_positions(results, weekly, pool=None):
-    """Split the watchlist pool across actionable names; attach £ per entry step."""
+def size_positions(results, weekly, pool=None, category="stock"):
+    """Split one section's pool across its actionable names; attach £ per entry step."""
     pool_set = pool is not None
-    pool = weekly * WATCHLIST_SHARE if pool is None else pool
+    pool = weekly * DEFAULT_SHARE.get(category, 0.1) if pool is None else pool
     w = {"ENTER": 2, "ACCUMULATE": 1}
     raw_w = sum(w.get(v, 0) for st, v, _ in results if st == "ok")
     total_w = raw_w or 1
@@ -319,10 +344,10 @@ def size_positions(results, weekly, pool=None):
             gbp = round(amt * share)
             pct = round((px / data["price"] - 1) * 100, 1) if data["price"] else 0
             steps.append({"label": label, "price": px, "pct_from_now": pct, "amount_gbp": gbp,
-                          "shares": round(gbp * (data["per_gbp"] or 1) / px, 4) if px else None})
+                          "shares": round(gbp * (data["per_gbp"] or 1) / px, 6) if px else None})
         data["entries"] = steps
         data["budget"] = {"weekly_budget": round(weekly, 2), "watchlist_pool": round(pool, 2),
-                          "pool_source": "your setting" if pool_set else f"{int(WATCHLIST_SHARE*100)}% of the weekly budget",
+                          "pool_source": "your setting" if pool_set else f"{int(DEFAULT_SHARE.get(category, .1)*100)}% of the weekly budget",
                           "this_stock": round(sum(s["amount_gbp"] for s in steps)), "basis": basis}
 
 
@@ -344,9 +369,12 @@ def run(only=None):
             status, verdict, data = "error", None, {"reason": f"{type(e).__name__}: {e}"[:200]}
         results.append((status, verdict, data))
         print(f"  {item['ticker']:<14} {status:<10} {verdict or '-':<11} {data.get('reason','')}")
-    st = sb("GET", "app_settings?select=value&key=eq.watchlist_weekly_budget") or []
-    pool = float(st[0]["value"]) if st and st[0].get("value") is not None else None
-    size_positions(results, weekly, pool)
+    settings = {r["key"]: r.get("value") for r in (sb("GET", "app_settings?select=key,value") or [])}
+    for cat in ("stock", "commodity", "crypto"):
+        group = [r for item, r in zip(wl, results) if (item.get("category") or "stock") == cat]
+        if not group: continue
+        v = settings.get(BUDGET_KEY[cat])
+        size_positions(group, weekly, float(v) if v is not None else None, cat)
     for item, (status, verdict, data) in zip(wl, results):
         sb("POST", "watchlist_analysis?on_conflict=ticker",
            {"ticker": item["ticker"], "updated_at": now.isoformat(), "status": status,
