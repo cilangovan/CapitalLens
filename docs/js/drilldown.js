@@ -172,7 +172,7 @@ function ddRadar(sc) {
 
 function ddPlan(i, row, a) {
   if (!row.verdict) return '';
-  const v = VERDICT[row.verdict];
+  const v = VERDICT[row.verdict] || VERDICT.HOLD;   // unknown verdict → neutral, never crash
   const steps = (a.entries || []).map(e => `<tr><td>${ddEsc(e.label)}</td><td>${ddPx(e.price, a)}</td><td>${e.pct_from_now ? ddPct(e.pct_from_now, 1) : 'now'}</td><td><b>£${e.amount_gbp}</b></td></tr>`).join('');
   return `<div class="dd-card"><div class="dd-h">📅 This week's plan</div>
     <div><span class="w-pill ${v.cls}">${v.label}</span> <span class="w-dim">${v.sub}</span></div>
