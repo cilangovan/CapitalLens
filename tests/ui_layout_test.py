@@ -118,8 +118,26 @@ def free_port():
     s = socket.socket(); s.bind(("127.0.0.1", 0)); p = s.getsockname()[1]; s.close(); return p
 
 
+def supa_get(table, query):
+    import urllib.request, urllib.error
+    req = urllib.request.Request(f"{SUPA_URL}/rest/v1/{table}" + (f"?{query}" if query else ""),
+                                 headers={"apikey": SUPA_KEY, "Authorization": f"Bearer {SUPA_KEY}", "Accept": "application/json"})
+    try:
+        with urllib.request.urlopen(req, timeout=30) as r:
+            return r.status, r.read().decode()
+    except urllib.error.HTTPError as e:
+        return e.code, e.read().decode()
+
+
 def make_handler(api, poisoned):
     def handler(route):
+        try:
+            return _handle(route)
+        except Exception as e:                      # never let a request fall through to the real worker
+            print(f"  ! handler error for {route.request.url.split('?')[0][-50:]}: {e.__class__.__name__}: {str(e)[:120]}")
+            return route.fulfill(status=502, headers=CORS_H, content_type="application/json", body='{"error":"test handler"}')
+
+    def _handle(route):
         req = route.request
         if req.method == "OPTIONS":
             return route.fulfill(status=204, headers=CORS_H)
@@ -128,12 +146,10 @@ def make_handler(api, poisoned):
             table, _, query = path.lstrip("/").partition("?")
             if table not in READABLE:
                 return route.fulfill(status=404, headers=CORS_H, content_type="application/json", body='{"error":"Not found"}')
-            r = api.get(f"{SUPA_URL}/rest/v1/{table}" + (f"?{query}" if query else ""),
-                        headers={"apikey": SUPA_KEY, "Authorization": f"Bearer {SUPA_KEY}", "Accept": "application/json"})
-            body = r.text()
-            if poisoned and r.ok:
+            status, body = supa_get(table, query)
+            if poisoned and status == 200:
                 body = json.dumps(poison(json.loads(body)))
-            return route.fulfill(status=r.status, headers=CORS_H, content_type="application/json", body=body)
+            return route.fulfill(status=status, headers=CORS_H, content_type="application/json", body=body)
         return stub_post(route, poisoned)
     return handler
 
