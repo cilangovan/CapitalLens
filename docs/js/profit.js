@@ -20,6 +20,61 @@ function pbPrice(v, u) {
   return (u || '') + Number(v).toFixed(2);
 }
 
+const PB = {};
+
+// ── tap a header tile → pop-up explaining it, with the stocks behind the number ──
+function pbInfo(key) {
+  const s = PB.s, rows = PB.rows || [], lim = s.limits || {}, tot = s.totals || {}, reg = s.regime || {};
+  const name = r => `<b>${r.display || r.ticker}</b><div class="w-dim w-small">${r.pie || ''}</div>`;
+  const unit = r => (r.trim_plan && r.trim_plan[0] && r.trim_plan[0].unit) || '';
+  let title = '', body = '';
+  if (key === 'risk') {
+    const risk = lim.risk_per_trade_gbp, list = rows.filter(r => r.max_position_gbp)
+      .map(r => ({ ...r, over: r.value_gbp - r.max_position_gbp, lossAtExit: r.stop_distance_pct > 0 ? r.value_gbp * r.stop_distance_pct / 100 : null }))
+      .sort((a, b) => b.over - a.over);
+    const over = list.filter(r => r.over > 0.5);
+    title = `1% risk per trade — ${fmtGbpPlain(risk)}`;
+    body = `<p>Your holdings are worth <b>${fmtGbpPlain(tot.holdings_gbp)}</b>. The rule: <b>never lose more than ${lim.risk_per_trade_pct}% — ${fmtGbpPlain(risk)} — on any one stock.</b></p>
+      <p>Each stock has an exit price: its <b>trailing stop</b>, ${lim.atr_mult || 3}× its average daily move (ATR) below its 3-month high. A stock is <b>oversized</b> if dropping to that exit would lose more than ${fmtGbpPlain(risk)}. The fix is to trim it towards its max size, or accept the bigger risk knowingly.</p>
+      <div class="pb-m-sum ${over.length ? 'yellow' : 'green'}">${over.length ? `⚠️ ${over.length} of ${list.length} stocks are bigger than the 1% rule allows` : `✓ All ${list.length} stocks are within the 1% rule`}</div>
+      <table class="pb-rules pb-m-table"><tr><th>Stock</th><th>Holding</th><th>Max size</th><th>Exit price</th><th>Status</th></tr>
+      ${list.map(r => `<tr><td>${name(r)}</td><td>${fmtGbpPlain(r.value_gbp)}</td><td>${fmtGbpPlain(r.max_position_gbp)}</td>
+        <td>${pbPrice(r.trailing_stop, unit(r))}<div class="w-dim w-small">${r.stop_distance_pct != null ? (r.stop_distance_pct > 0 ? r.stop_distance_pct + '% below now' : 'already below') : ''}</div></td>
+        <td class="${r.over > 0.5 ? 'yellow' : 'green'}">${r.over > 0.5 ? `Oversized by ${fmtGbpPlain(r.over)}` : 'OK'}</td></tr>`).join('')}</table>
+      <p class="w-dim w-small">Max size = ${fmtGbpPlain(risk)} ÷ the stock's risk distance (${lim.atr_mult || 3}× ATR as % of price). Volatile stocks get a smaller max size.</p>`;
+  } else if (key === 'trims') {
+    const due = rows.flatMap(r => (r.trim_plan || []).filter(x => x.hit && x.sell_pct).map(x => ({ r, x })));
+    title = `Profit to book — ${fmtGbpPlain(tot.suggested_trims_gbp)}`;
+    body = `<p>Profit-taking ladder: when a stock is up by each step (e.g. +25%, +50%, +100%), sell a slice to lock in gains and keep the rest running.</p>
+      ${due.length ? `<table class="pb-rules pb-m-table"><tr><th>Stock</th><th>Step reached</th><th>Sell</th><th>≈ £</th></tr>
+        ${due.map(({ r, x }) => `<tr><td>${name(r)}</td><td>${x.label || '+' + x.gain + '%'}</td><td>${x.sell_pct}%</td><td>${fmtGbpPlain(r.value_gbp * x.sell_pct / 100)}</td></tr>`).join('')}</table>`
+        : '<div class="pb-m-sum green">✓ No ladder steps reached right now — nothing to book.</div>'}`;
+  } else if (key === 'actions') {
+    title = 'Actions';
+    const groups = ['reassess', 'trim', 'rebalance', 'run', 'hold'];
+    const what = { reassess: 'Something broke (trend, stop or fundamentals). Re-check the reason you own it.', trim: 'Up enough to book some profit.',
+      rebalance: 'Too big a share of the portfolio or sector — move some elsewhere.', run: 'Strong — leave it alone.', hold: 'Nothing to do.' };
+    body = groups.map(g => { const list = rows.filter(r => r.action_level === g); return list.length ? `<div class="pb-m-grp">${pbLvl(g)} <span class="w-dim">${what[g]}</span>
+      <div>${list.map(r => `<div class="pb-m-row"><span>${r.display || r.ticker}</span><span class="w-dim w-small">${r.action || ''}</span></div>`).join('')}</div></div>` : ''; }).join('');
+  } else if (key === 'holdings') {
+    title = `Holdings — ${fmtGbpPlain(tot.holdings_gbp)}`;
+    body = `<p>Market value of everything you hold, and what you paid (${fmtGbpPlain(tot.invested_gbp)}). Biggest first:</p>
+      <table class="pb-rules pb-m-table"><tr><th>Stock</th><th>Value</th><th>Weight</th><th>Gain</th></tr>
+      ${[...rows].sort((a, b) => b.value_gbp - a.value_gbp).map(r => `<tr><td>${name(r)}</td><td>${fmtGbpPlain(r.value_gbp)}</td><td>${fmt(r.weight_pct, 1)}%</td><td class="${clr(r.gain_pct)}">${fmt(r.gain_pct, 1)}%</td></tr>`).join('')}</table>`;
+  } else if (key === 'regime') {
+    title = `Market regime — ${reg.mode}`;
+    body = `<p>A quick read of the overall market, which sets how bold the plan is: <b>Aggressive</b> lets winners run, <b>Neutral</b> sticks to the ladder, <b>Defensive</b> books profit sooner and tightens risk.</p>
+      <p>Today: <b>${reg.points} points</b> (Aggressive ≥ 4 · Neutral 2–3 · Defensive ≤ 1). Points come from the S&amp;P 500 and MSCI ACWI being above their 50/200-day averages, VIX (fear gauge) ${reg.vix ?? '—'}, and ${reg.breadth_pct ?? '—'}% of your holdings above their 50-day average.</p>`;
+  }
+  let m = document.getElementById('pb-modal');
+  if (!m) { m = document.createElement('div'); m.id = 'pb-modal'; document.body.appendChild(m); m.addEventListener('click', e => { if (e.target === m) pbClose(); }); }
+  m.innerHTML = `<div class="pb-m-box" role="dialog" aria-modal="true"><div class="pb-m-head"><h3>${title}</h3><button class="pb-m-x" onclick="pbClose()" aria-label="Close">✕</button></div>
+    <div class="pb-m-body">${body}</div><button class="pb-m-close" onclick="pbClose()">Close</button></div>`;
+  m.classList.add('open'); document.body.style.overflow = 'hidden';
+}
+function pbClose() { const m = document.getElementById('pb-modal'); if (m) m.classList.remove('open'); document.body.style.overflow = ''; }
+document.addEventListener('keydown', e => { if (e.key === 'Escape') pbClose(); });
+
 async function loadProfit() {
   const el = document.getElementById('profit-content');
   if (IS_GUEST) {
@@ -36,6 +91,7 @@ async function loadProfit() {
     return;
   }
   const reg = s.regime || {}, tot = s.totals || {}, lim = s.limits || {}, cnt = tot.counts || {};
+  PB.s = s; PB.rows = rows;
   const regColor = { Aggressive: 'green', Neutral: 'yellow', Defensive: 'red' }[reg.mode] || '';
   const regIcon = { Aggressive: '🚀', Neutral: '⚖️', Defensive: '🛡️' }[reg.mode] || '';
   const upd = new Date(s.updated_at).toLocaleString('en-GB', { dateStyle: 'medium', timeStyle: 'short' });
@@ -43,13 +99,13 @@ async function loadProfit() {
   // ── Header stats
   const stats = `
     <div class="stats-strip">
-      <div class="stat-card"><div class="label">Market regime</div><div class="value ${regColor}">${regIcon} ${reg.mode}</div><div class="sub">${reg.points} signal pts</div></div>
-      <div class="stat-card"><div class="label">Holdings</div><div class="value">${fmtGbp(tot.holdings_gbp)}</div><div class="sub">invested ${fmtGbpPlain(tot.invested_gbp)}</div></div>
-      <div class="stat-card"><div class="label">Profit to book</div><div class="value yellow">${fmtGbp(tot.suggested_trims_gbp)}</div><div class="sub">ladder trims due</div></div>
-      <div class="stat-card"><div class="label">Actions</div><div class="value" style="font-size:15px">
+      <div class="stat-card pb-tap" onclick="pbInfo('regime')" role="button" tabindex="0"><div class="label">Market regime <span class="pb-i">ⓘ</span></div><div class="value ${regColor}">${regIcon} ${reg.mode}</div><div class="sub">${reg.points} signal pts</div></div>
+      <div class="stat-card pb-tap" onclick="pbInfo('holdings')" role="button" tabindex="0"><div class="label">Holdings <span class="pb-i">ⓘ</span></div><div class="value">${fmtGbp(tot.holdings_gbp)}</div><div class="sub">invested ${fmtGbpPlain(tot.invested_gbp)}</div></div>
+      <div class="stat-card pb-tap" onclick="pbInfo('trims')" role="button" tabindex="0"><div class="label">Profit to book <span class="pb-i">ⓘ</span></div><div class="value yellow">${fmtGbp(tot.suggested_trims_gbp)}</div><div class="sub">ladder trims due</div></div>
+      <div class="stat-card pb-tap" onclick="pbInfo('actions')" role="button" tabindex="0"><div class="label">Actions <span class="pb-i">ⓘ</span></div><div class="value" style="font-size:15px">
         <span class="red">${cnt.reassess || 0}</span> · <span class="yellow">${cnt.trim || 0}</span> · <span style="color:#a78bfa">${cnt.rebalance || 0}</span> · <span class="green">${(cnt.run || 0) + (cnt.hold || 0)}</span></div>
         <div class="sub">reassess · book · rebal · hold</div></div>
-      <div class="stat-card"><div class="label">1% risk / trade</div><div class="value">${fmtGbp(lim.risk_per_trade_gbp)}</div><div class="sub">max loss on one stock</div></div>
+      <div class="stat-card pb-tap" onclick="pbInfo('risk')" role="button" tabindex="0"><div class="label">1% risk / trade <span class="pb-i">ⓘ</span></div><div class="value">${fmtGbp(lim.risk_per_trade_gbp)}</div><div class="sub">max loss on one stock</div></div>
     </div>`;
 
   // ── Layer 1: market

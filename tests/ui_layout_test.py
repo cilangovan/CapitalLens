@@ -180,6 +180,11 @@ def scenarios(page):
          "showTab('profit', document.querySelector(\"nav button[onclick*=\\\"'profit'\\\"]\")); "
          "document.querySelectorAll('[id^=pb-body-]').forEach(b => b.classList.add('open'))"),
     ]
+    for k in ("risk", "trims", "actions", "holdings", "regime"):
+        out.append((f"profit:popup:{k}", "#pb-modal",
+                    "showTab('profit', document.querySelector(\"nav button[onclick*=\\\"'profit'\\\"]\")); "
+                    f"setTimeout(() => {{ pbClose(); pbInfo('{k}'); }}, 50)"))
+    out.append(("profit:popup-closed", "#profit", "pbClose()"))
     for cat in ("stock", "commodity", "crypto"):
         out.append((f"watchlist:{cat}:expanded", "#watchlist",
                     f"showTab('watchlist', document.querySelector(\"nav button[onclick*=\\\"'watchlist'\\\"]\")); "

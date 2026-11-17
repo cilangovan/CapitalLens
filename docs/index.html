@@ -375,6 +375,19 @@
   .rt-part-v { text-align:right; white-space:nowrap; } .rt-total { border-bottom:none; }
   .rt-kv { display:flex; justify-content:space-between; gap:10px; padding:7px 0; border-bottom:1px solid var(--border); font-size:13px; }
   .rt-years td:not(:first-child), .rt-years th:not(:first-child) { text-align:right; }
+
+  /* profit booking: tappable tiles + explainer pop-up */
+  .pb-tap { cursor:pointer; } .pb-tap:hover { border-color:var(--accent); } .pb-i { font-size:11px; opacity:.6; }
+  #pb-modal { position:fixed; inset:0; background:rgba(0,0,0,.6); display:none; align-items:flex-end; justify-content:center; z-index:1000; }
+  #pb-modal.open { display:flex; }
+  .pb-m-box { background:var(--bg2,#1a1d27); border:1px solid var(--border); border-radius:14px 14px 0 0; width:100%; max-width:640px; max-height:88vh; display:flex; flex-direction:column; }
+  @media (min-width:700px) { #pb-modal { align-items:center; } .pb-m-box { border-radius:14px; } }
+  .pb-m-head { display:flex; justify-content:space-between; align-items:center; gap:10px; padding:14px 16px 6px; }
+  .pb-m-head h3 { margin:0; font-size:16px; } .pb-m-x { background:none; border:none; color:var(--muted); font-size:20px; cursor:pointer; padding:4px 8px; }
+  .pb-m-body { padding:0 16px 8px; overflow-y:auto; font-size:13px; line-height:1.5; } .pb-m-body p { margin:6px 0 10px; }
+  .pb-m-table { width:100%; } .pb-m-sum { padding:8px 10px; border:1px solid var(--border); border-radius:8px; margin:8px 0; font-weight:600; }
+  .pb-m-grp { margin:10px 0; } .pb-m-row { display:flex; justify-content:space-between; gap:10px; padding:5px 0; border-bottom:1px solid var(--border); }
+  .pb-m-close { margin:8px 16px 14px; padding:11px; border-radius:10px; border:1px solid var(--border); background:var(--bg3,#22263a); color:var(--text); font-size:14px; cursor:pointer; }
   /* phone safety net: two-column grids stack, wide tables scroll inside their card instead of widening the page */
   .m-grid2 { display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); }
   .card, .card > * { min-width:0; } .card { overflow-wrap:break-word; }
