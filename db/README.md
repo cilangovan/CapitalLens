@@ -27,10 +27,10 @@ Postgres (currently Supabase, project `kloqkcxchstfoljpqcbq`, Postgres 17).
 | `SUPABASE_ACCESS_TOKEN` | supabase.com → Account → Access Tokens (alternative if you'd rather not store the DB password) | schema export only |
 | `BACKUP_PASSPHRASE` | a long random passphrase — **keep a copy outside GitHub**; without it a backup can't be opened | data backups |
 | `R2_ACCOUNT_ID` | Cloudflare dashboard → R2 → right-hand panel *Account ID* | R2 upload |
-| `R2_BUCKET` | the bucket name, e.g. `t212-backups` (create it with R2 → *Create bucket*; keep it **private**) | R2 upload |
+| `R2_BUCKET` *(optional)* | bucket name; defaults to `portfoliomanager` (R2 → *Create bucket*; keep it **private**) | R2 upload |
 | `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY` | R2 → *Manage API tokens* → *Create API token* → **Object Read & Write**, scoped to that one bucket only | R2 upload |
 
-If any `R2_*` secret is missing the upload is skipped with a warning and the encrypted file is only kept as a 7-day run artifact.
+If `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID` or `R2_SECRET_ACCESS_KEY` is missing the upload is skipped with a warning and the encrypted file is only kept as a 7-day run artifact.
 
 **Schedule (UTC):**
 - Sundays 03:17 — commits `db/schema.sql` if anything changed, and attaches a full `pg_dump --schema-only` (90-day artifact).

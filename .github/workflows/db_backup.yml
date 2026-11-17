@@ -10,7 +10,7 @@ name: Database Backup
 #                          — enables pg_dump (full-fidelity dumps) and the schema export
 #   or SUPABASE_ACCESS_TOKEN  (+ repo variable SUPABASE_PROJECT_REF) — schema export only, via the Management API
 #   BACKUP_PASSPHRASE      required for data backups (gpg AES-256); keep a copy somewhere safe
-#   R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY, R2_BUCKET
+#   R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY  (+ optional R2_BUCKET, default 'portfoliomanager')
 #                          Cloudflare R2 destination (token scoped to the one bucket, Object Read & Write).
 #                          If any is missing the R2 step is skipped with a warning (artifact only).
 
@@ -161,7 +161,7 @@ jobs:
           R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
           R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
           R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
-          R2_BUCKET: ${{ secrets.R2_BUCKET }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET || vars.R2_BUCKET || 'portfoliomanager' }}
         run: |
           if [ -z "$R2_ACCOUNT_ID" ] || [ -z "$R2_ACCESS_KEY_ID" ] || [ -z "$R2_SECRET_ACCESS_KEY" ] || [ -z "$R2_BUCKET" ]; then
             echo "::warning title=R2 not configured::R2_* secrets missing — backup kept only as a run artifact (see db/README.md)"
