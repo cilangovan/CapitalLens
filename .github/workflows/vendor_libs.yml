@@ -1,0 +1,59 @@
+name: Vendor front-end libraries
+
+# Self-host third-party JavaScript so the dashboard never runs code from a CDN (a tampered CDN file is how
+# script-injection attacks reach visitors). Downloads from the official npm registry — npm verifies the
+# package's published integrity hash — records the file's SHA-384, and commits it to docs/vendor/.
+on:
+  workflow_dispatch:
+    inputs:
+      chartjs:
+        description: 'Chart.js version'
+        default: '4.4.1'
+
+permissions:
+  contents: write
+
+jobs:
+  vendor:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - name: Fetch Chart.js from npm (integrity-checked) and compare with the CDN copy
+        env:
+          V: ${{ inputs.chartjs || '4.4.1' }}
+        run: |
+          set -euo pipefail
+          work=$(mktemp -d); cd "$work"
+          npm pack "chart.js@${V}" --silent >/dev/null
+          tar -xzf chart.js-*.tgz
+          f=package/dist/chart.umd.js
+          [ -s "$f" ] || f=package/dist/chart.umd.min.js
+          head -c 200 "$f" | grep -q "Chart.js v${V}" || { echo "unexpected file header"; head -c 200 "$f"; exit 1; }
+          sri="sha384-$(openssl dgst -sha384 -binary "$f" | openssl base64 -A)"
+          echo "npm file: $f · $sri"
+          cdn=$(curl -fsSL "https://cdnjs.cloudflare.com/ajax/libs/Chart.js/${V}/chart.umd.min.js" | openssl dgst -sha384 -binary | openssl base64 -A || true)
+          [ "sha384-$cdn" = "$sri" ] && echo "✓ identical to the cdnjs copy" || echo "• cdnjs copy differs (re-minified) — using the npm original"
+          mkdir -p "$GITHUB_WORKSPACE/docs/vendor"
+          cp "$f" "$GITHUB_WORKSPACE/docs/vendor/chart.umd.min.js"
+          cat > "$GITHUB_WORKSPACE/docs/vendor/README.md" <<EOF
+          # Vendored libraries (served from this site — no CDN)
+
+          | File | Source | Version | SHA-384 |
+          |---|---|---|---|
+          | chart.umd.min.js | npm \`chart.js\` (${f#package/}) | ${V} | \`${sri}\` |
+
+          Refresh with the **Vendor front-end libraries** workflow. index.html loads it with this integrity hash.
+          EOF
+          sed -i 's/^          //' "$GITHUB_WORKSPACE/docs/vendor/README.md"
+          echo "$sri" > "$GITHUB_WORKSPACE/docs/vendor/chart.umd.min.js.sri"
+      - name: Commit
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898283+github-actions[bot]@users.noreply.github.com"
+          git add docs/vendor
+          git diff --cached --quiet && { echo "no change"; exit 0; }
+          git commit -m "Vendor Chart.js ${{ inputs.chartjs || '4.4.1' }} from npm (self-hosted, integrity-pinned)"
+          git push
