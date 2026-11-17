@@ -68,6 +68,9 @@ Runs daily via `.github/workflows/db_maintenance.yml` (02:23 UTC), using two dat
 | Per-holding tables (`analyst_ratings`, `profit_booking`, `value_buy_scores`) | Upserted; rows for tickers you no longer hold are removed | services |
 | `holding_decisions`, `institutional_flow_reports`, `realised_pnl`, `dividends` | Kept (small: one row per ticker/day or per transaction) | — |
 | `watchlist_analysis` | Overwritten daily; removed with its watchlist row (cascade) | worker / service |
+| `t212_orders`, `t212_dividends`, `t212_transactions` | **Raw Trading 212 history — append-only, never deleted** by any job. Re-syncs upsert (`last_seen` bumps); `raw` keeps T212's full JSON | `services/t212_sync_service.py` (daily, incremental; `t212_sync.yml` with `full` for a full re-walk) |
+| `realised_pnl`, `dividends` | Derived — rebuilt from the raw tables on every sync | `t212_sync_service.rebuild_derived()` |
+| `pie_history` | Derived — one row per pie + `__DIRECT__`, `__ALL__`, `__SOLD__`; rebuilt daily from `t212_orders` + Yahoo closes | `services/pie_history_service.py` |
 
 Dead rows from replace-style updates are cleaned by Postgres autovacuum.
 
@@ -77,10 +80,10 @@ Dead rows from replace-style updates are cleaned by Postgres autovacuum.
 
 Beyond primary keys / unique constraints: `positions(snapshot_id)` (every page loads the latest snapshot's positions),
 `portfolio_snapshots(created_at desc)`, `alerts(created_at desc)`, `alerts(alert_type, created_at desc)`,
-trigram GIN indexes on `instruments(name, short_name)` for watchlist search, and the matching indexes on the archive tables.
+`t212_orders(ticker, filled_at)` / `(filled_at)`, `t212_dividends(paid_on)`, `t212_transactions(date_time)`, trigram GIN indexes on `instruments(name, short_name)` for watchlist search, and the matching indexes on the archive tables.
 Supabase's performance advisor reports no missing indexes.
 
 ## Security notes
 
-- Public read (`anon`) is **select-only** on every table except `dashboard_auth` (no access at all). All writes use the service role (GitHub Actions + Worker).
+- Public read (`anon`) is **select-only** on every table except `dashboard_auth` and the raw `t212_*` history tables (no anon/authenticated access at all — service role only). All writes use the service role (GitHub Actions + Worker).
 - `db/schema.sql` and `supabase/migrations/` contain structure only; the export redacts any credential seed it finds.
