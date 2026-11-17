@@ -133,7 +133,8 @@ def fetch_verified_prices(sym, t212_price, today):
     scale, ccy_out = (0.01, "GBP") if ccy in ("GBp", "GBX") else (1.0, ccy.upper())
 
     window = [c for _, c in closes[-SESSIONS:]]
-    if min(window) <= 0 or max(window) / min(window) >= 1.5:
+    jumps = [b / a for a, b in zip(window, window[1:]) if a > 0]
+    if min(window) <= 0 or any(j > 8 or j < 1 / 8 for j in jumps):   # pence↔pound style 100× jumps
         return None, "inconsistent price units in history"
 
     native_last = closes[-1][1]

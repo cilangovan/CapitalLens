@@ -26,3 +26,8 @@ alter table public.watchlist add column if not exists t212_ticker text, add colu
 create table if not exists public.app_settings (key text primary key, value jsonb, updated_at timestamptz default now());
 alter table public.app_settings enable row level security;
 create policy public_read on public.app_settings for select to anon, authenticated using (true);
+
+-- 009d: sections + T212 alternatives (crypto ETPs / commodity ETCs)
+alter table public.watchlist add column if not exists category text not null default 'stock'
+  check (category in ('stock','commodity','crypto'));
+alter table public.watchlist add column if not exists alternatives jsonb;

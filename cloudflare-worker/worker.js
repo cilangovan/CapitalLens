@@ -5,8 +5,8 @@
  *   /auth/change-password  POST {token, newPassword}  → {ok} or 401
  *   /auth/reset-request    POST {username}             → {ok} (triggers GH Actions email)
  *   /auth/reset-confirm    POST {resetToken, newPassword} → {ok} or 400
- *   /search                POST {token, q}      → {results:[{symbol,name,exchange,type,t212_ticker}]}  (Yahoo, global)
- *   /watchlist/add         POST {token, symbol} → {ok}  (bookmarks + triggers analysis)
+ *   /search                POST {token, q, category} → {results:[…]}  stock: Yahoo global · crypto: Yahoo + T212 crypto ETPs · commodity: T212 ETCs + Yahoo futures
+ *   /watchlist/add         POST {token, symbol, category} → {ok}  (bookmarks + triggers analysis)
  *   /watchlist/remove      POST {token, symbol} → {ok}  (stops tracking, deletes analysis)
  *   /settings/set          POST {token, key, value} → {ok}  (whitelisted keys only)
  *   /alerts/action         POST {token, ids:[..], action} → {ok, updated}  (read|unread|archive|dismiss|restore)
@@ -245,16 +245,24 @@ function t212Candidates(sym) {
   return map[suf] ? [`${base}${map[suf]}_EQ`] : [];
 }
 
-async function yahooSearch(q) {
+const YTYPES = { stock: ['EQUITY', 'ETF'], crypto: ['CRYPTOCURRENCY'], commodity: ['FUTURE'] };
+const ALL_YTYPES = ['EQUITY', 'ETF', 'CRYPTOCURRENCY', 'FUTURE'];
+const COMMODITY_RE = /\b(gold|silver|platinum|palladium|oil|crude|brent|wti|natural gas|gas|copper|nickel|alumin(i)?um|zinc|lithium|uranium|wheat|corn|soy\w*|sugar|coffee|cocoa|cotton|livestock|cattle|commodit\w*|metals?|agricultur\w*|energy|carbon)\b/i;
+const CRYPTO_RE = /\b(bitcoin|ethereum|ether|solana|xrp|ripple|cardano|polkadot|litecoin|crypto\w*|digital assets?|blockchain)\b/i;
+const LEVERAGED_RE = /\b(\d+x|leveraged|short|inverse|daily)\b/i;
+const MINERS_RE = /\b(min(ing|ers?)|producers?|equit(y|ies))\b/i;   // company shares, not the asset itself
+
+async function yahooSearch(q, types = YTYPES.stock) {
   const u = `https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}` +
             `&quotesCount=20&newsCount=0&listsCount=0&enableFuzzyQuery=true`;
   const r = await fetch(u, { headers: { 'User-Agent': 'Mozilla/5.0 (compatible; T212-Watchlist/1.0)', Accept: 'application/json' } });
   if (!r.ok) throw new Error(`Yahoo search ${r.status}`);
   const d = await r.json();
+  const typeName = { EQUITY: 'Stock', ETF: 'ETF', CRYPTOCURRENCY: 'Crypto', FUTURE: 'Futures' };
   return (d.quotes || [])
-    .filter(x => x.symbol && ['EQUITY', 'ETF'].includes(x.quoteType))
+    .filter(x => x.symbol && types.includes(x.quoteType))
     .map(x => ({ symbol: x.symbol, name: x.longname || x.shortname || x.symbol,
-                 exchange: x.exchDisp || x.exchange || '', type: x.quoteType === 'ETF' ? 'ETF' : 'Stock' }));
+                 exchange: x.exchDisp || x.exchange || '', type: typeName[x.quoteType] || x.quoteType }));
 }
 
 async function attachT212(env, rows) {
@@ -266,29 +274,64 @@ async function attachT212(env, rows) {
   return rows.map(r => ({ ...r, t212_ticker: t212Candidates(r.symbol).find(c => have.has(c)) || null }));
 }
 
+const toYahoo = t => t.endsWith('_US_EQ') ? t.slice(0, -6) : t.replace(/l_EQ$/, '.L').replace(/d_EQ$/, '.DE').replace(/a_EQ$/, '.AS');
+
+// T212 ETPs/ETCs matching a word and a theme (commodity or crypto)
+async function t212Products(env, word, themeRe, limit = 20) {
+  const pat = encodeURIComponent(`"*${String(word).replace(/[*,()"]/g, ' ').trim()}*"`);
+  const rows = await sbGet(env, 'instruments',
+    `select=ticker,name,short_name,currency,type,exchange&type=eq.ETF&or=(name.ilike.${pat},short_name.ilike.${pat})&limit=80`).catch(() => []);
+  return rows.filter(r => themeRe.test(r.name || '')).slice(0, limit).map(r => ({
+    symbol: toYahoo(r.ticker), name: r.name || r.short_name, exchange: r.exchange, currency: r.currency,
+    type: MINERS_RE.test(r.name || '') ? 'Miners/equity ETF' : CRYPTO_RE.test(r.name || '') ? 'Crypto ETP' : 'ETC', t212_ticker: r.ticker,
+    leveraged: LEVERAGED_RE.test(r.name || ''), miners: MINERS_RE.test(r.name || ''),
+  }));
+}
+
+function cryptoGbpVariants(rows) {
+  const out = [...rows];
+  rows.forEach(r => {
+    const m = r.symbol.match(/^([A-Z0-9]+)-USD$/);
+    if (m && !rows.some(x => x.symbol === `${m[1]}-GBP`))
+      out.push({ ...r, symbol: `${m[1]}-GBP`, name: r.name.replace(/\bUSD\b/, 'GBP'), exchange: r.exchange });
+  });
+  return out;
+}
+
 async function handleSearch(req, env) {
-  const { token, q } = await req.json().catch(() => ({}));
+  const { token, q, category = 'stock' } = await req.json().catch(() => ({}));
   if (!(await verifySession(env, token))) return json({ error: 'Invalid or expired session' }, 401);
+  if (!YTYPES[category]) return json({ error: 'Unknown category' }, 400);
   const query = String(q || '').trim().slice(0, 60);
   if (query.length < 2) return json({ results: [] });
-  try {
-    return json({ source: 'yahoo', results: await attachT212(env, await yahooSearch(query)) });
-  } catch (e) {
-    // fallback: Trading 212's own universe (US/LSE/XETRA/AMS)
-    const pat = encodeURIComponent(`"*${query.replace(/[*,()"]/g, ' ')}*"`);
-    const rows = await sbGet(env, 'instruments',
-      `select=ticker,name,short_name,type,exchange&or=(short_name.ilike.${pat},name.ilike.${pat})&limit=20`);
-    const toY = t => t.endsWith('_US_EQ') ? t.slice(0, -6) : t.replace(/l_EQ$/, '.L').replace(/d_EQ$/, '.DE').replace(/a_EQ$/, '.AS');
-    return json({ source: 'trading212', note: `Global search unavailable (${e.message}) — showing Trading 212 matches`,
-      results: rows.map(r => ({ symbol: toY(r.ticker), name: r.name || r.short_name, exchange: r.exchange,
-                                type: r.type === 'ETF' ? 'ETF' : 'Stock', t212_ticker: r.ticker })) });
+  let market = [], note = null;
+  try { market = await yahooSearch(query, YTYPES[category]); }
+  catch (e) { note = `Market search unavailable (${e.message})`; }
+
+  if (category === 'stock') {
+    if (!market.length && note) {   // fallback: Trading 212's own universe
+      const pat = encodeURIComponent(`"*${query.replace(/[*,()"]/g, ' ')}*"`);
+      const rows = await sbGet(env, 'instruments', `select=ticker,name,short_name,type,exchange&or=(short_name.ilike.${pat},name.ilike.${pat})&limit=20`);
+      return json({ source: 'trading212', note: note + ' — showing Trading 212 matches',
+        results: rows.map(r => ({ symbol: toYahoo(r.ticker), name: r.name || r.short_name, exchange: r.exchange,
+          type: r.type === 'ETF' ? 'ETF' : 'Stock', t212_ticker: r.ticker, group: 't212' })) });
+    }
+    return json({ source: 'yahoo', note, results: (await attachT212(env, market)).map(r => ({ ...r, group: 'market' })) });
   }
+  const theme = category === 'crypto' ? CRYPTO_RE : COMMODITY_RE;
+  const t212 = await t212Products(env, query, theme);
+  if (category === 'crypto') market = cryptoGbpVariants(market);
+  return json({ source: 'yahoo+trading212', note, results: [
+    ...t212.map(r => ({ ...r, group: 't212' })),
+    ...market.map(r => ({ ...r, t212_ticker: null, group: 'market' })),
+  ] });
 }
 
 async function handleWatchlist(req, env, op) {
-  const { token, symbol } = await req.json().catch(() => ({}));
+  const { token, symbol, category = 'stock' } = await req.json().catch(() => ({}));
   if (!(await verifySession(env, token))) return json({ error: 'Invalid or expired session' }, 401);
   if (!symbol || !SYMBOL_RE.test(symbol)) return json({ error: 'Invalid symbol' }, 400);
+  if (!YTYPES[category]) return json({ error: 'Unknown category' }, 400);
   const t = encodeURIComponent(symbol);
   if (op === 'remove') {
     await sbWrite(env, 'DELETE', 'watchlist_analysis', `ticker=eq.${t}`);
@@ -297,23 +340,43 @@ async function handleWatchlist(req, env, op) {
   }
   // Confirm the symbol server-side (don't trust client-supplied name/exchange)
   let hit = null;
-  try { hit = (await yahooSearch(symbol)).find(r => r.symbol.toUpperCase() === symbol.toUpperCase()); } catch (e) {}
+  try { hit = (await yahooSearch(symbol, ALL_YTYPES)).find(r => r.symbol.toUpperCase() === symbol.toUpperCase()); } catch (e) {}
+  const pair = symbol.toUpperCase().match(/^([A-Z0-9]{2,12})-(USD|GBP|EUR|USDT)$/);
+  if (!hit && category === 'crypto' && pair) {
+    // Yahoo search often only returns the USD pair — take the coin's name from it
+    let base = null;
+    try { base = (await yahooSearch(`${pair[1]}-USD`, YTYPES.crypto)).find(r => r.symbol.toUpperCase() === `${pair[1]}-USD`); } catch (e) {}
+    hit = { symbol: symbol.toUpperCase(), name: base ? base.name.replace(/\bUSD\b/, pair[2]) : `${pair[1]} ${pair[2]}`, exchange: 'CCC', type: 'Crypto' };
+  }
   if (!hit) {
     const cand = t212Candidates(symbol);
     const inst = cand.length ? await sbGet(env, 'instruments', `ticker=in.(${cand.map(c => encodeURIComponent(`"${c}"`)).join(',')})&select=ticker,name,type,exchange`) : [];
-    if (!inst.length) return json({ error: 'Symbol not found on Yahoo Finance' }, 404);
-    hit = { symbol, name: inst[0].name, exchange: inst[0].exchange, type: inst[0].type === 'ETF' ? 'ETF' : 'Stock' };
+    if (inst.length) hit = { symbol, name: inst[0].name, exchange: inst[0].exchange, type: inst[0].type === 'ETF' ? 'ETF' : 'Stock' };
+    else return json({ error: 'Symbol not found on Yahoo Finance' }, 404);
   }
-  const [withT212] = await attachT212(env, [hit]);
+  const [withT212] = hit.type === 'Crypto' || hit.type === 'Futures' ? [{ t212_ticker: null }] : await attachT212(env, [hit]);
+  // For crypto coins and commodity futures: list the Trading 212 products that give that exposure
+  let alternatives = null;
+  if (!withT212.t212_ticker && (category === 'crypto' || category === 'commodity')) {
+    const theme = category === 'crypto' ? CRYPTO_RE : COMMODITY_RE;
+    const word = (hit.name.match(theme) || [hit.name.split(/[\s-]/)[0]])[0];
+    alternatives = (await t212Products(env, word, theme, 20)).filter(a => !a.leveraged && !a.miners).slice(0, 4)
+      .map(a => ({ ticker: a.t212_ticker, symbol: a.symbol, name: a.name, currency: a.currency }));
+  }
+  if (hit.type === 'Futures') hit.name = hit.name.replace(/\s+[A-Z][a-z]{2}\s+\d{2,4}$/, '') + ' (futures)';
   await sbWrite(env, 'POST', 'watchlist', 'on_conflict=ticker',
-    { ticker: hit.symbol, name: hit.name, exchange: hit.exchange, type: hit.type, t212_ticker: withT212.t212_ticker });
+    { ticker: hit.symbol, name: hit.name, exchange: hit.exchange, type: hit.type, category,
+      t212_ticker: withT212.t212_ticker, alternatives });
   const queued = await triggerWatchlistRun(env, hit.symbol);
-  return json({ ok: true, added: hit.symbol, t212_ticker: withT212.t212_ticker, analysis_queued: queued });
+  return json({ ok: true, added: hit.symbol, category, t212_ticker: withT212.t212_ticker, alternatives, analysis_queued: queued });
 }
 
 // ── Settings (authenticated, whitelisted) ────────────────────────────────────
+function budgetCheck(v) { const n = Number(v); return Number.isFinite(n) && n >= 0 && n <= 100000 ? Math.round(n * 100) / 100 : undefined; }
 const SETTINGS = {
-  watchlist_weekly_budget: v => { const n = Number(v); return Number.isFinite(n) && n >= 0 && n <= 100000 ? Math.round(n * 100) / 100 : undefined; },
+  watchlist_weekly_budget: budgetCheck,
+  commodity_weekly_budget: budgetCheck,
+  crypto_weekly_budget:    budgetCheck,
 };
 async function handleSetting(req, env) {
   const { token, key, value } = await req.json().catch(() => ({}));
@@ -327,7 +390,7 @@ async function handleSetting(req, env) {
     headers: { apikey: k, Authorization: `Bearer ${k}`, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' },
     body: JSON.stringify({ key, value: v, updated_at: new Date().toISOString() }) });
   if (!r.ok) throw new Error(`settings ${r.status}: ${await r.text()}`);
-  if (key === 'watchlist_weekly_budget') await triggerWatchlistRun(env, '');
+  if (key.endsWith('_weekly_budget')) await triggerWatchlistRun(env, '');
   return json({ ok: true, key, value: v });
 }
 
