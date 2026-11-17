@@ -18,31 +18,65 @@ const pdName = t => (PD.meta[t]?.name && PD.meta[t].name !== t.split('_')[0] ? P
 // ── data ──────────────────────────────────────────────────────
 function pdSum(inst) { const r = inst.result || {}; return { value: +r.priceAvgValue || 0, invested: +r.priceAvgInvestedValue || 0, result: +r.priceAvgResult || 0 }; }
 
-// live numbers for a key ('__ALL__' | pie name) or a ticker, from a snapshot's pies
-function pdLive(pies, key, ticker) {
-  const acc = { value: 0, invested: 0, result: 0, holdings: [] };
-  (pies || []).forEach(p => {
-    if (key !== '__ALL__' && p.name !== key) return;
-    (p.instruments || []).forEach(i => {
-      if (ticker && i.ticker !== ticker) return;
-      const s = pdSum(i);
-      if (s.value <= 0 && !(+i.qty > 0)) return;
-      acc.value += s.value; acc.invested += s.invested; acc.result += s.result;
-      acc.holdings.push({ ticker: i.ticker, pie: p.name, qty: +i.qty || 0, ...s });
+// live numbers for '__ALL__' (whole account) | '__DIRECT__' (outside pies) | pie name, optionally one ticker.
+// src = snapshot-like {pies, total_value, cash, total_ppl}; direct holdings need PD.positions (latest snapshot only).
+function pdLive(src, key, ticker) {
+  const pies = src?.pies || [];
+  const pieAcc = { value: 0, invested: 0, result: 0, holdings: [] };
+  const pps = {};                                    // £ per share from the pie, for valuing direct shares
+  pies.forEach(p => (p.instruments || []).forEach(i => {
+    const s = pdSum(i), q = +i.qty || 0;
+    if (q > 0 && s.value > 0) pps[i.ticker] = { pps: s.value / q, ipps: s.invested / q };
+    if (s.value <= 0 && q <= 0) return;
+    if (key !== '__ALL__' && key !== p.name) return;
+    if (ticker && i.ticker !== ticker) return;
+    pieAcc.value += s.value; pieAcc.invested += s.invested; pieAcc.result += s.result;
+    pieAcc.holdings.push({ ticker: i.ticker, pie: p.name, key: p.name, qty: q, ...s });
+  }));
+  if (key !== '__ALL__' && key !== '__DIRECT__') return pieAcc;
+
+  // direct holdings (shares held outside any pie): positions qty − pie qty, valued at the pie's £/share
+  const direct = [];
+  if (src === PD.snapObj && PD.positions) {
+    const pieQty = {};
+    pies.forEach(p => (p.instruments || []).forEach(i => { pieQty[i.ticker] = (pieQty[i.ticker] || 0) + (+i.qty || 0); }));
+    const dh = PD.hist['__DIRECT__']?.series?.tickers || {};
+    PD.positions.forEach(ps => {
+      const dq = (+ps.quantity || 0) - (pieQty[ps.ticker] || 0);
+      if (dq <= 1e-6 || (ticker && ps.ticker !== ticker)) return;
+      let v = pps[ps.ticker] ? dq * pps[ps.ticker].pps : null;
+      if (v == null) { const t = dh[ps.ticker]; v = t?.value?.length ? t.value[t.value.length - 1] : null; }
+      direct.push({ ticker: ps.ticker, pie: 'Direct', key: '__DIRECT__', qty: dq, value: v, invested: null, result: null });
     });
-  });
-  return acc;
+  }
+  const hasAcc = src && src.total_value != null;
+  const accV = hasAcc ? +src.total_value - (+src.cash || 0) : null, accR = hasAcc ? +src.total_ppl || 0 : null;
+  if (key === '__ALL__') {
+    if (ticker || !hasAcc) {                         // one instrument: pie part + direct part
+      const extra = direct.reduce((a, d) => a + (d.value || 0), 0);
+      return { ...pieAcc, value: pieAcc.value + extra, holdings: [...pieAcc.holdings, ...direct] };
+    }
+    return { value: accV, invested: accV - accR, result: accR, holdings: [...pieAcc.holdings, ...direct] };
+  }
+  // __DIRECT__ = account − pies (keeps T212's own P&L for the direct shares)
+  const allPies = pdLive({ pies }, '__ALL__', null);
+  if (!hasAcc) return { value: direct.reduce((a, d) => a + (d.value || 0), 0), invested: 0, result: 0, holdings: direct };
+  const dv = accV - allPies.value, dr = accR - allPies.result;
+  if (ticker) { const d = direct[0]; return { value: d?.value || 0, invested: null, result: null, holdings: direct }; }
+  return { value: dv, invested: dv - dr, result: dr, holdings: direct };
 }
 
 async function pdLoadSnapshotData() {
   const since = new Date(Date.now() - 26 * 3600e3).toISOString();
   const [latest, intra] = await Promise.all([
-    api('portfolio_snapshots', '?select=id,created_at,raw&order=created_at.desc&limit=1'),
-    fetch(`${PROXY}/portfolio_snapshots_all?select=created_at,pies:raw->pies&created_at=gte.${encodeURIComponent(since)}&order=created_at.asc`).then(r => r.ok ? r.json() : []),
+    api('portfolio_snapshots', '?select=id,created_at,raw,total_value,cash,total_ppl&order=created_at.desc&limit=1'),
+    fetch(`${PROXY}/portfolio_snapshots_all?select=created_at,total_value,cash,total_ppl,pies:raw->pies&created_at=gte.${encodeURIComponent(since)}&order=created_at.asc`).then(r => r.ok ? r.json() : []),
   ]);
   PD.snap = latest[0] || null;
+  PD.snapObj = PD.snap ? { pies: PD.snap.raw?.pies || [], total_value: PD.snap.total_value, cash: PD.snap.cash, total_ppl: PD.snap.total_ppl } : null;
   PD.meta = PD.snap?.raw?.instrument_meta || {};
   PD.intraday = intra || [];
+  PD.positions = PD.snap ? await api('positions', `?snapshot_id=eq.${PD.snap.id}&select=ticker,quantity`).catch(() => []) : [];
 }
 
 async function pdHist(key) {
@@ -54,7 +88,7 @@ async function pdHist(key) {
 
 // last-24h change in profit (£) — deposits don't count, like T212's "last 24h"
 function pdLast24(key, ticker) {
-  const pts = (PD.intraday || []).map(s => ({ t: Date.parse(s.created_at), ...pdLive(s.pies, key, ticker) }));
+  const pts = (PD.intraday || []).map(s => ({ t: Date.parse(s.created_at), ...pdLive(s, key, ticker) }));
   if (pts.length < 2) return null;
   const now = pts[pts.length - 1], target = now.t - 24 * 3600e3;
   let base = pts[0];
@@ -72,7 +106,7 @@ async function pdOpen(key, ticker = null, ev) {
   el.className = 'show'; document.body.style.overflow = 'hidden';
   el.innerHTML = '<div class="dd-panel"><div class="loading">Loading…</div></div>';
   try { history.pushState({ pd: key }, '', `#positions/${encodeURIComponent(ticker || key)}`); } catch (e) {}
-  try { await Promise.all([PD.snap ? null : pdLoadSnapshotData(), pdHist(key)]); }
+  try { await Promise.all([PD.snap ? null : pdLoadSnapshotData(), pdHist(key), key === '__ALL__' ? pdHist('__DIRECT__') : null]); }
   catch (e) { el.innerHTML = `<div class="dd-panel"><div class="w-dim">Couldn't load: ${pdEsc(e.message)}</div></div>`; return; }
   pdRender();
 }
@@ -87,23 +121,24 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && PD.key) pd
 // ── render ────────────────────────────────────────────────────
 function pdTitle() {
   if (PD.ticker) return pdName(PD.ticker);
-  return PD.key === '__ALL__' ? 'All positions' : PD.key;
+  return PD.key === '__ALL__' ? 'All positions' : PD.key === '__DIRECT__' ? 'Direct holdings' : PD.key;
 }
 
 function pdRender() {
   const el = document.getElementById('pd');
-  const live = pdLive(PD.snap?.raw?.pies, PD.key, PD.ticker);
+  const live = pdLive(PD.snapObj, PD.key, PD.ticker);
   const l24 = pdLast24(PD.key, PD.ticker);
   const ror = live.invested ? live.result / live.invested * 100 : null;
   const h = PD.hist[PD.key];
   const ver = (h?.series?.verification || []).filter(v => !PD.ticker || v.ticker === PD.ticker);
   const bad = ver.filter(v => !v.ok), exc = (h?.series?.excluded || []).filter(v => !PD.ticker || v.ticker === PD.ticker);
+  const approx = ver.filter(v => v.ok && v.split === 'apportioned');
 
   el.innerHTML = `<div class="dd-panel pd-panel" role="dialog" aria-label="${pdEsc(pdTitle())}">
     <div class="dd-top">
       <button class="dd-back" style="display:block" onclick="${PD.ticker ? `pdOpen('${pdEsc(PD.key)}')` : 'pdClose()'}" aria-label="Back">←</button>
       <div class="dd-title" style="text-align:center"><div class="dd-name">${pdEsc(pdTitle())}</div>
-        ${PD.ticker ? `<div class="w-dim">${pdEsc(PD.ticker.replace(/_EQ$/, ''))} · ${pdEsc(PD.key === '__ALL__' ? (live.holdings[0]?.pie || '') : PD.key)}</div>` : ''}</div>
+        ${PD.ticker ? `<div class="w-dim">${pdEsc(PD.ticker.replace(/_EQ$/, ''))} · ${pdEsc(PD.key === '__DIRECT__' ? 'held directly (outside pies)' : PD.key)}</div>` : ''}</div>
       <button class="dd-back" style="display:block;visibility:hidden">·</button>
     </div>
     ${PD.ticker ? '' : `<div class="pd-tabs">${[['overview', 'Overview'], ['holdings', 'Holdings']].map(([k, l]) =>
@@ -123,7 +158,7 @@ function pdRender() {
     </div>
     <div class="pd-verify ${bad.length || exc.length ? 'warn' : 'ok'}">${h ? (bad.length || exc.length
       ? `⚠ ${bad.length + exc.length} holding${bad.length + exc.length > 1 ? 's' : ''} couldn't be fully matched to Trading 212 — ${[...bad.map(v => `${pdName(v.ticker)}: ${v.issue}`), ...exc.map(v => `${pdName(v.ticker)}: ${v.reason}`)].map(pdEsc).join('; ')}`
-      : `✓ History rebuilt from your Trading 212 trades — today's value matches Trading 212${ver.length ? ` for all ${ver.length} holding${ver.length > 1 ? 's' : ''}` : ''}`)
+      : `✓ Rebuilt from your Trading 212 trades — share counts match Trading 212${ver.length ? ` for all ${ver.length} holding${ver.length > 1 ? 's' : ''}` : ''}${approx.length ? `. ${approx.map(v => pdName(v.ticker)).join(', ')}: shares were moved between pie and direct holdings, so the daily pie/direct split is approximate` : ''}`)
       : 'History not built yet — runs after the daily Trading 212 sync.'}</div>
     ${PD.ticker ? pdHoldingFacts(live) : ''}`}
     <div class="w-dim w-small dd-foot">1D from your portfolio snapshots (every ~15–45 min in market hours). Longer ranges: holdings rebuilt from your Trading 212 order history, valued at daily closing prices${h ? ` · built ${new Date(h.updated_at).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}` : ''}.</div>
@@ -134,13 +169,14 @@ function pdRender() {
 function pdHoldings(live) {
   const tot = live.value || 1;
   const rows = [...live.holdings].sort((a, b) => b.value - a.value);
-  const l24 = t => pdLast24(PD.key, t);
+  const l24 = t => PD.key === '__ALL__' || PD.key === '__DIRECT__' ? null : pdLast24(PD.key, t);
   return `<div class="pd-hold">${rows.map(hd => {
     const r = hd.invested ? hd.result / hd.invested * 100 : null, d = l24(hd.ticker);
-    return `<div class="pd-hrow" onclick="pdOpen('${pdEsc(PD.key)}','${pdEsc(hd.ticker)}')">
-      <div><b>${pdEsc(pdName(hd.ticker))}</b><div class="w-dim w-small">${pdEsc(hd.ticker.replace(/_EQ$/, ''))}${PD.key === '__ALL__' ? ' · ' + pdEsc(hd.pie) : ''} · ${(hd.value / tot * 100).toFixed(1)}%</div></div>
+    const ret = hd.result == null ? '<span class="w-dim">return in Direct total</span>' : `${pdGbp(hd.result, true)} (${pdPct(r)})`;
+    return `<div class="pd-hrow" onclick="pdOpen('${pdEsc(hd.key || PD.key)}','${pdEsc(hd.ticker)}')">
+      <div><b>${pdEsc(pdName(hd.ticker))}</b><div class="w-dim w-small">${pdEsc(hd.ticker.replace(/_EQ$/, ''))}${PD.key === '__ALL__' ? ' · ' + pdEsc(hd.pie) : ''} · ${hd.value != null ? (hd.value / tot * 100).toFixed(1) + '%' : '—'}</div></div>
       <div style="text-align:right"><b>${pdGbp(hd.value)}</b>
-        <div class="w-small ${r == null ? '' : r >= 0 ? 'green' : 'red'}">${pdGbp(hd.result, true)} (${pdPct(r)})</div>
+        <div class="w-small ${r == null ? '' : r >= 0 ? 'green' : 'red'}">${ret}</div>
         ${d ? `<div class="w-small w-dim">24h ${pdGbp(d.gbp, true)}</div>` : ''}</div>
       <span class="w-chev">›</span></div>`; }).join('') || '<div class="w-dim">No holdings.</div>'}</div>`;
 }
@@ -156,7 +192,9 @@ function pdHoldingFacts(live) {
 // ── chart series for the selected range ───────────────────────
 function pdSeries(live) {
   if (PD.range === '1d') {
-    const pts = (PD.intraday || []).map(s => { const x = pdLive(s.pies, PD.key, PD.ticker); return { t: Date.parse(s.created_at) / 1000, v: x.value, p: x.result, inv: x.invested }; })
+    // intraday: whole account / pies / pie holdings from snapshots (direct single holdings have no intraday split)
+    if (PD.key === '__DIRECT__' && PD.ticker) return { pts: [], daily: false, nointraday: true };
+    const pts = (PD.intraday || []).map(s => { const x = pdLive(s, PD.key, PD.ticker); return { t: Date.parse(s.created_at) / 1000, v: x.value, p: x.result, inv: x.invested }; })
       .filter(p => p.v > 0 || p.inv > 0);
     const cut = Date.now() / 1000 - 24 * 3600;
     const inRange = pts.filter(p => p.t >= cut);
@@ -171,7 +209,9 @@ function pdSeries(live) {
   // today's point = live Trading 212 value
   const today = new Date().toISOString().slice(0, 10);
   pts = pts.filter(p => new Date(p.t * 1000).toISOString().slice(0, 10) < today);
-  pts.push({ t: Date.now() / 1000, v: live.value, inv: live.invested, p: live.result, live: true });
+  // live point: keep the history's own profit basis (value − net invested) so the line doesn't jump
+  const lastH = pts[pts.length - 1];
+  if (live.value != null) pts.push({ t: Date.now() / 1000, v: live.value, inv: lastH ? lastH.inv : live.invested, p: live.value - (lastH ? lastH.inv : live.invested), live: true });
   if (PD_DAYS[PD.range]) { const cut = Date.now() / 1000 - PD_DAYS[PD.range] * 86400; const k = pts.findIndex(p => p.t >= cut); pts = pts.slice(Math.max(0, k - 1)); }
   // drop leading zero-value stretch (before the first buy)
   const first = pts.findIndex(p => p.v > 0); if (first > 0) pts = pts.slice(first - 1 >= 0 ? first : 0);
@@ -192,7 +232,10 @@ function pdDraw(live) {
   if (!box) return;
   const { pts, missing } = pdSeries(live);
   if (pts.length < 2) {
-    box.innerHTML = `<div class="w-dim dd-chart-msg">${missing ? "This holding's price history couldn't be matched — see the note below." : PD.range === '1d' ? 'Not enough snapshots in the last 24 hours yet.' : 'No history for this range yet — it appears after the Trading 212 sync and history build.'}</div>`;
+    const why = missing ? "This holding's price history couldn't be matched — see the note below."
+      : PD.range === '1d' ? (PD.key === '__DIRECT__' && PD.ticker ? 'Intraday isn\'t tracked for single direct holdings — pick 1W or longer.' : 'Not enough snapshots in the last 24 hours yet.')
+      : 'No history for this range yet — it appears after the Trading 212 sync and history build.';
+    box.innerHTML = `<div class="w-dim dd-chart-msg">${why}</div>`;
     per.innerHTML = ''; return;
   }
   const P = pdPeriod(pts), up = (P?.gbp ?? 0) >= 0, col = up ? PDC.up : PDC.down;
@@ -234,4 +277,4 @@ function pdDraw(live) {
   hit.addEventListener('mousemove', move); hit.addEventListener('touchmove', move, { passive: true }); hit.addEventListener('touchstart', move, { passive: true });
   hit.addEventListener('mouseleave', leave); hit.addEventListener('touchend', () => setTimeout(leave, 1500));
 }
-window.addEventListener('resize', () => { if (PD.key && (PD.tab === 'overview' || PD.ticker)) pdDraw(pdLive(PD.snap?.raw?.pies, PD.key, PD.ticker)); });
+window.addEventListener('resize', () => { if (PD.key && (PD.tab === 'overview' || PD.ticker)) pdDraw(pdLive(PD.snapObj, PD.key, PD.ticker)); });

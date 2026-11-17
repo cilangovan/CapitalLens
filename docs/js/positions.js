@@ -30,7 +30,8 @@ async function loadPositions() {
     const sym = { GBP: '£', USD: '$', EUR: '€' }[c];
     return sym ? sym + Number(v).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) : Number(v).toFixed(2) + (c ? ' ' + c : '');
   };
-  const pieLive = name => (typeof pdLive === 'function') ? pdLive(snap.raw?.pies, name) : null;
+  const src = { pies: snap.raw?.pies || [], total_value: snap.total_value, cash: snap.cash, total_ppl: snap.total_ppl };
+  const pieLive = name => (typeof pdLive === 'function') ? pdLive(src, name) : null;
   const all = pieLive('__ALL__');
   if (all && all.value) {
     const ror = all.invested ? all.result / all.invested * 100 : null;
@@ -43,6 +44,16 @@ async function loadPositions() {
       <span class="${clr(all.result)}">${pdArrow(ror)} ${ror != null ? Math.abs(ror).toFixed(1) + '%' : '—'} · ${fmtGbpPlain(all.result)}</span>
       <span class="w-chev">›</span></div>`;
     container.appendChild(card);
+    const piesOnly = pdLive({ pies: snap.raw?.pies || [] }, '__ALL__');
+    const dv = all.value - piesOnly.value, dr = all.result - piesOnly.result;
+    if (dv > 0.5) {                                  // shares held outside pies
+      const d = document.createElement('div');
+      d.className = 'card pd-allcard pd-direct';
+      d.onclick = () => pdOpen('__DIRECT__');
+      d.innerHTML = `<div class="pd-allrow"><span><b>Direct holdings</b> <span class="w-dim w-small">outside pies</span></span>
+        <span>${fmtGbpPlain(dv)}</span><span class="${clr(dr)}">${fmtGbpPlain(dr)}</span><span class="w-chev">›</span></div>`;
+      container.appendChild(d);
+    }
   }
 
   Object.entries(groups).forEach(([pieName, pos]) => {
