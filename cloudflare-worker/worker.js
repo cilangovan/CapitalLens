@@ -5,6 +5,7 @@
  *   /auth/change-password  POST {token, newPassword}  → {ok} or 401
  *   /auth/reset-request    POST {username}             → {ok} (triggers GH Actions email)
  *   /auth/reset-confirm    POST {resetToken, newPassword} → {ok} or 400
+ *   /alerts/action         POST {token, ids:[..], action} → {ok, updated}  (read|unread|archive|dismiss|restore)
  *   /[table]               → proxy to Supabase (existing behaviour)
  *
  * Env vars (set in Cloudflare dashboard → Workers → Settings → Variables):
@@ -184,6 +185,26 @@ async function handleResetConfirm(req, env) {
   return json({ ok: true });
 }
 
+// ── Alert inbox actions (authenticated) ──────────────────────────────────────
+const ALERT_ACTIONS = {
+  read:    now => ({ read_at: now }),
+  unread:  ()  => ({ read_at: null }),
+  archive: now => ({ archived_at: now, dismissed_at: null, read_at: now }),
+  dismiss: now => ({ dismissed_at: now, archived_at: null, read_at: now }),
+  restore: ()  => ({ archived_at: null, dismissed_at: null }),
+};
+
+async function handleAlertAction(req, env) {
+  const { token, ids, action } = await req.json().catch(() => ({}));
+  if (!(await verifySession(env, token))) return json({ error: 'Invalid or expired session' }, 401);
+  const make = ALERT_ACTIONS[action];
+  if (!make) return json({ error: 'Unknown action' }, 400);
+  const clean = Array.isArray(ids) ? [...new Set(ids.map(Number))].filter(n => Number.isInteger(n) && n > 0) : [];
+  if (!clean.length || clean.length > 500) return json({ error: 'Provide 1–500 alert ids' }, 400);
+  await sbPatch(env, 'alerts', `id=in.(${clean.join(',')})`, make(new Date().toISOString()));
+  return json({ ok: true, updated: clean.length, action });
+}
+
 // ── Main handler ──────────────────────────────────────────────────────────────
 export default {
   async fetch(request, env) {
@@ -199,6 +220,7 @@ export default {
     if (path === '/auth/change-password') return handleChangePassword(request, env).catch(e => json({ error: e.message }, 500));
     if (path === '/auth/reset-request')   return handleResetRequest(request, env).catch(e => json({ error: e.message }, 500));
     if (path === '/auth/reset-confirm')   return handleResetConfirm(request, env).catch(e => json({ error: e.message }, 500));
+    if (path === '/alerts/action' && request.method === 'POST') return handleAlertAction(request, env).catch(e => json({ error: e.message }, 500));
     if (path === '/auth/debug') return json({
       has_supabase_url: !!env.SUPABASE_URL,
       supabase_url_prefix: env.SUPABASE_URL ? env.SUPABASE_URL.substring(0, 30) : null,
