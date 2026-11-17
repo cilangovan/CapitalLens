@@ -49,7 +49,7 @@ function pdLive(src, key, ticker) {
       // T212 P&L for the whole position − the pie's part = the direct shares' P&L
       const pieRes = pies.reduce((a, p) => a + (p.instruments || []).filter(i => i.ticker === ps.ticker).reduce((b, i) => b + pdSum(i).result, 0), 0);
       const res = ps.ppl != null && v != null ? +ps.ppl - pieRes : null;
-      direct.push({ ticker: ps.ticker, pie: 'Direct', key: '__DIRECT__', qty: dq, value: v, invested: res == null ? null : v - res, result: res });
+      direct.push({ ticker: ps.ticker, pie: 'Untagged', key: '__DIRECT__', qty: dq, value: v, invested: res == null ? null : v - res, result: res });
     });
   }
   // T212 account split: holdings = invested + P&L (total − free cash would also count blocked/pie cash)
@@ -128,7 +128,7 @@ document.addEventListener('keydown', e => { if (e.key === 'Escape' && PD.key) pd
 // ── render ────────────────────────────────────────────────────
 function pdTitle() {
   if (PD.ticker) return pdName(PD.ticker);
-  return PD.key === '__ALL__' ? 'All positions' : PD.key === '__DIRECT__' ? 'Direct holdings' : PD.key;
+  return PD.key === '__ALL__' ? 'All positions' : PD.key === '__DIRECT__' ? 'Untagged (outside pies)' : PD.key;
 }
 
 function pdRender() {
@@ -176,7 +176,7 @@ function pdHoldings(live) {
   const l24 = t => PD.key === '__ALL__' || PD.key === '__DIRECT__' ? null : pdLast24(PD.key, t);
   return `<div class="pd-hold">${rows.map(hd => {
     const r = hd.invested ? hd.result / hd.invested * 100 : null, d = l24(hd.ticker);
-    const ret = hd.result == null ? '<span class="w-dim">return in Direct total</span>' : `${pdGbp(hd.result, true)} (${pdPct(r)})`;
+    const ret = hd.result == null ? '<span class="w-dim">—</span>' : `${pdGbp(hd.result, true)} (${pdPct(r)})`;
     return `<div class="pd-hrow" onclick="pdOpen('${pdEsc(hd.key || PD.key)}','${pdEsc(hd.ticker)}')">
       <div><b>${pdEsc(pdName(hd.ticker))}</b><div class="w-dim w-small">${pdEsc(hd.ticker.replace(/_EQ$/, ''))}${PD.key === '__ALL__' ? ' · ' + pdEsc(hd.pie) : ''} · ${hd.value != null ? (hd.value / tot * 100).toFixed(1) + '%' : '—'}</div></div>
       <div style="text-align:right"><b>${pdGbp(hd.value)}</b>

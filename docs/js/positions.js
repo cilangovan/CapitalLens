@@ -13,9 +13,9 @@ async function loadPositions() {
 
   const groups = {};
   positions.forEach(p => {
-    const pie = p.pie || 'Solo';
-    if (!groups[pie]) groups[pie] = [];
-    groups[pie].push(p);
+    if (!p.pie) return;                             // held only outside pies → Untagged group below
+    if (!groups[p.pie]) groups[p.pie] = [];
+    groups[p.pie].push(p);
   });
 
   const container = document.getElementById('positions-list');
@@ -44,16 +44,6 @@ async function loadPositions() {
       <span class="${clr(all.result)}">${pdArrow(ror)} ${ror != null ? Math.abs(ror).toFixed(1) + '%' : '—'} · ${fmtGbpPlain(all.result)}</span>
       <span class="w-chev">›</span></div>`;
     container.appendChild(card);
-    const piesOnly = pdLive({ pies: snap.raw?.pies || [] }, '__ALL__');
-    const dv = all.value - piesOnly.value, dr = all.result - piesOnly.result;
-    if (dv > 0.5) {                                  // shares held outside pies
-      const d = document.createElement('div');
-      d.className = 'card pd-allcard pd-direct';
-      d.onclick = () => pdOpen('__DIRECT__');
-      d.innerHTML = `<div class="pd-allrow"><span><b>Direct holdings</b> <span class="w-dim w-small">outside pies</span></span>
-        <span>${fmtGbpPlain(dv)}</span><span class="${clr(dr)}">${fmtGbpPlain(dr)}</span><span class="w-chev">›</span></div>`;
-      container.appendChild(d);
-    }
   }
 
   Object.entries(groups).forEach(([pieName, pos]) => {
@@ -97,6 +87,68 @@ async function loadPositions() {
       </div>`;
     container.appendChild(div);
   });
+
+  // ── Untagged: shares held outside any pie (manual app orders, shares moved out of a pie) ──
+  const pies = snap.raw?.pies || [];
+  const pieQty = {}, pieRes = {}, pps = {}, gbpPer = {};   // pps = £/share from the pie; gbpPer = £ per quote unit, by currency
+  pies.forEach(pp => (pp.instruments || []).forEach(i => {
+    const r = i.result || {}, q = +i.qty || 0, v = +r.priceAvgValue || 0;
+    pieQty[i.ticker] = (pieQty[i.ticker] || 0) + q;
+    pieRes[i.ticker] = (pieRes[i.ticker] || 0) + (+r.priceAvgResult || 0);
+    if (q > 0 && v > 0) {
+      pps[i.ticker] = v / q;
+      const pos = positions.find(x => x.ticker === i.ticker), c = meta[i.ticker]?.ccy;
+      if (pos?.current_price && c && !gbpPer[c]) gbpPer[c] = (v / q) / +pos.current_price;
+    }
+  }));
+  gbpPer.GBP = 1; gbpPer.GBX = gbpPer.GBX || 0.01; gbpPer.GBp = 0.01;
+  const untagged = positions.map(p => {
+    const dq = (+p.quantity || 0) - (pieQty[p.ticker] || 0);
+    if (dq <= 1e-6) return null;
+    const c = meta[p.ticker]?.ccy;
+    const unitGbp = pps[p.ticker] ?? (gbpPer[c] && p.current_price ? gbpPer[c] * +p.current_price : null);
+    const value = unitGbp != null ? dq * unitGbp : null;
+    const res = p.ppl != null ? +p.ppl - (pieRes[p.ticker] || 0) : null;
+    const gain = value != null && res != null && value - res > 0 ? res / (value - res) * 100 : null;
+    return { ...p, dq, value, res, gain };
+  }).filter(Boolean).sort((x, y) => (y.value || 0) - (x.value || 0));
+  if (untagged.length) {
+    const tv = untagged.reduce((a, u) => a + (u.value || 0), 0), tr = untagged.reduce((a, u) => a + (u.res || 0), 0);
+    const tror = tv - tr > 0 ? tr / (tv - tr) * 100 : null;
+    const div = document.createElement('div');
+    div.className = 'pie-group';
+    div.innerHTML = `
+      <div class="pie-header" onclick="togglePie(this)">
+        <span class="pie-name"><a href="#positions/untagged" class="w-link" onclick="pdOpen('__DIRECT__', null, event)">Untagged</a> <span class="w-dim w-small">outside pies</span></span>
+        <span class="pie-meta">${fmtGbpPlain(tv)} · <span class="${clr(tror)}">${pdArrow(tror)} ${tror != null ? Math.abs(tror).toFixed(1) + '%' : ''}</span> · ${untagged.length} holding${untagged.length > 1 ? 's' : ''} · P&amp;L <span class="${clr(tr)}">${fmtGbpPlain(tr)}</span>
+          <button class="pd-chartbtn" title="Chart & returns" onclick="pdOpen('__DIRECT__', null, event)">📈</button></span>
+      </div>
+      <div class="pie-body">
+        <div class="pos-row">
+          <span class="pos-head">Ticker</span>
+          <span class="pos-head">Price</span>
+          <span class="pos-head">Value</span>
+          <span class="pos-head">Gain %</span>
+          <span class="pos-head">Dip</span>
+          <span class="pos-head">Analyst</span>
+        </div>
+        ${untagged.map(u => {
+          const a = analystMap[u.ticker] || {};
+          const analystHtml = a.star_rating ? `<span class="stars">${'★'.repeat(a.star_rating)}</span> ${badgeRating(a)}` : '—';
+          const also = pieQty[u.ticker] > 1e-6 ? ` · also in ${pdEsc(u.pie || 'a pie')}` : '';
+          return `<div class="pos-row">
+            <span><a href="#positions/${encodeURIComponent(u.ticker)}" class="w-link" onclick="pdOpen('__DIRECT__','${u.ticker}', event)">${u.display || u.ticker}</a>
+              <div class="w-dim w-small">${(+u.dq).toLocaleString('en-GB', { maximumFractionDigits: 4 })} sh${also}</div></span>
+            <span>${fmtQuote(u.current_price, u.ticker)}</span>
+            <span>${IS_GUEST ? '<span class="masked">***</span>' : u.value != null ? fmtGbpPlain(u.value) : '—'}</span>
+            <span class="${clr(u.gain)}">${IS_GUEST ? '<span class="masked">***</span>' : u.gain != null ? fmt(u.gain) + '%' : '—'}</span>
+            <span class="${clr(u.dip_from_high)}">${fmt(u.dip_from_high)}%</span>
+            <span>${analystHtml}</span>
+          </div>`;
+        }).join('')}
+      </div>`;
+    container.appendChild(div);
+  }
 }
 
 function togglePie(header) {
