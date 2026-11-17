@@ -5,8 +5,10 @@ import pathlib, re
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 DOCS = ROOT / "docs"
-SUPABASE_URL = "https://ggprfdetivzekjxlpvyq.supabase.co"
-SUPABASE_KEY = "sb_publishable_hghWk6EbuQPe2nYDgvmU2w_XPgajsHK"   # publishable key: designed to be public
+# Production project (the original "t212" project, converted to multi-user). The demo page uses its own project.
+SUPABASE_URL = "https://kloqkcxchstfoljpqcbq.supabase.co"
+SUPABASE_KEY = "sb_publishable_XXLlyHUZpaiCZkAb6u5NWQ_bePWcmGf"
+APP_URL = "https://cilangovan.github.io/CapitalLens/app/"   # publishable key: designed to be public
 
 def sub(s, a, b):
     assert a in s, f"anchor missing: {a[:60]}"
@@ -31,7 +33,16 @@ s = sub(s, '<input type="text" id="login-user" placeholder="Username" value="adm
         '        <input type="email" id="login-user" placeholder="Email" autocomplete="username">')
 s = sub(s, 'id="login-btn" onclick="doLogin()">🔐 Sign In</button>', 'id="login-btn" onclick="doLogin()">🔐 Sign In</button>\n      <div class="auth-note" id="auth-note"></div>')
 s = sub(s, '<button class="login-link" onclick="showResetForm()">Forgot password?</button>',
-        '<span class="auth-note">CapitalLens only reads your portfolio. It cannot place trades.</span>')
+        '<button class="login-link" id="forgot-link" onclick="doForgot()">Forgot password?</button>'
+        '<div class="auth-note">CapitalLens only reads your portfolio. It cannot place trades.</div>')
+s = sub(s, '<!-- Password reset request form -->', '''<div id="newpw-form" style="display:none">
+      <p style="font-size:13px;color:var(--muted);margin-bottom:14px">Choose a new password (at least 10 characters).</p>
+      <div class="login-field"><input type="password" id="newpw-1" placeholder="New password" autocomplete="new-password"></div>
+      <div class="pw-error" id="newpw-error"></div>
+      <button class="login-btn btn-master" onclick="doSetNewPassword()">Save password</button>
+    </div>
+
+    <!-- Password reset request form -->''')
 
 nav_btn = '  <button data-tab="accounts" onclick="showTab(\'accounts\',this)">🔗 Accounts</button>\n</nav>'
 s = sub(s, '</nav>', nav_btn)
@@ -106,7 +117,9 @@ f"""// Multi-user build: Supabase Auth for sign-in and sign-up; row-level securi
 const SUPABASE_URL = '{SUPABASE_URL}';
 const SUPABASE_KEY = '{SUPABASE_KEY}';   // publishable key: safe in a browser
 const PROXY = SUPABASE_URL + '/rest/v1';
-let AUTH_MODE = 'signin';""")
+let AUTH_MODE = 'signin';
+const APP_URL = '{APP_URL}';
+let RECOVERY_TOKEN = null;""")
 i = a.index('async function doLogin() {'); j = a.index('function loginGuest()')
 a = a[:i] + """function setAuthMode(mode) {
   AUTH_MODE = mode;
@@ -134,7 +147,7 @@ async function doLogin() {
   setBtnLoading('login-btn', true);
   try {
     const signup = AUTH_MODE === 'signup';
-    const r = await fetch(signup ? `${SUPABASE_URL}/auth/v1/signup` : `${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+    const r = await fetch(signup ? `${SUPABASE_URL}/auth/v1/signup?redirect_to=${encodeURIComponent(APP_URL)}` : `${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
       method: 'POST', headers: { 'Content-Type': 'application/json', apikey: SUPABASE_KEY },
       body: JSON.stringify({ email, password }),
     });
@@ -154,6 +167,46 @@ async function doLogin() {
 }
 
 """ + a[j:]
+a = a.replace("const APP_URL = '{APP_URL}';", f"const APP_URL = '{APP_URL}';")
+a += """
+
+async function doForgot() {
+  const email = document.getElementById('login-user').value.trim();
+  if (!email) { setErr('pw-error', 'Enter your email above first'); return; }
+  setErr('pw-error', '');
+  try {
+    await fetch(`${SUPABASE_URL}/auth/v1/recover?redirect_to=${encodeURIComponent(APP_URL)}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', apikey: SUPABASE_KEY }, body: JSON.stringify({ email }),
+    });
+  } catch (e) {}
+  document.getElementById('auth-note').textContent = 'If that email has an account, a reset link is on its way.';
+}
+
+async function doSetNewPassword() {
+  const pw = document.getElementById('newpw-1').value, err = document.getElementById('newpw-error');
+  if (pw.length < 10) { err.textContent = 'Use at least 10 characters'; return; }
+  const r = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json', apikey: SUPABASE_KEY, Authorization: 'Bearer ' + RECOVERY_TOKEN },
+    body: JSON.stringify({ password: pw }),
+  });
+  if (!r.ok) { err.textContent = 'Could not save the password. The link may have expired; request a new one.'; return; }
+  _enter({ access_token: RECOVERY_TOKEN });
+}
+
+// Email links (confirm sign-up, reset password) return here with the session in the URL fragment.
+(function handleAuthHash() {
+  const h = new URLSearchParams(location.hash.replace(/^#/, ''));
+  if (!h.get('access_token') && !h.get('error_description')) return;
+  history.replaceState(null, '', location.pathname);
+  if (h.get('error_description')) { setErr('pw-error', 'That link has expired. Request a new one.'); return; }
+  if (h.get('type') === 'recovery') {
+    RECOVERY_TOKEN = h.get('access_token');
+    document.getElementById('login-form').style.display = 'none';
+    document.getElementById('newpw-form').style.display = 'block';
+    document.getElementById('login-subtitle').textContent = 'Reset password';
+  } else { _enter({ access_token: h.get('access_token') }); }
+})();
+"""
 a = sub(a, "document.getElementById('change-pw-btn').style.display = 'inline-block';", "// password change comes later")
 a = sub(a, "if (!IS_GUEST) loadTab('alerts');", "if (!IS_GUEST) { loadTab('alerts'); loadAccounts(true); }")
 (DOCS / "app" / "app-auth.js").write_text(a, encoding="utf-8")

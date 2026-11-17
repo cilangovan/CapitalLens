@@ -1,9 +1,11 @@
 // ── AUTH ──────────────────────────────────────────────────────
 // Multi-user build: Supabase Auth for sign-in and sign-up; row-level security scopes every query to the signed-in user.
-const SUPABASE_URL = 'https://ggprfdetivzekjxlpvyq.supabase.co';
-const SUPABASE_KEY = 'sb_publishable_hghWk6EbuQPe2nYDgvmU2w_XPgajsHK';   // publishable key: safe in a browser
+const SUPABASE_URL = 'https://kloqkcxchstfoljpqcbq.supabase.co';
+const SUPABASE_KEY = 'sb_publishable_XXLlyHUZpaiCZkAb6u5NWQ_bePWcmGf';   // publishable key: safe in a browser
 const PROXY = SUPABASE_URL + '/rest/v1';
 let AUTH_MODE = 'signin';
+const APP_URL = 'https://cilangovan.github.io/CapitalLens/app/';
+let RECOVERY_TOKEN = null;
 let IS_GUEST = false;
 let SESSION_TOKEN = null;
 
@@ -69,7 +71,7 @@ async function doLogin() {
   setBtnLoading('login-btn', true);
   try {
     const signup = AUTH_MODE === 'signup';
-    const r = await fetch(signup ? `${SUPABASE_URL}/auth/v1/signup` : `${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
+    const r = await fetch(signup ? `${SUPABASE_URL}/auth/v1/signup?redirect_to=${encodeURIComponent(APP_URL)}` : `${SUPABASE_URL}/auth/v1/token?grant_type=password`, {
       method: 'POST', headers: { 'Content-Type': 'application/json', apikey: SUPABASE_KEY },
       body: JSON.stringify({ email, password }),
     });
@@ -244,3 +246,41 @@ window.addEventListener('DOMContentLoaded', function() {
     // guest mode retired: every read now needs a signed-in session
   } catch(e) {}
 });
+
+
+async function doForgot() {
+  const email = document.getElementById('login-user').value.trim();
+  if (!email) { setErr('pw-error', 'Enter your email above first'); return; }
+  setErr('pw-error', '');
+  try {
+    await fetch(`${SUPABASE_URL}/auth/v1/recover?redirect_to=${encodeURIComponent(APP_URL)}`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json', apikey: SUPABASE_KEY }, body: JSON.stringify({ email }),
+    });
+  } catch (e) {}
+  document.getElementById('auth-note').textContent = 'If that email has an account, a reset link is on its way.';
+}
+
+async function doSetNewPassword() {
+  const pw = document.getElementById('newpw-1').value, err = document.getElementById('newpw-error');
+  if (pw.length < 10) { err.textContent = 'Use at least 10 characters'; return; }
+  const r = await fetch(`${SUPABASE_URL}/auth/v1/user`, {
+    method: 'PUT', headers: { 'Content-Type': 'application/json', apikey: SUPABASE_KEY, Authorization: 'Bearer ' + RECOVERY_TOKEN },
+    body: JSON.stringify({ password: pw }),
+  });
+  if (!r.ok) { err.textContent = 'Could not save the password. The link may have expired; request a new one.'; return; }
+  _enter({ access_token: RECOVERY_TOKEN });
+}
+
+// Email links (confirm sign-up, reset password) return here with the session in the URL fragment.
+(function handleAuthHash() {
+  const h = new URLSearchParams(location.hash.replace(/^#/, ''));
+  if (!h.get('access_token') && !h.get('error_description')) return;
+  history.replaceState(null, '', location.pathname);
+  if (h.get('error_description')) { setErr('pw-error', 'That link has expired. Request a new one.'); return; }
+  if (h.get('type') === 'recovery') {
+    RECOVERY_TOKEN = h.get('access_token');
+    document.getElementById('login-form').style.display = 'none';
+    document.getElementById('newpw-form').style.display = 'block';
+    document.getElementById('login-subtitle').textContent = 'Reset password';
+  } else { _enter({ access_token: h.get('access_token') }); }
+})();
