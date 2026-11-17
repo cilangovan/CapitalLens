@@ -118,7 +118,8 @@ def xirr(cashflows, dates, guess=0.1):
 
 def get_snapshots():
     """Fetch all portfolio snapshots ordered by time."""
-    path = "portfolio_snapshots?select=id,created_at,total_value,invested,cash&order=created_at.asc"
+    # full history: live table (last 45 days) + archive
+    path = "portfolio_snapshots_all?select=id,created_at,total_value,invested,cash&order=created_at.asc"
     return supabase_request("GET", path) or []
 
 
