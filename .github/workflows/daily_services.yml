@@ -8,8 +8,12 @@ on:
 
 jobs:
   history:
-    name: Realised P&L + Dividends
+    name: T212 History Sync (orders, dividends, transactions)
     runs-on: ubuntu-latest
+    timeout-minutes: 45
+    concurrency:
+      group: t212-sync
+      cancel-in-progress: false
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-python@v5
@@ -17,13 +21,13 @@ jobs:
           python-version: '3.11'
       - name: Install deps
         run: pip install -r requirements.txt
-      - name: Run history service
+      - name: Sync Trading 212 history (lossless, rate-limited)
         env:
           T212_API_KEY:    ${{ secrets.T212_API_KEY }}
           T212_API_SECRET: ${{ secrets.T212_API_SECRET }}
           SUPABASE_URL:    ${{ secrets.SUPABASE_URL }}
           SUPABASE_KEY:    ${{ secrets.SUPABASE_SERVICE_KEY }}
-        run: python -m services.history_service
+        run: python -m services.t212_sync_service
 
   analyst:
     name: Analyst Ratings

@@ -1,0 +1,33 @@
+name: T212 History Sync
+
+# On demand (the daily run is part of daily_services.yml). Tick "full" to re-walk the whole history.
+on:
+  workflow_dispatch:
+    inputs:
+      full:
+        description: 'Re-walk the complete history (slow: ~10 s per 50 items)'
+        type: boolean
+        default: false
+
+concurrency:
+  group: t212-sync
+  cancel-in-progress: false
+
+jobs:
+  sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+      - run: pip install -r requirements.txt
+      - name: Sync Trading 212 history
+        env:
+          T212_API_KEY:    ${{ secrets.T212_API_KEY }}
+          T212_API_SECRET: ${{ secrets.T212_API_SECRET }}
+          SUPABASE_URL:    ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY:    ${{ secrets.SUPABASE_SERVICE_KEY }}
+          FULL: ${{ inputs.full && '1' || '0' }}
+        run: python -u -m services.t212_sync_service
