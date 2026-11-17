@@ -234,7 +234,7 @@ async function loadInstFlow() {
         ${r.cash_strategy}
       </div>`:''}
 
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px;margin-bottom:14px">
+      <div class="m-grid2" style="gap:16px;margin-bottom:14px">
         <div>
           <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px">✅ Opportunities</div>
           ${oppHtml||'<div style="font-size:11px;color:#334155">None identified</div>'}
@@ -526,7 +526,7 @@ async function loadStrategy() {
             <div id="${id}" style="display:none;padding:12px 14px;border-top:1px solid #2d3353">
               ${twBox}
               ${priceStats}
-              <div style="display:grid;grid-template-columns:1fr 1fr;gap:16px">
+              <div class="m-grid2" style="gap:16px">
                 <div>
                   <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:7px">Entry Zones</div>
                   ${zonesHtml}
