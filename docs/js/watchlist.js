@@ -4,7 +4,9 @@
 // ENTER / ACCUMULATE / HOLD / AVOID, price points with £ per step, RSI, volume, quality.
 // ✕ removes it and stops all tracking. Writes go through the worker (/watchlist/*).
 
-const WL = { cat: 'stock', items: [], analysis: {}, open: new Set(), pending: new Set(), searchTimer: null, poll: null };
+const WL = { cat: 'stock', items: [], analysis: {}, open: new Set(), pending: new Set(), searchTimer: null, poll: null,
+             expanded: new Set((() => { try { return JSON.parse(localStorage.getItem('wl_expanded') || '[]'); } catch (e) { return []; } })()) };
+function wlSaveExpanded() { try { localStorage.setItem('wl_expanded', JSON.stringify([...WL.expanded])); } catch (e) {} }
 const WCATS = {
   stock:     { icon: '📈', label: 'Stocks',      key: 'watchlist_weekly_budget',
                ph: '🔍 Search any stock or ETF worldwide — name or symbol (e.g. Toyota, Rolls-Royce, 0700.HK)', picks: [] },
@@ -199,7 +201,9 @@ function renderWatchlist() {
     if (a?.verdict) counts[a.verdict] = (counts[a.verdict] || 0) + 1;
     if (a?.data?.budget) { budget = a.data.budget; if (['ENTER','ACCUMULATE'].includes(a.verdict)) spend += a.data.budget.this_stock || 0; }
   });
+  const allOpen = mine.every(i => WL.expanded.has(i.ticker));
   sum.innerHTML = `<div class="w-summary">
+    <button class="w-pick" onclick="wlExpandAll(${!allOpen})">${allOpen ? '▴ Collapse all' : '▾ Expand all'}</button>
     ${Object.keys(VERDICT).map(v => `<span class="w-pill ${VERDICT[v].cls}">${VERDICT[v].label.split(' ')[1]} ${counts[v] || 0}</span>`).join('')}
   </div>
   <div class="w-budget">
@@ -216,19 +220,31 @@ function renderWatchlist() {
 function wlCard(i) {
   const row = WL.analysis[i.ticker];
   const pending = WL.pending.has(i.ticker) || !row;
-  const head = `<div class="w-head" onclick="wlToggle('${_wesc(i.ticker)}')">
-      <div class="w-title"><b>${_wesc(i.name || wSym(i.ticker))}</b> <span class="w-dim">${_wesc(wSym(i.ticker))} · ${_wesc(i.exchange || '')}</span>
-        ${i.t212_ticker ? '<span class="w-chip t212">✓ T212</span>'
-          : (i.alternatives || []).length ? '<span class="w-chip t212">T212 via ETP/ETC</span>' : '<span class="w-chip">not on T212</span>'}</div>
-      <button class="w-x" title="Remove & stop tracking" onclick="wlRemove(event,'${_wesc(i.ticker)}')">✕</button>
+  const a = (row && row.data) || {};
+  const ok = row && row.status === 'ok' && !pending;
+  const v = ok ? (VERDICT[row.verdict] || VERDICT.HOLD) : null;
+  const exp = WL.expanded.has(i.ticker);
+  const t = _wesc(i.ticker);
+  const head = `<div class="w-head" onclick="wlExpand('${t}')" role="button" aria-expanded="${exp}">
+      <span class="w-chev">${exp ? '▾' : '▸'}</span>
+      <div class="w-title">
+        <a href="#watch/${encodeURIComponent(i.ticker)}" class="w-link" onclick="wlOpenDetail(event,'${t}')">${_wesc(i.name || wSym(i.ticker))}</a>
+        <span class="w-dim">${_wesc(wSym(i.ticker))}${exp ? ' · ' + _wesc(i.exchange || '') : ''}</span>
+        ${exp ? (i.t212_ticker ? '<span class="w-chip t212">✓ T212</span>'
+          : (i.alternatives || []).length ? '<span class="w-chip t212">T212 via ETP/ETC</span>' : '<span class="w-chip">not on T212</span>') : ''}</div>
+      <div class="w-quick">
+        ${pending ? '<span class="w-dim">⏳</span>' : ok ? `<span class="w-pill sm ${v.cls}">${v.label.split(' ')[1]}</span>
+          <span class="w-qp">${(typeof ddPx === 'function' ? ddPx(a.price, a) : wMoney(a.price, a.ccy))}</span>
+          <span class="w-qc ${a.daily_pct < 0 ? 'red' : 'green'}">${wPct(a.daily_pct)}</span>` : '<span class="w-pill sm v-none">❔</span>'}
+      </div>
+      <button class="w-x" title="Remove & stop tracking" onclick="wlRemove(event,'${t}')">✕</button>
     </div>`;
-  if (pending) return `<div class="w-card" data-t="${_wesc(i.ticker)}">${head}<div class="w-dim w-pad">⏳ Analysing… (about a minute)</div></div>`;
-  const a = row.data || {};
-  if (row.status !== 'ok') return `<div class="w-card muted" data-t="${_wesc(i.ticker)}">${head}
+  if (!exp) return `<div class="w-card collapsed ${v ? v.cls : ''}" data-t="${t}">${head}</div>`;
+  if (pending) return `<div class="w-card" data-t="${t}">${head}<div class="w-dim w-pad">⏳ Analysing… (about a minute)</div></div>`;
+  if (!ok) return `<div class="w-card muted" data-t="${t}">${head}
       <div class="w-pad"><span class="w-pill v-none">❔ DATA UNVERIFIED</span>
       <div class="w-dim" style="margin-top:6px">${_wesc(a.reason || 'Analysis failed')}. No verdict without verified prices.</div></div></div>`;
 
-  const v = VERDICT[row.verdict] || VERDICT.HOLD;
   const open = WL.open.has(i.ticker);
   const q = a.quality || {}, vol = a.volume || {};
   const rsiCls = a.rsi < 40 ? 'g' : a.rsi > 70 ? 'r' : a.rsi > 60 ? 'y' : '';
@@ -254,7 +270,8 @@ function wlCard(i) {
       ${entries ? `<table class="w-table"><thead><tr><th>Price point</th><th>Price</th><th>vs now</th><th>Buy</th></tr></thead><tbody>${entries}</tbody></table>
         <div class="w-dim w-small">How much: £${a.budget?.this_stock ?? 0} ${_wesc(a.budget?.basis || '')} — from your £${Math.round(a.budget?.watchlist_pool || 0)}/week ${_wesc(C_label(i))} budget, shared across the ones worth buying.</div>`
         : `<div class="w-dim w-small">No buy levels this week.</div>`}
-      <div class="w-more" onclick="wlToggle('${_wesc(i.ticker)}')">${open ? '▲ Less' : '▼ Details: volume, quality, levels'}</div>
+      <div class="w-actions-row"><span class="w-more" onclick="wlToggle('${_wesc(i.ticker)}')">${open ? '▲ Less' : '▼ Details: volume, quality, levels'}</span>
+        <a class="w-more" href="#watch/${encodeURIComponent(i.ticker)}" onclick="wlOpenDetail(event,'${_wesc(i.ticker)}')">📈 Chart, profile & insights →</a></div>
       ${open ? `<div class="w-details">
         <div><b>Volume:</b> ${_wesc(vol.note)}${vol.partial_excluded ? ' <span class="w-dim">(today\'s unfinished session excluded)</span>' : ''}</div>
         <div><b>Quality checks</b>${(q.reasons || []).map(r => `<div class="w-dim">${_wesc(r)}</div>`).join('')}</div>
@@ -285,5 +302,11 @@ async function wlSaveBudget() {
 }
 
 function C_label(i) { return WCATS[wCat(i)].label.toLowerCase(); }
+
+function wlExpand(t) { WL.expanded.has(t) ? WL.expanded.delete(t) : WL.expanded.add(t); wlSaveExpanded(); renderWatchlist(); }
+function wlExpandAll(on) {
+  WL.items.filter(i => wCat(i) === WL.cat).forEach(i => on ? WL.expanded.add(i.ticker) : WL.expanded.delete(i.ticker));
+  wlSaveExpanded(); renderWatchlist();
+}
 
 function wlToggle(t) { WL.open.has(t) ? WL.open.delete(t) : WL.open.add(t); renderWatchlist(); }
