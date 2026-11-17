@@ -85,5 +85,15 @@ Supabase's performance advisor reports no missing indexes.
 
 ## Security notes
 
-- Public read (`anon`) is **select-only** on every table except `dashboard_auth` and the raw `t212_*` history tables (no anon/authenticated access at all — service role only). All writes use the service role (GitHub Actions + Worker).
+- **The database is server-side only.** The public `anon` / `authenticated` roles have no access to any table, view, sequence
+  or function (no `public_read` policies; default privileges revoked so new objects stay private too). RLS stays enabled.
+- **Every read goes through the Cloudflare worker** with a signed-in session (`Authorization: Bearer <session>`), against an
+  allowlist of dashboard tables. `dashboard_auth` and the raw `t212_*` history are never served. The worker uses the service
+  key server-side only and forwards no client headers.
+- **Login:** salted PBKDF2-SHA256 passwords (old SHA-256 hashes upgrade on next sign-in); 5 failed attempts lock sign-in for
+  15 minutes (`failed_logins`, `locked_until`); a password reset signs out every session.
+- **Front end:** no third-party scripts (Chart.js self-hosted from npm, integrity-pinned — `docs/vendor/`), a strict
+  Content-Security-Policy, and every worker response sanitised at one gate (`defuse()` in `docs/js/api.js`).
+- **Checked automatically:** `tests/security_check.py` (`security.yml`, every change + daily) probes the worker and database as
+  an outsider; `tests/ui_layout_test.py` runs an XSS attack pass with a payload in every text field.
 - `db/schema.sql` and `supabase/migrations/` contain structure only; the export redacts any credential seed it finds.
