@@ -1,18 +1,23 @@
 name: Database Backup
 
-# Weekly schema snapshot into git (db/schema.sql + supabase/migrations/), plus an optional
-# encrypted data dump. This repo is PUBLIC: data is never committed — it is encrypted with
-# BACKUP_PASSPHRASE and attached to the run as a 30-day artifact until you choose a destination.
+# Weekly schema snapshot into git (db/schema.sql + supabase/migrations/), plus a DAILY encrypted
+# data dump shipped to Cloudflare R2 (db/r2_backup.sh keeps 7 daily / 5 weekly / 13 monthly).
+# This repo is PUBLIC: data is never committed — it is encrypted with BACKUP_PASSPHRASE before it
+# leaves the runner, and the run also keeps the encrypted file as a short-lived artifact fallback.
 #
 # Secrets (Settings → Secrets and variables → Actions):
 #   SUPABASE_DB_URL        Session-pooler connection string (Supabase → Connect → Session pooler, port 5432)
 #                          — enables pg_dump (full-fidelity dumps) and the schema export
 #   or SUPABASE_ACCESS_TOKEN  (+ repo variable SUPABASE_PROJECT_REF) — schema export only, via the Management API
 #   BACKUP_PASSPHRASE      required for data backups (gpg AES-256); keep a copy somewhere safe
+#   R2_ACCOUNT_ID, R2_ACCESS_KEY_ID, R2_SECRET_ACCESS_KEY  (+ optional R2_BUCKET, default 'portfoliomanager')
+#                          Cloudflare R2 destination (token scoped to the one bucket, Object Read & Write).
+#                          If any is missing the R2 step is skipped with a warning (artifact only).
 
 on:
   schedule:
-    - cron: '17 3 * * 0'          # Sundays 03:17 UTC
+    - cron: '17 3 * * 0'          # Sundays 03:17 UTC — schema snapshot
+    - cron: '41 3 * * *'          # daily 03:41 UTC — encrypted data backup → R2
   workflow_dispatch:
     inputs:
       include_data:
@@ -35,6 +40,7 @@ env:
 jobs:
   schema:
     name: Schema → git
+    if: github.event_name == 'workflow_dispatch' || github.event.schedule == '17 3 * * 0'
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -94,7 +100,7 @@ jobs:
 
   data:
     name: Data → encrypted artifact
-    if: github.event_name == 'workflow_dispatch' && inputs.include_data
+    if: (github.event_name == 'schedule' && github.event.schedule == '41 3 * * *') || (github.event_name == 'workflow_dispatch' && inputs.include_data)
     runs-on: ubuntu-latest
     timeout-minutes: 15
     steps:
@@ -130,11 +136,43 @@ jobs:
           echo "FILE=$f" >> "$GITHUB_ENV"
           ls -la "$f"
 
-      # ── Destination: undecided. The encrypted file is attached to this run for 30 days.
-      #    To ship it elsewhere later (S3 / Cloudflare R2 / Google Drive …), add an upload step here.
-      - name: Upload encrypted backup
+      - name: Check the archive is complete
+        run: |
+          # The long history lives in the *_archive tables (moved there by db_maintenance) — make sure
+          # they are inside the dump scope, which is --schema=public minus dashboard_auth.
+          pg_dump "$SUPABASE_DB_URL" --schema-only --schema=public -t 'public.*_archive' \
+            | grep -c 'CREATE TABLE public\..*_archive' | grep -qE '^[2-9]' \
+            || { echo "::error::expected portfolio_snapshots_archive and positions_archive in the dump scope"; exit 1; }
+
+      - name: Integrity check (decrypt + gunzip test)
+        env:
+          BACKUP_PASSPHRASE: ${{ secrets.BACKUP_PASSPHRASE }}
+        run: |
+          set -euo pipefail
+          gpg --batch --pinentry-mode loopback --passphrase-fd 3 --decrypt "$FILE" 3<<<"$BACKUP_PASSPHRASE" | gzip -t
+          # sanity: a data-only dump of this DB always contains COPY blocks for these tables
+          gpg --batch --pinentry-mode loopback --passphrase-fd 3 --decrypt "$FILE" 3<<<"$BACKUP_PASSPHRASE" \
+            | gunzip | grep -q '^COPY public.t212_orders ' \
+            || { echo "::error::dump looks empty — t212_orders is missing"; exit 1; }
+          echo "Backup decrypts and unzips cleanly."
+
+      - name: Ship to Cloudflare R2 (7 daily / 5 weekly / 13 monthly)
+        env:
+          R2_ACCOUNT_ID: ${{ secrets.R2_ACCOUNT_ID }}
+          R2_ACCESS_KEY_ID: ${{ secrets.R2_ACCESS_KEY_ID }}
+          R2_SECRET_ACCESS_KEY: ${{ secrets.R2_SECRET_ACCESS_KEY }}
+          R2_BUCKET: ${{ secrets.R2_BUCKET || vars.R2_BUCKET || 'portfoliomanager' }}
+        run: |
+          if [ -z "$R2_ACCOUNT_ID" ] || [ -z "$R2_ACCESS_KEY_ID" ] || [ -z "$R2_SECRET_ACCESS_KEY" ] || [ -z "$R2_BUCKET" ]; then
+            echo "::warning title=R2 not configured::R2_* secrets missing — backup kept only as a run artifact (see db/README.md)"
+            exit 0
+          fi
+          db/r2_backup.sh "$FILE"
+
+      # Fallback copy on the run itself (encrypted). Short retention now that R2 holds the real history.
+      - name: Upload encrypted backup (artifact fallback)
         uses: actions/upload-artifact@v4
         with:
           name: data-${{ github.run_number }}
           path: ${{ env.FILE }}
-          retention-days: 30
+          retention-days: 7
