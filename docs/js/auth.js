@@ -181,7 +181,8 @@ async function doChangePassword() {
 }
 
 // ── Check session on load ─────────────────────────────────────
-(function() {
+// Runs after every script has loaded (startApp needs loadTab from router.js, loaded last).
+window.addEventListener('DOMContentLoaded', function() {
   const params = new URLSearchParams(location.search);
   if (params.get('reset')) {
     document.getElementById('login-form').style.display = 'none';
@@ -204,4 +205,4 @@ async function doChangePassword() {
     if (auth === 'master' && tok) { SESSION_TOKEN = tok; IS_GUEST = false; startApp(); }
     else if (auth === 'guest') { IS_GUEST = true; startApp(); }
   } catch(e) {}
-})();
+});
