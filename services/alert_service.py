@@ -319,7 +319,7 @@ def run():
                    sb_get("analyst_ratings?select=ticker,star_rating,buy_pct,sell_pct")}
     today = datetime.now(timezone.utc).date()
     day_start = datetime.combine(today, datetime.min.time(), tzinfo=timezone.utc).isoformat()
-    todays = sb_get("alerts?select=id,pie,dedup_key&alert_type=eq.report"
+    todays = sb_get("alerts?select=id,pie,dedup_key,archived_at,dismissed_at&alert_type=eq.report"
                     f"&created_at=gte.{urllib.parse.quote(day_start)}")
 
     pushed = 0
@@ -335,16 +335,27 @@ def run():
         title = title_for(name, flags, coverage, len(pie.get("instruments") or []))
         already_pushed = any(r.get("dedup_key") == key for r in todays)
 
-        # Keep one report per pie per day on the dashboard: replace earlier ones
-        for r in todays:
-            if r.get("pie") == name:
-                _sb("DELETE", f"alerts?id=eq.{r['id']}")
-        _sb("POST", "alerts", {
-            "alert_type": "report", "type": "report", "pie": name, "ticker": None,
-            "title": title, "body": render_text(sections), "dedup_key": key,
-            "created_at": datetime.now(timezone.utc).isoformat(),
-        })
-        print(f"  ✓ {title}")
+        # One report per pie per day. Respect inbox state set on the dashboard:
+        #  - same flags as a report you archived/dismissed today → leave it alone
+        #  - same flags as a report still in the inbox → refresh it in place (keeps read state)
+        #  - new flags → replace today's inbox report with a fresh (unread) one
+        same = [r for r in todays if r.get("dedup_key") == key]
+        body = render_text(sections)
+        if any(r.get("archived_at") or r.get("dismissed_at") for r in same):
+            print(f"  · {title} (unchanged; you archived/cleared it)")
+        elif same:
+            _sb("PATCH", f"alerts?id=eq.{same[0]['id']}", {"title": title, "body": body})
+            print(f"  ↻ {title}")
+        else:
+            for r in todays:
+                if r.get("pie") == name and not (r.get("archived_at") or r.get("dismissed_at")):
+                    _sb("DELETE", f"alerts?id=eq.{r['id']}")
+            _sb("POST", "alerts", {
+                "alert_type": "report", "type": "report", "pie": name, "ticker": None,
+                "title": title, "body": body, "dedup_key": key,
+                "created_at": datetime.now(timezone.utc).isoformat(),
+            })
+            print(f"  ✓ {title}")
 
         if flags and not already_pushed:
             prio = "high" if any(("dip" in f or "fall" in f) for f in flags) else "default"

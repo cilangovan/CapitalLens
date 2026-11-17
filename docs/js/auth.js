@@ -94,6 +94,7 @@ function startApp() {
   }
   if (!IS_GUEST) startInactivityTimer();
   loadTab('overview');
+  if (!IS_GUEST) loadTab('alerts');   // preload so the 🔔 unread badge shows
 }
 
 // ── Reset password flow ───────────────────────────────────────
