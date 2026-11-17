@@ -121,7 +121,9 @@ def live_checks():
         "Origin": site, "Access-Control-Request-Method": "POST", "Access-Control-Request-Headers": "content-type"})
     hl = {k.lower(): v for k, v in h.items()}
     print(f"    preflight → {st} · allow-origin={hl.get('access-control-allow-origin')!r} · allow-headers={hl.get('access-control-allow-headers')!r} · body={body[:120]!r}")
-    check(st in (200, 204) and hl.get("access-control-allow-origin") == site, f"dashboard site passes the browser pre-check for sign-in (got {st})")
+    allow_h = (hl.get("access-control-allow-headers") or "").lower()
+    check(st in (200, 204) and hl.get("access-control-allow-origin") == site and "content-type" in allow_h and "authorization" in allow_h,
+          f"dashboard site passes the browser pre-check (origin + Content-Type + Authorization allowed; got {st}, headers {allow_h!r})")
     req = urllib.request.Request(f"{WORKER_URL}/auth/login", method="POST", data=json.dumps({"username": "no-such-user-ci", "password": "x"}).encode(),
                                  headers={"User-Agent": UA, "Origin": site, "Content-Type": "application/json"})
     try:
