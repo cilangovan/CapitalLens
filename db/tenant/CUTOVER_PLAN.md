@@ -47,7 +47,7 @@ Apply, one at a time, to project `kloqkcxchstfoljpqcbq`, checking after each:
 Verify: tables exist with RLS on and the right policies; advisor shows no new ERROR/regression; a rolled-back test proves (a) owner writes are not logged, (b) service-role writes are, (c) the log cannot be edited; the live app still loads and shows the same numbers.
 Undo: `ROLLBACK_zk_phase2_5.sql` (drops only the new objects). Nothing existing is touched.
 
-### Step 3 — Production page variant 🟢
+### Step 3 — Production page variant ✅ done (18 Nov)
 Build `/zkapp/` and `/zk/` for the **production** Supabase project (URL + publishable key + CSP `connect-src`) into a separate output folder; keep the demo variant for testing. Production `/zk/` has **no "private notes" probe**. CI `zk_tests.yml` guards both builds. The legacy dashboard keeps working at its current URL.
 Gate: step 2 verified. Undo: delete the folder.
 
@@ -122,3 +122,7 @@ Tick every box on issue #7, verify production, close the issue. Publish the plai
 | 18 Nov 13:50 | 2 | Post-checks | Test left nothing behind (enc_rows 0, audit_log 0, user_keys 0). Legacy tables untouched and live (positions 1,367 · snapshots 44 · alerts 26 · orders 2,775). Advisors: only change = 2 expected WARNs for `zk_login_params` (must be callable before login; returns only a salt, a fake one for unknown emails) |
 
 **Step 2 complete.** Production now has the empty zero-knowledge tables; nothing reads or writes them yet, and the live app is unchanged. Next: step 3 (production page variant), then step 4 which needs the owner's password and a go-ahead.
+
+| 18 Nov | 3 | Built production pages by `scripts/build_zkapp.py`: `docs/zk-prod/` (account page) and `docs/zkapp-prod/` (dashboards) → project `kloqkcxchstfoljpqcbq`, CSP without the demo host, separate sign-in storage keys (`zkp_*`), no private-notes probe, no plaintext-delete button, cross-links point at each other. Demo pages unchanged. | OK: `tests/zk_prod_pages_test.mjs` 70 pass (no demo id anywhere, SRI hashes valid, strict CSP); all other zk tests pass; CI now fails on stale prod pages. Nothing in production was touched. |
+
+**Step 3 complete.** Pages live at `/zk-prod/` and `/zkapp-prod/` after push. Next: step 4 (data migration) — needs your explicit go-ahead; you type the password and save the recovery key.

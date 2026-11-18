@@ -138,8 +138,8 @@
   $('btn-to-upgrade').onclick = () => { show('upgrade'); };
   $('btn-up-back').onclick = () => { show('auth'); };
   $('btn-upgrade').onclick = upgrade;
-  $('btn-summary').onclick = async () => { $('summary-out').textContent = JSON.stringify(await ZKMigrate.summary({ call, token: S.token, uid: S.uid, dk: S.dk }), null, 1); $('purge-box').classList.remove('hide'); };
-  $('btn-purge').onclick = async () => {
+  $('btn-summary').onclick = async () => { $('summary-out').textContent = JSON.stringify(await ZKMigrate.summary({ call, token: S.token, uid: S.uid, dk: S.dk }), null, 1); ($('purge-box') && $('purge-box').classList.remove('hide')); };
+  if ($('btn-purge')) $('btn-purge').onclick = async () => {
     if ($('purge-confirm').value !== 'DELETE') return say('purge-msg', 'Type DELETE first');
     const ctx = { call, token: S.token, uid: S.uid, dk: S.dk };
     const rep = await ZKMigrate.verify(ctx);
@@ -215,6 +215,7 @@
     finally { $('btn-cp').disabled = false; }
   }
   async function loadNotes() {
+    if (!$('notes-plain')) { const k = await call('/rest/v1/user_keys?select=user_id&limit=1', {}, S.token); return k.status !== 401; }   // production page has no demo probe: just check the session is alive
     const r = await call('/rest/v1/zk_probe?select=id,nonce,ct,created_at&order=created_at.desc&limit=20', {}, S.token);
     if (r.status === 401) return false;
     const rows = r.ok ? r.d : [];
@@ -240,7 +241,7 @@
   }
 
   $('btn-signup').onclick = signup; $('btn-login').onclick = login; $('btn-reset').onclick = reset;
-  $('btn-cp').onclick = changePw; $('btn-note').onclick = addNote; $('btn-logout').onclick = logout;
+  $('btn-cp').onclick = changePw; if ($('btn-note')) $('btn-note').onclick = addNote; $('btn-logout').onclick = logout;
 
   // ── start-up: password-reset link, or restore this tab's unlocked session ──
   (async () => {

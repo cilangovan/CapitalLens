@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src https://kloqkcxchstfoljpqcbq.supabase.co https://capitallens-relay.itsme-daf.workers.dev https://ntfy.sh; img-src 'self' data:; frame-ancestors 'none'; base-uri 'none'; form-action 'none'">
+<title>CapitalLens · private sign-in</title>
+<style>
+ body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#0f1117;color:#e2e8f0;margin:0;display:flex;justify-content:center;padding:24px}
+ .box{width:100%;max-width:520px;background:#1a1d27;border:1px solid #2d3353;border-radius:10px;padding:20px}
+ h1{font-size:18px;margin:0 0 4px} h2{font-size:14px;margin:18px 0 8px;color:#a5b4fc} .dim{color:#8892a4;font-size:12px}
+ input{width:100%;box-sizing:border-box;padding:9px 10px;margin:4px 0 10px;background:#0f1117;border:1px solid #2d3353;border-radius:6px;color:#e2e8f0;font-size:14px}
+ button{background:#6366f1;border:0;color:#fff;border-radius:6px;padding:9px 14px;font-size:14px;cursor:pointer;margin-right:6px} button.alt{background:#2d3353}
+ button:disabled{opacity:.5} .err{color:#f87171;font-size:13px;min-height:16px} .ok{color:#34d399;font-size:13px}
+ .rec{font-family:ui-monospace,Menlo,monospace;font-size:16px;background:#0f1117;border:1px dashed #f59e0b;color:#fcd34d;border-radius:6px;padding:12px;margin:8px 0;word-break:break-all;user-select:all}
+ .row{display:flex;gap:8px;align-items:center} .row>*{flex:1} pre{background:#0f1117;border:1px solid #2d3353;border-radius:6px;padding:8px;font-size:11px;overflow:auto;max-height:140px;white-space:pre-wrap;word-break:break-all}
+ .hide{display:none}
+</style></head><body>
+<div class="box">
+  <h1>CapitalLens · private sign-in</h1>
+  <div class="dim">Your password and data key never leave this browser; the server only stores encrypted data.</div>
+
+  <div id="v-auth">
+    <h2>Log in</h2>
+    <input id="li-email" type="email" placeholder="Email" autocomplete="username">
+    <input id="li-pw" type="password" placeholder="Password" autocomplete="current-password">
+    <button id="btn-login">Log in</button> <button class="alt" id="btn-forgot">Forgot password</button>
+    <div id="li-err" class="err"></div>
+    <h2>Create account</h2>
+    <input id="su-email" type="email" placeholder="Email" autocomplete="email">
+    <input id="su-pw" type="password" placeholder="Password (min 10 characters)" autocomplete="new-password">
+    <input id="su-pw2" type="password" placeholder="Repeat password" autocomplete="new-password">
+    <button id="btn-signup">Create account</button>
+    <div id="su-err" class="err"></div>
+    <h2>Already have an account?</h2>
+    <button class="alt" id="btn-to-upgrade">Upgrade it to a private account</button>
+  </div>
+
+  <div id="v-upgrade" class="hide">
+    <h2>Upgrade to a private account</h2>
+    <div class="dim">Your existing data is encrypted in this browser and uploaded, then checked. Choose a <b>different</b> new password: the old one was seen by the server when you sign in below, so it must not protect your data.</div>
+    <input id="up-email" type="email" placeholder="Email" autocomplete="username">
+    <input id="up-old" type="password" placeholder="Current password" autocomplete="current-password">
+    <input id="up-new" type="password" placeholder="NEW password (min 10 characters, different)" autocomplete="new-password">
+    <button id="btn-upgrade">Encrypt my data</button> <button class="alt" id="btn-up-back">Back</button>
+    <pre id="up-log" class="dim"></pre><div id="up-err" class="err"></div>
+  </div>
+
+  <div id="v-recovery" class="hide">
+    <h2>Save your recovery key</h2>
+    <div class="dim">This is the only way to get your data back if you forget your password. We cannot see it or recreate it. Write it down or store it in a password manager.</div>
+    <div id="rec-key" class="rec"></div>
+    <label class="dim"><input id="rec-ok" type="checkbox" style="width:auto;margin-right:6px"> I have saved my recovery key</label><br><br>
+    <button id="btn-rec-continue" disabled>Continue</button>
+    <div id="rec-msg" class="ok"></div>
+  </div>
+
+  <div id="v-reset" class="hide">
+    <h2>Reset password</h2>
+    <div class="dim">You opened the reset link from your email. Enter your recovery key and choose a new password.</div>
+    <input id="rs-key" placeholder="Recovery key (XXXX-XXXX-…)" autocomplete="off">
+    <input id="rs-pw" type="password" placeholder="New password (min 10 characters)" autocomplete="new-password">
+    <button id="btn-reset">Reset password</button>
+    <div id="rs-err" class="err"></div>
+  </div>
+
+  <div id="v-app" class="hide">
+    <div class="row"><div><b id="who"></b><div class="dim">Unlocked on this device only</div></div><div style="text-align:right"><button class="alt" id="btn-logout">Log out</button></div></div>
+    <p><a href="../zkapp-prod/"><b>Open the dashboard →</b></a> <span class="dim">(stays unlocked in this tab)</span></p>
+    <h2>Encrypted data stored for you</h2>
+    <button class="alt" id="btn-summary">Show what is stored (decrypted count per table)</button>
+    <pre id="summary-out"></pre>
+    <h2>Trading 212 sync (runs in this browser)</h2>
+    <div class="dim">Your API key is used only in this tab, passed through a stateless relay to Trading 212, and kept encrypted. Our servers and staff never see it or your data. Keep this tab open: Trading 212 allows 6 requests a minute, so a first full sync takes a while.</div>
+    <input id="t2-key" type="password" placeholder="Trading 212 API key" autocomplete="off">
+    <input id="t2-sec" type="password" placeholder="Trading 212 API secret" autocomplete="off">
+    <button id="btn-t2-snap">Take portfolio snapshot</button> <button id="btn-t2">Sync history</button> <button class="alt" id="btn-t2-full">Full re-sync</button>
+    <pre id="t2-log"></pre><div id="t2-err" class="err"></div>
+    <h2>Change password</h2>
+    <input id="cp-pw" type="password" placeholder="New password (min 10 characters)" autocomplete="new-password">
+    <button id="btn-cp">Change password</button>
+    <div id="cp-msg" class="ok"></div><div id="cp-err" class="err"></div>
+  </div>
+</div>
+<script src="../js/zkcrypto.js" integrity="sha384-uuaZ5aEaHvz7Q1GyViwlSM5HSsPPqvPwgB9FXMmUiKA8s8/t5h+8cWRQYtxhcbtc"></script>
+<script src="../zk/store.js" integrity="sha384-fwaecshL5VsTj12l1i8DSn3ksVTj0HUf/Xa/TIkA4wnNiBe37qYE18TohXGHkjyq"></script>
+<script src="../zk/t212sync.js" integrity="sha384-NRvli9vN37oq9CZArMHg6PnKHZy3XtRY6HdOxDfnHWHEynB233Y1SOPESg/fUz0z"></script>
+<script src="../zk/alertfmt.js" integrity="sha384-YjG+R4rTNialkw4iHTtW3HETDq8RQC0TYaJvQstwYVujtRZs64XtGEokdN2SNZ1R"></script>
+<script src="../zk/monitor.js" integrity="sha384-QLYbVFJbZZM9cvqJ/GI2Yj0IKDtSMiNRezO4E0k1RJVi76HhVKg7rlGlGHeIvWZy"></script>
+<script src="../zk/migrate.js" integrity="sha384-Yvh4K5duScWgVic4D7QXNX24FOCZaFJ1paC4hKarMONMc5K/S+mS8YQ32O5xmmsh"></script>
+<script src="zk.js" integrity="sha384-zYrm80YiFRrvz6Pcjn2YDJmHkMqJlmB9hg7cyj5EjvqPbAZLrqIUQp+R4sBje297"></script>
+</body></html>

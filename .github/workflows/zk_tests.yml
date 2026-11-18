@@ -38,7 +38,7 @@ jobs:
       - name: Private page is up to date
         run: |
           python3 scripts/build_zkapp.py
-          git diff --exit-code -- docs/zkapp || (echo "docs/zkapp is stale: run python3 scripts/build_zkapp.py and commit" && exit 1)
+          git diff --exit-code -- docs/zkapp docs/zkapp-prod docs/zk-prod || (echo "generated pages are stale: run python3 scripts/build_zkapp.py and commit" && exit 1)
       - name: Relay syntax
         run: cp cloudflare-worker/relay.js /tmp/relay.mjs && node --check /tmp/relay.mjs
       - name: Zero-knowledge test suites
