@@ -18,19 +18,25 @@
     const sym = baseSymbol(t), name = NAMES[sym] || (metaName || '').trim();
     return name && name !== sym ? `${name} (${sym})` : sym;
   }
-  const roundTo = (v, d) => { const m = Math.pow(10, d); return Math.round((v + Number.EPSILON * Math.sign(v)) * m) / m; };
+  // Python-compatible rounding/formatting (half-even on the exact binary value) when ZKReturns is loaded
+  const pyr = (v, d) => root.ZKReturns ? root.ZKReturns.pyRound(v, d) : Math.round(v * Math.pow(10, d)) / Math.pow(10, d);
+  const fx = (v, d) => pyr(v, d).toFixed(d);
   function signed(v, d = 2) {
-    const s = Math.abs(v).toFixed(d);
-    if (roundTo(v, d) === 0) return s;
+    const s = fx(Math.abs(v), d);
+    if (pyr(v, d) === 0) return s;
     return (v > 0 ? '+' : MINUS) + s;
   }
-  const pct = (v, d = 2, sign = true) => (sign ? signed(v, d) : v.toFixed(d)) + '%';
+  const pct = (v, d = 2, sign = true) => (sign ? signed(v, d) : fx(v, d)) + '%';
   function money(v, ccy) {
-    const [ip, fp] = Math.abs(v).toFixed(3).split('.');
+    const [ip, fp] = fx(Math.abs(v), 3).split('.');
     let s = (v < 0 ? '-' : '') + ip.replace(/\B(?=(\d{3})+$)/g, ',') + '.' + fp;
     if (s.endsWith('0')) s = s.slice(0, -1);
     return CCY[ccy] ? CCY[ccy] + s : `${s} ${ccy}`;
   }
+  const MONTHS_FULL = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'];
+  const shortName = (t, metaName) => NAMES[baseSymbol(t)] || (metaName || '').trim() || baseSymbol(t);
+  const pp = v => `${signed(v)} percentage points`;
+  const fullDate = d => `${d.getUTCDate()} ${MONTHS_FULL[d.getUTCMonth()]} ${d.getUTCFullYear()}`;
   const dayMonth = d => `${d.getUTCDate()} ${MONTHS[d.getUTCMonth()]}`;
   const hhmm = d => `${String(d.getUTCHours()).padStart(2, '0')}:${String(d.getUTCMinutes()).padStart(2, '0')}`;
 
@@ -65,6 +71,6 @@
     if (text.length > limit) text = text.slice(0, limit).replace(/\n[^\n]*$/, '') + '\n… full report on the dashboard';
     return text;
   }
-  root.ZKAlertFmt = { baseSymbol, friendly, signed, pct, money, dayMonth, hhmm, Section, renderText, renderPush };
+  root.ZKAlertFmt = { baseSymbol, friendly, shortName, pp, fullDate, fx, signed, pct, money, dayMonth, hhmm, Section, renderText, renderPush };
   if (typeof module !== 'undefined') module.exports = root.ZKAlertFmt;
 })(typeof window !== 'undefined' ? window : globalThis);
