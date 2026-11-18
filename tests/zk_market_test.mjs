@@ -4,7 +4,14 @@ import relay from '../cloudflare-worker/relay.js';
 const M = createRequire(import.meta.url)('../docs/zk/market.js');
 let pass = 0, fail = 0; const ok = (n, c) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + n); };
 let outbound = [], busy = 0, maxBusy = 0;
+let sessionFetches = 0, qsAuth = [];
+const baseFetch = async (url, init) => {
+  if (url.startsWith('https://finance.yahoo.com/quote/AAPL')) { sessionFetches++; return new Response('<html>..."crumb":"AbC\\u002F123"...</html>', { headers: { 'set-cookie': 'A3=cookieval; Path=/; Secure' } }); }
+  if (url.includes('/v10/finance/quoteSummary/')) { qsAuth.push({ url, cookie: init.headers.Cookie }); return Response.json({ quoteSummary: { result: [{ assetProfile: { sector: 'Technology' }, price: { longName: 'NVIDIA Corporation', shortName: 'NVIDIA', currency: 'USD', regularMarketPrice: { raw: 150 } }, financialData: { targetMeanPrice: { raw: 200 }, currentPrice: { raw: 151 } } }] } }); }
+  return null;
+};
 globalThis.fetch = async (url, init) => {
+  const b = await baseFetch(url, init); if (b) return b;
   outbound.push({ url, init }); busy++; maxBusy = Math.max(maxBusy, busy); await new Promise(r => setTimeout(r, 15)); busy--;
   if (url.includes('BAD')) return new Response('{}', { status: 404 });
   return Response.json({ chart: { result: [{ meta: { symbol: 'NVDA', currency: 'USD', regularMarketPrice: 150 }, timestamp: [1767225600, 1767312000, 1767398400],
@@ -24,4 +31,10 @@ ok('relay rejects injection in symbol', (await r('/yahoo?s=' + encodeURIComponen
 ok('relay rejects unknown range', (await r('/yahoo?s=NVDA&range=10000y')).status === 400);
 ok('relay accepts index/FX symbols (^FTSE, GBPUSD=X, VUSA.L)', (await r('/yahoo?s=' + encodeURIComponent('^FTSE'))).status === 200 && (await r('/yahoo?s=GBPUSD%3DX')).status === 200 && (await r('/yahoo?s=VUSA.L')).status === 200);
 ok('relay still rejects foreign origin on /yahoo', (await relay.fetch(new Request('https://relay.test/yahoo?s=NVDA', { headers: { Origin: 'https://evil.example' } }))).status === 403);
+// ── yahoo-info (sector / target price / names) ──
+const inf = await m.info('NVDA');
+ok('info: trimmed to sector, names, target, current price, currency', inf.sector === 'Technology' && inf.longName === 'NVIDIA Corporation' && inf.targetMeanPrice === 200 && inf.currentPrice === 151 && inf.currency === 'USD');
+await m.info('AMD'); ok('crumb session reused across symbols (one session fetch)', sessionFetches === 1);
+ok('crumb sent with the session cookie, slash decoded', qsAuth[0].cookie === 'A3=cookieval' && qsAuth[0].url.includes('crumb=AbC%2F123'));
+ok('relay rejects bad symbol on /yahoo-info', (await r('/yahoo-info?s=' + encodeURIComponent('X/../y'))).status === 400);
 console.log(`\n${pass} passed · ${fail} failed`); process.exit(fail ? 1 : 0);

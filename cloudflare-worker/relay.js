@@ -25,6 +25,18 @@ const ALLOWED = [
 const YAHOO = 'https://query1.finance.yahoo.com/v8/finance/chart/';
 const SYMBOL = /^[A-Za-z0-9.^=\-]{1,24}$/, RANGES = new Set(['5d', '1mo', '3mo', '6mo', '1y', '2y', '5y', 'max']);
 
+// Yahoo needs a session cookie + crumb for quoteSummary (same flow as services/analyst_service.py). Held in memory only, ~30 min.
+let CRUMB = null;
+async function yahooSession() {
+  if (CRUMB && Date.now() - CRUMB.at < 30 * 60 * 1000) return CRUMB;
+  const r = await fetch('https://finance.yahoo.com/quote/AAPL', { headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36', Accept: 'text/html', 'Accept-Language': 'en-US,en;q=0.9' }, redirect: 'follow' });
+  const cookie = (r.headers.getSetCookie ? r.headers.getSetCookie() : [r.headers.get('set-cookie') || '']).map(c => c.split(';')[0]).filter(Boolean).join('; ');
+  const m = /"crumb":"([^"]+)"/.exec(await r.text());
+  CRUMB = m ? { crumb: m[1].replace(/\\u002F/g, '/'), cookie, at: Date.now() } : null;
+  return CRUMB;
+}
+const num = x => (x && typeof x === 'object' ? x.raw : x);
+
 function headers(request, extra) {
   const h = new Headers({
     'Cache-Control': 'no-store', 'X-Content-Type-Options': 'nosniff', 'Referrer-Policy': 'no-referrer', Vary: 'Origin',
@@ -48,6 +60,19 @@ export default {
       if (!SYMBOL.test(sym) || !RANGES.has(range)) return reply(request, 400, '{"error":"bad symbol or range"}', { 'Content-Type': 'application/json' });
       const y = await fetch(`${YAHOO}${encodeURIComponent(sym)}?range=${range}&interval=1d&events=div%2Csplit`, { headers: { Accept: 'application/json', 'User-Agent': 'Mozilla/5.0' }, redirect: 'error' });
       return reply(request, y.status, await y.arrayBuffer(), { 'Content-Type': y.headers.get('Content-Type') || 'application/json' });
+    }
+    if (request.method === 'GET' && url.pathname === '/yahoo-info') {
+      const sym = url.searchParams.get('s') || '';
+      if (!SYMBOL.test(sym)) return reply(request, 400, '{"error":"bad symbol"}', { 'Content-Type': 'application/json' });
+      const ses = await yahooSession();
+      if (!ses) return reply(request, 502, '{"error":"no session"}', { 'Content-Type': 'application/json' });
+      const y = await fetch(`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(sym)}?modules=assetProfile%2Cprice%2CfinancialData&crumb=${encodeURIComponent(ses.crumb)}`,
+        { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json', Cookie: ses.cookie }, redirect: 'error' });
+      if (y.status === 401 || y.status === 403) CRUMB = null;
+      if (!y.ok) return reply(request, y.status, '{}', { 'Content-Type': 'application/json' });
+      const r = ((await y.json()).quoteSummary || {}).result; const q = (r && r[0]) || {}, ap = q.assetProfile || {}, pr = q.price || {}, fd = q.financialData || {};
+      return reply(request, 200, JSON.stringify({ sector: ap.sector || null, longName: pr.longName || null, shortName: pr.shortName || null,
+        targetMeanPrice: num(fd.targetMeanPrice) || null, currentPrice: num(fd.currentPrice) || num(pr.regularMarketPrice) || null, currency: pr.currency || null }), { 'Content-Type': 'application/json' });
     }
     if (request.method !== 'GET' || url.pathname !== '/t212') return reply(request, 404, '{"error":"not found"}', { 'Content-Type': 'application/json' });
     const p = url.searchParams.get('p') || '', auth = request.headers.get('X-T212-Auth') || '';

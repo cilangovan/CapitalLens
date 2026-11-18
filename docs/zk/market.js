@@ -4,7 +4,7 @@
   function parse(j) {
     const r = j && j.chart && j.chart.result && j.chart.result[0]; if (!r) return null;
     const q = (r.indicators.quote || [{}])[0], adj = ((r.indicators.adjclose || [{}])[0] || {}).adjclose;
-    const out = { symbol: r.meta.symbol, currency: r.meta.currency, price: r.meta.regularMarketPrice, dates: [], close: [], volume: [], high: [], low: [], adjclose: [],
+    const out = { symbol: r.meta.symbol, currency: r.meta.currency, longName: r.meta.longName || null, shortName: r.meta.shortName || null, price: r.meta.regularMarketPrice, dates: [], close: [], volume: [], high: [], low: [], adjclose: [],
       splits: Object.values((r.events || {}).splits || {}).map(s => ({ date: new Date(s.date * 1000).toISOString().slice(0, 10), ratio: s.numerator / s.denominator })) };
     (r.timestamp || []).forEach((t, i) => {
       if (q.close[i] == null) return;
@@ -31,7 +31,12 @@
       }));
       return cache.get(key);
     }
-    return { chart };
+    const infos = new Map();
+    async function info(sym) {
+      if (!infos.has(sym)) infos.set(sym, limited(async () => { try { const r = await f(`${opts.relayUrl}/yahoo-info?s=${encodeURIComponent(sym)}`); return r.ok ? await r.json() : {}; } catch (e) { return {}; } }));
+      return infos.get(sym);
+    }
+    return { chart, info };
   }
   root.ZKMarket = { create, parse };
   if (typeof module !== 'undefined') module.exports = root.ZKMarket;
