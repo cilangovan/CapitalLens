@@ -74,15 +74,16 @@ export default {
       if (!SYMBOL.test(sym)) return reply(request, 400, '{"error":"bad symbol"}', { 'Content-Type': 'application/json' });
       const ses = await yahooSession();
       if (!ses) return reply(request, 502, '{"error":"no session"}', { 'Content-Type': 'application/json' });
-      const y = await fetch(`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(sym)}?modules=assetProfile%2Cprice%2CfinancialData%2CsummaryDetail%2CdefaultKeyStatistics&crumb=${encodeURIComponent(ses.crumb)}`,
+      const y = await fetch(`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(sym)}?modules=assetProfile%2Cprice%2CfinancialData%2CsummaryDetail%2CdefaultKeyStatistics%2CrecommendationTrend&crumb=${encodeURIComponent(ses.crumb)}`,
         { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json', Cookie: ses.cookie }, redirect: 'error' });
       if (y.status === 401 || y.status === 403) CRUMB = null;
       if (!y.ok) return reply(request, y.status, '{}', { 'Content-Type': 'application/json' });
-      const r = ((await y.json()).quoteSummary || {}).result; const q = (r && r[0]) || {}, ap = q.assetProfile || {}, pr = q.price || {}, fd = q.financialData || {}, sd = q.summaryDetail || {}, ks = q.defaultKeyStatistics || {};
+      const r = ((await y.json()).quoteSummary || {}).result; const q = (r && r[0]) || {}, ap = q.assetProfile || {}, pr = q.price || {}, fd = q.financialData || {}, sd = q.summaryDetail || {}, ks = q.defaultKeyStatistics || {}, rt = ((q.recommendationTrend || {}).trend) || [];
       return reply(request, 200, JSON.stringify({ sector: ap.sector || null, longName: pr.longName || null, shortName: pr.shortName || null,
         targetMeanPrice: num(fd.targetMeanPrice) || null, currentPrice: num(fd.currentPrice) || num(pr.regularMarketPrice) || null, currency: pr.currency || null,
         trailingPE: num(sd.trailingPE) || null, forwardPE: num(sd.forwardPE) || num(ks.forwardPE) || null, recommendationKey: fd.recommendationKey || null,
-        numberOfAnalystOpinions: num(fd.numberOfAnalystOpinions) || 0, marketCap: num(sd.marketCap) || num(pr.marketCap) || null }), { 'Content-Type': 'application/json' });
+        numberOfAnalystOpinions: num(fd.numberOfAnalystOpinions) || 0, marketCap: num(sd.marketCap) || num(pr.marketCap) || null,
+        trend: rt.slice(0, 4).map(t => ({ period: t.period, strongBuy: num(t.strongBuy), buy: num(t.buy), hold: num(t.hold), sell: num(t.sell), strongSell: num(t.strongSell) })) }), { 'Content-Type': 'application/json' });
     }
     if (request.method !== 'GET' || url.pathname !== '/t212') return reply(request, 404, '{"error":"not found"}', { 'Content-Type': 'application/json' });
     const p = url.searchParams.get('p') || '', auth = request.headers.get('X-T212-Auth') || '';
