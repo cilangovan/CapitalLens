@@ -540,7 +540,14 @@
 
 <!-- ── JS MODULES ── -->
 
-<div id="zk-tools" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;display:flex;align-items:center;justify-content:center">
+<style>
+#zk-tools input[type=password],#zk-tools input[type=text]{background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:9px 11px;font-size:13px;outline:none;box-sizing:border-box}
+#zk-tools input:focus{border-color:var(--accent)}
+#zk-tools button{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer}
+#zk-tools button:disabled{opacity:.5;cursor:default}
+#zk-tools button[onclick^=zkToolsClose]{background:var(--bg3);color:var(--muted);border:1px solid var(--border)}
+</style>
+<div id="zk-tools" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;align-items:center;justify-content:center">
   <div style="background:var(--card,#161b22);border:1px solid var(--border);border-radius:12px;padding:20px;width:min(560px,92vw);max-height:90vh;overflow:auto">
     <h3 style="margin:0 0 6px">🔄 Refresh your data</h3>
     <p style="font-size:12px;color:var(--muted);margin:0 0 12px">Runs in this browser: Trading 212 sync, snapshot, every analysis, then your alert report. Your Trading 212 key is used once and never saved. Leave both fields empty to just re-analyse stored data.</p>
