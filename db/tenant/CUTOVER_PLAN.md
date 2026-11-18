@@ -114,6 +114,11 @@ Tick every box on issue #7, verify production, close the issue. Publish the plai
 ## 9. Execution log
 | When (UTC) | Step | What happened | Result |
 |---|---|---|---|
-| 18 Nov 13:47 | 2 | Plan written; go-ahead given ("apply to production if safe") | see below |
+| 18 Nov 13:47 | 2 | Plan written; go-ahead given ("apply to production if safe"). Scope applied: additive SQL only | — |
+| 18 Nov 13:49 | 2 | Baseline security advisors (3 INFO, 1 WARN: leaked-password protection off) recorded | baseline |
+| 18 Nov 13:49 | 2 | Applied `tier3_zk_user_keys` (user_keys + Vault `zk_salt_pepper` + `zk_login_params`; **no zk_probe**) | OK: RLS on, 3 owner-only policies, anon cannot read, fake salts stable + case-insensitive + differ per email |
+| 18 Nov 13:50 | 2 | Applied `tier3_zk_enc_rows`, `tier3_market_cache`, `tier3_audit_log` | OK |
+| 18 Nov 13:50 | 2 | Rolled-back test as the real user + a different user + service role | Owner sees own row (1) and is not logged (0); other user sees 0 and cross-write blocked; service-role write logged (1); audit table cannot be edited (permission denied); anon has no access to enc_rows/user_keys/audit_log/market_cache |
+| 18 Nov 13:50 | 2 | Post-checks | Test left nothing behind (enc_rows 0, audit_log 0, user_keys 0). Legacy tables untouched and live (positions 1,367 · snapshots 44 · alerts 26 · orders 2,775). Advisors: only change = 2 expected WARNs for `zk_login_params` (must be callable before login; returns only a salt, a fake one for unknown emails) |
 
-*(Entries below are appended as steps run.)*
+**Step 2 complete.** Production now has the empty zero-knowledge tables; nothing reads or writes them yet, and the live app is unchanged. Next: step 3 (production page variant), then step 4 which needs the owner's password and a go-ahead.
