@@ -22,13 +22,25 @@ panel = """
 <style>
 #zk-tools input[type=password],#zk-tools input[type=text]{background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:9px 11px;font-size:13px;outline:none;box-sizing:border-box}
 #zk-tools input:focus{border-color:var(--accent)}
+#zk-tools .zk-hbtn{background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:5px 9px;font-size:12px;cursor:pointer}
 #zk-tools button{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer}
 #zk-tools button:disabled{opacity:.5;cursor:default}
 #zk-tools button[onclick^=zkToolsClose]{background:var(--bg3);color:var(--muted);border:1px solid var(--border)}
 </style>
 <div id="zk-tools" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;align-items:center;justify-content:center">
   <div style="background:var(--card,#161b22);border:1px solid var(--border);border-radius:12px;padding:20px;width:min(560px,92vw);max-height:90vh;overflow:auto">
-    <h3 style="margin:0 0 6px">⚙ Settings</h3>
+    <div style="display:flex;align-items:center;gap:6px;margin:0 0 10px"><h3 style="margin:0;flex:1">⚙ Settings</h3>
+      <button class="zk-hbtn" onclick="zkToolsHelp()" title="Help">? Help</button>
+      <button class="zk-hbtn" onclick="zkToolsMinimize()" title="Minimise (keeps anything running)">– Minimise</button>
+      <button class="zk-hbtn" onclick="zkToolsClose()" title="Close">✕ Close</button></div>
+    <div id="zk-help" style="display:none;font-size:12px;line-height:1.5;color:var(--muted);background:#0003;border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin:0 0 12px">
+      <b style="color:var(--text)">What is on this page</b><br>
+      <b>🔑 Recovery key:</b> the only way back in if you forget your password. Press <i>Check my key</i> about once a week to confirm yours still works. Lost it? <i>Create a new recovery key</i> while you are signed in.<br>
+      <b>🧪 Compare / duplicates:</b> health checks for your stored data. <i>Scan</i> only reads. Use <i>Fix</i> only if Scan reports extra rows.<br>
+      <b>🔄 Refresh your data:</b> pulls your latest Trading 212 data and updates every dashboard. Paste your <u>read-only</u> Trading 212 key (Settings &gt; API in Trading 212). It is used once and never saved. Leave the fields empty to just re-analyse what is already stored. When you press <i>Refresh now</i> this window shrinks to a small progress chip; keep the tab open until it shows ✅.<br>
+      <b>Buttons:</b> <i>Minimise</i> hides this window but keeps anything running; <i>Close</i> hides it too. Neither stops a refresh in progress.<br>
+      <b>Phone alerts:</b> save your ntfy topic at the bottom to get alerts on your phone.
+    </div>
     <div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin:0 0 14px">
       <b style="font-size:13px">🔑 Check your recovery key</b>
       <p style="font-size:12px;color:var(--muted);margin:6px 0 8px">Your recovery key is the only way back in if you forget your password, and nobody can recreate it. Type it here to confirm it still works. It is checked in this browser only: it is not sent anywhere or saved. <span id="zk-rk-last"></span></p>
@@ -58,7 +70,7 @@ panel = """
     <input id="zk-key" type="password" placeholder="Trading 212 API key" autocomplete="off" style="width:100%;margin-bottom:6px">
     <input id="zk-sec" type="password" placeholder="Trading 212 API secret" autocomplete="off" style="width:100%;margin-bottom:6px">
     <label style="font-size:12px"><input id="zk-full" type="checkbox"> Full history re-sync</label>
-    <div style="margin:10px 0"><button id="zk-run" onclick="zkToolsRun()">Refresh now</button> <button onclick="zkToolsClose()" style="margin-left:8px">Close</button> <span id="zk-status" style="font-size:12px;margin-left:8px"></span></div>
+    <div style="margin:10px 0"><button id="zk-run" onclick="zkToolsRun()">Refresh now</button> <span id="zk-status" style="font-size:12px;margin-left:8px"></span></div>
     <pre id="zk-log" style="font-size:11px;max-height:200px;overflow:auto;background:#0004;padding:8px;border-radius:6px;white-space:pre-wrap"></pre>
     <hr style="border-color:var(--border)">
     <p style="font-size:12px;color:var(--muted);margin:6px 0">Phone alerts (ntfy topic, kept encrypted; treat it like a password):</p>

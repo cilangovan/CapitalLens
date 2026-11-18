@@ -18,6 +18,12 @@ function zkChipUpdate(done, msg) {
   c.textContent = done ? (msg || 'Refresh finished') + ' (click for details)' : '🔄 Refreshing… ' + t + ' · ' + (ZK_RUN.last || 'starting') + ' — click for details';
   c.style.display = 'block';
 }
+function zkToolsHelp() { const h = document.getElementById('zk-help'); h.style.display = h.style.display === 'none' ? 'block' : 'none'; }
+function zkToolsMinimize() {
+  document.getElementById('zk-tools').style.display = 'none';
+  if (ZK_RUN.running) { zkChipUpdate(false); return; }
+  const c = zkChip(); c.textContent = '⚙ Settings (minimised) — click to reopen'; c.style.display = 'block';
+}
 function zkToolsClose() { document.getElementById('zk-tools').style.display = 'none'; if (ZK_RUN.running) zkChipUpdate(false); }
 async function zkToolsSaveTopic() {
   const v = document.getElementById('zk-topic').value.trim(), msg = document.getElementById('zk-topic-msg');
