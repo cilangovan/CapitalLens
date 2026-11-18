@@ -39,7 +39,7 @@ from playwright.sync_api import sync_playwright
 ROOT = Path(__file__).resolve().parent.parent
 SUPA_URL = os.environ.get("SUPABASE_URL", "").rstrip("/")
 SUPA_KEY = os.environ.get("SUPABASE_SERVICE_KEY") or os.environ.get("SUPABASE_KEY", "")
-READABLE = {"alerts", "analyst_ratings", "app_settings", "dividends", "holding_decisions", "institutional_flow_reports",
+READABLE = {"alerts", "analyst_ratings", "app_settings", "dividends", "holding_decisions", "institutional_flow_reports", "instrument_exposure",
             "pie_history", "portfolio_snapshots", "portfolio_snapshots_all", "positions", "positions_all", "profit_booking",
             "profit_booking_summary", "realised_pnl", "returns_summary", "strategy_recommendations", "value_buy_scores",
             "watchlist", "watchlist_analysis"}

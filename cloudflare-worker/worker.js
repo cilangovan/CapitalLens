@@ -44,7 +44,7 @@ function finalize(resp, request, env) {
 }
 
 // Tables the dashboard may read — everything else (login table, raw Trading 212 history) is never served.
-const READABLE = new Set(['alerts', 'analyst_ratings', 'app_settings', 'dividends', 'holding_decisions', 'institutional_flow_reports',
+const READABLE = new Set(['alerts', 'analyst_ratings', 'app_settings', 'dividends', 'holding_decisions', 'institutional_flow_reports', 'instrument_exposure',
   'pie_history', 'portfolio_snapshots', 'portfolio_snapshots_all', 'positions', 'positions_all', 'profit_booking',
   'profit_booking_summary', 'realised_pnl', 'returns_summary', 'strategy_recommendations', 'value_buy_scores',
   'watchlist', 'watchlist_analysis']);

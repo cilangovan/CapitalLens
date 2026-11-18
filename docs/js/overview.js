@@ -292,14 +292,7 @@ async function loadCountryMap() {
     'IPOLl':  { label:'Poland ETF',       countries:[{ flag:'🇵🇱', name:'Poland',      pct:100, note:'PKO·Pekao·mBank·Orlen' }]},
     'XDAXl':  { label:'Germany DAX ETF',  countries:[{ flag:'🇩🇪', name:'Germany',     pct:100, note:'Siemens·Allianz·SAP·Airbus' }]},
     'IAEXl':  { label:'Netherlands AEX',  countries:[{ flag:'🇳🇱', name:'Netherlands', pct:100, note:'ASML·Shell·ING·Unilever·Adyen' }]},
-    'CS1l':   { label:'MSCI World ETF',   countries:[
-      { flag:'🇺🇸', name:'USA',     pct:67, note:'S&P 500 large cap' },
-      { flag:'🇯🇵', name:'Japan',   pct:6,  note:'Toyota·Sony·SoftBank' },
-      { flag:'🇬🇧', name:'UK',      pct:4,  note:'HSBC·AstraZeneca·BP' },
-      { flag:'🇫🇷', name:'France',  pct:3,  note:'LVMH·TotalEnergies' },
-      { flag:'🇨🇦', name:'Canada',  pct:3,  note:'Royal Bank·Shopify' },
-      { flag:'🌍', name:'Other DM', pct:17, note:'Germany·Australia·Switzerland…' },
-    ]},
+    'CS1l':   { label:'Spain IBEX 35 ETF', countries:[{ flag:'🇪🇸', name:'Spain',       pct:100, note:'Santander·Iberdrola·BBVA·Inditex' }]},
     'VUSAa':  { label:'S&P 500 ETF',      countries:[{ flag:'🇺🇸', name:'USA',    pct:100, note:'500 largest US companies' }]},
     'VWCEd':  { label:'All-World ETF',    countries:[
       { flag:'🇺🇸', name:'USA',   pct:63, note:'S&P 500 dominant' },
@@ -308,7 +301,7 @@ async function loadCountryMap() {
       { flag:'🇨🇳', name:'China', pct:3,  note:'Alibaba·Tencent' },
       { flag:'🌍', name:'Other',  pct:24, note:'EM + other DM' },
     ]},
-    'SXRVd':  { label:'S&P 500 Financials',countries:[{ flag:'🇺🇸', name:'USA',    pct:100, note:'JPMorgan·BofA·Wells Fargo' }]},
+    'SXRVd':  { label:'NASDAQ 100 ETF',    countries:[{ flag:'🇺🇸', name:'USA',    pct:100, note:'NVDA·AAPL·MSFT·AMZN·AVGO' }]},
     'SGLNl':  { label:'Gold ETC',          countries:[{ flag:'🥇', name:'Gold',   pct:100, note:'Physical gold backed' }]},
     'SSLNl':  { label:'Silver ETC',        countries:[{ flag:'🥈', name:'Silver', pct:100, note:'Physical silver backed' }]},
   };
@@ -316,6 +309,8 @@ async function loadCountryMap() {
   const snap = (await api('portfolio_snapshots','?select=*&order=created_at.desc&limit=1'))[0];
   if (!snap) { el.innerHTML = '<div style="color:var(--muted)">No snapshot yet</div>'; return; }
   const positions = await api('positions', `?snapshot_id=eq.${snap.id}&select=*&order=gain_pct.desc`);
+  const exposure = {};
+  try { (await api('instrument_exposure', '?select=ticker,display_name')).forEach(r => { exposure[r.ticker] = r.display_name; }); } catch (e) {}
 
   const posMap = {};
   positions.forEach(p => { posMap[p.display || p.ticker] = p; });
@@ -327,7 +322,7 @@ async function loadCountryMap() {
     const gainPct = pos.gain_pct != null ? +pos.gain_pct : null;
     for (const c of etfDef.countries) {
       if (!countryAgg[c.name]) countryAgg[c.name] = { flag:c.flag, etfs:[], gainSum:0, gainCount:0 };
-      countryAgg[c.name].etfs.push({ ticker:etfTicker, label:etfDef.label, pct:c.pct, note:c.note, gain:gainPct });
+      countryAgg[c.name].etfs.push({ ticker:etfTicker, label:exposure[pos.ticker] || etfDef.label, pct:c.pct, note:c.note, gain:gainPct });
       if (gainPct != null) {
         countryAgg[c.name].gainSum += gainPct * (c.pct / 100);
         countryAgg[c.name].gainCount++;
@@ -358,7 +353,7 @@ async function loadCountryMap() {
     const etfChips = data.etfs.map(e => {
       const gc = e.gain != null ? perfColor(e.gain) : '#475569';
       const gs = e.gain != null ? `${e.gain >= 0 ? '+' : ''}${e.gain.toFixed(1)}%` : '';
-      return `<div style="display:inline-flex;align-items:center;gap:4px;background:#0f1117;border:1px solid ${pc}33;border-radius:5px;padding:3px 7px;font-size:10px" title="${e.note}">
+      return `<div style="display:inline-flex;align-items:center;gap:4px;background:#0f1117;border:1px solid ${pc}33;border-radius:5px;padding:3px 7px;font-size:10px" title="${e.label} — ${e.note}">
         <span style="color:#a5b4fc;font-weight:700">${e.ticker}</span>
         <span style="color:#334155">${e.pct < 100 ? e.pct+'%' : ''}</span>
         ${gs ? `<span style="color:${gc}">${gs}</span>` : ''}
