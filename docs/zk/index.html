@@ -31,6 +31,18 @@
     <input id="su-pw2" type="password" placeholder="Repeat password" autocomplete="new-password">
     <button id="btn-signup">Create account</button>
     <div id="su-err" class="err"></div>
+    <h2>Already have an account?</h2>
+    <button class="alt" id="btn-to-upgrade">Upgrade it to a private account</button>
+  </div>
+
+  <div id="v-upgrade" class="hide">
+    <h2>Upgrade to a private account</h2>
+    <div class="dim">Your existing data is encrypted in this browser and uploaded, then checked. Choose a <b>different</b> new password: the old one was seen by the server when you sign in below, so it must not protect your data.</div>
+    <input id="up-email" type="email" placeholder="Email" autocomplete="username">
+    <input id="up-old" type="password" placeholder="Current password" autocomplete="current-password">
+    <input id="up-new" type="password" placeholder="NEW password (min 10 characters, different)" autocomplete="new-password">
+    <button id="btn-upgrade">Encrypt my data</button> <button class="alt" id="btn-up-back">Back</button>
+    <pre id="up-log" class="dim"></pre><div id="up-err" class="err"></div>
   </div>
 
   <div id="v-recovery" class="hide">
@@ -59,6 +71,14 @@
     <div id="note-err" class="err"></div>
     <div class="dim">What you can read (decrypted here):</div><pre id="notes-plain"></pre>
     <div class="dim">What the database stores (everything the server and our staff can see):</div><pre id="notes-raw"></pre>
+    <h2>Encrypted data stored for you</h2>
+    <button class="alt" id="btn-summary">Show what is stored (decrypted count per table)</button>
+    <pre id="summary-out"></pre>
+    <div id="purge-box" class="hide">
+      <div class="dim">Your readable (plaintext) copy still exists on the server. Delete it once you are sure. <b>This breaks the current dashboards until the browser-side version is finished, so only do this on a demo account.</b></div>
+      <input id="purge-confirm" placeholder="Type DELETE to confirm"><button id="btn-purge" class="alt">Delete plaintext copy</button>
+      <div id="purge-msg" class="ok"></div>
+    </div>
     <h2>Change password</h2>
     <input id="cp-pw" type="password" placeholder="New password (min 10 characters)" autocomplete="new-password">
     <button id="btn-cp">Change password</button>
@@ -66,5 +86,6 @@
   </div>
 </div>
 <script src="../js/zkcrypto.js"></script>
+<script src="migrate.js"></script>
 <script src="zk.js"></script>
 </body></html>

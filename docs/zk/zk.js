@@ -5,7 +5,7 @@
   'use strict';
   const BASE = 'https://ggprfdetivzekjxlpvyq.supabase.co', KEY = 'sb_publishable_hghWk6EbuQPe2nYDgvmU2w_XPgajsHK';
   const $ = id => document.getElementById(id);
-  const VIEWS = ['auth', 'recovery', 'reset', 'app'];
+  const VIEWS = ['auth', 'upgrade', 'recovery', 'reset', 'app'];
   const show = v => VIEWS.forEach(n => $('v-' + n).classList.toggle('hide', n !== v));
   const S = { token: null, uid: null, email: null, dk: null, keys: null };
   const say = (id, msg) => { $(id).textContent = msg || ''; };
@@ -61,7 +61,8 @@
   $('rec-ok').onchange = () => { $('btn-rec-continue').disabled = !$('rec-ok').checked; };
   $('btn-rec-continue').onclick = async () => {
     $('rec-key').textContent = '';
-    if (S.token) { await remember(); enterApp(); } else { S.dk = null; show('auth'); }
+    if (S.pendingUpgrade) await finishUpgrade();
+    else if (S.token) { await remember(); enterApp(); } else { S.dk = null; show('auth'); }
   };
 
   // ── log in ──
@@ -94,6 +95,57 @@
     } catch (e) { say('li-err', 'Could not unlock: ' + e.message); }
     finally { $('btn-login').disabled = false; }
   }
+
+
+  // ── upgrade an existing (plaintext) account ──
+  const ulog = m => { $('up-log').textContent += m + '\n'; };
+  async function upgrade() {
+    say('up-err', ''); $('up-log').textContent = '';
+    const email = $('up-email').value.trim(), oldPw = $('up-old').value, newPw = $('up-new').value;
+    if (!email || !oldPw) return say('up-err', 'Enter your email and current password');
+    if (newPw.length < MIN_PW) return say('up-err', 'New password must be at least ' + MIN_PW + ' characters');
+    if (newPw.toLowerCase() === oldPw.toLowerCase()) return say('up-err', 'The new password must be different from the old one');
+    $('btn-upgrade').disabled = true;
+    try {
+      const t = await call('/auth/v1/token?grant_type=password', { method: 'POST', body: JSON.stringify({ email, password: oldPw }) });
+      if (!t.ok || !t.d.access_token) return say('up-err', 'Invalid email or current password');
+      const token = t.d.access_token, uid = uidOf(token);
+      const existing = await fetchKeys(token);
+      if (existing.ok && existing.d.length) return say('up-err', 'This account is already private. Log in normally.');
+      ulog('Creating your keys…');
+      const acct = await ZK.createAccount(newPw);
+      const k = await uploadKeys(acct.store, token);
+      if (!k.ok) return say('up-err', 'Could not save keys: ' + errOf(k));
+      const ctx = { call, token, uid, dk: acct.dk };
+      await ZKMigrate.encryptAll(ctx, ulog);
+      const rep = await ZKMigrate.verify(ctx, ulog);
+      const bad = rep.filter(x => !x.same);
+      ulog(rep.map(x => `${x.table}: ${x.plain} → ${x.enc} ${x.same ? 'OK' : 'MISMATCH'}`).join('\n'));
+      if (bad.length) return say('up-err', 'Verification failed for: ' + bad.map(x => x.table).join(', ') + '. Nothing was changed; your old password still works.');
+      S.pendingUpgrade = { token, uid, acct, email };
+      $('rec-key').textContent = acct.recoveryKey; say('rec-msg', 'Your data is encrypted and verified. Save this key, then continue to finish switching your password.');
+      $('rec-ok').checked = false; $('btn-rec-continue').disabled = true; show('recovery');
+    } catch (e) { say('up-err', 'Something went wrong (nothing was deleted, old password still works): ' + e.message); }
+    finally { $('btn-upgrade').disabled = false; }
+  }
+  async function finishUpgrade() {
+    const u = S.pendingUpgrade; S.pendingUpgrade = null;
+    const a = await call('/auth/v1/user', { method: 'PUT', body: JSON.stringify({ password: u.acct.authSecret }) }, u.token);
+    if (!a.ok) { show('upgrade'); return say('up-err', 'Could not switch the password: ' + errOf(a) + ' (your old password still works; run the upgrade again)'); }
+    Object.assign(S, { token: u.token, uid: u.uid, email: u.email, dk: u.acct.dk, keys: u.acct.store, upgraded: true });
+    await remember(); enterApp();
+  }
+  $('btn-to-upgrade').onclick = () => { show('upgrade'); };
+  $('btn-up-back').onclick = () => { show('auth'); };
+  $('btn-upgrade').onclick = upgrade;
+  $('btn-summary').onclick = async () => { $('summary-out').textContent = JSON.stringify(await ZKMigrate.summary({ call, token: S.token, uid: S.uid, dk: S.dk }), null, 1); $('purge-box').classList.remove('hide'); };
+  $('btn-purge').onclick = async () => {
+    if ($('purge-confirm').value !== 'DELETE') return say('purge-msg', 'Type DELETE first');
+    const ctx = { call, token: S.token, uid: S.uid, dk: S.dk };
+    const rep = await ZKMigrate.verify(ctx);
+    if (rep.some(x => x.enc !== x.plain && x.plain > 0)) return say('purge-msg', 'Refusing: encrypted copy does not match. Nothing deleted.');
+    await ZKMigrate.purgePlaintext(ctx); say('purge-msg', 'Plaintext copy deleted. Only encrypted data remains.');
+  };
 
   // ── forgot / reset ──
   $('btn-forgot').onclick = async () => {
