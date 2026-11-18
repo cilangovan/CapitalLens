@@ -97,6 +97,16 @@ ok('first_seen kept for known rows, last_seen refreshed', (await store.load('t21
 r = await mk().run(SECRET_KEY, SECRET_SEC, { full: true });
 ok('forced full walk: no duplicates', (await store.load('t212_orders')).length === 121 && r.results[0].fresh === 0);
 
+// 5b migrated history (rows exist, no sync state): incremental, not a 9-minute full walk
+await store.put('sync_state', [{ endpoint: 'orders' }], x => x.endpoint);        // what a migrated store looks like
+T212_CALLS = []; r = await mk().run(SECRET_KEY, SECRET_SEC);
+ok('migrated history without sync state: orders sync is incremental (1 page, stops at known rows)', T212_CALLS.filter(c => c.url.includes('orders')).length === 1 && r.results[0].fresh === 0);
+ok('...and is then recorded as fully synced', !!(await store.get('sync_state', 'orders')).last_full);
+// 5c a full walk that was cut off part-way is repeated, not trusted
+await store.put('sync_state', [{ endpoint: 'orders', walking: new Date(clock).toISOString() }], x => x.endpoint);
+T212_CALLS = []; r = await mk().run(SECRET_KEY, SECRET_SEC);
+ok('interrupted full walk is repeated in full (all 3 order pages)', T212_CALLS.filter(c => c.url.includes('orders')).length === 3);
+ok('...and the in-progress marker is cleared once it completes', (await store.get('sync_state', 'orders')).walking === undefined && !!(await store.get('sync_state', 'orders')).last_full);
 // 6 one endpoint failing does not stop the others; error recorded
 BREAK_DIVIDENDS = true; ORDERS = [mkOrder(501, 'BUY'), ...ORDERS];
 r = await mk().run(SECRET_KEY, SECRET_SEC);

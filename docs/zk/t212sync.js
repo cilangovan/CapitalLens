@@ -84,9 +84,13 @@
 
     async function syncOne(ep, force) {
       const state = (await store.get('sync_state', ep.name)) || {};
-      const full = force || !state.last_full;
-      log(`[${ep.name}] ${full ? 'full walk' : 'incremental'}`);
       const have = new Map((await store.load(ep.kind)).map(r => [r[ep.key], r]));
+      // A full walk is only needed when there is no stored history yet, or an earlier full walk was cut off part-way (state.walking).
+      // History that arrived another way (the migration copy of the old dashboard) counts as complete: walking it all again would take
+      // many minutes at Trading 212's 6 requests/minute and gain nothing.
+      const full = force || (!state.last_full && (have.size === 0 || !!state.walking));
+      log(`[${ep.name}] ${full ? 'full walk' : 'incremental' + (have.size && !state.last_full ? ' (history already stored)' : '')}`);
+      if (full) await store.put('sync_state', [{ ...state, endpoint: ep.name, walking: now() }], s => s.endpoint);
       let nxt = ep.path, pages = 0, fresh = 0, seen = 0;
       while (nxt) {
         const resp = await t212(nxt);
@@ -104,7 +108,7 @@
         if (!full && rows.length && known === rows.length) { log('  reached already-stored history, stopping'); break; }
         nxt = resp && !Array.isArray(resp) ? resp.nextPagePath : null;
       }
-      const st = { endpoint: ep.name, last_run: now(), items_total: have.size, status: 'ok', detail: `${pages} pages, ${seen} items read, ${fresh} new`, last_full: full ? now() : state.last_full };
+      const st = { endpoint: ep.name, last_run: now(), items_total: have.size, status: 'ok', detail: `${pages} pages, ${seen} items read, ${fresh} new`, last_full: full ? now() : (state.last_full || (have.size ? now() : undefined)) };
       await store.put('sync_state', [st], s => s.endpoint);
       return { name: ep.name, ok: true, pages, seen, fresh, total: have.size };
     }
@@ -132,11 +136,13 @@
       api.setCreds(apiKey, apiSecret);
       const force = !!(o && o.full), results = [];
       for (const ep of ENDPOINTS) {
+        let prev = {}; try { prev = (await store.get('sync_state', ep.name)) || {}; } catch (x) {}
         try { results.push(await syncOne(ep, force)); }
         catch (e) {
+          try { prev = (await store.get('sync_state', ep.name)) || prev; } catch (x) {}
           results.push({ name: ep.name, ok: false, error: String(e.message || e) });
           log(`  failed ${ep.name}: ${e.message}`);
-          try { await store.put('sync_state', [{ endpoint: ep.name, last_run: now(), status: 'error', detail: String(e.message).slice(0, 300) }], s => s.endpoint); } catch (x) {}
+          try { await store.put('sync_state', [{ endpoint: ep.name, last_run: now(), status: 'error', detail: String(e.message).slice(0, 300), last_full: prev.last_full, walking: prev.walking }], s => s.endpoint); } catch (x) {}
         }
       }
       const derived = await rebuildDerived();
