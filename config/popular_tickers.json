@@ -1,0 +1,12 @@
+{
+  "note": "Curated popular symbols whose public market data is cached centrally (no customer data). Everything else falls back to the relay.",
+  "ranges": ["1y", "6mo", "3mo", "5d"],
+  "symbols": [
+    "AAPL", "MSFT", "NVDA", "GOOGL", "AMZN", "META", "TSLA", "AVGO", "AMD", "INTC", "NFLX", "ORCL", "CRM", "ADBE", "QCOM", "MU", "TSM", "ASML",
+    "JPM", "V", "MA", "BRK-B", "KO", "PEP", "WMT", "COST", "JNJ", "UNH", "XOM", "CVX", "DIS", "BA", "LMT", "RKLB", "ASTS", "PLTR",
+    "SPY", "QQQ", "VOO", "IVV", "EFA", "EWU", "EZU", "VGK", "ACWX",
+    "VWRP.L", "VUSA.L", "VWRL.L", "ISF.L", "VMID.L", "VUKE.L", "SGLN.L", "SSLN.L", "ITWN.L", "XDAX.L", "IMIB.L", "IPOL.L", "CS1.L", "IAEX.L", "VFEM.L", "VEVE.L",
+    "VWCE.DE", "EXW1.DE", "VEUR.AS", "SXRV.DE",
+    "^GSPC", "^IXIC", "^FTSE", "^STOXX50E", "^GDAXI", "^AEX", "^VIX", "GC=F", "BTC-USD", "ETH-USD", "GBPUSD=X", "GBPEUR=X"
+  ]
+}
