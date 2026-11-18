@@ -8,5 +8,7 @@ create table if not exists public.market_cache (
 alter table public.market_cache enable row level security;
 drop policy if exists "signed-in read" on public.market_cache;
 create policy "signed-in read" on public.market_cache for select to authenticated using (true);
+revoke all on public.market_cache from anon, authenticated;
 grant select on public.market_cache to authenticated;
+grant all on public.market_cache to service_role;
 -- writes: service role only (no insert/update policy for authenticated)

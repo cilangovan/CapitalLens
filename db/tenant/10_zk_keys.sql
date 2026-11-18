@@ -22,7 +22,7 @@ revoke all on public.user_keys from anon, authenticated;
 grant select, insert, update on public.user_keys to authenticated;
 grant all on public.user_keys to service_role;
 
--- Probe table proving the encrypted-row pattern end to end (demo project only; real tables follow in phase 3).
+-- >>> DEMO ONLY: probe table proving the encrypted-row pattern end to end. DO NOT APPLY TO PRODUCTION (stop here and skip to the next section). <<<
 create table if not exists public.zk_probe (
   id uuid primary key default gen_random_uuid(),
   user_id uuid not null default auth.uid() references auth.users(id) on delete cascade,
