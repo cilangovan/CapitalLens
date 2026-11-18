@@ -1,11 +1,36 @@
 // Collapsible dashboard sections: click (or tap) any card heading to fold/unfold that card.
-// State is remembered per browser (heading text + tab), no account data involved.
+// State is saved to the database per user (table user_ui_prefs, own row only) so it follows your account across
+// devices and logins. A copy is cached in this browser (keyed by user id) for instant display and as a fallback.
 (function () {
   'use strict';
-  const KEY = 'cl_collapsed';
-  let saved = {};
-  try { saved = JSON.parse(localStorage.getItem(KEY) || '{}') || {}; } catch (e) { saved = {}; }
-  const persist = () => { try { localStorage.setItem(KEY, JSON.stringify(saved)); } catch (e) {} };
+  const LEGACY_KEY = 'cl_collapsed';
+  let saved = {}, uid = null, loadedFor = null, loadingFor = null, saveTimer = null;
+
+  const dbMode = () => {
+    try { return typeof SESSION_TOKEN !== 'undefined' && !!SESSION_TOKEN && typeof PROXY === 'string' && PROXY.indexOf('/rest/v1') > 0 && typeof SUPABASE_KEY !== 'undefined'; }
+    catch (e) { return false; }
+  };
+  const uidFromToken = () => {
+    try { return JSON.parse(atob(SESSION_TOKEN.split('.')[1].replace(/-/g, '+').replace(/_/g, '/'))).sub || null; } catch (e) { return null; }
+  };
+  const cacheKey = () => (uid ? LEGACY_KEY + ':' + uid : LEGACY_KEY);
+  const readCache = k => { try { return JSON.parse(localStorage.getItem(k) || '{}') || {}; } catch (e) { return {}; } };
+  const dbHeaders = extra => Object.assign({ apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SESSION_TOKEN }, extra || {});
+
+  const persist = () => {
+    try { localStorage.setItem(cacheKey(), JSON.stringify(saved)); } catch (e) {}
+    if (!dbMode() || !uid || loadedFor !== uid) return;
+    clearTimeout(saveTimer);
+    saveTimer = setTimeout(() => {
+      if (!dbMode() || loadedFor !== uid) return;
+      fetch(PROXY + '/user_ui_prefs', { method: 'POST',
+        headers: dbHeaders({ 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' }),
+        body: JSON.stringify({ user_id: uid, prefs: saved, updated_at: new Date().toISOString() }) }).catch(() => {});
+    }, 700);
+  };
+
+  // Browser-only mode (single-user page without a database sign-in)
+  if (!dbMode()) saved = readCache(LEGACY_KEY);
 
   function headOf(card) {
     const h = card.querySelector('h3');
@@ -108,6 +133,44 @@
   wrap('pbToggle', i => { const b = document.getElementById('pb-body-' + i), h = b && b.previousElementSibling;
     if (h) OPEN['pb|' + txt(h.firstElementChild, 30)] = b.classList.contains('open') ? 1 : 0; });
   wrap('toggleVB', id => { const b = document.getElementById(id); if (b) OPEN['vb|' + id] = b.style.display !== 'none' ? 1 : 0; });
+
+  // Re-apply the saved state to everything already on screen (used when the database copy arrives)
+  function applyAll() {
+    document.querySelectorAll('.card.coll').forEach(c => c.classList.remove('coll'));
+    document.querySelectorAll('.coll-head').forEach(h => h.classList.remove('coll-head'));
+    document.querySelectorAll('.sub-closed').forEach(b => b.classList.remove('sub-closed'));
+    document.querySelectorAll('[data-sub-ready],[data-oready]').forEach(e => { e.removeAttribute('data-sub-ready'); e.removeAttribute('data-oready'); });
+    setup(); subSetup(); restoreOpen();
+  }
+  function replaceSaved(obj) {
+    Object.keys(OPEN).forEach(k => delete OPEN[k]);
+    Object.keys(saved).forEach(k => { if (k !== 'o') delete saved[k]; });
+    Object.keys(obj).forEach(k => { if (k !== 'o') saved[k] = obj[k]; });
+    Object.assign(OPEN, obj.o || {});
+  }
+  async function loadFromDb(u) {
+    const cached = readCache(cacheKey());
+    if (Object.keys(cached).length) { replaceSaved(cached); applyAll(); }      // instant, from this browser's copy
+    try {
+      const r = await fetch(PROXY + '/user_ui_prefs?select=prefs', { headers: dbHeaders() });
+      if (!r.ok) throw new Error(r.status);
+      const rows = await r.json();
+      if (rows.length) { replaceSaved(rows[0].prefs || {}); applyAll(); loadedFor = u; }
+      else {                                                                    // first time: adopt earlier browser-only settings
+        const old = Object.keys(cached).length ? cached : readCache(LEGACY_KEY);
+        if (Object.keys(old).length) { replaceSaved(old); applyAll(); }
+        loadedFor = u; persist();
+      }
+    } catch (e) { setTimeout(() => { if (loadingFor === u && loadedFor !== u) loadingFor = null; }, 10000); }   // retry later
+  }
+  setInterval(() => {
+    if (dbMode()) {
+      const u = uidFromToken();
+      if (u && loadingFor !== u) { uid = u; loadingFor = u; loadedFor = null; loadFromDb(u); }
+    } else if (uid) {                                                           // signed out: drop this user's state from memory
+      uid = null; loadedFor = null; loadingFor = null; replaceSaved({}); applyAll();
+    }
+  }, 600);
 
   let t = null;
   new MutationObserver(() => { if (!t) t = requestAnimationFrame(() => { t = null; setup(); subSetup(); restoreOpen(); }); })
