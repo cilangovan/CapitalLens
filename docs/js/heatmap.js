@@ -65,11 +65,13 @@ async function loadHeatmap() {
   };
 
   const periods = [
-    { label: 'Monthly',  refMap: monthMap, hasRef: !!monthSnap },
-    { label: 'Weekly',   refMap: weekMap,  hasRef: !!weekSnap  },
-    { label: 'Daily',    refMap: dayMap,   hasRef: !!daySnap   },
-    { label: 'All-time', refMap: null,     hasRef: true        },
+    { label: 'Monthly',  refMap: monthMap, hasRef: !!monthSnap, snap: monthSnap, target: 30 },
+    { label: 'Weekly',   refMap: weekMap,  hasRef: !!weekSnap,  snap: weekSnap,  target: 7  },
+    { label: 'Daily',    refMap: dayMap,   hasRef: !!daySnap,   snap: daySnap,   target: 1  },
+    { label: 'All-time', refMap: null,     hasRef: true,        snap: null,      target: 0  },
   ];
+  // Actual look-back we really have for each period (history may be shorter than the period name says)
+  periods.forEach(pd => { pd.span = pd.snap ? (now - new Date(pd.snap.created_at)) / 86400000 : null; });
 
   // colour: vivid indigo/purple → cyan → emerald (gain) | red→orange (loss)
   const pplColor = (val, maxAbs) => {
@@ -158,7 +160,7 @@ async function loadHeatmap() {
       const col = period.hasRef ? pplColor(val, ringMaxAbs[ri]) : '#1e2a3a';
       const path = arcPath(aStart, aEnd, r1, r2);
       const line = `${period.label}: ${val >= 0 ? '+' : ''}£${val.toFixed(2)}${period.refMap ? ' Δ' : ''}`;
-      paths += `<path d="${path}" fill="${col}" stroke="#0f1117" stroke-width="0.8" ${tipAttrs(ticker, sym0, line)} class="rad-seg"/>`;
+      paths += `<path d="${path}" fill="${col}" stroke="#0f1117" stroke-width="0.8" ${tipAttrs(ticker, sym0, line)} class="rad-seg" data-ri="${ri}"/>`;
     });
 
     // ticker label at outer edge — always reads outward, never flipped
@@ -227,10 +229,47 @@ async function loadHeatmap() {
         padding:6px 10px;font-size:12px;color:#e2e8f0;max-width:260px;z-index:10;line-height:1.35
       "></div>
     </div>
-    <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-size:11px;color:#475569">
-      ${periods.map(p => `<span style="display:flex;align-items:center;gap:4px"><span style="display:inline-block;width:10px;height:10px;background:#334155;border-radius:2px"></span>${p.label}${!p.hasRef?' (no prior data)':''}</span>`).join('')}
-    </div>
+    <div class="dd-ranges" id="rad-periods" style="justify-content:center;flex:0 0 100%;width:100%;flex-wrap:wrap;margin:12px 0 6px"></div>
+    <div id="rad-detail" style="font-size:12px;flex:0 0 100%;width:100%"></div>
   `;
+
+  // ── period buttons: focus one ring + ranked movers for that period ──
+  const fmtD = v => `${v >= 0 ? '+' : '−'}£${Math.abs(v).toFixed(2)}`;
+  const valFor = (period, t) => period.refMap ? delta(t, period.refMap) : (curMap[t]?.ppl || 0);
+  const symOf = t => (curMap[t].display || t).replace(/_EQ$/, '');
+  const spanTxt = pd => {
+    if (pd.target === 0) return 'since you bought';
+    if (!pd.snap) return 'no data yet';
+    const d = pd.span;
+    const short = d < pd.target * 0.7;
+    return short ? `${d < 1 ? Math.max(1, Math.round(d * 24)) + 'h' : Math.round(d) + 'd'} of data so far` : `last ${pd.target === 1 ? 'day' : pd.target + ' days'}`;
+  };
+  let focus = -1;
+  const drawPeriods = () => {
+    const box = document.getElementById('rad-periods'); if (!box) return;
+    box.innerHTML = periods.map((pd, i) => {
+      const tot = pd.hasRef ? tickers.reduce((a, t) => a + valFor(pd, t), 0) : null;
+      return `<button data-pi="${i}" class="${focus === i ? 'active' : ''}" style="display:flex;flex-direction:column;align-items:center;gap:1px;padding:6px 12px">
+        <span>${pd.label}</span>
+        <span style="font-size:12px;font-weight:700;color:${tot == null ? '#64748b' : tot >= 0 ? '#34d399' : '#f87171'}">${tot == null ? '—' : fmtD(tot)}</span>
+        <span style="font-size:9px;opacity:.7">${spanTxt(pd)}</span></button>`;
+    }).join('');
+    document.querySelectorAll('#radial-svg .rad-seg').forEach(sg => { sg.style.opacity = focus < 0 || +sg.dataset.ri === focus ? '1' : '0.18'; });
+    const det = document.getElementById('rad-detail'); if (!det) return;
+    if (focus < 0) { det.innerHTML = '<div style="text-align:center;color:#64748b;padding:4px">Tap a period to focus its ring and see which holdings moved most.</div>'; return; }
+    const pd = periods[focus];
+    const rows = tickers.map(t => ({ t, sym: symOf(t), v: valFor(pd, t) })).sort((a, b) => b.v - a.v);
+    const chip = r => `<div style="display:flex;justify-content:space-between;gap:10px;padding:3px 0;border-bottom:1px solid #1e2740"><span style="font-weight:700;color:#a5b4fc">${_hmEsc(r.sym)}</span><span style="color:${r.v >= 0 ? '#34d399' : '#f87171'}">${fmtD(r.v)}</span></div>`;
+    const up = rows.filter(r => r.v > 0).slice(0, 5), down = rows.filter(r => r.v < 0).slice(-5).reverse();
+    det.innerHTML = `<div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px;max-width:560px;margin:6px auto 0">
+      <div><div style="color:#34d399;font-weight:700;margin-bottom:4px">Top gainers · ${pd.label}</div>${up.map(chip).join('') || '<div style="color:#64748b">None</div>'}</div>
+      <div><div style="color:#f87171;font-weight:700;margin-bottom:4px">Top losers · ${pd.label}</div>${down.map(chip).join('') || '<div style="color:#64748b">None</div>'}</div></div>`;
+  };
+  document.getElementById('rad-periods').onclick = e => {
+    const b = e.target.closest('button[data-pi]'); if (!b) return;
+    focus = focus === +b.dataset.pi ? -1 : +b.dataset.pi; drawPeriods();
+  };
+  drawPeriods();
 
   // tooltip interaction — hover on desktop, tap on phone. Hovering a bubble or a ticker label
   // shows: flag + full name, then symbol · what it is, then the value for that ring.
