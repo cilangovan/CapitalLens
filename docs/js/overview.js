@@ -1,4 +1,23 @@
 // ── OVERVIEW ──────────────────────────────────────────────────
+// "5 min ago" / "3 h ago" / "2 days ago"
+function ovAgo(ms) {
+  const m = Math.round(ms / 60000);
+  if (m < 1) return 'just now'; if (m < 60) return `${m} min ago`;
+  const h = Math.round(m / 60); if (h < 48) return `${h} h ago`;
+  return `${Math.round(h / 24)} days ago`;
+}
+// A snapshot older than 12 hours is shown with a clear warning: otherwise stale numbers look live.
+const OV_STALE_HOURS = 12;
+function ovStaleBanner(ageMs, ts) {
+  const strip = document.getElementById('stats-strip'); if (!strip) return;
+  let b = document.getElementById('stale-banner');
+  if (ageMs === null || ageMs < OV_STALE_HOURS * 3600e3) { if (b) b.remove(); return; }
+  if (!b) { b = document.createElement('div'); b.id = 'stale-banner'; b.style.cssText = 'margin:0 0 12px;padding:10px 14px;border-radius:8px;border:1px solid rgba(245,158,11,.55);background:rgba(245,158,11,.12);color:var(--text);font-size:13px;display:flex;gap:10px;align-items:center;flex-wrap:wrap'; strip.parentNode.insertBefore(b, strip); }
+  const priv = typeof zkToolsOpen === 'function';
+  b.innerHTML = `<span>⚠ These numbers are from <b>${ts}</b> (${ovAgo(ageMs)}), not live.</span>` +
+    (priv ? `<button onclick="zkToolsOpen()" style="background:var(--accent);color:#fff;border:0;border-radius:6px;padding:4px 12px;font-size:12px;cursor:pointer">Refresh now</button>` : `<span class="w-dim">The scheduled update will refresh them.</span>`);
+}
+
 async function loadOverview() {
   const [snaps, , alerts] = await Promise.all([
     api('portfolio_snapshots','?select=*&order=created_at.desc&limit=1'),
@@ -13,7 +32,9 @@ async function loadOverview() {
   const ppl = snap.total_ppl || (tv - inv);
   const pplPct = inv ? (ppl / inv * 100) : 0;
   const ts = snap.created_at ? new Date(snap.created_at).toLocaleString('en-GB') : '—';
-  document.getElementById('last-updated').textContent = `Updated: ${ts}`;
+  const ageMs = snap.created_at ? Date.now() - new Date(snap.created_at).getTime() : null;
+  document.getElementById('last-updated').textContent = `Updated: ${ts}${ageMs !== null && ageMs >= 0 ? ' (' + ovAgo(ageMs) + ')' : ''}`;
+  ovStaleBanner(ageMs, ts);
 
   const allPos = await api('positions', `?snapshot_id=eq.${snap.id}&select=gain_pct,ppl`).catch(()=>[]);
   const winners = allPos.filter(p => (p.gain_pct||0) > 0).length;
