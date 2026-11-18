@@ -244,12 +244,12 @@ async function loadSectorMap() {
       </div>`;
     }
     const totalHoldings = Object.values(pies).flat().length;
-    html += `<div style="border:1px solid ${sc.border}55;border-radius:10px;background:${sc.bg};overflow:hidden">
-      <div style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid ${sc.border}33">
-        <div style="font-size:12px;font-weight:700;color:${sc.text}">${sName}</div>
+    html += `<div data-sub="sector:${sName}" style="border:1px solid ${sc.border}55;border-radius:10px;background:${sc.bg};overflow:hidden">
+      <div data-sub-head style="display:flex;align-items:center;justify-content:space-between;padding:8px 12px;border-bottom:1px solid ${sc.border}33">
+        <div style="font-size:12px;font-weight:700;color:${sc.text}"><span class="sub-chev">▾</span>${sName}</div>
         <div style="font-size:10px;color:#334155">${totalHoldings} holding${totalHoldings!==1?'s':''} · ${Object.keys(pies).length} pie${Object.keys(pies).length!==1?'s':''}</div>
       </div>
-      <div style="display:flex;flex-wrap:wrap;gap:12px;padding:10px 12px">${piecols}</div>
+      <div data-sub-body style="display:flex;flex-wrap:wrap;gap:12px;padding:10px 12px">${piecols}</div>
     </div>`;
   }
 
@@ -325,12 +325,12 @@ async function loadCountryMap() {
       </div>`;
     }).join('');
 
-    html += `<div style="border:1px solid ${pc}44;border-radius:9px;background:${bg};overflow:hidden">
+    html += `<div data-sub="country:${country}" style="border:1px solid ${pc}44;border-radius:9px;background:${bg};overflow:hidden">
       <div style="display:flex;align-items:center;gap:10px;padding:8px 12px">
         <div style="font-size:22px;line-height:1">${data.flag}</div>
         <div style="flex:1">
-          <div style="font-size:13px;font-weight:700;color:#e2e8f0">${country}</div>
-          <div style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">${etfChips}</div>
+          <div data-sub-head style="font-size:13px;font-weight:700;color:#e2e8f0"><span class="sub-chev">▾</span>${country}</div>
+          <div data-sub-body style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">${etfChips}</div>
         </div>
         <div style="text-align:right;min-width:70px">
           <div style="font-size:14px;font-weight:800;color:${pc}">${gainStr}</div>

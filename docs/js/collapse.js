@@ -49,8 +49,31 @@
   document.addEventListener('keydown', e => {
     if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('.card h3[role=button]')) { e.preventDefault(); toggle(e.target); }
   });
+  // Sub-sections inside a card (e.g. each sector or country box): click the small header to fold the box.
+  function subKey(box) { return 'sub|' + (box.closest('.tab') || {}).id + '|' + box.getAttribute('data-sub'); }
+  function subSetup() {
+    document.querySelectorAll('[data-sub]:not([data-sub-ready])').forEach(box => {
+      box.setAttribute('data-sub-ready', '1');
+      const h = box.querySelector('[data-sub-head]');
+      if (h) { h.setAttribute('role', 'button'); h.tabIndex = 0; }
+      if (saved[subKey(box)]) box.classList.add('sub-closed');
+    });
+  }
+  function subToggle(h) {
+    const box = h.closest('[data-sub]'); if (!box) return;
+    const on = box.classList.toggle('sub-closed');
+    if (on) saved[subKey(box)] = 1; else delete saved[subKey(box)];
+    persist();
+  }
+  document.addEventListener('click', e => {
+    const h = e.target.closest && e.target.closest('[data-sub-head]');
+    if (h && !e.target.closest('a,button,input,select')) subToggle(h);
+  });
+  document.addEventListener('keydown', e => {
+    if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('[data-sub-head]')) { e.preventDefault(); subToggle(e.target); }
+  });
   let t = null;
-  new MutationObserver(() => { if (!t) t = requestAnimationFrame(() => { t = null; setup(); }); })
+  new MutationObserver(() => { if (!t) t = requestAnimationFrame(() => { t = null; setup(); subSetup(); }); })
     .observe(document.documentElement, { childList: true, subtree: true });
 
   const css = document.createElement('style');
@@ -58,8 +81,10 @@
     '.card h3[role=button]{cursor:pointer;user-select:none;-webkit-tap-highlight-color:transparent}' +
     '.card h3[role=button]::before{content:"\\25BE";display:inline-block;width:14px;margin-right:4px;transition:transform .15s;color:var(--muted)}' +
     '.card.coll h3[role=button]::before{transform:rotate(-90deg)}' +
+    '[data-sub-head]{cursor:pointer;user-select:none}.sub-chev{display:inline-block;width:14px;color:var(--muted);transition:transform .15s}' +
+    '.sub-closed .sub-chev{transform:rotate(-90deg)}.sub-closed [data-sub-body]{display:none!important}.sub-closed [data-sub-head]{border-bottom-color:transparent!important}' +
     '.card.coll>*:not(.coll-head){display:none!important}' +
     '.card.coll .coll-head h3,.card.coll>h3{margin-bottom:0}';
   document.head.appendChild(css);
-  setup();
+  setup(); subSetup();
 })();
