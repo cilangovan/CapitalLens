@@ -52,6 +52,11 @@ const reply = (request, status, body, extra) => new Response(body, { status, hea
 
 export default {
   async fetch(request) {
+    try { return await route(request); }
+    catch (e) { return reply(request, 502, JSON.stringify({ error: 'upstream failed', detail: String((e && e.message) || e).slice(0, 120) }), { 'Content-Type': 'application/json' }); }   // a clean 502 keeps the CORS headers so the app can show a real error
+  },
+};
+async function route(request) {
     if (request.method === 'OPTIONS') return reply(request, 204, null);
     const origin = request.headers.get('Origin');
     if (origin && !ORIGINS.includes(origin)) return reply(request, 403, '{"error":"origin not allowed"}', { 'Content-Type': 'application/json' });
@@ -130,5 +135,4 @@ export default {
     const out = { 'Content-Type': up.headers.get('Content-Type') || 'application/json' };
     for (const k of ['x-ratelimit-reset', 'x-ratelimit-remaining']) if (up.headers.get(k)) out[k] = up.headers.get(k);
     return reply(request, up.status, await up.arrayBuffer(), out);
-  },
-};
+}
