@@ -1,0 +1,36 @@
+name: Public market cache (zero-knowledge design)
+
+# Caches PUBLIC market data (Yahoo charts/info for config/popular_tickers.json) and the market-wide institutional-flow report.
+# Reads NO customer data. Manual only for now: it is switched on (schedule uncommented) at the production switch of issue #7,
+# because until then the legacy jobs write the same institutional_flow_reports table.
+on:
+  workflow_dispatch:
+  # schedule:
+  #   - cron: '30 5 * * 1-5'     # weekdays 05:30 UTC (after the daily jobs' data is available)
+
+jobs:
+  market_cache:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: '20' }
+      - name: Cache popular-symbol market data
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: node scripts/public_market_job.mjs
+
+  institutional_flow_public:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: '3.11' }
+      - run: pip install -r requirements.txt
+      - name: Market-wide institutional flow (public mode, no positions read)
+        env:
+          FLOW_PUBLIC_MODE: '1'
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python -m services.institutional_flow_service
