@@ -560,6 +560,8 @@
       <b style="font-size:13px">🧪 Compare orders with the old copy</b>
       <p style="font-size:12px;color:var(--muted);margin:6px 0 8px">Reads both copies of your orders in this browser and reports any differences (read-only, changes nothing).</p>
       <button id="zk-cmp-btn" onclick="zkCompareOrders()">Compare</button>
+      <p style="font-size:12px;color:var(--muted);margin:10px 0 6px">Duplicate repair: scan first (read-only), then fix. The fix saves the clean copy first and only then removes extras.</p>
+      <button id="zk-dd-scan" onclick="zkDedupe(false)">Scan for duplicates</button> <button id="zk-dd-fix" onclick="zkDedupe(true)">Fix duplicates</button>
       <pre id="zk-cmp-out" style="font-size:11px;max-height:200px;overflow:auto;background:#0004;padding:8px;border-radius:6px;white-space:pre-wrap"></pre>
     </div>
     <h3 style="margin:0 0 6px;font-size:15px">🔄 Refresh your data</h3>
@@ -577,6 +579,7 @@
 <script src="../js/api.js" integrity="sha384-/67zJ3BIjgb9hEgyV18jpFz3APwWihzPnxnS+OCUlPkkeJyk3ud/8qws03yNch75"></script>
 <script src="../js/zkcrypto.js" integrity="sha384-uuaZ5aEaHvz7Q1GyViwlSM5HSsPPqvPwgB9FXMmUiKA8s8/t5h+8cWRQYtxhcbtc"></script>
 <script src="../zk/store.js" integrity="sha384-fwaecshL5VsTj12l1i8DSn3ksVTj0HUf/Xa/TIkA4wnNiBe37qYE18TohXGHkjyq"></script>
+<script src="../zk/dedupe.js" integrity="sha384-6/TT8ViUo/pYKSdsOZHNNwA12QYPEmOqBYnr1Y9NfbWsEHXEmCY2pMxH9HrQ0sIy"></script>
 <script src="../zk/t212sync.js" integrity="sha384-NRvli9vN37oq9CZArMHg6PnKHZy3XtRY6HdOxDfnHWHEynB233Y1SOPESg/fUz0z"></script>
 <script src="../zk/market.js" integrity="sha384-5bLg6E7+4UucLnAL5QA6606qt5z3hkcXVcFodKHjUXo3Ezv9fZ/ATswCIUpBDEVq"></script>
 <script src="../zk/alertfmt.js" integrity="sha384-YjG+R4rTNialkw4iHTtW3HETDq8RQC0TYaJvQstwYVujtRZs64XtGEokdN2SNZ1R"></script>
@@ -598,9 +601,9 @@
 <script src="../zk/postgrest.js" integrity="sha384-TAmHrohvRyy+jJUgcLXNgsD0jeI83fkiX/OXoe1YrQQamDYsaHVmru/kUFga4EoP"></script>
 <script src="../zk/shim.js" integrity="sha384-0QDZwdIqWMZ2rCgxEc7tIanSKHibPDQUqyNakwekAFKzXQrHb0LaAiEA5vxWXfBy"></script>
 <script src="../zk/pipeline.js" integrity="sha384-A1MnDmc9/7vt+iAzgKXQvLfxTpIPps9x+mea4NaZTAlHUbJLSlVpjAhn8Napkyuf"></script>
-<script src="../zkapp/handler-names.js" integrity="sha384-S/27aznV5RZPH5i7SHrhOVUUn1y6c5IK8i1n0MH8KovdckrmDMkjFBsjhj+1vBBM"></script>
+<script src="../zkapp/handler-names.js" integrity="sha384-1w00CAvG/ot1OWzTDcIHyXlPKKrgnLEuDO5uAmx+s3+4aSS3L8JSodzdr4ywC8w4"></script>
 <script src="zkapp-auth.js" integrity="sha384-p9D77gTvfKRH/+FR+ArpPaw6fD8IQiS57xH+IZDDhw0UtmVaNRUUhfzDQskEd1ar"></script>
-<script src="../zkapp/zkapp-tools.js" integrity="sha384-5p1TgEd73T3MWi8Ah4Hhbk019Cl4+UBmT2J8BvbENPeH0M39U4StQR/3lH0x4rkO"></script>
+<script src="../zkapp/zkapp-tools.js" integrity="sha384-AQ3OEkUa82Z2bXtwnA5b1FYowQ/93rJXmAiA6MOAo03xcMCBuppzgBHqi73raa0k"></script>
 <script src="../js/overview.js" integrity="sha384-f+QSyl5SS2iPOFY3pgJYd2BLt63G69oTicIMLBn0vDSdy39NsxqlBRGjO1DkYuC+"></script>
 <script src="../js/heatmap.js" integrity="sha384-ejTjRk7y+eXbpYbK6mwsIrt4MeF2TkJf7+kQzNf1i3KKcnRfk+khUABYy4DEhqWh"></script>
 <script src="../js/positions.js" integrity="sha384-oUyv1ow0QmvO7ZEY6PwkRJKWoijhi350akLfapoGTox2LCBsgIoUvruRsSx0bR3y"></script>

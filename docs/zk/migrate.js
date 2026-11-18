@@ -42,6 +42,9 @@
       onProgress && onProgress(`Encrypting ${t} (${rows.length})`);
       const del = await call(`/rest/v1/enc_rows?kind=eq.${t}`, { method: 'DELETE', headers: { Prefer: 'return=minimal' } }, token);   // re-runnable
       if (!del.ok) throw new Error(`clear ${t}: ${del.status}`);
+      if (root.ZKDedupe && root.ZKDedupe.KEYS[t] && root.ZKStore) {          // same ids the app uses, so a later sync replaces rows instead of duplicating them
+        await root.ZKStore.create({ call, token, uid, dk }).put(t, rows, root.ZKDedupe.KEYS[t]); report.push({ table: t, rows: rows.length }); continue;
+      }
       for (let i = 0; i < rows.length; i += BATCH) {
         const batch = [];
         for (const row of rows.slice(i, i + BATCH)) {

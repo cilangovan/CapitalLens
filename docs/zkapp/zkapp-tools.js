@@ -105,3 +105,14 @@ async function zkCompareOrders() {
   } catch (e) { out.textContent = 'Failed: ' + (e.message || e); }
   btn.disabled = false;
 }
+
+async function zkDedupe(apply) {
+  const out = document.getElementById('zk-cmp-out'), b1 = document.getElementById('zk-dd-scan'), b2 = document.getElementById('zk-dd-fix'); if (!ZKCTX) return;
+  b1.disabled = b2.disabled = true; out.textContent = apply ? 'Fixing…\n' : 'Scanning…';
+  try {
+    const d = ZKDedupe.create(ZKCTX);
+    if (!apply) { const rep = await d.scan(); out.textContent = rep.map(r => `${r.kind}: ${r.total} rows, ${r.distinct} distinct, ${r.surplus} extra` + (r.bad ? `, ${r.bad} unreadable` : '') + (r.unkeyed ? `, ${r.unkeyed} unkeyed` : '')).join('\n') + '\n\nTotal extra rows: ' + rep.reduce((n, r) => n + r.surplus, 0); }
+    else { await d.fix(m => { out.textContent += m + '\n'; }); out.textContent += '\nDone. Run Scan again to confirm 0 extra.'; try { _cache = {}; } catch (e) {} }
+  } catch (e) { out.textContent += '\nStopped: ' + (e.message || e); }
+  b1.disabled = b2.disabled = false;
+}

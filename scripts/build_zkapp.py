@@ -39,6 +39,8 @@ panel = """
       <b style="font-size:13px">🧪 Compare orders with the old copy</b>
       <p style="font-size:12px;color:var(--muted);margin:6px 0 8px">Reads both copies of your orders in this browser and reports any differences (read-only, changes nothing).</p>
       <button id="zk-cmp-btn" onclick="zkCompareOrders()">Compare</button>
+      <p style="font-size:12px;color:var(--muted);margin:10px 0 6px">Duplicate repair: scan first (read-only), then fix. The fix saves the clean copy first and only then removes extras.</p>
+      <button id="zk-dd-scan" onclick="zkDedupe(false)">Scan for duplicates</button> <button id="zk-dd-fix" onclick="zkDedupe(true)">Fix duplicates</button>
       <pre id="zk-cmp-out" style="font-size:11px;max-height:200px;overflow:auto;background:#0004;padding:8px;border-radius:6px;white-space:pre-wrap"></pre>
     </div>
     <h3 style="margin:0 0 6px;font-size:15px">🔄 Refresh your data</h3>
@@ -55,7 +57,7 @@ panel = """
 </div>
 """
 s = s.replace('<script src="../js/api.js"></script>', panel + '<script src="../js/api.js"></script>', 1)
-zk = ["../js/zkcrypto.js"] + [f"../zk/{m}.js" for m in ["store", "t212sync", "market", "alertfmt", "symbols", "returns", "valuebuy", "monitor", "analystratings", "piehistory", "profitbooking", "strategy", "holdingdecision", "handlers", "watchlist", "watchlistops", "alertreport", "flow", "notify", "postgrest", "shim", "pipeline"]]
+zk = ["../js/zkcrypto.js"] + [f"../zk/{m}.js" for m in ["store", "dedupe", "t212sync", "market", "alertfmt", "symbols", "returns", "valuebuy", "monitor", "analystratings", "piehistory", "profitbooking", "strategy", "holdingdecision", "handlers", "watchlist", "watchlistops", "alertreport", "flow", "notify", "postgrest", "shim", "pipeline"]]
 # Allowlist of handler functions: only the app's own top-level functions that its markup actually names in an on*= attribute.
 import re as _re, json as _json
 _srcs = [(root / "docs/js").glob("*.js"), [root / "docs/zkapp/zkapp-auth.js", root / "docs/zkapp/zkapp-tools.js"]]
