@@ -21,7 +21,7 @@
     return async function (key) {
       try {
         const r = await call(`/rest/v1/market_cache?select=payload,fetched_at&key=eq.${encodeURIComponent(key)}&limit=1`, {}, token);
-        if (!r || !r.ok) return null; const row = (await r.json())[0];
+        if (!r || !r.ok) return null; const row = ((r.d !== undefined ? r.d : await r.json()) || [])[0];
         return row && (nowMs() - Date.parse(row.fetched_at)) <= maxAge ? row.payload : null;
       } catch (e) { return null; }
     };

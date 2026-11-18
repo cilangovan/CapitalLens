@@ -23,7 +23,7 @@
   async function latest(call, token, positions) {
     const r = await call('/rest/v1/institutional_flow_reports?select=*&order=report_date.desc&limit=1', {}, token);
     if (!r.ok) throw new Error('read institutional_flow_reports: ' + r.status);
-    const row = (await r.json())[0] || null;
+    const row = ((r.d !== undefined ? r.d : await r.json()) || [])[0] || null;
     if (!row) return null;
     const markets = asJson(row.markets);
     return Object.assign({}, row, { markets, sector_rotation: Array.isArray(row.sector_rotation) ? row.sector_rotation : (typeof row.sector_rotation === 'string' ? asJson(row.sector_rotation) : row.sector_rotation),
