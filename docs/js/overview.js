@@ -183,26 +183,6 @@ async function loadSectorMap() {
     return;
   }
 
-  const SECTOR_MAP = {
-    'NVDA':'Technology','MSFT':'Technology','AAPL':'Technology',
-    'GOOGL':'Technology','FB':'Technology','AMZN':'Technology',
-    'SPCX':'Technology',
-    'SGLNl':'Commodities','SSLNl':'Commodities',
-    'VUSAa':'Broad Market','VWCEd':'Broad Market','SXRVd':'Broad Market',
-    'QDVEd':'Technology',
-    // EM markets pie
-    'VFEMl':'Emerging Markets',
-    'VEVEl':'Broad Market','SPYId':'Broad Market',
-    'JEPQl':'Income','JEQPl':'Income',
-    // Global ETF pie (thematic / factor)
-    'IWFVl':'Thematic / Factor','CYSEl':'Thematic / Factor','GNOGl':'Thematic / Factor',
-    'FLRKl':'Thematic / Factor','DRDRl':'Thematic / Factor','WCOBl':'Thematic / Factor',
-    'INTLl':'Thematic / Factor','SMGBl':'Thematic / Factor',
-    'IAEXl':'Country / Regional','IPOLl':'Country / Regional',
-    'ITWNl':'Country / Regional','XDAXl':'Country / Regional',
-    'CS1l':'Country / Regional','IMIBl':'Country / Regional',
-  };
-
   const SECTOR_COLORS = {
     'Technology':       { bg:'rgba(99,102,241,.18)',  border:'#6366f1', text:'#a5b4fc' },
     'Commodities':      { bg:'rgba(245,158,11,.15)',  border:'#f59e0b', text:'#fcd34d' },
@@ -213,10 +193,10 @@ async function loadSectorMap() {
     'Thematic / Factor':{ bg:'rgba(20,184,166,.12)',  border:'#14b8a6', text:'#5eead4' },
   };
 
-  const PIE_COLORS = {
-    'Magnificent 7':'#6366f1','UK Gold & Silver':'#f59e0b',
-    'Wider ETF':'#22c55e','Country Etf':'#a78bfa',
-    'EM markets':'#06b6d4','Global ETF':'#14b8a6','Semiconductor':'#ef4444',
+  // Pie colours are derived from the pie name (no user pie names stored in code)
+  const pieColor = name => {
+    let h = 0; for (const ch of String(name)) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+    return `hsl(${h % 360},65%,60%)`;
   };
 
   const snap = (await api('portfolio_snapshots','?select=*&order=created_at.desc&limit=1'))[0];
@@ -225,12 +205,13 @@ async function loadSectorMap() {
 
   const seen = new Set();
   const pos = positions.filter(p => { if(seen.has(p.ticker)) return false; seen.add(p.ticker); return true; });
+  // Sector per instrument comes from the database (RLS: only instruments the user holds)
+  const sectorOf = {};
+  try { (await api('instrument_exposure', '?select=ticker,sector')).forEach(r => { sectorOf[r.ticker] = r.sector; }); } catch (e) {}
 
   const sectors = {};
   pos.forEach(p => {
-    const sym = p.display || p.ticker || '';
-    const cleanSym = sym.replace(/[ldaAS]$/, '') || sym;
-    const sector = SECTOR_MAP[sym] || SECTOR_MAP[cleanSym] || 'Other';
+    const sector = sectorOf[p.ticker] || 'Other';
     const pie = p.pie || 'Solo';
     if (!sectors[sector]) sectors[sector] = {};
     if (!sectors[sector][pie]) sectors[sector][pie] = [];
@@ -246,7 +227,7 @@ async function loadSectorMap() {
     const pies = sectors[sName];
     let piecols = '';
     for (const [pieName, holdings] of Object.entries(pies)) {
-      const pc = PIE_COLORS[pieName] || '#8892a4';
+      const pc = pieColor(pieName);
       const chips = holdings.map(h => {
         const gp = h.gain_pct != null ? +h.gain_pct : null;
         const gpColor = gp == null ? '#475569' : gp >= 0 ? '#22c55e' : '#ef4444';
@@ -285,44 +266,28 @@ async function loadCountryMap() {
     return;
   }
 
-  const ETF_COUNTRY_MAP = {
-    'QDVEd':  { label:'US Tech ETF',      countries:[{ flag:'🇺🇸', name:'USA',         pct:100, note:'AAPL·NVDA·MSFT·GOOGL·AMZN' }]},
-    'ITWNl':  { label:'Taiwan ETF',       countries:[{ flag:'🇹🇼', name:'Taiwan',      pct:100, note:'TSMC 32%·MediaTek 8%' }]},
-    'IMIBl':  { label:'Italy MIB ETF',    countries:[{ flag:'🇮🇹', name:'Italy',       pct:100, note:'UniCredit·Intesa·Eni·Enel' }]},
-    'IPOLl':  { label:'Poland ETF',       countries:[{ flag:'🇵🇱', name:'Poland',      pct:100, note:'PKO·Pekao·mBank·Orlen' }]},
-    'XDAXl':  { label:'Germany DAX ETF',  countries:[{ flag:'🇩🇪', name:'Germany',     pct:100, note:'Siemens·Allianz·SAP·Airbus' }]},
-    'IAEXl':  { label:'Netherlands AEX',  countries:[{ flag:'🇳🇱', name:'Netherlands', pct:100, note:'ASML·Shell·ING·Unilever·Adyen' }]},
-    'CS1l':   { label:'Spain IBEX 35 ETF', countries:[{ flag:'🇪🇸', name:'Spain',       pct:100, note:'Santander·Iberdrola·BBVA·Inditex' }]},
-    'VUSAa':  { label:'S&P 500 ETF',      countries:[{ flag:'🇺🇸', name:'USA',    pct:100, note:'500 largest US companies' }]},
-    'VWCEd':  { label:'All-World ETF',    countries:[
-      { flag:'🇺🇸', name:'USA',   pct:63, note:'S&P 500 dominant' },
-      { flag:'🇯🇵', name:'Japan', pct:6,  note:'Large cap' },
-      { flag:'🇬🇧', name:'UK',    pct:4,  note:'Large cap' },
-      { flag:'🇨🇳', name:'China', pct:3,  note:'Alibaba·Tencent' },
-      { flag:'🌍', name:'Other',  pct:24, note:'EM + other DM' },
-    ]},
-    'SXRVd':  { label:'NASDAQ 100 ETF',    countries:[{ flag:'🇺🇸', name:'USA',    pct:100, note:'NVDA·AAPL·MSFT·AMZN·AVGO' }]},
-    'SGLNl':  { label:'Gold ETC',          countries:[{ flag:'🥇', name:'Gold',   pct:100, note:'Physical gold backed' }]},
-    'SSLNl':  { label:'Silver ETC',        countries:[{ flag:'🥈', name:'Silver', pct:100, note:'Physical silver backed' }]},
-  };
-
   const snap = (await api('portfolio_snapshots','?select=*&order=created_at.desc&limit=1'))[0];
   if (!snap) { el.innerHTML = '<div style="color:var(--muted)">No snapshot yet</div>'; return; }
   const positions = await api('positions', `?snapshot_id=eq.${snap.id}&select=*&order=gain_pct.desc`);
   const exposure = {};
   try { (await api('instrument_exposure', '?select=ticker,display_name')).forEach(r => { exposure[r.ticker] = r.display_name; }); } catch (e) {}
+  // Country weights come from the database (RLS: only instruments the user holds)
+  const weights = {};
+  try { (await api('instrument_country_weights', '?select=ticker,country,flag,pct,note&order=pct.desc')).forEach(r => { (weights[r.ticker] = weights[r.ticker] || []).push(r); }); } catch (e) {}
 
   const posMap = {};
-  positions.forEach(p => { posMap[p.display || p.ticker] = p; });
+  positions.forEach(p => { posMap[p.ticker] = p; });
 
   const countryAgg = {};
-  for (const [etfTicker, etfDef] of Object.entries(ETF_COUNTRY_MAP)) {
-    const pos = posMap[etfTicker];
+  for (const [fullTicker, rows] of Object.entries(weights)) {
+    const pos = posMap[fullTicker];
     if (!pos) continue;
+    const etfTicker = pos.display || fullTicker;
     const gainPct = pos.gain_pct != null ? +pos.gain_pct : null;
-    for (const c of etfDef.countries) {
+    for (const c of rows) {
+      c.name = c.country; c.pct = +c.pct;
       if (!countryAgg[c.name]) countryAgg[c.name] = { flag:c.flag, etfs:[], gainSum:0, gainCount:0 };
-      countryAgg[c.name].etfs.push({ ticker:etfTicker, label:exposure[pos.ticker] || etfDef.label, pct:c.pct, note:c.note, gain:gainPct });
+      countryAgg[c.name].etfs.push({ ticker:etfTicker, full:fullTicker, label:exposure[fullTicker] || etfTicker, pct:c.pct, note:c.note, gain:gainPct });
       if (gainPct != null) {
         countryAgg[c.name].gainSum += gainPct * (c.pct / 100);
         countryAgg[c.name].gainCount++;

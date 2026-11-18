@@ -95,84 +95,33 @@ async function loadInstFlow() {
     </div>`;
   }).join('');
 
-  // ── Portfolio sector exposure map (ETF compositions researched) ──
-  // Maps sector signal names → which of your holdings carry that exposure
-  const PORTFOLIO_SECTOR_MAP = {
-    'Technology':       [
-      { etf:'QDVEd',  note:'100% US Tech (AAPL/NVDA/MSFT)' },
-      { etf:'ITWNl',  note:'100% Taiwan semis (TSMC 32%)' },
-      { etf:'VUSAa',  note:'~30% Tech' },
-      { etf:'VWCEd',  note:'~25% Tech' },
-      { etf:'XDAXl',  note:'~12% Software (SAP)' },
-      { etf:'IAEXl',  note:'~19% Semis (ASML)' },
-      { pie:'Magnificent 7', note:'AAPL/NVDA/MSFT/GOOGL/AMZN/FB/SPCX' },
-    ],
-    'Financials':       [
-      { etf:'SXRVd',  note:'100% US Financials (S&P 500 sector ETF)' },
-      { etf:'IMIBl',  note:'~34% Italian banks (UniCredit/Intesa)' },
-      { etf:'IPOLl',  note:'~36% Polish banks (PKO/Pekao/mBank)' },
-      { etf:'IAEXl',  note:'~19% Dutch finance (ING/Adyen/ABN)' },
-      { etf:'XDAXl',  note:'~22% Finance (Allianz)' },
-      { etf:'VUSAa',  note:'~14% Financials' },
-      { etf:'VWCEd',  note:'~16% Financials' },
-      { etf:'CS1l',   note:'~13% Financials' },
-    ],
-    'Healthcare':       [
-      { etf:'VUSAa',  note:'~13% Healthcare' },
-      { etf:'VWCEd',  note:'~12% Healthcare' },
-      { etf:'CS1l',   note:'~14% Healthcare' },
-      { etf:'XDAXl',  note:'~7% Healthcare' },
-    ],
-    'Consumer Stpl':    [
-      { etf:'IAEXl',  note:'~24% Consumer Staples (Unilever/Ahold)' },
-      { etf:'VUSAa',  note:'~6% Consumer Staples' },
-      { etf:'VWCEd',  note:'~7% Consumer Essentials' },
-    ],
-    'Consumer Staples': [
-      { etf:'IAEXl',  note:'~24% Consumer Staples (Unilever/Ahold)' },
-    ],
-    'Energy':           [
-      { etf:'IMIBl',  note:'~7% Energy (Eni)' },
-      { etf:'IPOLl',  note:'~14% Energy (Orlen)' },
-      { etf:'IAEXl',  note:'~16% Energy (Shell)' },
-      { etf:'VUSAa',  note:'~4% Energy' },
-    ],
-    'Industrials':      [
-      { etf:'XDAXl',  note:'~30% Industrials (Siemens/Airbus)' },
-      { etf:'VWCEd',  note:'~5% Industrials' },
-    ],
-    'Comm Services':    [
-      { etf:'VUSAa',  note:'~9% Comm Services' },
-      { etf:'VWCEd',  note:'~8% Comm Services' },
-      { etf:'XDAXl',  note:'~5% Comm Services' },
-    ],
-    'Communication Services': [
-      { etf:'VUSAa',  note:'~9% Comm Services' },
-      { etf:'VWCEd',  note:'~8% Comm Services' },
-    ],
-    'Gold':             [
-      { etf:'SGLNl',  note:'100% Gold' },
-    ],
-    'Silver':           [
-      { etf:'SSLNl',  note:'100% Silver' },
-    ],
+  // ── Portfolio sector exposure: weights come from the database (RLS limits rows to instruments you hold) ──
+  const sectorWts = {};
+  try {
+    (await api('instrument_sector_weights', '?select=ticker,sector,pct,note&order=pct.desc')).forEach(r => {
+      (sectorWts[r.sector.toLowerCase()] = sectorWts[r.sector.toLowerCase()] || []).push(r);
+    });
+  } catch (e) {}
+  const normSector = n => {
+    n = String(n || '').toLowerCase();
+    if (n.startsWith('consumer st')) return 'consumer staples';
+    if (n.startsWith('comm')) return 'comm services';
+    return n;
   };
 
   const portfolioImpact = (sectorName) => {
-    // try exact match, then partial
-    const hits = PORTFOLIO_SECTOR_MAP[sectorName]
-      || Object.entries(PORTFOLIO_SECTOR_MAP).find(([k]) =>
-          sectorName.toLowerCase().includes(k.toLowerCase()) ||
-          k.toLowerCase().includes(sectorName.toLowerCase())
-        )?.[1]
+    const key = normSector(sectorName);
+    const hits = sectorWts[key]
+      || Object.entries(sectorWts).find(([k]) => key && (key.includes(k) || k.includes(key)))?.[1]
       || [];
     if (!hits.length) return '';
-    const chips = hits.map(h =>
-      `<span style="display:inline-flex;align-items:center;gap:3px;background:#0f1117;border:1px solid #2d3353;border-radius:4px;padding:2px 6px;font-size:10px">
-        <span style="color:#a5b4fc;font-weight:700">${h.etf || h.pie}</span>
-        <span style="color:#475569">${h.note}</span>
-      </span>`
-    ).join(' ');
+    const chips = hits.map(h => {
+      const pct = h.pct != null ? (+h.pct >= 100 ? '100% ' : '~' + (+h.pct) + '% ') : '';
+      return `<span style="display:inline-flex;align-items:center;gap:3px;background:#0f1117;border:1px solid #2d3353;border-radius:4px;padding:2px 6px;font-size:10px">
+        <span style="color:#a5b4fc;font-weight:700">${String(h.ticker).replace(/_EQ$/, '')}</span>
+        <span style="color:#475569">${pct}${h.note || ''}</span>
+      </span>`;
+    }).join(' ');
     return `<div style="margin-top:5px;display:flex;flex-wrap:wrap;gap:3px;align-items:center">
       <span style="font-size:9px;color:#475569;text-transform:uppercase;letter-spacing:.05em;margin-right:2px">Your exposure:</span>
       ${chips}
