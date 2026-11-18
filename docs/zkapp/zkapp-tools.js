@@ -28,11 +28,12 @@ async function zkToolsRun() {
   const key = document.getElementById('zk-key').value.trim(), sec = document.getElementById('zk-sec').value.trim(), full = document.getElementById('zk-full').checked;
   const logEl = document.getElementById('zk-log'), btn = document.getElementById('zk-run'), status = document.getElementById('zk-status');
   logEl.textContent = ''; btn.disabled = true; status.textContent = 'Working…';
+  document.getElementById('zk-key').value = ''; document.getElementById('zk-sec').value = '';      // credentials leave the page the moment they are read
   ZK_RUN.running = true; ZK_RUN.started = Date.now(); ZK_RUN.last = '';
   document.getElementById('zk-run').textContent = 'Running…';
-  const closeBtn = document.querySelector('#zk-tools button[onclick^=zkToolsClose]'); if (closeBtn) closeBtn.textContent = 'Hide (keeps running)';
   const beforeUnload = e => { e.preventDefault(); e.returnValue = ''; }; window.addEventListener('beforeunload', beforeUnload);
   ZK_RUN.timer = setInterval(() => zkChipUpdate(false), 1000);
+  zkToolsClose();                                                                               // minimise straight away: progress shows in the corner chip
   const log = m => { logEl.textContent += m + '\n'; logEl.scrollTop = logEl.scrollHeight; if (String(m).trim()) ZK_RUN.last = String(m).trim().slice(0, 70); };
   try {
     const p = ZKPipeline.create({ store: ZKCTX.store, market: ZKCTX.market, call: ZKCTX.call, token: ZKCTX.token, relayUrl: RELAY_URL, log });
@@ -41,7 +42,6 @@ async function zkToolsRun() {
   } catch (e) { status.textContent = 'Failed: ' + (e.message || e); }
   ZK_RUN.running = false; clearInterval(ZK_RUN.timer); window.removeEventListener('beforeunload', beforeUnload);
   document.getElementById('zk-key').value = ''; document.getElementById('zk-sec').value = ''; btn.disabled = false; btn.textContent = 'Refresh now';
-  if (closeBtn) closeBtn.textContent = 'Close';
   if (document.getElementById('zk-tools').style.display !== 'flex') zkChipUpdate(true, '✅ ' + status.textContent); else zkChip().style.display = 'none';
   try { _cache = {}; } catch (e) {}
   const active = document.querySelector('.tab.active'); if (active && typeof loadTab === 'function') loadTab(active.id);
