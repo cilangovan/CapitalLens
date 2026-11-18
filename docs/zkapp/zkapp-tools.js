@@ -29,7 +29,16 @@ async function zkToolsSaveTopic() {
   const v = document.getElementById('zk-topic').value.trim(), msg = document.getElementById('zk-topic-msg');
   try { await ZKNotify.saveTopic(ZKCTX.store, v); msg.textContent = 'Saved (encrypted). Phone alerts on.'; document.getElementById('zk-topic').value = ''; } catch (e) { msg.textContent = e.message; }
 }
-async function zkToolsRun() {
+const ZK_ANALYSIS_VERSION = 'lynch-1';      // bump when a release changes what the analysis produces: every browser then re-analyses once on its next login
+const ZK_AUTO_MAX_HOURS = 6;
+async function zkAutoRefresh() {            // re-analyse stored data (no Trading 212 call, no credentials) after login when stale or after an app update
+  if (!ZKCTX || ZK_RUN.running || window.__zkAutoDone) return; window.__zkAutoDone = true;
+  let rec = null; try { rec = await ZKCTX.store.get('settings', 'last_analysis'); } catch (e) {}
+  const ageH = rec && rec.at ? (Date.now() - new Date(rec.at).getTime()) / 3600000 : Infinity;
+  if (rec && rec.version === ZK_ANALYSIS_VERSION && ageH < ZK_AUTO_MAX_HOURS) return;
+  setTimeout(() => { if (!ZK_RUN.running) zkToolsRun(true); }, 1500);
+}
+async function zkToolsRun(auto) {
   if (!ZKCTX) return;
   const key = document.getElementById('zk-key').value.trim(), sec = document.getElementById('zk-sec').value.trim(), full = document.getElementById('zk-full').checked;
   const logEl = document.getElementById('zk-log'), btn = document.getElementById('zk-run'), status = document.getElementById('zk-status');
@@ -44,7 +53,8 @@ async function zkToolsRun() {
   try {
     const p = ZKPipeline.create({ store: ZKCTX.store, market: ZKCTX.market, call: ZKCTX.call, token: ZKCTX.token, relayUrl: RELAY_URL, log });
     const r = await p.run(key, sec, { full });
-    status.textContent = r.ok ? 'Done — everything refreshed.' : 'Finished with problems: ' + r.results.filter(x => !x.ok).map(x => x.name).join(', ');
+    if (r.ok) { try { await ZKCTX.store.put('settings', [{ key: 'last_analysis', at: new Date().toISOString(), version: ZK_ANALYSIS_VERSION }], x => x.key); } catch (e) {} }
+    status.textContent = r.ok ? (auto === true ? 'Data re-analysed automatically.' : 'Done — everything refreshed.') : 'Finished with problems: ' + r.results.filter(x => !x.ok).map(x => x.name).join(', ');
   } catch (e) { status.textContent = 'Failed: ' + (e.message || e); }
   ZK_RUN.running = false; clearInterval(ZK_RUN.timer); window.removeEventListener('beforeunload', beforeUnload);
   document.getElementById('zk-key').value = ''; document.getElementById('zk-sec').value = ''; btn.disabled = false; btn.textContent = 'Refresh now';

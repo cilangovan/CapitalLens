@@ -565,6 +565,7 @@
       <b>🧪 Compare / duplicates:</b> health checks for your stored data. <i>Scan</i> only reads. Use <i>Fix</i> only if Scan reports extra rows.<br>
       <b>🔄 Refresh your data:</b> pulls your latest Trading 212 data and updates every dashboard. Paste your <u>read-only</u> Trading 212 key (Settings &gt; API in Trading 212). It is used once and never saved. Leave the fields empty to just re-analyse what is already stored. When you press <i>Refresh now</i> this window shrinks to a small progress chip; keep the tab open until it shows ✅.<br>
       <b>Buttons:</b> <i>Minimise</i> hides this window but keeps anything running; <i>Close</i> hides it too. Neither stops a refresh in progress.<br>
+      <b>Automatic:</b> when you log in, your stored data is re-analysed by itself if it is more than 6 hours old or the app was updated, so new features appear without you pressing anything. Only the Trading 212 sync needs your key.<br>
       <b>Phone alerts:</b> save your ntfy topic at the bottom to get alerts on your phone.
     </div>
     <div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin:0 0 14px">
@@ -630,8 +631,8 @@
 <script src="../zk/shim.js" integrity="sha384-0QDZwdIqWMZ2rCgxEc7tIanSKHibPDQUqyNakwekAFKzXQrHb0LaAiEA5vxWXfBy"></script>
 <script src="../zk/pipeline.js" integrity="sha384-A1MnDmc9/7vt+iAzgKXQvLfxTpIPps9x+mea4NaZTAlHUbJLSlVpjAhn8Napkyuf"></script>
 <script src="../zkapp/handler-names.js" integrity="sha384-Yw5ll8YHGaLCjqUBwss7CpQMGrrL+hCEJ12vxRAKu2tHzOPactEw+oQ87XdRYUVE"></script>
-<script src="zkapp-auth.js" integrity="sha384-p9D77gTvfKRH/+FR+ArpPaw6fD8IQiS57xH+IZDDhw0UtmVaNRUUhfzDQskEd1ar"></script>
-<script src="../zkapp/zkapp-tools.js" integrity="sha384-MKe6K5wzvnBU4nkvsLe7ulwkwn0B9QEAMDYoXDDN1T06zqBI+rACJYhf85lwXgS2"></script>
+<script src="zkapp-auth.js" integrity="sha384-jRP6Hs1ilaTeEjlFAMA0T6yNKFH1xJft8EQVkxpl2vRV96muxa92H1OcQ50KN0iL"></script>
+<script src="../zkapp/zkapp-tools.js" integrity="sha384-/irWD0eP2UGYMLG3R3+0Yx9MuAa7RPiXoDsNj/d/UHnBbXZxCy9FPvi3WCnuXW8S"></script>
 <script src="../js/overview.js" integrity="sha384-f+QSyl5SS2iPOFY3pgJYd2BLt63G69oTicIMLBn0vDSdy39NsxqlBRGjO1DkYuC+"></script>
 <script src="../js/heatmap.js" integrity="sha384-ejTjRk7y+eXbpYbK6mwsIrt4MeF2TkJf7+kQzNf1i3KKcnRfk+khUABYy4DEhqWh"></script>
 <script src="../js/positions.js" integrity="sha384-oUyv1ow0QmvO7ZEY6PwkRJKWoijhi350akLfapoGTox2LCBsgIoUvruRsSx0bR3y"></script>

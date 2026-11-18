@@ -44,6 +44,7 @@ panel = """
       <b>🧪 Compare / duplicates:</b> health checks for your stored data. <i>Scan</i> only reads. Use <i>Fix</i> only if Scan reports extra rows.<br>
       <b>🔄 Refresh your data:</b> pulls your latest Trading 212 data and updates every dashboard. Paste your <u>read-only</u> Trading 212 key (Settings &gt; API in Trading 212). It is used once and never saved. Leave the fields empty to just re-analyse what is already stored. When you press <i>Refresh now</i> this window shrinks to a small progress chip; keep the tab open until it shows ✅.<br>
       <b>Buttons:</b> <i>Minimise</i> hides this window but keeps anything running; <i>Close</i> hides it too. Neither stops a refresh in progress.<br>
+      <b>Automatic:</b> when you log in, your stored data is re-analysed by itself if it is more than 6 hours old or the app was updated, so new features appear without you pressing anything. Only the Trading 212 sync needs your key.<br>
       <b>Phone alerts:</b> save your ntfy topic at the bottom to get alerts on your phone.
     </div>
     <div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin:0 0 14px">
