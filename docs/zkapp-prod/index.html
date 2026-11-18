@@ -9,7 +9,7 @@
      'unsafe-inline' is needed for the onclick handlers; injected markup is neutralised by defuse() in js/api.js. -->
 <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:; font-src 'self' data:; connect-src 'self' https://kloqkcxchstfoljpqcbq.supabase.co https://capitallens-relay.itsme-daf.workers.dev https://ntfy.sh; base-uri 'none'; form-action 'none'; object-src 'none'; frame-src 'none'; worker-src 'none'; manifest-src 'self'">
 <meta name="referrer" content="no-referrer">
-<script src="../vendor/chart.umd.min.js" integrity="sha384-dug+JxfBvklEQdJ4AYuBBAIScUz0bVN73xpy273gcAwHjb3qI0fXmuYNaNfdyYJG"></script>
+<script src="../vendor/chart.umd.min.js?v=2bbbb303602e" integrity="sha384-dug+JxfBvklEQdJ4AYuBBAIScUz0bVN73xpy273gcAwHjb3qI0fXmuYNaNfdyYJG"></script>
 <style>
   :root {
     --bg: #0f1117; --bg2: #1a1d27; --bg3: #22263a;
@@ -605,48 +605,48 @@
     <input id="zk-topic" type="password" placeholder="ntfy topic" autocomplete="off" style="width:70%"> <button onclick="zkToolsSaveTopic()">Save</button> <span id="zk-topic-msg" style="font-size:12px"></span>
   </div>
 </div>
-<script src="../js/api.js" integrity="sha384-/67zJ3BIjgb9hEgyV18jpFz3APwWihzPnxnS+OCUlPkkeJyk3ud/8qws03yNch75"></script>
-<script src="../js/zkcrypto.js" integrity="sha384-FEesgmQQUG6ClqgVYU3bm0kI/GXZOu3BqVEqbn9dX6gtUybROjrCAPq2jEdLXI++"></script>
-<script src="../zk/store.js" integrity="sha384-fwaecshL5VsTj12l1i8DSn3ksVTj0HUf/Xa/TIkA4wnNiBe37qYE18TohXGHkjyq"></script>
-<script src="../zk/dedupe.js" integrity="sha384-6/TT8ViUo/pYKSdsOZHNNwA12QYPEmOqBYnr1Y9NfbWsEHXEmCY2pMxH9HrQ0sIy"></script>
-<script src="../zk/t212sync.js" integrity="sha384-qp/C4UauBM+oEtybuh7VmIHMmVrU29XjzIlFhmRynn9o/xlZ9hFdv5PXmpRBQU+G"></script>
-<script src="../zk/market.js" integrity="sha384-5bLg6E7+4UucLnAL5QA6606qt5z3hkcXVcFodKHjUXo3Ezv9fZ/ATswCIUpBDEVq"></script>
-<script src="../zk/alertfmt.js" integrity="sha384-YjG+R4rTNialkw4iHTtW3HETDq8RQC0TYaJvQstwYVujtRZs64XtGEokdN2SNZ1R"></script>
-<script src="../zk/symbols.js" integrity="sha384-Lop3y5QlaavuSX/ZEVxI8vsv9d9BxzFcQZf+gsq9iuyC+/4/jv0qr3b1zUTxkR05"></script>
-<script src="../zk/returns.js" integrity="sha384-AqAGy+XSVWn4U3ImI0ZMJclDNPPfy7l/kRdlPL1DeRBIY0Nr3f4fGd6ZOB1tU0C8"></script>
-<script src="../zk/valuebuy.js" integrity="sha384-dKXOkTE44z5TgtrMhJZ2V0r/+j6CVVTLR1VvJWs41PjgahH9WDvVAwF42pBDPBDg"></script>
-<script src="../zk/monitor.js" integrity="sha384-QLYbVFJbZZM9cvqJ/GI2Yj0IKDtSMiNRezO4E0k1RJVi76HhVKg7rlGlGHeIvWZy"></script>
-<script src="../zk/lynch.js" integrity="sha384-JAiLSUWZ5A+FhrLpBFpmlw0Re/6bL03FMKr/wK9Lu4UI0iimSipqMF/WiEiesFqC"></script>
-<script src="../zk/analystratings.js" integrity="sha384-9q+ThbcfjcxHsL8jOX8JnxaQ4g94fIO7LlAsfoFSvoEnGcBEEbtTHKPiyRbiQVa/"></script>
-<script src="../zk/piehistory.js" integrity="sha384-kwVBKo341zm7A/luOuQz0yZ7MnpcWhExutGPFZPoiClql7oeIEtOQdacXeQfzZFP"></script>
-<script src="../zk/profitbooking.js" integrity="sha384-dLYTysetCvMuTnwqn+U+xa8qyWOYZuy7hquK28CIt75UmO+Jd9FU/aPR1vYNnXKw"></script>
-<script src="../zk/strategy.js" integrity="sha384-7WYDDwN2gFfmrJaj56jO5mNdHfw3bcKeNiwI4+mV3RbZ+U6uINOlwYz1HwMVuemI"></script>
-<script src="../zk/holdingdecision.js" integrity="sha384-2+gTFXTv8esvPsJFrYpRGmAvwDktreG9VcsvenCtIBrKq8/0R7LEMvQy2u0xSX5I"></script>
-<script src="../zk/handlers.js" integrity="sha384-Gy28bEVUEp4DRN65uyJXc15+GhVvmgt1pbIxgYXBy/ESK3x89/R4MJ6jEO5TItFP"></script>
-<script src="../zk/watchlist.js" integrity="sha384-g/g2WGZJTqpQ5YZC1N0EKHBOhQXOr1wd4a8Or4DHuJpKuPYtYVSEoy85nUIvLnTi"></script>
-<script src="../zk/watchlistops.js" integrity="sha384-qf9UmM4kFDpJEZDzZuHjULQS89jEEEDl2DFKEKcp+DFySR9uIaDzp6wn592MQGvk"></script>
-<script src="../zk/alertreport.js" integrity="sha384-3f4RNihasz9FAsS3berMV+noVrBlABjbaPSxN58J4hKjxgPCiC925JMrnMBVvBWf"></script>
-<script src="../zk/flow.js" integrity="sha384-hVVnTNbtEc0PugPGy3hz26UGX/wZxYbAk5YbwXx2TLqLeqDcqENHC2/YZ1BTpUbW"></script>
-<script src="../zk/notify.js" integrity="sha384-zF94I6jfpN993hI3TgEldHc41jGJLL61WllCe3xzVorjTyzz9Fkm/fKiuBEYGk/p"></script>
-<script src="../zk/postgrest.js" integrity="sha384-TAmHrohvRyy+jJUgcLXNgsD0jeI83fkiX/OXoe1YrQQamDYsaHVmru/kUFga4EoP"></script>
-<script src="../zk/shim.js" integrity="sha384-0QDZwdIqWMZ2rCgxEc7tIanSKHibPDQUqyNakwekAFKzXQrHb0LaAiEA5vxWXfBy"></script>
-<script src="../zk/pipeline.js" integrity="sha384-A1MnDmc9/7vt+iAzgKXQvLfxTpIPps9x+mea4NaZTAlHUbJLSlVpjAhn8Napkyuf"></script>
-<script src="../zkapp/handler-names.js" integrity="sha384-Yw5ll8YHGaLCjqUBwss7CpQMGrrL+hCEJ12vxRAKu2tHzOPactEw+oQ87XdRYUVE"></script>
-<script src="zkapp-auth.js" integrity="sha384-jRP6Hs1ilaTeEjlFAMA0T6yNKFH1xJft8EQVkxpl2vRV96muxa92H1OcQ50KN0iL"></script>
-<script src="../zkapp/zkapp-tools.js" integrity="sha384-9JkjIJA6rabzdaIRFQgtC38RpAPM83YdHCY8u7GhdzgSH6VGM0zeF0NXurPonwxC"></script>
-<script src="../js/overview.js" integrity="sha384-f+QSyl5SS2iPOFY3pgJYd2BLt63G69oTicIMLBn0vDSdy39NsxqlBRGjO1DkYuC+"></script>
-<script src="../js/heatmap.js" integrity="sha384-ejTjRk7y+eXbpYbK6mwsIrt4MeF2TkJf7+kQzNf1i3KKcnRfk+khUABYy4DEhqWh"></script>
-<script src="../js/positions.js" integrity="sha384-oUyv1ow0QmvO7ZEY6PwkRJKWoijhi350akLfapoGTox2LCBsgIoUvruRsSx0bR3y"></script>
-<script src="../js/analyst.js" integrity="sha384-wkzFAN/FCqTsIqGGtdgOsQ4GtkoTs27E9/pea76RFkC7qf0E4lIfDMznjgfwfIzM"></script>
-<script src="../js/strategy.js" integrity="sha384-PzNDa02tVWHKgSqR3OTyYwBRzclFHVvx2DAVb1MVUxupZiB0MfB6qnCC0NwarEm5"></script>
-<script src="../js/profit.js" integrity="sha384-JPAiuGzyUHCjo0GNl+NTpwlyipb6qO4A08SElSLPe+YTYAFLARgqV0wkqJKgG+hu"></script>
-<script src="../js/returns.js" integrity="sha384-7OHvRa2JAhNL62eVRevi3WoSv9Y2alMI2MtA6mz62qU+Xjw75T6rCIEyJVWmyT8x"></script>
-<script src="../js/alerts.js" integrity="sha384-7PUElfYc+mwl1Oqr4w1QMC2nMT/bAp4J9zS/16qW54Jje/e4gRiGKlHQAt8dqATu"></script>
-<script src="../js/tickertips.js" integrity="sha384-uol0Rwj54jmfrLQJnoQ9rmmclnnHE5cMDN7Ci+Jn2Mo6W4tqHoZ53Ay3/BTEgS52"></script>
-<script src="../js/collapse.js" integrity="sha384-A619AiWc9t9/ZdVUpzglvO2kPNeCq9597UZcOa4ctslPfQiU48P+lXZWq9vS6k05"></script>
-<script src="../js/watchlist.js" integrity="sha384-+jqXwq3uWtkT4SnGIKM2M7yijo4yoKa72fEAgdjsMBrh6h8bmZJqJnTM/FwL1UvY"></script>
-<script src="../js/drilldown.js" integrity="sha384-hHTBmsskCBTraWDyh1WLn3feg0fatRote5yhCIhSkh1klwGAK/pWFjF9UDh0uaa+"></script>
-<script src="../js/pie_drill.js" integrity="sha384-LGniYIiV4KXlc6vLeJvRBeHO2GBHNioliyzl+pXCCNMM4JWGtEmuNOipp/f0Jb2T"></script>
-<script src="../js/router.js" integrity="sha384-JUCUATOWLZh6rZ9ioYGbax2S/8LNTNtNlJFcrLQ8lCQHFozLK7dhB4pvGEjM0x8J"></script>
+<script src="../js/api.js?v=5552f389a2ad" integrity="sha384-/67zJ3BIjgb9hEgyV18jpFz3APwWihzPnxnS+OCUlPkkeJyk3ud/8qws03yNch75"></script>
+<script src="../js/zkcrypto.js?v=c0abcbba6826" integrity="sha384-FEesgmQQUG6ClqgVYU3bm0kI/GXZOu3BqVEqbn9dX6gtUybROjrCAPq2jEdLXI++"></script>
+<script src="../zk/store.js?v=75d229dccc18" integrity="sha384-fwaecshL5VsTj12l1i8DSn3ksVTj0HUf/Xa/TIkA4wnNiBe37qYE18TohXGHkjyq"></script>
+<script src="../zk/dedupe.js?v=8a148d42a315" integrity="sha384-6/TT8ViUo/pYKSdsOZHNNwA12QYPEmOqBYnr1Y9NfbWsEHXEmCY2pMxH9HrQ0sIy"></script>
+<script src="../zk/t212sync.js?v=f589642f235a" integrity="sha384-qp/C4UauBM+oEtybuh7VmIHMmVrU29XjzIlFhmRynn9o/xlZ9hFdv5PXmpRBQU+G"></script>
+<script src="../zk/market.js?v=149d5d0426ba" integrity="sha384-5bLg6E7+4UucLnAL5QA6606qt5z3hkcXVcFodKHjUXo3Ezv9fZ/ATswCIUpBDEVq"></script>
+<script src="../zk/alertfmt.js?v=b591b35bc822" integrity="sha384-YjG+R4rTNialkw4iHTtW3HETDq8RQC0TYaJvQstwYVujtRZs64XtGEokdN2SNZ1R"></script>
+<script src="../zk/symbols.js?v=3e09e582bc8d" integrity="sha384-Lop3y5QlaavuSX/ZEVxI8vsv9d9BxzFcQZf+gsq9iuyC+/4/jv0qr3b1zUTxkR05"></script>
+<script src="../zk/returns.js?v=480e9d942d45" integrity="sha384-AqAGy+XSVWn4U3ImI0ZMJclDNPPfy7l/kRdlPL1DeRBIY0Nr3f4fGd6ZOB1tU0C8"></script>
+<script src="../zk/valuebuy.js?v=b634cc71f401" integrity="sha384-dKXOkTE44z5TgtrMhJZ2V0r/+j6CVVTLR1VvJWs41PjgahH9WDvVAwF42pBDPBDg"></script>
+<script src="../zk/monitor.js?v=61e5ed24dda8" integrity="sha384-QLYbVFJbZZM9cvqJ/GI2Yj0IKDtSMiNRezO4E0k1RJVi76HhVKg7rlGlGHeIvWZy"></script>
+<script src="../zk/lynch.js?v=5fe3defa9bf0" integrity="sha384-JAiLSUWZ5A+FhrLpBFpmlw0Re/6bL03FMKr/wK9Lu4UI0iimSipqMF/WiEiesFqC"></script>
+<script src="../zk/analystratings.js?v=634213babd1c" integrity="sha384-9q+ThbcfjcxHsL8jOX8JnxaQ4g94fIO7LlAsfoFSvoEnGcBEEbtTHKPiyRbiQVa/"></script>
+<script src="../zk/piehistory.js?v=085be9cb0ca3" integrity="sha384-kwVBKo341zm7A/luOuQz0yZ7MnpcWhExutGPFZPoiClql7oeIEtOQdacXeQfzZFP"></script>
+<script src="../zk/profitbooking.js?v=0ff1108aaca9" integrity="sha384-dLYTysetCvMuTnwqn+U+xa8qyWOYZuy7hquK28CIt75UmO+Jd9FU/aPR1vYNnXKw"></script>
+<script src="../zk/strategy.js?v=9d9d504de71c" integrity="sha384-7WYDDwN2gFfmrJaj56jO5mNdHfw3bcKeNiwI4+mV3RbZ+U6uINOlwYz1HwMVuemI"></script>
+<script src="../zk/holdingdecision.js?v=7392c7ec4257" integrity="sha384-2+gTFXTv8esvPsJFrYpRGmAvwDktreG9VcsvenCtIBrKq8/0R7LEMvQy2u0xSX5I"></script>
+<script src="../zk/handlers.js?v=cfb162e6a781" integrity="sha384-Gy28bEVUEp4DRN65uyJXc15+GhVvmgt1pbIxgYXBy/ESK3x89/R4MJ6jEO5TItFP"></script>
+<script src="../zk/watchlist.js?v=ed37b3d0e08c" integrity="sha384-g/g2WGZJTqpQ5YZC1N0EKHBOhQXOr1wd4a8Or4DHuJpKuPYtYVSEoy85nUIvLnTi"></script>
+<script src="../zk/watchlistops.js?v=7e739fdd68f5" integrity="sha384-qf9UmM4kFDpJEZDzZuHjULQS89jEEEDl2DFKEKcp+DFySR9uIaDzp6wn592MQGvk"></script>
+<script src="../zk/alertreport.js?v=34a1d44afad7" integrity="sha384-3f4RNihasz9FAsS3berMV+noVrBlABjbaPSxN58J4hKjxgPCiC925JMrnMBVvBWf"></script>
+<script src="../zk/flow.js?v=20e28c527026" integrity="sha384-hVVnTNbtEc0PugPGy3hz26UGX/wZxYbAk5YbwXx2TLqLeqDcqENHC2/YZ1BTpUbW"></script>
+<script src="../zk/notify.js?v=34d4bf55f41f" integrity="sha384-zF94I6jfpN993hI3TgEldHc41jGJLL61WllCe3xzVorjTyzz9Fkm/fKiuBEYGk/p"></script>
+<script src="../zk/postgrest.js?v=4fb32c84005f" integrity="sha384-TAmHrohvRyy+jJUgcLXNgsD0jeI83fkiX/OXoe1YrQQamDYsaHVmru/kUFga4EoP"></script>
+<script src="../zk/shim.js?v=b0d6b7cde338" integrity="sha384-0QDZwdIqWMZ2rCgxEc7tIanSKHibPDQUqyNakwekAFKzXQrHb0LaAiEA5vxWXfBy"></script>
+<script src="../zk/pipeline.js?v=bfa0c8ccf1ce" integrity="sha384-A1MnDmc9/7vt+iAzgKXQvLfxTpIPps9x+mea4NaZTAlHUbJLSlVpjAhn8Napkyuf"></script>
+<script src="../zkapp/handler-names.js?v=b2538cdf3622" integrity="sha384-Yw5ll8YHGaLCjqUBwss7CpQMGrrL+hCEJ12vxRAKu2tHzOPactEw+oQ87XdRYUVE"></script>
+<script src="zkapp-auth.js?v=81cb33b2ea1a" integrity="sha384-jRP6Hs1ilaTeEjlFAMA0T6yNKFH1xJft8EQVkxpl2vRV96muxa92H1OcQ50KN0iL"></script>
+<script src="../zkapp/zkapp-tools.js?v=70b63c4652ed" integrity="sha384-9JkjIJA6rabzdaIRFQgtC38RpAPM83YdHCY8u7GhdzgSH6VGM0zeF0NXurPonwxC"></script>
+<script src="../js/overview.js?v=9e3d823b8c1a" integrity="sha384-f+QSyl5SS2iPOFY3pgJYd2BLt63G69oTicIMLBn0vDSdy39NsxqlBRGjO1DkYuC+"></script>
+<script src="../js/heatmap.js?v=afa428f9e73c" integrity="sha384-ejTjRk7y+eXbpYbK6mwsIrt4MeF2TkJf7+kQzNf1i3KKcnRfk+khUABYy4DEhqWh"></script>
+<script src="../js/positions.js?v=4cc24568ab04" integrity="sha384-oUyv1ow0QmvO7ZEY6PwkRJKWoijhi350akLfapoGTox2LCBsgIoUvruRsSx0bR3y"></script>
+<script src="../js/analyst.js?v=d3956718ff6c" integrity="sha384-wkzFAN/FCqTsIqGGtdgOsQ4GtkoTs27E9/pea76RFkC7qf0E4lIfDMznjgfwfIzM"></script>
+<script src="../js/strategy.js?v=9ac3807649f6" integrity="sha384-PzNDa02tVWHKgSqR3OTyYwBRzclFHVvx2DAVb1MVUxupZiB0MfB6qnCC0NwarEm5"></script>
+<script src="../js/profit.js?v=7d619d314ef1" integrity="sha384-JPAiuGzyUHCjo0GNl+NTpwlyipb6qO4A08SElSLPe+YTYAFLARgqV0wkqJKgG+hu"></script>
+<script src="../js/returns.js?v=a78d60e1010c" integrity="sha384-7OHvRa2JAhNL62eVRevi3WoSv9Y2alMI2MtA6mz62qU+Xjw75T6rCIEyJVWmyT8x"></script>
+<script src="../js/alerts.js?v=c1a925535e8e" integrity="sha384-7PUElfYc+mwl1Oqr4w1QMC2nMT/bAp4J9zS/16qW54Jje/e4gRiGKlHQAt8dqATu"></script>
+<script src="../js/tickertips.js?v=62c3f21e8fa6" integrity="sha384-uol0Rwj54jmfrLQJnoQ9rmmclnnHE5cMDN7Ci+Jn2Mo6W4tqHoZ53Ay3/BTEgS52"></script>
+<script src="../js/collapse.js?v=7edc1cf73e08" integrity="sha384-A619AiWc9t9/ZdVUpzglvO2kPNeCq9597UZcOa4ctslPfQiU48P+lXZWq9vS6k05"></script>
+<script src="../js/watchlist.js?v=feeed3c882fe" integrity="sha384-+jqXwq3uWtkT4SnGIKM2M7yijo4yoKa72fEAgdjsMBrh6h8bmZJqJnTM/FwL1UvY"></script>
+<script src="../js/drilldown.js?v=ba8270c24f2b" integrity="sha384-hHTBmsskCBTraWDyh1WLn3feg0fatRote5yhCIhSkh1klwGAK/pWFjF9UDh0uaa+"></script>
+<script src="../js/pie_drill.js?v=8c51986cc5fc" integrity="sha384-LGniYIiV4KXlc6vLeJvRBeHO2GBHNioliyzl+pXCCNMM4JWGtEmuNOipp/f0Jb2T"></script>
+<script src="../js/router.js?v=3801e11f5d62" integrity="sha384-JUCUATOWLZh6rZ9ioYGbax2S/8LNTNtNlJFcrLQ8lCQHFozLK7dhB4pvGEjM0x8J"></script>
 </body>
 </html>

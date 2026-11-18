@@ -8,7 +8,8 @@ for (const d of ['zkapp-prod', 'zk-prod']) {
   const html = R(d + '/index.html'), csp = html.match(/Content-Security-Policy"[^>]*content="([^"]+)"/)[1];
   ok(`${d} CSP has no demo host`, !csp.includes(DEMO)); ok(`${d} no inline script allowed`, /script-src 'self'(;|$)/.test(csp) && !/unsafe-(inline|eval)[^;]*script|script-src[^;]*unsafe/.test(csp));
   for (const m of html.matchAll(/<script src="([^"]+)"[^>]*integrity="sha384-([^"]+)"/g)) {
-    const h = createHash('sha384').update(readFileSync(new URL('../docs/' + d + '/' + m[1], import.meta.url))).digest('base64'); ok(`${d} SRI ${m[1]}`, h === m[2]);
+    const h = createHash('sha384').update(readFileSync(new URL('../docs/' + d + '/' + m[1].split('?')[0], import.meta.url))).digest('base64'); ok(`${d} SRI ${m[1]}`, h === m[2]);
+    if (!m[1].startsWith('http')) ok(`${d} versioned URL ${m[1]}`, new RegExp('\\?v=' + createHash('sha256').update(m[2]).digest('hex').slice(0, 12) + '$').test(m[1]));
   }
   ok(`${d} every local script pinned`, [...html.matchAll(/<script src="(?!http)[^"]+"[^>]*>/g)].every(m => /integrity=/.test(m[0])));
 }

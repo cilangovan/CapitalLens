@@ -158,3 +158,16 @@ z = _repin(re.sub(r'(<script src="[^"]+") integrity="[^"]*"', r"\1", z), root / 
 assert "btn-signup" not in z and "zk_probe" not in z and "notes-plain" not in z and "purge" not in z.lower() and "ggprfdetivzekjxlpvyq" not in z and PROD_URL in z
 (root / "docs/zk-prod/index.html").write_text(z)
 print("wrote docs/zkapp-prod, docs/zk-prod")
+
+# ───────────────────────── versioned script URLs ─────────────────────────
+# GitHub Pages caches every file separately for ~10 minutes, so right after a deploy a browser can get new HTML with an old script
+# (or the reverse) and the integrity hash then blocks that script. Putting the content hash in the URL means a page can only ever
+# fetch the exact version it was built with: a different version is a different URL.
+def _version_scripts(path):
+    h = path.read_text()
+    h2 = re.sub(r'<script src="([^"?]+)" integrity="sha384-([^"]+)"></script>',
+                lambda m: m.group(0) if m.group(1).startswith("http") else f'<script src="{m.group(1)}?v={hashlib.sha256(m.group(2).encode()).hexdigest()[:12]}" integrity="sha384-{m.group(2)}"></script>', h)
+    path.write_text(h2)
+    return h2.count("?v=")
+for _p in ("docs/zkapp/index.html", "docs/zkapp-prod/index.html", "docs/zk-prod/index.html"):
+    print("versioned", _p, _version_scripts(root / _p), "script URLs")
