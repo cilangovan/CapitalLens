@@ -1,3 +1,16 @@
+// ── INSTRUMENT INFO (full name + flag) — comes from the database, not from this file ──
+// Table public.instrument_exposure (ticker → display_name, flag, exposure): shared reference data,
+// read-only for signed-in users via row-level security. If it can't be read, tooltips still show the ticker and P&L.
+async function loadExposure() {
+  try {
+    const rows = await api('instrument_exposure', '?select=ticker,display_name,flag,exposure');
+    const m = {};
+    (Array.isArray(rows) ? rows : []).forEach(r => { m[r.ticker] = r; });
+    return m;
+  } catch (e) { return {}; }
+}
+const _esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
 // ── RADIAL P&L CHART ──────────────────────────────────────────
 async function loadHeatmap() {
   const wrap = document.getElementById('heatmap-grid');
@@ -33,11 +46,12 @@ async function loadHeatmap() {
     return m;
   };
 
-  const [curRows, dayMap, weekMap, monthMap] = await Promise.all([
+  const [curRows, dayMap, weekMap, monthMap, exposure] = await Promise.all([
     api('positions', `?snapshot_id=eq.${latest.id}&select=ticker,display,pie,ppl,gain_pct`),
     fetchPos(daySnap),
     fetchPos(weekSnap),
     fetchPos(monthSnap),
+    loadExposure(),
   ]);
 
   const tickers  = curRows.map(p => p.ticker);
@@ -121,12 +135,19 @@ async function loadHeatmap() {
 
   let paths = '';
   let labels = '';
-  let tooltipData = [];
+
+  // data-* attributes the tooltip reads: symbol, full name, flag, note, and the value line
+  const tipAttrs = (ticker, sym, line) => {
+    const info = exposure[ticker] || {};
+    return `data-sym="${_esc(sym)}" data-name="${_esc(info.display_name || '')}" data-flag="${_esc(info.flag || '')}" data-note="${_esc(info.exposure || '')}" data-line="${_esc(line)}"`;
+  };
 
   tickers.forEach((ticker, ti) => {
     const aStart = startOffset + ti * anglePerTick + gap;
     const aEnd   = startOffset + (ti + 1) * anglePerTick - gap;
     const aMid   = (aStart + aEnd) / 2;
+    const p0  = curMap[ticker];
+    const sym0 = (p0.display || ticker).replace(/_EQ$/, '');
 
     periods.forEach((period, ri) => {
       const r1 = innerR + ri * ringW;
@@ -136,9 +157,8 @@ async function loadHeatmap() {
         : (curMap[ticker]?.ppl || 0);
       const col = period.hasRef ? pplColor(val, ringMaxAbs[ri]) : '#1e2a3a';
       const path = arcPath(aStart, aEnd, r1, r2);
-      const p = curMap[ticker];
-      const tooltipStr = `${p.display||ticker} | ${period.label}: ${val >= 0 ? '+' : ''}£${val.toFixed(2)}${period.refMap ? ' Δ' : ''}`;
-      paths += `<path d="${path}" fill="${col}" stroke="#0f1117" stroke-width="0.8" data-tip="${tooltipStr}" class="rad-seg"/>`;
+      const line = `${period.label}: ${val >= 0 ? '+' : ''}£${val.toFixed(2)}${period.refMap ? ' Δ' : ''}`;
+      paths += `<path d="${path}" fill="${col}" stroke="#0f1117" stroke-width="0.8" ${tipAttrs(ticker, sym0, line)} class="rad-seg"/>`;
     });
 
     // ticker label at outer edge — always reads outward, never flipped
@@ -153,10 +173,11 @@ async function loadHeatmap() {
     const sym = (p.display || ticker).replace(/_EQ$/, '');
     const gainPct = p.gain_pct != null ? (p.gain_pct >= 0 ? '+' : '') + p.gain_pct.toFixed(1) + '%' : '';
     const labelColor = p.gain_pct >= 0 ? '#34d399' : '#f87171';
+    const lblTip = tipAttrs(ticker, sym, `All-time gain: ${gainPct || 'n/a'}`);
     labels += `<text x="${lp.x}" y="${lp.y}" font-size="13" font-weight="700" fill="#e2e8f0" text-anchor="${anchor}" dominant-baseline="middle"
-      transform="rotate(${rotDeg}, ${lp.x}, ${lp.y})" dy="-5">${sym}</text>`;
+      transform="rotate(${rotDeg}, ${lp.x}, ${lp.y})" dy="-5" class="rad-lbl" style="cursor:pointer" ${lblTip}>${_esc(sym)}</text>`;
     labels += `<text x="${lp.x}" y="${lp.y}" font-size="11" fill="${labelColor}" text-anchor="${anchor}" dominant-baseline="middle"
-      transform="rotate(${rotDeg}, ${lp.x}, ${lp.y})" dy="9">${gainPct}</text>`;
+      transform="rotate(${rotDeg}, ${lp.x}, ${lp.y})" dy="9" class="rad-lbl" style="cursor:pointer" ${lblTip}>${gainPct}</text>`;
   });
 
   // ring labels — on left spine at each ring midpoint
@@ -203,7 +224,7 @@ async function loadHeatmap() {
       <div id="rad-tooltip" style="
         position:absolute;pointer-events:none;display:none;
         background:#1a1d27;border:1px solid #2d3353;border-radius:6px;
-        padding:6px 10px;font-size:12px;color:#e2e8f0;white-space:nowrap;z-index:10
+        padding:6px 10px;font-size:12px;color:#e2e8f0;max-width:260px;z-index:10;line-height:1.35
       "></div>
     </div>
     <div style="display:flex;gap:16px;flex-wrap:wrap;margin-top:12px;font-size:11px;color:#475569">
@@ -211,24 +232,54 @@ async function loadHeatmap() {
     </div>
   `;
 
-  // tooltip interaction
+  // tooltip interaction — hover on desktop, tap on phone. Hovering a bubble or a ticker label
+  // shows: flag + full name, then symbol · what it is, then the value for that ring.
   const svg   = document.getElementById('radial-svg');
   const tip   = document.getElementById('rad-tooltip');
-  const segs  = svg.querySelectorAll('.rad-seg');
-  segs.forEach(seg => {
-    seg.addEventListener('mouseenter', (e) => {
-      tip.textContent = seg.dataset.tip;
+  const box   = svg.parentElement;
+  const fillTip = (ds) => {
+    tip.textContent = '';
+    const head = document.createElement('div');
+    head.style.fontWeight = '700';
+    head.textContent = (ds.flag ? ds.flag + ' ' : '') + (ds.name || ds.sym);
+    tip.appendChild(head);
+    if (ds.name) {
+      const sub = document.createElement('div');
+      sub.style.cssText = 'color:#8892a4;font-size:11px';
+      sub.textContent = ds.sym + (ds.note ? ' · ' + ds.note : '');
+      tip.appendChild(sub);
+    }
+    const val = document.createElement('div');
+    val.textContent = ds.line;
+    tip.appendChild(val);
+  };
+  const placeTip = (e) => {
+    const rect = box.getBoundingClientRect();
+    let left = e.clientX - rect.left + 12;
+    let top  = e.clientY - rect.top  - 10;
+    left = Math.max(0, Math.min(left, rect.width - tip.offsetWidth - 4));
+    top  = Math.max(0, top);
+    tip.style.left = left + 'px';
+    tip.style.top  = top + 'px';
+  };
+  svg.querySelectorAll('.rad-seg, .rad-lbl').forEach(el => {
+    const isSeg = el.classList.contains('rad-seg');
+    const show = (e) => {
+      fillTip(el.dataset);
       tip.style.display = 'block';
-      seg.setAttribute('opacity', '0.75');
-    });
-    seg.addEventListener('mousemove', (e) => {
-      const rect = svg.parentElement.getBoundingClientRect();
-      tip.style.left = (e.clientX - rect.left + 12) + 'px';
-      tip.style.top  = (e.clientY - rect.top  - 10) + 'px';
-    });
-    seg.addEventListener('mouseleave', () => {
+      if (isSeg) el.setAttribute('opacity', '0.75');
+      placeTip(e);
+    };
+    el.addEventListener('mouseenter', show);
+    el.addEventListener('mousemove', placeTip);
+    el.addEventListener('mouseleave', () => {
       tip.style.display = 'none';
-      seg.setAttribute('opacity', '1');
+      if (isSeg) el.setAttribute('opacity', '1');
     });
+    // tap (phones have no hover): show on tap, hide when tapping anywhere else
+    el.addEventListener('click', (e) => { e.stopPropagation(); show(e); });
+  });
+  document.addEventListener('click', (e) => {
+    if (!svg.contains(e.target)) tip.style.display = 'none';
   });
 }
