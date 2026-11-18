@@ -107,6 +107,7 @@
     const email = $('up-email').value.trim(), oldPw = $('up-old').value, newPw = $('up-new').value;
     if (!email || !oldPw) return say('up-err', 'Enter your email and current password');
     if (newPw.length < MIN_PW) return say('up-err', 'New password must be at least ' + MIN_PW + ' characters');
+    if ($('up-new2') && $('up-new2').value !== newPw) return say('up-err', 'The two NEW passwords do not match');
     if (newPw.toLowerCase() === oldPw.toLowerCase()) return say('up-err', 'The new password must be different from the old one');
     $('btn-upgrade').disabled = true;
     try {

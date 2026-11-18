@@ -108,11 +108,10 @@ z = _prod_text(z).replace("Prototype (demo project). ", "").replace("CapitalLens
 z = re.sub(r'\s*<h2>Private notes.*?<pre id="notes-raw"></pre>', "", z, flags=re.S)                      # demo-only probe
 z = re.sub(r'\s*<div id="purge-box" class="hide">.*?</div>\s*(?=<h2>Trading 212 sync)', "\n    ", z, flags=re.S)     # plaintext deletion is a gated cutover step, not a button
 z = re.sub(r'\s*<h2>Create account</h2>.*?<div id="su-err" class="err"></div>', '', z, flags=re.S)   # single-owner for now: no sign-up box (it could only confuse; public sign-up is a later step)
-z = re.sub(r'\s*<h2>Already have an account\?</h2>\s*<button class="alt" id="btn-to-upgrade">.*?</button>', '', z, flags=re.S)   # your account is already upgraded: no upgrade button on the login page
-z = re.sub(r'\s*<div id="v-upgrade" class="hide">.*?</div>\s*(?=<div id="v-recovery")', '\n\n  ', z, flags=re.S)
+z = z.replace('<h2>Already have an account?</h2>', '<h2>First time on the private version?</h2>').replace('Upgrade it to a private account', 'Set up my private account')
 z = z.replace('href="../zkapp/"', 'href="../zkapp-prod/"')
 z = re.sub(r'<script src="(?!\.\./|zk\.js)([a-z0-9]+\.js)"', r'<script src="../zk/\1"', z)             # shared modules live in docs/zk/
 z = _repin(re.sub(r'(<script src="[^"]+") integrity="[^"]*"', r"\1", z), root / "docs/zk-prod")
-assert "btn-to-upgrade" not in z and "btn-signup" not in z and "zk_probe" not in z and "notes-plain" not in z and "purge" not in z.lower() and "ggprfdetivzekjxlpvyq" not in z and PROD_URL in z
+assert "btn-signup" not in z and "zk_probe" not in z and "notes-plain" not in z and "purge" not in z.lower() and "ggprfdetivzekjxlpvyq" not in z and PROD_URL in z
 (root / "docs/zk-prod/index.html").write_text(z)
 print("wrote docs/zkapp-prod, docs/zk-prod")
