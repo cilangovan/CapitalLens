@@ -9,7 +9,7 @@ async function loadExposure() {
     return m;
   } catch (e) { return {}; }
 }
-const _esc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const _hmEsc = (v) => String(v ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 
 // ── RADIAL P&L CHART ──────────────────────────────────────────
 async function loadHeatmap() {
@@ -139,7 +139,7 @@ async function loadHeatmap() {
   // data-* attributes the tooltip reads: symbol, full name, flag, note, and the value line
   const tipAttrs = (ticker, sym, line) => {
     const info = exposure[ticker] || {};
-    return `data-sym="${_esc(sym)}" data-name="${_esc(info.display_name || '')}" data-flag="${_esc(info.flag || '')}" data-note="${_esc(info.exposure || '')}" data-line="${_esc(line)}"`;
+    return `data-sym="${_hmEsc(sym)}" data-name="${_hmEsc(info.display_name || '')}" data-flag="${_hmEsc(info.flag || '')}" data-note="${_hmEsc(info.exposure || '')}" data-line="${_hmEsc(line)}"`;
   };
 
   tickers.forEach((ticker, ti) => {
@@ -175,7 +175,7 @@ async function loadHeatmap() {
     const labelColor = p.gain_pct >= 0 ? '#34d399' : '#f87171';
     const lblTip = tipAttrs(ticker, sym, `All-time gain: ${gainPct || 'n/a'}`);
     labels += `<text x="${lp.x}" y="${lp.y}" font-size="13" font-weight="700" fill="#e2e8f0" text-anchor="${anchor}" dominant-baseline="middle"
-      transform="rotate(${rotDeg}, ${lp.x}, ${lp.y})" dy="-5" class="rad-lbl" style="cursor:pointer" ${lblTip}>${_esc(sym)}</text>`;
+      transform="rotate(${rotDeg}, ${lp.x}, ${lp.y})" dy="-5" class="rad-lbl" style="cursor:pointer" ${lblTip}>${_hmEsc(sym)}</text>`;
     labels += `<text x="${lp.x}" y="${lp.y}" font-size="11" fill="${labelColor}" text-anchor="${anchor}" dominant-baseline="middle"
       transform="rotate(${rotDeg}, ${lp.x}, ${lp.y})" dy="9" class="rad-lbl" style="cursor:pointer" ${lblTip}>${gainPct}</text>`;
   });
