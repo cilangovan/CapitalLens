@@ -39,6 +39,11 @@ except ImportError:
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_KEY") or os.environ["SUPABASE_KEY"]
 
+# FLOW_PUBLIC_MODE=1 (zero-knowledge design): score all three markets and read NO customer data.
+# The report is market-wide and public; each customer's browser builds its own portfolio actions
+# from their encrypted positions (docs/zk/flow.js).
+PUBLIC_MODE = os.environ.get("FLOW_PUBLIC_MODE") == "1"
+
 # ── Market definitions ────────────────────────────────────────────────────────
 # Each market: benchmark index + institutional proxy ETFs + foreign-flow proxy
 MARKETS = {
@@ -611,7 +616,7 @@ def run():
     print(f"[inst_flow] Starting at {datetime.now(timezone.utc).isoformat()}")
 
     # Load current positions for portfolio-action cross-reference
-    positions_raw = sb_get("positions", "?select=ticker,display,pie,exchange&order=pie,ticker")
+    positions_raw = [] if PUBLIC_MODE else sb_get("positions", "?select=ticker,display,pie,exchange&order=pie,ticker")
     positions = {p["ticker"]: p for p in positions_raw} if positions_raw else {}
     print(f"  Loaded {len(positions)} positions for cross-reference")
 
@@ -624,6 +629,9 @@ def run():
         else:
             print(f"    [warn] unknown exchange '{pos.get('exchange')}' for {pos['ticker']} — not scored")
 
+    if PUBLIC_MODE:
+        needed_regions = set(MARKETS)
+        print("  Public mode: scoring all markets, no customer data read")
     print(f"  Active regions from portfolio: {sorted(needed_regions)}")
 
     # Analyse only the markets relevant to current holdings
@@ -646,7 +654,7 @@ def run():
     # Opportunities, cautions, cash strategy
     opportunities, cautions = build_opportunities_and_cautions(markets, sector_rotation, positions)
     cash_strategy    = build_cash_strategy(markets, sector_rotation)
-    portfolio_actions = build_portfolio_actions(markets, sector_rotation, positions)
+    portfolio_actions = [] if PUBLIC_MODE else build_portfolio_actions(markets, sector_rotation, positions)
     summary          = build_summary(markets, sector_rotation)
 
     report = {
