@@ -1,6 +1,6 @@
 # CapitalLens — Tier 3 (zero-knowledge) cutover plan
 
-Owner: HOOP (`cilangovan`) · Tracking issue: #7 · Plan written 18 Nov 2026 · Status: **in progress — step 2 (additive SQL) authorised**
+Owner: HOOP (`cilangovan`) · Tracking issue: #7 · Plan written 18 Nov 2026 · Status: **in progress — step 5 (parallel run) day 1 done 18 Nov; steps 6-7 need explicit go-ahead**
 Companion docs: `SECURITY_TIER3_DESIGN.md` (why/how), `PHASE5_GO_LIVE_RUNBOOK.md` (controls, audit log, pen-test scope, risks).
 
 ## 1. What we are delivering
@@ -57,7 +57,7 @@ Gate: step 3 live. Undo: delete the user's `enc_rows`/`user_keys` rows (surgical
 Acceptance: per-table counts equal plaintext counts (see §6); `/zkapp/` dashboards match the legacy app side by side (totals, positions, alerts, returns, watchlist).
 
 ### Step 5 — Parallel run 🟠 (≥ 7 days)
-Use `/zkapp/` every morning: Refresh (needs the Trading 212 key — generated read-only in Settings → API; first Refresh does a full history re-sync). Keep the legacy jobs running read-only for comparison. Review the audit log weekly. Fix any numeric differences before moving on.
+Use `/zkapp/` every morning: Refresh (needs the Trading 212 key — generated read-only in Settings → API; history is already migrated, so Refresh is incremental and takes about a minute; only an empty store does a full walk). Keep the legacy jobs running read-only for comparison. Review the audit log weekly. Fix any numeric differences before moving on.
 Gate: step 4 accepted. Undo: just keep using the legacy app.
 
 ### Step 6 — Stop server jobs and retire all-access paths 🟠 (needs go-ahead)
@@ -127,7 +127,7 @@ Tick every box on issue #7, verify production, close the issue. Publish the plai
 | Browser analysis differs from the Python numbers | Low | Wrong decisions | Parity-tested; step 5 side-by-side week |
 | Staff/service-key misuse | Low | High | Service key retired (step 6); audit log; MFA; ciphertext only |
 | Reads by privileged roles are not in the audit log | Known | Medium | Supabase logs ≥ 90 days; everything readable is ciphertext |
-| Stale SRI hash breaks the page | Medium | Page won't load | CI regenerates and diffs `docs/zkapp`; test fails on stale hash |
+| Stale SRI hash breaks the page | Medium | Page won't load | CI regenerates and diffs `docs/zkapp`; test fails on stale hash. Pages CDN skew (new HTML + cached old script) solved 18 Nov: script URLs carry their content hash (`?v=…`) |
 
 ## 9. Execution log
 | When (UTC) | Step | What happened | Result |
