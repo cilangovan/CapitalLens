@@ -13,6 +13,8 @@ import urllib.request
 import urllib.error
 from datetime import datetime, timezone
 
+from services import lynch_service
+
 try:
     import yfinance as yf
     USE_YFINANCE = True
@@ -445,7 +447,19 @@ def run():
             "source": "analysts" if (data.get("analyst_count") or 0) > 0 else "trend",
             "updated_at": now,
         }
-        if supabase_request("POST", "analyst_ratings?on_conflict=ticker", row) is not None:
+        try:                                    # Peter Lynch bucket (needs db/tenant/14_lynch_columns.sql); never blocks the rating
+            ly = lynch_service.classify(lynch_service.fetch_fundamentals(yahoo_ticker))
+            if ly["bucket"] is not None or ly["reason"]:
+                row.update({"lynch_bucket": ly["bucket"], "lynch_name": ly["name"], "lynch_reason": ly["reason"],
+                            "lynch_growth": ly["growth"], "lynch_basis": ly["basis"], "lynch_confidence": ly["confidence"]})
+        except Exception as e:
+            print(f"  lynch skipped for {yahoo_ticker}: {e}")
+        result = supabase_request("POST", "analyst_ratings?on_conflict=ticker", row)
+        if result is None and "lynch_bucket" in row:      # table without the Lynch columns yet: keep the rating, drop the extras
+            for k in [k for k in row if k.startswith("lynch_")]:
+                row.pop(k)
+            result = supabase_request("POST", "analyst_ratings?on_conflict=ticker", row)
+        if result is not None:
             extra = data.get("_note") or f"{data['analyst_count']} analysts"
             print(f"✓ [{source}] {data['recommendation']} ⭐{data['star_rating']} buy={data['buy_pct']}% ({extra})")
             upserted += 1
