@@ -23,6 +23,7 @@ const ALLOWED = [
 
 // Public market data (no credentials). Chart endpoint only; symbol and range are strictly validated.
 const YAHOO = 'https://query1.finance.yahoo.com/v8/finance/chart/';
+const INTRADAY = { '1d': '5m', '5d': '30m', '1mo': '1d', '6mo': '1d', '1y': '1d', '5y': '1wk' };
 const SYMBOL = /^[A-Za-z0-9.^=\-]{1,24}$/, RANGES = new Set(['5d', '1mo', '3mo', '6mo', '1y', '2y', '5y', 'max']);
 
 // Yahoo needs a session cookie + crumb for quoteSummary (same flow as services/analyst_service.py). Held in memory only, ~30 min.
@@ -59,6 +60,20 @@ export default {
       const sym = url.searchParams.get('s') || '', range = url.searchParams.get('range') || '1y';
       if (!SYMBOL.test(sym) || !RANGES.has(range)) return reply(request, 400, '{"error":"bad symbol or range"}', { 'Content-Type': 'application/json' });
       const y = await fetch(`${YAHOO}${encodeURIComponent(sym)}?range=${range}&interval=1d&events=div%2Csplit`, { headers: { Accept: 'application/json', 'User-Agent': 'Mozilla/5.0' }, redirect: 'error' });
+      return reply(request, y.status, await y.arrayBuffer(), { 'Content-Type': y.headers.get('Content-Type') || 'application/json' });
+    }
+    if (request.method === 'GET' && url.pathname === '/yahoo-search') {
+      const q = (url.searchParams.get('q') || '').trim().slice(0, 60);
+      if (q.length < 2) return reply(request, 400, '{"error":"query too short"}', { 'Content-Type': 'application/json' });
+      const y = await fetch(`https://query2.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(q)}&quotesCount=20&newsCount=0&listsCount=0&enableFuzzyQuery=true`, { headers: { Accept: 'application/json', 'User-Agent': 'Mozilla/5.0' }, redirect: 'error' });
+      if (!y.ok) return reply(request, y.status, '{"error":"upstream"}', { 'Content-Type': 'application/json' });
+      const d = await y.json();
+      return reply(request, 200, JSON.stringify({ quotes: (d.quotes || []).filter(x => x.symbol).map(x => ({ symbol: x.symbol, longname: x.longname, shortname: x.shortname, exchDisp: x.exchDisp, exchange: x.exchange, quoteType: x.quoteType })) }), { 'Content-Type': 'application/json' });
+    }
+    if (request.method === 'GET' && url.pathname === '/yahoo-intraday') {
+      const sym = url.searchParams.get('s') || '', range = url.searchParams.get('range') || '1d', iv = INTRADAY[range];
+      if (!SYMBOL.test(sym) || !iv) return reply(request, 400, '{"error":"bad symbol or range"}', { 'Content-Type': 'application/json' });
+      const y = await fetch(`${YAHOO}${encodeURIComponent(sym)}?range=${range}&interval=${iv}&includePrePost=false`, { headers: { Accept: 'application/json', 'User-Agent': 'Mozilla/5.0' }, redirect: 'error' });
       return reply(request, y.status, await y.arrayBuffer(), { 'Content-Type': y.headers.get('Content-Type') || 'application/json' });
     }
     if (request.method === 'GET' && url.pathname === '/yahoo-news') {

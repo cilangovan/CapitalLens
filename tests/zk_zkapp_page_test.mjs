@@ -19,7 +19,7 @@ ctx.MutationObserver = function () { this.observe = () => {}; this.disconnect = 
 ctx.Response.prototype.json = Response.prototype.json; vm.createContext(ctx);
 let err = null; for (const s of srcs) { try { vm.runInContext(readFileSync(new URL(s, dir), 'utf8'), ctx, { filename: s }); } catch (e) { err = `${s}: ${e.message}`; break; } }
 ok('all page scripts load in order without errors', err === null); if (err) console.log('   ', err);
-const need = ['ZK', 'ZKStore', 'ZKMarket', 'ZKT212', 'ZKMonitor', 'ZKAnalystRatings', 'ZKReturns', 'ZKPieHistory', 'ZKProfitBooking', 'ZKStrategy', 'ZKHoldingDecision', 'ZKValueBuy', 'ZKWatchlist', 'ZKAlertReport', 'ZKFlow', 'ZKNotify', 'ZKQuery', 'ZKShim', 'ZKPipeline', 'ZKSymbols', 'ZKAlertFmt'];
+const need = ['ZK', 'ZKStore', 'ZKMarket', 'ZKT212', 'ZKMonitor', 'ZKAnalystRatings', 'ZKReturns', 'ZKPieHistory', 'ZKProfitBooking', 'ZKStrategy', 'ZKHoldingDecision', 'ZKValueBuy', 'ZKWatchlist', 'ZKWatchlistOps', 'ZKAlertReport', 'ZKFlow', 'ZKNotify', 'ZKQuery', 'ZKShim', 'ZKPipeline', 'ZKSymbols', 'ZKAlertFmt'];
 const missing = need.filter(n => typeof vm.runInContext(`typeof ${n}`, ctx) !== 'string' || vm.runInContext(`typeof ${n}`, ctx) === 'undefined'); ok('all zero-knowledge modules are available to the page', missing.length === 0); if (missing.length) console.log('   missing:', missing);
 // every inline handler in the markup resolves to a function
 const handlers = new Set([...html.matchAll(/on(?:click|change|keydown|input)="(?:if\([^)]*\))?\s*([A-Za-z_]\w*)\(/g)].map(m => m[1])), notFn = [...handlers].filter(h => { try { return vm.runInContext(`typeof ${h}`, ctx) !== 'function'; } catch (e) { return true; } });

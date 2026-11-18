@@ -33,7 +33,17 @@
         const v = Number(body.value); if (!/^[a-z_]{3,40}$/.test(body.key || '') || !Number.isFinite(v) || v < 0 || v > 1e6) return json(400, { error: 'Bad setting' });
         await opts.store.put('app_settings', [{ key: body.key, value: String(v) }], r => r.key); return json(200, { ok: true, value: v });
       }
-      if (/^(chart|search|watchlist\/)/.test(route)) return json(501, { error: 'This feature is being moved into your browser and is not available yet' });
+      if (/^(chart|search|watchlist\/(add|remove))$/.test(route)) {
+        if (method !== 'POST') return json(405, { error: 'Method not allowed' });
+        if (!opts.ops) return json(501, { error: 'This feature is not available here' });
+        let body = {}; try { body = JSON.parse(init.body || '{}'); } catch (e) {}
+        try {
+          const out = route === 'search' ? await opts.ops.search(body.q, body.category) : route === 'chart' ? await opts.ops.chart(body.symbol, body.range)
+            : route === 'watchlist/add' ? await opts.ops.add(body.symbol, body.category) : await opts.ops.remove(body.symbol);
+          return json(200, defuse(out));
+        } catch (e) { return json(e.status || 500, { error: String(e.message || 'Server error').slice(0, 200) }); }
+      }
+      if (/^(chart|search|watchlist\/)/.test(route)) return json(404, { error: 'Unknown route' });
       if (route === 'institutional_flow_reports') {
         const rep = await root.ZKFlow.latest(opts.call, opts.token, await opts.positions());
         return json(200, defuse(rep ? Q().run([rep], params) : []));

@@ -28,7 +28,7 @@ panel = """
 </div>
 """
 s = s.replace('<script src="../js/api.js"></script>', panel + '<script src="../js/api.js"></script>', 1)
-zk = ["../js/zkcrypto.js"] + [f"../zk/{m}.js" for m in ["store", "t212sync", "market", "alertfmt", "symbols", "returns", "valuebuy", "monitor", "analystratings", "piehistory", "profitbooking", "strategy", "holdingdecision", "watchlist", "alertreport", "flow", "notify", "postgrest", "shim", "pipeline"]]
+zk = ["../js/zkcrypto.js"] + [f"../zk/{m}.js" for m in ["store", "t212sync", "market", "alertfmt", "symbols", "returns", "valuebuy", "monitor", "analystratings", "piehistory", "profitbooking", "strategy", "holdingdecision", "watchlist", "watchlistops", "alertreport", "flow", "notify", "postgrest", "shim", "pipeline"]]
 tags = "\n".join(f'<script src="{p}"></script>' for p in zk)
 s = s.replace('<script src="demo-shim.js"></script>\n<script src="demo-auth.js"></script>', tags + '\n<script src="zkapp-auth.js"></script>\n<script src="zkapp-tools.js"></script>')
 assert "demo-auth" not in s and "zkapp-auth.js" in s

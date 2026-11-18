@@ -56,7 +56,8 @@ async function _unlocked(token, dk) {
   const uid = _uidOf(token), store = ZKStore.create({ call: zkCall, token, uid, dk });
   const market = ZKMarket.create({ relayUrl: RELAY_URL, shared: ZKMarket.sharedCache(zkCall, token, () => Date.now(), 48) });
   ZKCTX = { store, call: zkCall, token, uid, dk, market };
-  ZKShim.install(PROXY, ZKShim.create({ store, call: zkCall, token, positions: () => store.load('positions'), defuse }));
+  const ops = ZKWatchlistOps.create({ store, call: zkCall, token, relayUrl: RELAY_URL, analyse: () => ZKWatchlist.run({ store, market }, new Date()) });
+  ZKShim.install(PROXY, ZKShim.create({ store, call: zkCall, token, positions: () => store.load('positions'), defuse, ops }));
   startApp();
 }
 function logout() {
