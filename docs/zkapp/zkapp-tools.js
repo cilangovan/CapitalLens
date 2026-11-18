@@ -81,3 +81,27 @@ function zkReminderRender(at) {
 async function zkReminderInit() {
   try { const r = await ZKCTX.store.get('settings', 'recovery_check'); zkReminderRender(r && r.at); } catch (e) { zkReminderRender(null); }
 }
+
+// ── read-only comparison of the encrypted orders with the old plaintext table (cutover verification; removed after the plaintext is dropped)
+async function zkCompareOrders() {
+  const out = document.getElementById('zk-cmp-out'), btn = document.getElementById('zk-cmp-btn'); if (!ZKCTX) return;
+  btn.disabled = true; out.textContent = 'Reading…';
+  try {
+    const enc = await ZKCTX.store.load('t212_orders'), old = [];
+    for (let off = 0; ; off += 1000) {
+      const r = await ZKCTX.call('/rest/v1/t212_orders?select=id,order_id,filled_at,quantity,price,status,ticker&order=id&limit=1000&offset=' + off, {}, ZKCTX.token);
+      if (!r.ok) throw new Error('old copy: ' + r.status); old.push(...r.d); if (r.d.length < 1000) break;
+    }
+    const oldIds = new Set(old.map(o => String(o.id))), encIds = new Set(enc.map(o => String(o.id)));
+    const extra = enc.filter(o => !oldIds.has(String(o.id))), missing = old.filter(o => !encIds.has(String(o.id)));
+    const sig = o => [o.order_id, o.filled_at, +o.quantity, +o.price].join('|'), oldSigs = new Set(old.map(sig));
+    const extraSameTrade = extra.filter(o => oldSigs.has(sig(o)));
+    const dates = extra.map(o => o.filled_at).filter(Boolean).sort(), by = {};
+    extra.forEach(o => { const k = (o.status || '?') + (String(o.id).startsWith('order:') ? ' (no fill id)' : ''); by[k] = (by[k] || 0) + 1; });
+    out.textContent = ['Old copy: ' + old.length + ' orders', 'Private copy: ' + enc.length + ' orders',
+      'In private only: ' + extra.length + (extra.length ? ' (dates ' + dates[0] + ' to ' + dates[dates.length - 1] + ')' : ''),
+      '  of those, same trade as an old row under a different id (likely duplicates): ' + extraSameTrade.length,
+      '  by status: ' + JSON.stringify(by), 'In old copy only (missing from private): ' + missing.length].join('\n');
+  } catch (e) { out.textContent = 'Failed: ' + (e.message || e); }
+  btn.disabled = false;
+}

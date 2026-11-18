@@ -556,6 +556,12 @@
       <input id="zk-rk" type="password" placeholder="Recovery key (XXXX-XXXX-…)" autocomplete="off" style="width:100%;margin-bottom:6px">
       <button id="zk-rk-btn" onclick="zkCheckRecovery()">Check my key</button> <span id="zk-rk-msg" style="font-size:12px"></span>
     </div>
+    <div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin:0 0 14px">
+      <b style="font-size:13px">🧪 Compare orders with the old copy</b>
+      <p style="font-size:12px;color:var(--muted);margin:6px 0 8px">Reads both copies of your orders in this browser and reports any differences (read-only, changes nothing).</p>
+      <button id="zk-cmp-btn" onclick="zkCompareOrders()">Compare</button>
+      <pre id="zk-cmp-out" style="font-size:11px;max-height:200px;overflow:auto;background:#0004;padding:8px;border-radius:6px;white-space:pre-wrap"></pre>
+    </div>
     <h3 style="margin:0 0 6px;font-size:15px">🔄 Refresh your data</h3>
     <p style="font-size:12px;color:var(--muted);margin:0 0 12px">Runs in this browser: Trading 212 sync, snapshot, every analysis, then your alert report. Your Trading 212 key is used once and never saved. Leave both fields empty to just re-analyse stored data.</p>
     <input id="zk-key" type="password" placeholder="Trading 212 API key" autocomplete="off" style="width:100%;margin-bottom:6px">
@@ -592,9 +598,9 @@
 <script src="../zk/postgrest.js" integrity="sha384-TAmHrohvRyy+jJUgcLXNgsD0jeI83fkiX/OXoe1YrQQamDYsaHVmru/kUFga4EoP"></script>
 <script src="../zk/shim.js" integrity="sha384-0QDZwdIqWMZ2rCgxEc7tIanSKHibPDQUqyNakwekAFKzXQrHb0LaAiEA5vxWXfBy"></script>
 <script src="../zk/pipeline.js" integrity="sha384-A1MnDmc9/7vt+iAzgKXQvLfxTpIPps9x+mea4NaZTAlHUbJLSlVpjAhn8Napkyuf"></script>
-<script src="../zkapp/handler-names.js" integrity="sha384-h4AOeUX1GWO5exYYM3iGteisbL3jX4oqPl17iLoEJ0nVv7JkWbqkXBt6n0qOsZPT"></script>
+<script src="../zkapp/handler-names.js" integrity="sha384-S/27aznV5RZPH5i7SHrhOVUUn1y6c5IK8i1n0MH8KovdckrmDMkjFBsjhj+1vBBM"></script>
 <script src="zkapp-auth.js" integrity="sha384-p9D77gTvfKRH/+FR+ArpPaw6fD8IQiS57xH+IZDDhw0UtmVaNRUUhfzDQskEd1ar"></script>
-<script src="../zkapp/zkapp-tools.js" integrity="sha384-ePksPUmS/rVnX2lsrGT1U7/X5ajAnQJ4J7Kdz9B0Ie3BBW+F0272Sn3+KyCZoVsy"></script>
+<script src="../zkapp/zkapp-tools.js" integrity="sha384-5p1TgEd73T3MWi8Ah4Hhbk019Cl4+UBmT2J8BvbENPeH0M39U4StQR/3lH0x4rkO"></script>
 <script src="../js/overview.js" integrity="sha384-f+QSyl5SS2iPOFY3pgJYd2BLt63G69oTicIMLBn0vDSdy39NsxqlBRGjO1DkYuC+"></script>
 <script src="../js/heatmap.js" integrity="sha384-ejTjRk7y+eXbpYbK6mwsIrt4MeF2TkJf7+kQzNf1i3KKcnRfk+khUABYy4DEhqWh"></script>
 <script src="../js/positions.js" integrity="sha384-oUyv1ow0QmvO7ZEY6PwkRJKWoijhi350akLfapoGTox2LCBsgIoUvruRsSx0bR3y"></script>

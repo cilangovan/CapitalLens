@@ -35,6 +35,12 @@ panel = """
       <input id="zk-rk" type="password" placeholder="Recovery key (XXXX-XXXX-…)" autocomplete="off" style="width:100%;margin-bottom:6px">
       <button id="zk-rk-btn" onclick="zkCheckRecovery()">Check my key</button> <span id="zk-rk-msg" style="font-size:12px"></span>
     </div>
+    <div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin:0 0 14px">
+      <b style="font-size:13px">🧪 Compare orders with the old copy</b>
+      <p style="font-size:12px;color:var(--muted);margin:6px 0 8px">Reads both copies of your orders in this browser and reports any differences (read-only, changes nothing).</p>
+      <button id="zk-cmp-btn" onclick="zkCompareOrders()">Compare</button>
+      <pre id="zk-cmp-out" style="font-size:11px;max-height:200px;overflow:auto;background:#0004;padding:8px;border-radius:6px;white-space:pre-wrap"></pre>
+    </div>
     <h3 style="margin:0 0 6px;font-size:15px">🔄 Refresh your data</h3>
     <p style="font-size:12px;color:var(--muted);margin:0 0 12px">Runs in this browser: Trading 212 sync, snapshot, every analysis, then your alert report. Your Trading 212 key is used once and never saved. Leave both fields empty to just re-analyse stored data.</p>
     <input id="zk-key" type="password" placeholder="Trading 212 API key" autocomplete="off" style="width:100%;margin-bottom:6px">
