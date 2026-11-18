@@ -543,17 +543,22 @@
 <style>
 #zk-tools input[type=password],#zk-tools input[type=text]{background:var(--bg3);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:9px 11px;font-size:13px;outline:none;box-sizing:border-box}
 #zk-tools input:focus{border-color:var(--accent)}
-#zk-tools .zk-hbtn{background:var(--bg3);color:var(--text);border:1px solid var(--border);border-radius:8px;padding:5px 9px;font-size:12px;cursor:pointer}
+#zk-tools .zk-dots{display:flex;gap:8px}
+#zk-tools .zk-dot{width:14px;height:14px;border-radius:50%;border:0;padding:0;cursor:pointer;display:flex;align-items:center;justify-content:center;line-height:1}
+#zk-tools .zk-dot span{font-size:9px;font-weight:700;color:#0008;opacity:0}
+#zk-tools .zk-dots:hover .zk-dot span,#zk-tools .zk-dot:focus-visible span{opacity:1}
+#zk-tools .zk-red{background:#ff5f57}#zk-tools .zk-yel{background:#febc2e}
+#zk-tools .zk-help-btn{width:24px;height:24px;border-radius:50%;background:var(--bg3);color:var(--text);border:1px solid var(--border);font-size:13px;font-weight:700;padding:0;cursor:pointer;display:flex;align-items:center;justify-content:center}
 #zk-tools button{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer}
 #zk-tools button:disabled{opacity:.5;cursor:default}
-#zk-tools button[onclick^=zkToolsClose]{background:var(--bg3);color:var(--muted);border:1px solid var(--border)}
 </style>
 <div id="zk-tools" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;align-items:center;justify-content:center">
   <div style="background:var(--card,#161b22);border:1px solid var(--border);border-radius:12px;padding:20px;width:min(560px,92vw);max-height:90vh;overflow:auto">
-    <div style="display:flex;align-items:center;gap:6px;margin:0 0 10px"><h3 style="margin:0;flex:1">⚙ Settings</h3>
-      <button class="zk-hbtn" onclick="zkToolsHelp()" title="Help">? Help</button>
-      <button class="zk-hbtn" onclick="zkToolsMinimize()" title="Minimise (keeps anything running)">– Minimise</button>
-      <button class="zk-hbtn" onclick="zkToolsClose()" title="Close">✕ Close</button></div>
+    <div style="display:flex;align-items:center;gap:12px;margin:0 0 10px">
+      <div class="zk-dots"><button class="zk-dot zk-red" onclick="zkToolsClose()" title="Close" aria-label="Close"><span>✕</span></button><button class="zk-dot zk-yel" onclick="zkToolsMinimize()" title="Minimise (keeps anything running)" aria-label="Minimise"><span>–</span></button></div>
+      <h3 style="margin:0;flex:1">⚙ Settings</h3>
+      <button class="zk-help-btn" onclick="zkToolsHelp()" title="Help" aria-label="Help">?</button>
+    </div>
     <div id="zk-help" style="display:none;font-size:12px;line-height:1.5;color:var(--muted);background:#0003;border:1px solid var(--border);border-radius:10px;padding:10px 12px;margin:0 0 12px">
       <b style="color:var(--text)">What is on this page</b><br>
       <b>🔑 Recovery key:</b> the only way back in if you forget your password. Press <i>Check my key</i> about once a week to confirm yours still works. Lost it? <i>Create a new recovery key</i> while you are signed in.<br>
