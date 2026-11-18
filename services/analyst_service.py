@@ -448,8 +448,9 @@ def run():
             "updated_at": now,
         }
         try:                                    # Peter Lynch bucket (needs db/tenant/14_lynch_columns.sql); never blocks the rating
-            ly = lynch_service.classify(lynch_service.fetch_fundamentals(yahoo_ticker))
-            if ly["bucket"] is not None or ly["reason"]:
+            fund = lynch_service.fetch_fundamentals(yahoo_ticker)
+            if any(v is not None for v in fund.values()):          # same rule as the browser version: no fundamentals, no invented bucket
+                ly = lynch_service.classify(fund)
                 row.update({"lynch_bucket": ly["bucket"], "lynch_name": ly["name"], "lynch_reason": ly["reason"],
                             "lynch_growth": ly["growth"], "lynch_basis": ly["basis"], "lynch_confidence": ly["confidence"]})
         except Exception as e:
