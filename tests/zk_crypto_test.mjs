@@ -43,5 +43,10 @@ ok('new auth secret differs from the old one', changed.authSecret !== acct.authS
 const a2 = await ZK.createAccount('correct horse battery staple');
 ok('same password on another account gives a different auth secret (per-user salt)', a2.authSecret !== acct.authSecret);
 
+{ const nr = await ZK.rewrapRecovery(acct.dk, acct.store), st2 = Object.assign({}, acct.store, { rec_salt: nr.rec_salt, wrapped_dk_rec: nr.wrapped_dk_rec });
+  const viaNew = await ZK.unlockWithRecovery(nr.recoveryKey, st2), probe = await ZK.encryptRow(acct.dk, { a: 1 }, 't', 'id1', userId);
+  ok('new recovery key unlocks the same data key', (await ZK.decryptRow(viaNew, probe, 't', 'id1', userId)).a === 1);
+  ok('the old recovery key stops working after rotation', await throws(() => ZK.unlockWithRecovery(acct.recoveryKey, st2)));
+  ok('password login still works after rotation', !!(await ZK.unlockWithPassword('correct horse battery staple', st2)).dk); }
 console.log(`\n${pass} passed · ${fail} failed`);
 process.exit(fail ? 1 : 0);

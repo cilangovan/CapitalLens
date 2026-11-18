@@ -77,11 +77,17 @@
     return { authSecret: pw.authSecret, store: Object.assign({}, store, { pw_salt: pwSalt, wrapped_dk_pw: await wrapDataKey(dk, pw.kek) }) };
   }
 
+  // Replace the recovery key while signed in: same data key, new recovery salt + wrap. The old recovery key stops working once this is saved.
+  async function rewrapRecovery(dk, store) {
+    const recoveryKey = newRecoveryKey(), recSalt = newSalt(), rec = await deriveKeys(cleanRecovery(recoveryKey), recSalt, store.kdf && store.kdf.iterations);
+    return { recoveryKey, rec_salt: recSalt, wrapped_dk_rec: await wrapDataKey(dk, rec.kek) };
+  }
+
   // Row encryption. aad binds the ciphertext to its table, row id and owner so rows can't be swapped between records or users.
   const rowAad = (table, id, userId) => `${table}|${id}|${userId}`;
   async function encryptRow(dk, obj, table, id, userId) { return seal(dk, enc.encode(JSON.stringify(obj)), rowAad(table, id, userId)); }
   async function decryptRow(dk, box, table, id, userId) { return JSON.parse(dec.decode(await open(dk, box, rowAad(table, id, userId)))); }
 
-  root.ZK = { KDF, deriveKeys, newSalt, createAccount, unlockWithPassword, unlockWithRecovery, rewrapForNewPassword, encryptRow, decryptRow, newRecoveryKey, b64, unb64 };
+  root.ZK = { KDF, deriveKeys, newSalt, createAccount, unlockWithPassword, unlockWithRecovery, rewrapForNewPassword, rewrapRecovery, cleanRecovery, encryptRow, decryptRow, newRecoveryKey, b64, unb64 };
   if (typeof module !== 'undefined') module.exports = root.ZK;
 })(typeof window !== 'undefined' ? window : globalThis);

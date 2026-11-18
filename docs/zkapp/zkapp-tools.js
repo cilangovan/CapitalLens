@@ -116,3 +116,33 @@ async function zkDedupe(apply) {
   } catch (e) { out.textContent += '\nStopped: ' + (e.message || e); }
   b1.disabled = b2.disabled = false;
 }
+
+// ── replace a lost recovery key (needs the unlocked session; the old key keeps working until the new one is activated) ──
+var ZK_NRK = null;
+async function zkNewRecoveryStart() {
+  if (!ZKCTX) return; const msg = document.getElementById('zk-nrk-msg'); msg.textContent = '';
+  try {
+    const k = await ZKCTX.call('/rest/v1/user_keys?select=*', {}, ZKCTX.token);
+    if (!k.ok || !k.d || !k.d.length) throw new Error('Could not read your key record');
+    ZK_NRK = await ZK.rewrapRecovery(ZKCTX.dk, k.d[0]);
+    document.getElementById('zk-nrk-key').textContent = ZK_NRK.recoveryKey; document.getElementById('zk-nrk-confirm').value = '';
+    document.getElementById('zk-nrk-box').style.display = 'block';
+  } catch (e) { ZK_NRK = null; msg.style.color = '#f87171'; msg.textContent = 'Could not start: ' + (e.message || e); }
+}
+async function zkNewRecoveryActivate() {
+  const msg = document.getElementById('zk-nrk-msg'), btn = document.getElementById('zk-nrk-go'), inp = document.getElementById('zk-nrk-confirm');
+  if (!ZKCTX || !ZK_NRK) return; msg.style.color = '#f87171';
+  if (ZK.cleanRecovery(inp.value) !== ZK.cleanRecovery(ZK_NRK.recoveryKey)) { msg.textContent = 'That does not match the key above. Copy it carefully (nothing was changed).'; return; }
+  btn.disabled = true; msg.style.color = 'var(--muted)'; msg.textContent = 'Saving…';
+  try {
+    const r = await ZKCTX.call('/rest/v1/user_keys?user_id=eq.' + ZKCTX.uid, { method: 'PATCH', headers: { Prefer: 'return=minimal' },
+      body: JSON.stringify({ rec_salt: ZK_NRK.rec_salt, wrapped_dk_rec: ZK_NRK.wrapped_dk_rec, updated_at: new Date().toISOString() }) }, ZKCTX.token);
+    if (!r.ok) throw new Error('server said ' + r.status);
+    const k = await ZKCTX.call('/rest/v1/user_keys?select=*', {}, ZKCTX.token);       // prove the saved record opens with the new key
+    await ZK.unlockWithRecovery(ZK_NRK.recoveryKey, k.d[0]);
+    await ZKCTX.store.put('settings', [{ key: 'recovery_check', at: new Date().toISOString() }], x => x.key);
+    ZK_NRK = null; document.getElementById('zk-nrk-key').textContent = ''; inp.value = ''; document.getElementById('zk-nrk-box').style.display = 'none';
+    msg.style.color = '#34d399'; msg.textContent = '✅ New recovery key is active and verified. Every older key is now void.'; zkReminderRender(new Date().toISOString());
+  } catch (e) { msg.style.color = '#f87171'; msg.textContent = 'Not activated: ' + (e.message || e) + '. Your previous key is unchanged.'; }
+  btn.disabled = false;
+}

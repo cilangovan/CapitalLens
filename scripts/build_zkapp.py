@@ -34,6 +34,16 @@ panel = """
       <p style="font-size:12px;color:var(--muted);margin:6px 0 8px">Your recovery key is the only way back in if you forget your password, and nobody can recreate it. Type it here to confirm it still works. It is checked in this browser only: it is not sent anywhere or saved. <span id="zk-rk-last"></span></p>
       <input id="zk-rk" type="password" placeholder="Recovery key (XXXX-XXXX-…)" autocomplete="off" style="width:100%;margin-bottom:6px">
       <button id="zk-rk-btn" onclick="zkCheckRecovery()">Check my key</button> <span id="zk-rk-msg" style="font-size:12px"></span>
+      <hr style="border-color:var(--border);margin:12px 0">
+      <b style="font-size:13px">Lost your recovery key?</b>
+      <p style="font-size:12px;color:var(--muted);margin:6px 0 8px">While you are signed in you can replace it. Nothing changes until you confirm you saved the new one; then the old key stops working.</p>
+      <button id="zk-nrk-btn" onclick="zkNewRecoveryStart()">Create a new recovery key</button>
+      <div id="zk-nrk-box" style="display:none;margin-top:8px">
+        <div id="zk-nrk-key" style="font-family:ui-monospace,Menlo,monospace;font-size:15px;background:#0004;border:1px dashed #f59e0b;color:#fcd34d;border-radius:6px;padding:10px;word-break:break-all;user-select:all"></div>
+        <p style="font-size:12px;color:var(--muted);margin:8px 0 6px">1) Save it in your password manager AND on paper. 2) Type or paste it below to prove you saved it correctly. 3) Press Activate.</p>
+        <input id="zk-nrk-confirm" type="password" placeholder="Type the new key again" autocomplete="off" style="width:100%;margin-bottom:6px">
+        <button id="zk-nrk-go" onclick="zkNewRecoveryActivate()">Activate new key</button> <span id="zk-nrk-msg" style="font-size:12px"></span>
+      </div>
     </div>
     <div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin:0 0 14px">
       <b style="font-size:13px">🧪 Compare orders with the old copy</b>
