@@ -7,7 +7,7 @@
   const BASE = 'https://kloqkcxchstfoljpqcbq.supabase.co', KEY = 'sb_publishable_XXLlyHUZpaiCZkAb6u5NWQ_bePWcmGf';
   const $ = id => document.getElementById(id);
   const VIEWS = ['auth', 'upgrade', 'recovery', 'reset', 'app'];
-  const show = v => VIEWS.forEach(n => $('v-' + n).classList.toggle('hide', n !== v));
+  const show = v => VIEWS.forEach(n => { const el = $('v-' + n); if (el) el.classList.toggle('hide', n !== v); });
   const S = { token: null, uid: null, email: null, dk: null, keys: null };
   const say = (id, msg) => { $(id).textContent = msg || ''; };
   const MIN_PW = 10;
@@ -138,9 +138,9 @@
     Object.assign(S, { token: u.token, uid: u.uid, email: u.email, dk: u.acct.dk, keys: u.acct.store, upgraded: true });
     await remember(); enterApp();
   }
-  $('btn-to-upgrade').onclick = () => { show('upgrade'); };
-  $('btn-up-back').onclick = () => { show('auth'); };
-  $('btn-upgrade').onclick = upgrade;
+  if ($('btn-to-upgrade')) $('btn-to-upgrade').onclick = () => { show('upgrade'); };
+  if ($('btn-up-back')) $('btn-up-back').onclick = () => { show('auth'); };
+  if ($('btn-upgrade')) $('btn-upgrade').onclick = upgrade;
   $('btn-summary').onclick = async () => { $('summary-out').textContent = JSON.stringify(await ZKMigrate.summary({ call, token: S.token, uid: S.uid, dk: S.dk }), null, 1); ($('purge-box') && $('purge-box').classList.remove('hide')); };
   if ($('btn-purge')) $('btn-purge').onclick = async () => {
     if ($('purge-confirm').value !== 'DELETE') return say('purge-msg', 'Type DELETE first');
