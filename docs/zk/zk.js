@@ -147,6 +147,24 @@
     await ZKMigrate.purgePlaintext(ctx); say('purge-msg', 'Plaintext copy deleted. Only encrypted data remains.');
   };
 
+  // ── Trading 212 sync ──
+  const RELAY = 'https://capitallens-relay.itsme-daf.workers.dev';
+  async function t212sync(full) {
+    say('t2-err', ''); const k = $('t2-key').value.trim(), sec = $('t2-sec').value.trim();
+    if (!k || !sec) return say('t2-err', 'Enter your Trading 212 API key and secret');
+    $('btn-t2').disabled = $('btn-t2-full').disabled = true; $('t2-log').textContent = '';
+    try {
+      const store = ZKStore.create({ call, token: S.token, uid: S.uid, dk: S.dk });
+      const sync = ZKT212.create({ store, relayUrl: RELAY, log: m => { $('t2-log').textContent += m + '\n'; } });
+      const r = await sync.run(k, sec, { full });
+      $('t2-sec').value = ''; $('t2-key').value = '';
+      if (r.failed.length) say('t2-err', 'Incomplete for: ' + r.failed.join(', ') + '. Stored pages are kept; run again to resume.');
+    } catch (e) { say('t2-err', 'Sync failed: ' + (e.message || e)); }
+    $('btn-t2').disabled = $('btn-t2-full').disabled = false;
+  }
+  $('btn-t2').onclick = () => t212sync(false);
+  $('btn-t2-full').onclick = () => t212sync(true);
+
   // ── forgot / reset ──
   $('btn-forgot').onclick = async () => {
     const email = $('li-email').value.trim(); if (!email) return say('li-err', 'Enter your email first');
