@@ -3,7 +3,7 @@
 import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
 const require = createRequire(import.meta.url);
-require('../docs/zk/returns.js'); require('../docs/zk/symbols.js');
+require('../docs/zk/returns.js'); require('../docs/zk/symbols.js'); require('../docs/zk/lynch.js');
 const AR = require('../docs/zk/analystratings.js');
 let pass = 0, fail = 0; const ok = (n, c) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + n); };
 let seed = 99; const rnd = () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
@@ -82,4 +82,12 @@ const saved = [], removed = [], charts = []; const store = { load: async k => ta
 const market = { info: async y => infos[y] === 'RAISE' ? null : (infos[y] || {}), chart: async (y, rg) => { charts.push(y); return hist[y] ? { adjclose: hist[y] } : null; } };
 const out = await AR.run({ store, market }, new Date('2026-11-18T12:00:00Z'));
 ok('run(): saves identical ratings to the encrypted store, drops stale ones, fetches price history only for uncovered tickers', JSON.stringify(out.rows.map(strip)) === JSON.stringify(js.rows.map(strip)) && removed.includes('OLD') && !charts.includes('NVDA') && charts.includes('VWRP.L'));
+{ // Lynch bucket rides on the rating row; a failed fundamentals fetch never blocks the rating
+  const pos = [{ ticker: 'AAA_US_EQ', pie: 'P1', exchange: '' }, { ticker: 'BBB_US_EQ', pie: 'P1', exchange: '' }];
+  const base = { recommendationKey: 'buy', targetMeanPrice: 10, numberOfAnalystOpinions: 5 };
+  const data = { AAA: { info: base, detail: { quoteType: 'EQUITY', sector: 'Technology', industry: 'Software', marketCap: 5e9, earningsGrowth: 0.4, profitMargins: 0.2 } }, BBB: { info: base, detail: null } };
+  const r = AR.compute({ positions: pos, data, nowIso: '2026-11-18T00:00:00Z' }).rows, a = r.find(x => x.ticker === 'AAA_US_EQ'), b = r.find(x => x.ticker === 'BBB_US_EQ');
+  ok('rating rows carry the Lynch bucket, name, reason and confidence', a.lynch_bucket === 1 && a.lynch_name === 'Fast Grower' && /40%/.test(a.lynch_reason) && a.lynch_confidence === 'high');
+  ok('no fundamentals: rating still produced, no Lynch fields invented', b.star_rating >= 1 && b.lynch_bucket === undefined);
+}
 console.log(`\n${pass} passed · ${fail} failed`); process.exit(fail ? 1 : 0);

@@ -41,8 +41,10 @@
       const pie = (pos.pie || 'Solo holdings').trim(), y = root.ZKSymbols.t212ToYahoo(pos.ticker, pos.exchange === undefined ? '' : pos.exchange)[0], d = inp.data[y] || {};
       const data = fromAnalysts(d.info) || trendRating(d.closes);
       if (!data) continue;
+      const ly = d.detail && root.ZKLynch ? root.ZKLynch.classify(d.detail) : null;      // Peter Lynch bucket from public fundamentals
       rows.push({ ticker: pos.ticker, yahoo_ticker: y, pie, recommendation: data.recommendation, star_rating: data.star_rating, target_mean: data.target_mean, buy_pct: data.buy_pct, hold_pct: data.hold_pct,
-        sell_pct: data.sell_pct, analyst_count: data.analyst_count, source: (data.analyst_count || 0) > 0 ? 'analysts' : 'trend', updated_at: inp.nowIso });
+        sell_pct: data.sell_pct, analyst_count: data.analyst_count, source: (data.analyst_count || 0) > 0 ? 'analysts' : 'trend', updated_at: inp.nowIso,
+        ...(ly ? { lynch_bucket: ly.bucket, lynch_name: ly.name, lynch_reason: ly.reason, lynch_growth: ly.growth, lynch_basis: ly.basis, lynch_confidence: ly.confidence } : {}) });
       rated.push(pos.ticker);
     }
     return { rows, rated };
@@ -59,6 +61,7 @@
       const y = root.ZKSymbols.t212ToYahoo(p.ticker, p.exchange || '')[0];
       if (data[y]) return; data[y] = {};
       data[y].info = await market.info(y);
+      try { { const dd = market.detail ? await market.detail(y) : null; data[y].detail = dd && dd.info && Object.keys(dd.info).length ? dd.info : null; } } catch (e) { data[y].detail = null; }      // fundamentals for the Lynch bucket; failure never blocks the rating
       if (!fromAnalysts(data[y].info)) { const c = await market.chart(y, '1y'); data[y].closes = c ? c.adjclose.filter(x => x !== null && x !== undefined && !Number.isNaN(x)) : null; }
     }));
     const out = compute({ positions, data, nowIso: d.toISOString() });

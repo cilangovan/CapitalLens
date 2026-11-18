@@ -84,7 +84,7 @@ panel = """
 </div>
 """
 s = s.replace('<script src="../js/api.js"></script>', panel + '<script src="../js/api.js"></script>', 1)
-zk = ["../js/zkcrypto.js"] + [f"../zk/{m}.js" for m in ["store", "dedupe", "t212sync", "market", "alertfmt", "symbols", "returns", "valuebuy", "monitor", "analystratings", "piehistory", "profitbooking", "strategy", "holdingdecision", "handlers", "watchlist", "watchlistops", "alertreport", "flow", "notify", "postgrest", "shim", "pipeline"]]
+zk = ["../js/zkcrypto.js"] + [f"../zk/{m}.js" for m in ["store", "dedupe", "t212sync", "market", "alertfmt", "symbols", "returns", "valuebuy", "monitor", "lynch", "analystratings", "piehistory", "profitbooking", "strategy", "holdingdecision", "handlers", "watchlist", "watchlistops", "alertreport", "flow", "notify", "postgrest", "shim", "pipeline"]]
 # Allowlist of handler functions: only the app's own top-level functions that its markup actually names in an on*= attribute.
 import re as _re, json as _json
 _srcs = [(root / "docs/js").glob("*.js"), [root / "docs/zkapp/zkapp-auth.js", root / "docs/zkapp/zkapp-tools.js"]]

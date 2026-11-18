@@ -119,7 +119,7 @@ async function route(request) {
       const pick = (o, keys) => { const out = {}; for (const k of keys) { const v = num(o[k]); if (v !== undefined && v !== null) out[k] = v; } return out; };
       const info = Object.assign({}, pick(ap, ['sector', 'industry', 'longBusinessSummary', 'website', 'fullTimeEmployees', 'country']),
         pick(sd, ['previousClose', 'open', 'regularMarketOpen', 'dayLow', 'dayHigh', 'volume', 'averageVolume', 'marketCap', 'trailingPE', 'forwardPE', 'dividendYield', 'beta', 'fiftyTwoWeekHigh', 'fiftyTwoWeekLow']),
-        pick(ks, ['sharesOutstanding', 'forwardPE', 'beta', 'annualReportExpenseRatio', 'category', 'fundFamily', 'profitMargins']),
+        pick(ks, ['sharesOutstanding', 'forwardPE', 'beta', 'annualReportExpenseRatio', 'category', 'fundFamily', 'profitMargins', 'priceToBook', 'trailingEps']),
         pick(fd, ['profitMargins', 'operatingMargins', 'returnOnAssets', 'returnOnEquity', 'debtToEquity', 'currentRatio', 'quickRatio', 'revenueGrowth', 'earningsGrowth', 'recommendationKey', 'recommendationMean', 'numberOfAnalystOpinions', 'targetMeanPrice', 'targetLowPrice', 'targetHighPrice']),
         pick(pr, ['quoteType', 'currency', 'longName', 'shortName']));
       if (info.marketCap === undefined && num(pr.marketCap)) info.marketCap = num(pr.marketCap);
