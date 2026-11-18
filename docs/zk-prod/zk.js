@@ -44,6 +44,8 @@
       const acct = await ZK.createAccount(pw);
       const r = await call('/auth/v1/signup', { method: 'POST', body: JSON.stringify({ email, password: acct.authSecret }) });
       if (!r.ok) return say('su-err', errOf(r));
+      const ids = r.d && (Array.isArray(r.d.identities) ? r.d.identities : (r.d.user && r.d.user.identities));
+      if (Array.isArray(ids) && ids.length === 0) return say('su-err', 'An account with this email already exists, so no new account was made and NO recovery key was created. Log in, or use "Forgot password".');
       S.email = email; S.dk = acct.dk; S.keys = acct.store;
       $('rec-key').textContent = acct.recoveryKey;
       if (r.d && r.d.access_token) {
@@ -241,7 +243,7 @@
     $('li-pw').value = ''; show('auth');
   }
 
-  $('btn-signup').onclick = signup; $('btn-login').onclick = login; $('btn-reset').onclick = reset;
+  if ($('btn-signup')) $('btn-signup').onclick = signup; $('btn-login').onclick = login; $('btn-reset').onclick = reset;
   $('btn-cp').onclick = changePw; if ($('btn-note')) $('btn-note').onclick = addNote; $('btn-logout').onclick = logout;
 
   // ── start-up: password-reset link, or restore this tab's unlocked session ──

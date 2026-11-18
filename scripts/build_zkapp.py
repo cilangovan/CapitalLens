@@ -107,9 +107,10 @@ assert PROD_URL in zjs and DEMO_URL not in zjs
 z = _prod_text(z).replace("Prototype (demo project). ", "").replace("CapitalLens · private sign-in (prototype)", "CapitalLens · private sign-in")
 z = re.sub(r'\s*<h2>Private notes.*?<pre id="notes-raw"></pre>', "", z, flags=re.S)                      # demo-only probe
 z = re.sub(r'\s*<div id="purge-box" class="hide">.*?</div>\s*(?=<h2>Trading 212 sync)', "\n    ", z, flags=re.S)     # plaintext deletion is a gated cutover step, not a button
+z = re.sub(r'\s*<h2>Create account</h2>.*?<div id="su-err" class="err"></div>', '', z, flags=re.S)   # single-owner for now: no sign-up box (it could only confuse; public sign-up is a later step)
 z = z.replace('href="../zkapp/"', 'href="../zkapp-prod/"')
 z = re.sub(r'<script src="(?!\.\./|zk\.js)([a-z0-9]+\.js)"', r'<script src="../zk/\1"', z)             # shared modules live in docs/zk/
 z = _repin(re.sub(r'(<script src="[^"]+") integrity="[^"]*"', r"\1", z), root / "docs/zk-prod")
-assert "zk_probe" not in z and "notes-plain" not in z and "purge" not in z.lower() and "ggprfdetivzekjxlpvyq" not in z and PROD_URL in z
+assert "btn-signup" not in z and "zk_probe" not in z and "notes-plain" not in z and "purge" not in z.lower() and "ggprfdetivzekjxlpvyq" not in z and PROD_URL in z
 (root / "docs/zk-prod/index.html").write_text(z)
 print("wrote docs/zkapp-prod, docs/zk-prod")
