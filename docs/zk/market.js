@@ -36,7 +36,12 @@
       if (!infos.has(sym)) infos.set(sym, limited(async () => { try { const r = await f(`${opts.relayUrl}/yahoo-info?s=${encodeURIComponent(sym)}`); return r.ok ? await r.json() : {}; } catch (e) { return {}; } }));
       return infos.get(sym);
     }
-    return { chart, info };
+    const news = new Map();
+    async function headlines(sym) {
+      if (!news.has(sym)) news.set(sym, limited(async () => { try { const r = await f(`${opts.relayUrl}/yahoo-news?s=${encodeURIComponent(sym)}`); return r.ok ? ((await r.json()).titles || []) : []; } catch (e) { return []; } }));
+      return news.get(sym);
+    }
+    return { chart, info, headlines };
   }
   root.ZKMarket = { create, parse };
   if (typeof module !== 'undefined') module.exports = root.ZKMarket;

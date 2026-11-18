@@ -14,6 +14,7 @@ globalThis.fetch = async (url, init) => {
   const b = await baseFetch(url, init); if (b) return b;
   outbound.push({ url, init }); busy++; maxBusy = Math.max(maxBusy, busy); await new Promise(r => setTimeout(r, 15)); busy--;
   if (url.includes('BAD')) return new Response('{}', { status: 404 });
+  if (url.includes('/v1/finance/search')) return Response.json({ news: [{ title: 'Stocks rally' }, { title: 'Fed holds' }, { uuid: 'x' }], quotes: [{ symbol: 'SECRET' }] });
   return Response.json({ chart: { result: [{ meta: { symbol: 'NVDA', currency: 'USD', regularMarketPrice: 150 }, timestamp: [1767225600, 1767312000, 1767398400],
     indicators: { quote: [{ close: [100, null, 102], volume: [10, 11, 12], high: [101, 0, 103], low: [99, 0, 100] }], adjclose: [{ adjclose: [99, null, 101] }] },
     events: { splits: { a: { date: 1767225600, numerator: 10, denominator: 1 } } } }] } });
@@ -37,4 +38,6 @@ ok('info: trimmed to sector, names, target, current price, currency', inf.sector
 await m.info('AMD'); ok('crumb session reused across symbols (one session fetch)', sessionFetches === 1);
 ok('crumb sent with the session cookie, slash decoded', qsAuth[0].cookie === 'A3=cookieval' && qsAuth[0].url.includes('crumb=AbC%2F123'));
 ok('relay rejects bad symbol on /yahoo-info', (await r('/yahoo-info?s=' + encodeURIComponent('X/../y'))).status === 400);
+const nw = await m.headlines('SPY'); ok('news: titles only (no quotes/ids), through the relay', nw.join('|') === 'Stocks rally|Fed holds');
+ok('relay rejects bad symbol on /yahoo-news', (await r('/yahoo-news?s=' + encodeURIComponent('A?x=1'))).status === 400);
 console.log(`\n${pass} passed · ${fail} failed`); process.exit(fail ? 1 : 0);

@@ -61,6 +61,14 @@ export default {
       const y = await fetch(`${YAHOO}${encodeURIComponent(sym)}?range=${range}&interval=1d&events=div%2Csplit`, { headers: { Accept: 'application/json', 'User-Agent': 'Mozilla/5.0' }, redirect: 'error' });
       return reply(request, y.status, await y.arrayBuffer(), { 'Content-Type': y.headers.get('Content-Type') || 'application/json' });
     }
+    if (request.method === 'GET' && url.pathname === '/yahoo-news') {
+      const sym = url.searchParams.get('s') || '';
+      if (!SYMBOL.test(sym)) return reply(request, 400, '{"error":"bad symbol"}', { 'Content-Type': 'application/json' });
+      const y = await fetch(`https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(sym)}&newsCount=15&quotesCount=0`, { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json' }, redirect: 'error' });
+      if (!y.ok) return reply(request, y.status, '{"titles":[]}', { 'Content-Type': 'application/json' });
+      const j = await y.json();
+      return reply(request, 200, JSON.stringify({ titles: (j.news || []).map(n => n.title).filter(Boolean).slice(0, 15) }), { 'Content-Type': 'application/json' });
+    }
     if (request.method === 'GET' && url.pathname === '/yahoo-info') {
       const sym = url.searchParams.get('s') || '';
       if (!SYMBOL.test(sym)) return reply(request, 400, '{"error":"bad symbol"}', { 'Content-Type': 'application/json' });
