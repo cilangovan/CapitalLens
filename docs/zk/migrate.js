@@ -5,7 +5,7 @@
   // Customer data tables (children before parents so deletes never hit foreign keys). Public market data is not touched.
   const TABLES = ['positions', 'positions_archive', 'portfolio_snapshots', 'portfolio_snapshots_archive', 't212_orders', 't212_transactions',
     't212_dividends', 'dividends', 'realised_pnl', 'watchlist', 'watchlist_analysis', 'pie_history', 'profit_booking', 'profit_booking_summary',
-    'returns_summary', 'holding_decisions', 'strategy_recommendations', 'value_buy_scores', 'alerts'];
+    'returns_summary', 'holding_decisions', 'strategy_recommendations', 'value_buy_scores', 'alerts', 'analyst_ratings'];
   const PAGE = 1000, BATCH = 200;
 
   async function readAll(call, token, table) {

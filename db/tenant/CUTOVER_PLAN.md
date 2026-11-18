@@ -63,12 +63,30 @@ Gate: step 4 accepted. Undo: just keep using the legacy app.
 ### Step 6 — Stop server jobs and retire all-access paths 🟠 (needs go-ahead)
 1. Disable the workflows that read customer tables: `t212_sync`, `daily_services`, `monitor`, `watchlist`, `weekly_intelligence`, `db_maintenance` (keep `public_market.yml` + flow job — shared tables only; schedule them now).
 2. Delete the legacy single-user worker (`capitallens-proxy`, `deploy_worker.yml`), the broker Edge Function and its tables/Vault secret (`broker_connections` has 0 rows in production — never used). **Keep** the Vault secret `zk_salt_pepper`.
-3. Remove `SUPABASE_SERVICE_KEY` from GitHub secrets (give the public-market job a narrowly scoped DB role instead); **rotate** the service key and JWT secret; retire `dashboard_auth`.
+3. Blank `profiles.ntfy_topic` (secret in plaintext) once the topic is saved encrypted in Settings.
+4. Remove `SUPABASE_SERVICE_KEY` from GitHub secrets (give the public-market job a narrowly scoped DB role instead); **rotate** the service key and JWT secret; retire `dashboard_auth`.
 Gate: step 5 complete with zero unexplained differences. Undo: re-enable workflows; redeploy worker from git (still in history).
 
 ### Step 7 — Drop plaintext customer tables 🔴 (needs explicit go-ahead; point of no return)
 Take a final **encrypted** backup, run a restore test into a scratch project, confirm recovery key works (log in with it once), then run `ZKMigrate.purgePlaintext` / drop the plaintext tables. After this, the "full rollback" (§5) no longer restores readable data unless the pre-Tier-3 backup is kept — **keep the `rollback_20261118` schema export offline until you are certain.**
 Gate: steps 4–6 accepted; fresh restore test passed; owner confirms.
+
+### Table inventory gate (added 18 Nov after analyst_ratings was missed)
+The migration list (`docs/zk/migrate.js` `TABLES`) was written by hand and `ZKMigrate.verify` only checks tables on that list, so a customer table left off it is invisible to the verification. **Before step 7, and again before any release that adds a table**, run this and classify every row; nothing may be left unclassified:
+```sql
+select relname, n_live_tup from pg_stat_user_tables where schemaname='public' and n_live_tup>0 order by relname;
+```
+| Table | Class | Handling |
+|---|---|---|
+| positions, portfolio_snapshots, t212_orders, t212_transactions, t212_dividends, dividends, realised_pnl, watchlist, watchlist_analysis, pie_history, profit_booking(+summary), returns_summary, holding_decisions, strategy_recommendations, value_buy_scores, alerts, analyst_ratings | customer | encrypted (in `TABLES`) |
+| t212_sync_state | customer metadata (sync cursors) | not migrated; rebuilt by the browser sync; drop at step 7 |
+| profiles (`display_name`, `timezone`, `ntfy_topic`, `email_alerts`) | customer | **`ntfy_topic` is a secret in plaintext**: blank it at step 6 (topic is kept encrypted in the Settings panel); decide whether `display_name`/`timezone` move into the encrypted `settings` row |
+| user_ui_prefs | customer, low sensitivity (UI preferences) | review before launch; currently shared-table route |
+| institutional_flow_reports | shared market analysis (verify it contains no per-customer holdings: `portfolio_actions` column) | keep if generic; otherwise encrypt |
+| instruments, instrument_* , market_cache | shared reference data | unchanged |
+| dashboard_auth | legacy credentials | retire at step 6 |
+| enc_rows, user_keys, audit_log | zero-knowledge store | keep |
+**Why it was missed:** the list was built from the tables the Python services wrote for the owner and `analyst_ratings` was treated as shared reference data; nothing compared the list with what production actually contains. **Fix:** this gate, `analyst_ratings` added to `TABLES`, and the table counted in the step 4 checklist.
 
 ### Step 8 — Close out
 Tick every box on issue #7, verify production, close the issue. Publish the plain-language security page (including: nothing runs while the app is closed; forgotten password + lost recovery key = data unrecoverable by design).
@@ -84,7 +102,7 @@ Tick every box on issue #7, verify production, close the issue. Publish the plai
 
 ## 6. Verification checklist (tick during steps 2–5)
 - [ ] Step 2: 4 objects present, RLS on, policies owner-only, advisor clean of new problems, rolled-back audit test passes, legacy app unchanged
-- [ ] Step 4 per-table counts (plaintext → encrypted): positions ~1,300 · portfolio_snapshots 36 · alerts 26 · dividends ~400 · t212_dividends ~400 · t212_orders ~2,800 · t212_transactions ~600 · realised_pnl ~2,700 · holding_decisions 64 · value_buy_scores 32 · pie_history 9 · profit_booking 32 (+ summary 1) · returns_summary 1 · strategy_recommendations 1 · watchlist 9 · watchlist_analysis 9 · archives as present
+- [ ] Step 4 per-table counts (plaintext → encrypted): positions ~1,300 · portfolio_snapshots 36 · alerts 26 · dividends ~400 · t212_dividends ~400 · t212_orders ~2,800 · t212_transactions ~600 · realised_pnl ~2,700 · holding_decisions 64 · value_buy_scores 32 · analyst_ratings 32 (**added 18 Nov; was missed in the first migration list, now regenerated by Refresh**) · pie_history 9 · profit_booking 32 (+ summary 1) · returns_summary 1 · strategy_recommendations 1 · watchlist 9 · watchlist_analysis 9 · archives as present
 - [ ] `ZKMigrate.verify` reports `same: true` for every table
 - [ ] Dashboards: Overview totals, Positions, Analyst, Strategy, Profit Booking, Returns, Watchlist, Alerts equal the legacy app (allow rounding ≤ 1p)
 - [ ] Recovery-key login tested once, then logged out
@@ -132,3 +150,5 @@ Tick every box on issue #7, verify production, close the issue. Publish the plai
 | 18 Nov 14:58 | 4 | Second upgrade via the one-time "Set up my private account" flow, with repeat-password check | OK: 8,479 encrypted rows, 1 key set, all 17 tables match plaintext, password switched after encryption. Owner can see data. |
 
 **Step 4 complete (pending: owner confirms normal login with the new password and the side-by-side dashboard check).** Next: step 5 (parallel run, first Refresh with a read-only Trading 212 key).
+
+| 18 Nov 15:28 | 4/5 | Analyst tab empty after migration: `analyst_ratings` (32 rows) was not in the migration list. Found while checking the Analyst tab. | Regenerated by Refresh (32 encrypted rows, matches). `TABLES` fixed; table-inventory gate added to the plan. Also found: `profiles.ntfy_topic` plaintext secret; 750 extra encrypted orders under investigation (Settings > Compare). |
