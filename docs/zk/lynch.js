@@ -17,19 +17,27 @@
   const num = v => (v === null || v === undefined || v === '' || Number.isNaN(+v)) ? null : +v;
   const pct = v => (v * 100).toFixed(0) + '%';
   // d: flat Yahoo "info" from the relay (/yahoo-detail): quoteType, sector, industry, marketCap, earningsGrowth, revenueGrowth, profitMargins, priceToBook
-  function classify(d) {
+  // Precious-metal ETCs/ETFs often come back from Yahoo with no fundamentals at all; they are funds, not "no data".
+  const ETC = /^(SGLN|SSLN|SPLT|SPAL|PHAU|PHAG|PHPT|PHPD|IGLN|IGLD|GBSS|XGLD|XSLV|GLD|SLV|IAU|SGOL|SIVR|PPLT|PALL|CMOD|BCOM)$/;
+  const isCommodityEtc = y => ETC.test(String(y || '').toUpperCase().split('.')[0]);
+  // Yahoo's earningsGrowth is the latest quarter vs a year ago (noisy); revenueGrowth is steadier. With both, use the average (each capped at +-100%).
+  const cap1 = v => Math.max(-1, Math.min(1, v));
+  function classify(d, hint) {
     d = d || {};
     const type = String(d.quoteType || '').toUpperCase(), sector = d.sector || '', industry = d.industry || '', cap = num(d.marketCap), eg = num(d.earningsGrowth), rg = num(d.revenueGrowth), pm = num(d.profitMargins), pb = num(d.priceToBook);
-    const out = (bucket, reason, extra) => Object.assign({ bucket, name: BUCKETS[bucket].name, reason, growth: eg !== null ? eg : rg, basis: eg !== null ? 'earnings' : rg !== null ? 'revenue' : null, confidence: 'medium' }, extra || {});
+    const both = eg !== null && rg !== null, g = both ? (cap1(eg) + cap1(rg)) / 2 : eg !== null ? eg : rg, basisTxt = both ? 'earnings & revenue' : eg !== null ? 'earnings' : 'revenue';
+    const out = (bucket, reason, extra) => Object.assign({ bucket, name: BUCKETS[bucket].name, reason, growth: g, basis: both ? 'earnings & revenue' : eg !== null ? 'earnings' : rg !== null ? 'revenue' : null, confidence: 'medium' }, extra || {});
     if (type === 'ETF' || type === 'MUTUALFUND' || type === 'INDEX') return out(0, 'Fund or ETF: not a single business', { confidence: 'high' });
-    if (!sector && cap === null && eg === null && rg === null && pm === null) return { bucket: null, name: 'Unclassified', reason: 'No fundamentals available', growth: null, basis: null, confidence: 'low' };
+    if (!sector && cap === null && eg === null && rg === null && pm === null) {
+      if (isCommodityEtc(hint)) return out(0, 'Precious-metal fund (ETC): tracks a commodity, not a business', { confidence: 'high' });
+      return { bucket: null, name: 'Unclassified', reason: 'No fundamentals available', growth: null, basis: null, confidence: 'low' };
+    }
     if (pb !== null && pb > 0 && pb < 0.8) return out(6, `Trades at ${pb.toFixed(2)}x book value (under 0.8x): possible hidden assets`);
     if (pm !== null && pm < 0) {
       if (rg !== null && rg >= 0.25) return out(1, `Loss-making but revenue up ${pct(rg)}: speculative fast grower (growth is revenue, not profit)`, { confidence: 'low' });
       return out(5, `Loss-making (profit margin ${pct(pm)}): recovery story`, { confidence: pm < -0.05 ? 'medium' : 'low' });
     }
     if (CYC_SECTORS.test(sector) || CYC_INDUSTRY.test(industry)) return out(3, `${industry || sector}: earnings move with the economic cycle`, { confidence: 'medium' });
-    const g = eg !== null ? eg : rg, basisTxt = eg !== null ? 'earnings' : 'revenue';
     if (g === null) return { bucket: null, name: 'Unclassified', reason: 'No growth data', growth: null, basis: null, confidence: 'low' };
     const conf = eg !== null ? 'high' : 'medium';
     if (g >= 0.25) return out(1, `${basisTxt} growth ${pct(g)} (25%+)`, { confidence: conf });
@@ -37,6 +45,6 @@
     if (g >= 0.05) return cap !== null && cap >= 10e9 ? out(2, `${basisTxt} growth ${pct(g)} and large (${(cap / 1e9).toFixed(0)}bn): dependable`, { confidence: 'medium' }) : out(4, `${basisTxt} growth ${pct(g)}, mid/small size`, { confidence: 'medium' });
     return out(4, `${basisTxt} growth ${pct(g)} (under 5%)`, { confidence: conf });
   }
-  root.ZKLynch = { BUCKETS, classify };
+  root.ZKLynch = { BUCKETS, classify, isCommodityEtc };
   if (typeof module !== 'undefined') module.exports = root.ZKLynch;
 })(typeof window !== 'undefined' ? window : globalThis);

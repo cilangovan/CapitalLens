@@ -41,7 +41,7 @@
       const pie = (pos.pie || 'Solo holdings').trim(), y = root.ZKSymbols.t212ToYahoo(pos.ticker, pos.exchange === undefined ? '' : pos.exchange)[0], d = inp.data[y] || {};
       const data = fromAnalysts(d.info) || trendRating(d.closes);
       if (!data) continue;
-      const ly = d.detail && root.ZKLynch ? root.ZKLynch.classify(d.detail) : null;      // Peter Lynch bucket from public fundamentals
+      const ly = root.ZKLynch && (d.detail || root.ZKLynch.isCommodityEtc(y)) ? root.ZKLynch.classify(d.detail || {}, y) : null;      // Peter Lynch bucket from public fundamentals
       rows.push({ ticker: pos.ticker, yahoo_ticker: y, pie, recommendation: data.recommendation, star_rating: data.star_rating, target_mean: data.target_mean, buy_pct: data.buy_pct, hold_pct: data.hold_pct,
         sell_pct: data.sell_pct, analyst_count: data.analyst_count, source: (data.analyst_count || 0) > 0 ? 'analysts' : 'trend', updated_at: inp.nowIso,
         ...(ly ? { lynch_bucket: ly.bucket, lynch_name: ly.name, lynch_reason: ly.reason, lynch_growth: ly.growth, lynch_basis: ly.basis, lynch_confidence: ly.confidence } : {}) });
