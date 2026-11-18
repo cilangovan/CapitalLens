@@ -85,6 +85,27 @@ export default {
         numberOfAnalystOpinions: num(fd.numberOfAnalystOpinions) || 0, marketCap: num(sd.marketCap) || num(pr.marketCap) || null,
         trend: rt.slice(0, 4).map(t => ({ period: t.period, strongBuy: num(t.strongBuy), buy: num(t.buy), hold: num(t.hold), sell: num(t.sell), strongSell: num(t.strongSell) })) }), { 'Content-Type': 'application/json' });
     }
+    if (request.method === 'GET' && url.pathname === '/yahoo-detail') {
+      // yfinance-style flat "info" for the watchlist detail page (public market data only)
+      const sym = url.searchParams.get('s') || '';
+      if (!SYMBOL.test(sym)) return reply(request, 400, '{"error":"bad symbol"}', { 'Content-Type': 'application/json' });
+      const ses = await yahooSession();
+      if (!ses) return reply(request, 502, '{"error":"no session"}', { 'Content-Type': 'application/json' });
+      const y = await fetch(`https://query1.finance.yahoo.com/v10/finance/quoteSummary/${encodeURIComponent(sym)}?modules=assetProfile%2Cprice%2CfinancialData%2CsummaryDetail%2CdefaultKeyStatistics%2CrecommendationTrend&crumb=${encodeURIComponent(ses.crumb)}`,
+        { headers: { 'User-Agent': 'Mozilla/5.0', Accept: 'application/json', Cookie: ses.cookie }, redirect: 'error' });
+      if (y.status === 401 || y.status === 403) CRUMB = null;
+      if (!y.ok) return reply(request, y.status, '{}', { 'Content-Type': 'application/json' });
+      const r = ((await y.json()).quoteSummary || {}).result; const q = (r && r[0]) || {}, ap = q.assetProfile || {}, pr = q.price || {}, fd = q.financialData || {}, sd = q.summaryDetail || {}, ks = q.defaultKeyStatistics || {}, rt = ((q.recommendationTrend || {}).trend) || [];
+      const pick = (o, keys) => { const out = {}; for (const k of keys) { const v = num(o[k]); if (v !== undefined && v !== null) out[k] = v; } return out; };
+      const info = Object.assign({}, pick(ap, ['sector', 'industry', 'longBusinessSummary', 'website', 'fullTimeEmployees', 'country']),
+        pick(sd, ['previousClose', 'open', 'regularMarketOpen', 'dayLow', 'dayHigh', 'volume', 'averageVolume', 'marketCap', 'trailingPE', 'forwardPE', 'dividendYield', 'beta', 'fiftyTwoWeekHigh', 'fiftyTwoWeekLow']),
+        pick(ks, ['sharesOutstanding', 'forwardPE', 'beta', 'annualReportExpenseRatio', 'category', 'fundFamily', 'profitMargins']),
+        pick(fd, ['profitMargins', 'operatingMargins', 'returnOnAssets', 'returnOnEquity', 'debtToEquity', 'currentRatio', 'quickRatio', 'revenueGrowth', 'earningsGrowth', 'recommendationKey', 'recommendationMean', 'numberOfAnalystOpinions', 'targetMeanPrice', 'targetLowPrice', 'targetHighPrice']),
+        pick(pr, ['quoteType', 'currency', 'longName', 'shortName']));
+      if (info.marketCap === undefined && num(pr.marketCap)) info.marketCap = num(pr.marketCap);
+      const c0 = rt[0];
+      return reply(request, 200, JSON.stringify({ info, rec_counts: c0 ? { strongBuy: num(c0.strongBuy) || 0, buy: num(c0.buy) || 0, hold: num(c0.hold) || 0, sell: num(c0.sell) || 0, strongSell: num(c0.strongSell) || 0 } : null }), { 'Content-Type': 'application/json' });
+    }
     if (request.method !== 'GET' || url.pathname !== '/t212') return reply(request, 404, '{"error":"not found"}', { 'Content-Type': 'application/json' });
     const p = url.searchParams.get('p') || '', auth = request.headers.get('X-T212-Auth') || '';
     if (!p.startsWith('/') || p.length > 600 || p.includes('..') || p.includes('//') || !ALLOWED.some(re => re.test(p)))

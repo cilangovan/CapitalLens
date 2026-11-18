@@ -4,7 +4,8 @@
   function parse(j) {
     const r = j && j.chart && j.chart.result && j.chart.result[0]; if (!r) return null;
     const q = (r.indicators.quote || [{}])[0], adj = ((r.indicators.adjclose || [{}])[0] || {}).adjclose;
-    const out = { symbol: r.meta.symbol, currency: r.meta.currency, longName: r.meta.longName || null, shortName: r.meta.shortName || null, price: r.meta.regularMarketPrice, dates: [], close: [], volume: [], high: [], low: [], adjclose: [],
+    const out = { symbol: r.meta.symbol, currency: r.meta.currency, longName: r.meta.longName || null, shortName: r.meta.shortName || null, price: r.meta.regularMarketPrice,
+      exchange: r.meta.fullExchangeName || r.meta.exchangeName || null, regularStart: ((r.meta.currentTradingPeriod || {}).regular || {}).start || null, regularEnd: ((r.meta.currentTradingPeriod || {}).regular || {}).end || null, dates: [], close: [], volume: [], high: [], low: [], adjclose: [],
       splits: Object.values((r.events || {}).splits || {}).map(s => ({ date: new Date(s.date * 1000).toISOString().slice(0, 10), ratio: s.numerator / s.denominator })) };
     (r.timestamp || []).forEach((t, i) => {
       if (q.close[i] == null) return;
@@ -36,12 +37,17 @@
       if (!infos.has(sym)) infos.set(sym, limited(async () => { try { const r = await f(`${opts.relayUrl}/yahoo-info?s=${encodeURIComponent(sym)}`); return r.ok ? await r.json() : {}; } catch (e) { return {}; } }));
       return infos.get(sym);
     }
+    const details = new Map();
+    async function detail(sym) {
+      if (!details.has(sym)) details.set(sym, limited(async () => { try { const r = await f(`${opts.relayUrl}/yahoo-detail?s=${encodeURIComponent(sym)}`); return r.ok ? await r.json() : { info: {}, rec_counts: null }; } catch (e) { return { info: {}, rec_counts: null }; } }));
+      return details.get(sym);
+    }
     const news = new Map();
     async function headlines(sym) {
       if (!news.has(sym)) news.set(sym, limited(async () => { try { const r = await f(`${opts.relayUrl}/yahoo-news?s=${encodeURIComponent(sym)}`); return r.ok ? ((await r.json()).titles || []) : []; } catch (e) { return []; } }));
       return news.get(sym);
     }
-    return { chart, info, headlines };
+    return { chart, info, detail, headlines };
   }
   root.ZKMarket = { create, parse };
   if (typeof module !== 'undefined') module.exports = root.ZKMarket;
