@@ -40,22 +40,21 @@
     { name: 'transactions', path: '/api/v0/history/transactions?limit=50',  kind: 't212_transactions', key: 'reference', map: mapTxn },
   ];
 
-  // opts: { store, relayUrl, fetchImpl, sleep, now, pace (ms), log }
-  function create(opts) {
-    const { store, relayUrl } = opts;
+  // Paced, retrying Trading 212 client that talks through the stateless relay.
+  function client(opts) {
+    const relayUrl = opts.relayUrl;
     const fetchImpl = opts.fetchImpl || ((...a) => fetch(...a));
     const sleep = opts.sleep || (ms => new Promise(r => setTimeout(r, ms)));
     const nowMs = opts.nowMs || (() => Date.now());
-    const now = () => new Date(nowMs()).toISOString();
     const PACE = opts.pace == null ? 10500 : opts.pace;
     const log = opts.log || (() => {});
-    let last = 0, creds = null;
-
-    async function t212(path) {
+    let nextAt = 0, creds = null;
+    async function get(path, o) {
+      const after = o && o.after != null ? o.after : PACE;
       for (let attempt = 0; attempt < MAX_RETRIES; attempt++) {
-        const wait = PACE - (nowMs() - last);
+        const wait = nextAt - nowMs();
         if (wait > 0) await sleep(wait);
-        last = nowMs();
+        nextAt = nowMs() + (o && o.after != null ? Math.min(after, PACE) : PACE);
         let resp;
         try {
           resp = await fetchImpl(relayUrl + '/t212?p=' + encodeURIComponent(path), { method: 'GET', headers: { 'X-T212-Auth': 'Basic ' + creds, Accept: 'application/json' } });
@@ -71,6 +70,17 @@
       }
       throw new Error(`T212 ${path.split('?')[0]}: gave up after ${MAX_RETRIES} retries`);
     }
+    return { get, setCreds: (k, s) => { creds = btoa(`${k}:${s}`); }, clear: () => { creds = null; }, nowMs };
+  }
+
+  // opts: { store, relayUrl, fetchImpl, sleep, now, pace (ms), log }
+  function create(opts) {
+    const { store } = opts;
+    const api = opts.client || client(opts);
+    const nowMs = api.nowMs;
+    const now = () => new Date(nowMs()).toISOString();
+    const log = opts.log || (() => {});
+    const t212 = p => api.get(p);
 
     async function syncOne(ep, force) {
       const state = (await store.get('sync_state', ep.name)) || {};
@@ -119,7 +129,7 @@
     }
 
     async function run(apiKey, apiSecret, o) {
-      creds = btoa(`${apiKey}:${apiSecret}`);
+      api.setCreds(apiKey, apiSecret);
       const force = !!(o && o.full), results = [];
       for (const ep of ENDPOINTS) {
         try { results.push(await syncOne(ep, force)); }
@@ -130,11 +140,11 @@
         }
       }
       const derived = await rebuildDerived();
-      creds = null;
+      api.clear();
       return { results, derived, failed: results.filter(r => !r.ok).map(r => r.name) };
     }
     return { run, ENDPOINTS };
   }
-  root.ZKT212 = { create, mapOrder, mapDividend, mapTxn, ENDPOINTS };
+  root.ZKT212 = { create, client, mapOrder, mapDividend, mapTxn, ENDPOINTS };
   if (typeof module !== 'undefined') module.exports = root.ZKT212;
 })(typeof window !== 'undefined' ? window : globalThis);

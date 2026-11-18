@@ -15,7 +15,8 @@ const ALLOWED = [
   /^\/api\/v0\/equity\/history\/orders(\?|$)/,
   /^\/api\/v0\/history\/dividends(\?|$)/,
   /^\/api\/v0\/history\/transactions(\?|$)/,
-  /^\/api\/v0\/equity\/positions(\?|$)/,
+  /^\/api\/v0\/equity\/(positions|portfolio)(\?|$)/,
+  /^\/api\/v0\/equity\/pies(\/\d{1,12})?(\?|$)/,
   /^\/api\/v0\/equity\/account\/(summary|cash|info)(\?|$)/,
   /^\/api\/v0\/equity\/metadata\/instruments(\?|$)/,
 ];

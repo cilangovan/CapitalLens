@@ -149,21 +149,27 @@
 
   // ── Trading 212 sync ──
   const RELAY = 'https://capitallens-relay.itsme-daf.workers.dev';
-  async function t212sync(full) {
+  async function t212run(kind, full) {
     say('t2-err', ''); const k = $('t2-key').value.trim(), sec = $('t2-sec').value.trim();
     if (!k || !sec) return say('t2-err', 'Enter your Trading 212 API key and secret');
-    $('btn-t2').disabled = $('btn-t2-full').disabled = true; $('t2-log').textContent = '';
+    const btns = ['btn-t2', 'btn-t2-full', 'btn-t2-snap'].map($); btns.forEach(b => { b.disabled = true; }); $('t2-log').textContent = '';
     try {
       const store = ZKStore.create({ call, token: S.token, uid: S.uid, dk: S.dk });
-      const sync = ZKT212.create({ store, relayUrl: RELAY, log: m => { $('t2-log').textContent += m + '\n'; } });
-      const r = await sync.run(k, sec, { full });
+      const log = m => { $('t2-log').textContent += m + '\n'; };
+      let r;
+      if (kind === 'snap') {
+        r = await ZKMonitor.create({ store, log, client: ZKT212.client({ relayUrl: RELAY, log }) }).run(k, sec);
+        if (!r.saved) say('t2-err', 'Nothing saved: ' + r.reason);
+        r = { failed: [] };
+      } else r = await ZKT212.create({ store, relayUrl: RELAY, log }).run(k, sec, { full });
       $('t2-sec').value = ''; $('t2-key').value = '';
       if (r.failed.length) say('t2-err', 'Incomplete for: ' + r.failed.join(', ') + '. Stored pages are kept; run again to resume.');
     } catch (e) { say('t2-err', 'Sync failed: ' + (e.message || e)); }
-    $('btn-t2').disabled = $('btn-t2-full').disabled = false;
+    btns.forEach(b => { b.disabled = false; });
   }
-  $('btn-t2').onclick = () => t212sync(false);
-  $('btn-t2-full').onclick = () => t212sync(true);
+  $('btn-t2').onclick = () => t212run('sync', false);
+  $('btn-t2-full').onclick = () => t212run('sync', true);
+  $('btn-t2-snap').onclick = () => t212run('snap');
 
   // ── forgot / reset ──
   $('btn-forgot').onclick = async () => {

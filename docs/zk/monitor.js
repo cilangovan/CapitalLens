@@ -1,0 +1,155 @@
+// Portfolio monitor, run in the browser. Port of monitor.py (fetch + analyse + save), minus e-mail/push delivery.
+// Reads account, positions, pies and instrument names from Trading 212 through the stateless relay, tracks highs,
+// raises dip / deep-dip / trim alerts, and saves the snapshot, positions and alerts ENCRYPTED.
+(function (root) {
+  'use strict';
+  const A = () => root.ZKAlertFmt;
+  const DIP_FROM_HIGH_PCT = 8.0, BUY_SIGNAL_PCT = 12.0, TRIM_GAIN_PCT = 40.0, REBALANCE_DRIFT_PCT = 5.0;
+  const num = v => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+  const rnd = (x, d) => { const m = Math.pow(10, d); return Math.round((x + Number.EPSILON * Math.sign(x)) * m) / m; };
+
+  function resolvePie(ticker, pieMap) {
+    if (pieMap[ticker]) return pieMap[ticker];
+    const base = ticker.split('_')[0];
+    for (const [k, v] of Object.entries(pieMap)) if (k.startsWith(base) || k.split('_')[0] === base) return v;
+    return 'Solo holdings';
+  }
+  function resolveExchange(ticker) {
+    const t = ticker.toUpperCase();
+    if (t.includes('_US_EQ')) return 'NASDAQ/NYSE';
+    if (t.endsWith('L_EQ')) return 'LSE';
+    if (t.endsWith('D_EQ')) return 'XETRA';
+    if (t.endsWith('A_EQ')) return 'AMS';
+    return 'LSE';
+  }
+  const unitPrice = (price, ccy) => ccy === 'GBX' || ccy === 'GBp' ? [price / 100, 'GBP'] : [price, ccy || 'GBP'];
+
+  function priceSection(title, ticker, meta, cur, avg, high, gainPct, dip, pieName, exchange, note, nowDate) {
+    const F = A(), m = meta[ticker] || {}, ccy = m.ccy, s = new F.Section(title);
+    let rows;
+    if (ccy) {
+      const [c, u] = unitPrice(cur, ccy), [h] = unitPrice(high, ccy), [a] = unitPrice(avg, ccy);
+      rows = [[`Live ${u} price`, F.money(c, u)], ['Tracked high', F.money(h, u)], ['Drawdown from tracked high', F.pct(-dip)],
+        ['Your average cost', F.money(a, u)], ['Gain vs your average cost', F.pct(gainPct)]];
+    } else rows = [['Drawdown from tracked high', F.pct(-dip)], ['Gain vs your average cost', F.pct(gainPct)]];
+    s.table('Measure', 'Result', [...rows, ['Pie', pieName], ['Exchange', exchange]]);
+    let src = `Source: Trading 212 live quote, ${F.dayMonth(nowDate)} ${F.hhmm(nowDate)} UTC.`;
+    if (!ccy) src += ' Quote currency not verified, so prices are not shown.';
+    s.line(src); s.line(`Review flag: ${note}`);
+    return s;
+  }
+
+  // Pure analysis: positions + pies + state -> { alerts, summary }. Marks cooldowns in state.
+  function analyse(positions, pieMap, state, nowDate) {
+    const F = A(), alerts = [], summary = [], meta = state.held_meta || {}, nowS = nowDate.getTime() / 1000;
+    const cooldown = (key, hours) => nowS - (state.last_alerts[key] || 0) < hours * 3600;
+    const mark = key => { state.last_alerts[key] = nowS; };
+    for (const pos of positions) {
+      const ticker = pos.ticker || 'UNKNOWN', avg = num(pos.averagePrice), cur = num(pos.currentPrice), ppl = num(pos.ppl);
+      if (cur === 0 || avg === 0) continue;
+      const gainPct = (cur - avg) / avg * 100, high = state.highs[ticker] != null ? state.highs[ticker] : cur;
+      const dip = high > 0 ? (high - cur) / high * 100 : 0;
+      const pieName = resolvePie(ticker, pieMap), exchange = resolveExchange(ticker), display = ticker.split('_')[0];
+      const label = F.friendly(ticker, (meta[ticker] || {}).name);
+      summary.push({ ticker, display, current: cur, avg, qty: num(pos.quantity), gain_pct: rnd(gainPct, 2), dip_from_high: rnd(dip, 2), ppl: rnd(ppl, 2), pie: pieName, exchange });
+      const args = [ticker, meta, cur, avg, high, gainPct, dip, pieName, exchange];
+      const mk = (type, key, title, secTitle, note, priority) => {
+        const sec = priceSection(secTitle, ...args, note, nowDate);
+        alerts.push({ type, ticker: display, key, priority, title, body: F.renderText([sec]), push: F.renderPush([sec]) });
+        mark(key);
+      };
+      if (dip >= BUY_SIGNAL_PCT) {
+        const key = 'buy_' + ticker;
+        if (!cooldown(key, 6)) mk('buy', key, `🔴 ${label} — down ${dip.toFixed(1)}% from tracked high`, `${label} — deep-dip threshold crossed`,
+          'Check the daily report for its weight vs target first. A large fall does not automatically make it a good entry.', 'high');
+      } else if (dip >= DIP_FROM_HIGH_PCT) {
+        const key = 'dip_' + ticker;
+        if (!cooldown(key, 6)) mk('dip', key, `🟡 ${label} — down ${dip.toFixed(1)}% from tracked high`, `${label} — dip threshold crossed`,
+          'Watch only for now; review the news and analyst view before adding.', 'default');
+      }
+      if (gainPct >= TRIM_GAIN_PCT) {
+        const key = 'trim_' + ticker;
+        if (!cooldown(key, 24)) mk('trim', key, `💰 ${label} — up ${gainPct.toFixed(1)}% on your cost`, `${label} — profit target crossed`,
+          `Up ${gainPct.toFixed(1)}% on your average cost. Consider booking part of the profit (see the Profit Booking tab).`, 'default');
+      }
+    }
+    return { alerts, summary };
+  }
+
+  function summarisePie(p, detail) {
+    const name = ((detail.settings || {}).name || `Pie ${p.id}`).trim(), insts = detail.instruments || [];
+    const val = i => { const r = i.result || {}; return num(r.priceAvgValue != null ? r.priceAvgValue : i.currentValue); };
+    const total = insts.reduce((a, i) => a + val(i), 0);
+    const invested = insts.reduce((a, i) => a + num((i.result || {}).priceAvgInvestedValue), 0);
+    const gain = invested > 0 ? (total - invested) / invested * 100 : 0, drifts = [];
+    if (total > 0) for (const i of insts) {
+      const actual = val(i) / total * 100, target = i.expectedShare != null ? num(i.expectedShare) * 100 : actual;
+      if (Math.abs(actual - target) >= REBALANCE_DRIFT_PCT) drifts.push(`${i.ticker || ''}: ${Math.abs(actual - target).toFixed(1)}%`);
+    }
+    return { name, instruments: insts, pie: { id: p.id, name, value: rnd(total, 2), gain_pct: rnd(gain, 2), holdings: insts.length, drifts,
+      instruments: insts.map(i => ({ ticker: i.ticker || '', expected: i.expectedShare, current: i.currentShare, qty: i.ownedQuantity, result: i.result })) } };
+  }
+
+  // opts: { store, client (ZKT212.client), log, newId, nowDate }
+  function create(opts) {
+    const { store, client } = opts, log = opts.log || (() => {});
+    const newId = opts.newId || (() => crypto.randomUUID());
+    const soft = async (path, after) => { try { return await client.get(path, { after }); } catch (e) { log(`  skipped ${path.split('?')[0]}: ${e.message}`); return null; } };
+
+    async function run(apiKey, apiSecret) {
+      client.setCreds(apiKey, apiSecret);
+      try {
+        const nowDate = opts.nowDate ? opts.nowDate() : new Date();
+        const state = (await store.get('monitor_state', 'main')) || { highs: {}, last_alerts: {}, run_count: 0 };
+        state.highs = state.highs || {}; state.last_alerts = state.last_alerts || {};
+        state.run_count = (state.run_count || 0) + 1;
+
+        log('Fetching account, positions, pies');
+        const account = await soft('/api/v0/equity/account/cash', 5000);
+        const positions = (await soft('/api/v0/equity/portfolio', 5000)) || [];
+        const pies = [], pieMap = {};
+        const rawPies = await soft('/api/v0/equity/pies', 5000);
+        for (const p of rawPies || []) {
+          const detail = await soft(`/api/v0/equity/pies/${p.id}`, 8000);
+          if (!detail) continue;
+          const s = summarisePie(p, detail);
+          for (const i of s.instruments) if (i.ticker) pieMap[i.ticker] = s.name;
+          pies.push(s.pie);
+        }
+        if (!positions.length) { log('No positions returned, nothing saved'); return { saved: false, reason: 'no positions' }; }
+
+        for (const pos of positions) { const c = num(pos.currentPrice); if (pos.ticker && c > 0) state.highs[pos.ticker] = Math.max(state.highs[pos.ticker] || 0, c); }
+        // instrument names/currency for held tickers, cached 7 days
+        const held = positions.map(p => p.ticker).filter(Boolean), cache = state.instrument_meta_cache || {};
+        const stale = !(nowDate.getTime() / 1000 - (cache.ts || 0) < 7 * 86400) || held.some(t => !(cache.data || {})[t]);
+        if (stale) {
+          const rows = await soft('/api/v0/equity/metadata/instruments', 5000);
+          if (rows && rows.length) {
+            const data = {};
+            for (const r of rows) if (r.ticker && held.includes(r.ticker)) data[r.ticker] = { ccy: r.currencyCode, name: r.shortName || r.name };
+            state.instrument_meta_cache = { ts: nowDate.getTime() / 1000, data };
+          }
+        }
+        const data = (state.instrument_meta_cache || {}).data || {};
+        state.held_meta = {}; for (const t of held) if (data[t]) state.held_meta[t] = data[t];
+
+        const { alerts, summary } = analyse(positions, pieMap, state, nowDate);
+        const acc = account || {}, total = num(acc.total), cash = num(acc.free), createdAt = nowDate.toISOString();
+        const snapId = newId();
+        const snap = { id: snapId, created_at: createdAt, total_value: rnd(total, 2), cash: rnd(cash, 2), invested: rnd(total - cash, 2),
+          total_ppl: rnd(summary.reduce((a, p) => a + p.ppl, 0), 2), run_count: state.run_count,
+          raw: { pies, account: acc, highs: state.highs, instrument_meta: state.held_meta } };
+        await store.put('portfolio_snapshots', [snap], r => r.id);
+        await store.put('positions', summary.map(p => ({ id: newId(), snapshot_id: snapId, created_at: createdAt, ticker: p.ticker, display: p.display, pie: p.pie, exchange: p.exchange,
+          current_price: p.current, avg_price: p.avg, gain_pct: p.gain_pct, dip_from_high: p.dip_from_high, ppl: p.ppl, quantity: p.qty })), r => r.id);
+        if (alerts.length) await store.put('alerts', alerts.map(a => ({ id: newId(), created_at: createdAt, type: a.type, alert_type: a.type, ticker: a.ticker, title: a.title, body: a.body })), r => r.id);
+        await store.put('monitor_state', [Object.assign({ key: 'main' }, state)], r => r.key);
+        log(`${summary.length} positions, ${pies.length} pies, ${alerts.length} alerts saved (encrypted)`);
+        return { saved: true, snapshotId: snapId, positions: summary.length, pies: pies.length, alerts };
+      } finally { client.clear(); }
+    }
+    return { run };
+  }
+  root.ZKMonitor = { create, analyse, resolvePie, resolveExchange, summarisePie };
+  if (typeof module !== 'undefined') module.exports = root.ZKMonitor;
+})(typeof window !== 'undefined' ? window : globalThis);

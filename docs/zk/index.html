@@ -83,7 +83,7 @@
     <div class="dim">Your API key is used only in this tab, passed through a stateless relay to Trading 212, and kept encrypted. Our servers and staff never see it or your data. Keep this tab open: Trading 212 allows 6 requests a minute, so a first full sync takes a while.</div>
     <input id="t2-key" type="password" placeholder="Trading 212 API key" autocomplete="off">
     <input id="t2-sec" type="password" placeholder="Trading 212 API secret" autocomplete="off">
-    <button id="btn-t2">Sync history</button> <button class="alt" id="btn-t2-full">Full re-sync</button>
+    <button id="btn-t2-snap">Take portfolio snapshot</button> <button id="btn-t2">Sync history</button> <button class="alt" id="btn-t2-full">Full re-sync</button>
     <pre id="t2-log"></pre><div id="t2-err" class="err"></div>
     <h2>Change password</h2>
     <input id="cp-pw" type="password" placeholder="New password (min 10 characters)" autocomplete="new-password">
@@ -94,6 +94,8 @@
 <script src="../js/zkcrypto.js"></script>
 <script src="store.js"></script>
 <script src="t212sync.js"></script>
+<script src="alertfmt.js"></script>
+<script src="monitor.js"></script>
 <script src="migrate.js"></script>
 <script src="zk.js"></script>
 </body></html>
