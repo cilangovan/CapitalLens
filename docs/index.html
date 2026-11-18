@@ -202,7 +202,7 @@
   /* drill-down */
   #dd { position:fixed; inset:0; z-index:200; background:rgba(5,7,12,.7); display:none; overflow-y:auto; -webkit-overflow-scrolling:touch; }
   #dd.show { display:block; }
-  .dd-panel { max-width:980px; margin:0 auto; min-height:100%; background:var(--bg); padding:12px 14px 40px; box-sizing:border-box; }
+  .dd-panel { width:100%; max-width:980px; min-width:0; margin:0 auto; min-height:100%; background:var(--bg); padding:12px 14px 40px; box-sizing:border-box; overflow-x:clip; }
   @media (min-width:1000px) { .dd-panel { margin:24px auto; min-height:auto; border:1px solid var(--border); border-radius:12px; } }
   .dd-top { display:flex; align-items:center; gap:10px; position:sticky; top:0; background:var(--bg); padding:6px 0 8px; z-index:2; }
   .dd-back, .dd-x { background:var(--bg3); color:var(--text); border:1px solid var(--border); border-radius:8px; width:36px; height:36px; font-size:16px; cursor:pointer; flex-shrink:0; }
@@ -263,8 +263,8 @@
   .pd-tabs { display:flex; border-bottom:1px solid var(--border); margin:0 0 14px; }
   .pd-tabs button { flex:1; background:none; border:none; color:var(--muted); font-size:15px; font-weight:600; padding:10px 0; border-bottom:3px solid transparent; cursor:pointer; }
   .pd-tabs button.active { color:var(--text); border-bottom-color:var(--text); }
-  .pd-value { font-size:38px; font-weight:700; letter-spacing:-.5px; margin:4px 0 8px; }
-  .pd-kpis { display:flex; gap:32px; margin-bottom:14px; }
+  .pd-value { font-size:clamp(28px,9.5vw,38px); font-weight:700; letter-spacing:-.5px; margin:4px 0 8px; }
+  .pd-kpis { display:flex; flex-wrap:wrap; gap:12px 32px; margin-bottom:14px; }
   .pd-k { font-size:12px; font-weight:700; color:var(--muted); letter-spacing:.04em; }
   .pd-v { font-size:18px; font-weight:700; }
   .pd-chartcard { padding-bottom:8px; }
