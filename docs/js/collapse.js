@@ -72,8 +72,45 @@
   document.addEventListener('keydown', e => {
     if ((e.key === 'Enter' || e.key === ' ') && e.target.matches && e.target.matches('[data-sub-head]')) { e.preventDefault(); subToggle(e.target); }
   });
+
+  // ── Older open/close widgets (Positions pies, Profit Booking holdings, Strategy rows): remember them too ──
+  const OPEN = (saved.o = saved.o || {});
+  const txt = (el, n) => ((el && el.textContent) || '').trim().replace(/\s+/g, ' ').slice(0, n || 40);
+  function restoreOpen() {
+    document.querySelectorAll('.pie-header:not([data-oready])').forEach(h => {
+      h.setAttribute('data-oready', '1');
+      const k = 'pie|' + txt(h.querySelector('.pie-name'), 40), b = h.nextElementSibling;
+      if (b && OPEN[k] !== undefined) b.classList.toggle('open', !!OPEN[k]);
+    });
+    document.querySelectorAll('.pb-hold-head:not([data-oready])').forEach(h => {
+      h.setAttribute('data-oready', '1');
+      const k = 'pb|' + txt(h.firstElementChild, 30), b = h.nextElementSibling;
+      if (b && OPEN[k] !== undefined) {
+        b.classList.toggle('open', !!OPEN[k]);
+        const c = h.querySelector('[id^=pb-chev-]'); if (c) c.textContent = OPEN[k] ? '▲' : '▼';
+      }
+    });
+    document.querySelectorAll('[id^=vb-][id]:not([data-oready]), [id^=inst-collapse-][id]:not([data-oready])').forEach(b => {
+      if (/-chevron$/.test(b.id)) return;
+      b.setAttribute('data-oready', '1');
+      const k = 'vb|' + b.id;
+      if (OPEN[k] !== undefined) {
+        b.style.display = OPEN[k] ? 'block' : 'none';
+        const c = document.getElementById(b.id + '-chevron'); if (c) c.textContent = OPEN[k] ? '▲' : '▼';
+      }
+    });
+  }
+  function wrap(name, after) {
+    const f = window[name]; if (typeof f !== 'function') return;
+    window[name] = function () { const r = f.apply(this, arguments); try { after.apply(this, arguments); persist(); } catch (e) {} return r; };
+  }
+  wrap('togglePie', header => { OPEN['pie|' + txt(header.querySelector('.pie-name'), 40)] = header.nextElementSibling.classList.contains('open') ? 1 : 0; });
+  wrap('pbToggle', i => { const b = document.getElementById('pb-body-' + i), h = b && b.previousElementSibling;
+    if (h) OPEN['pb|' + txt(h.firstElementChild, 30)] = b.classList.contains('open') ? 1 : 0; });
+  wrap('toggleVB', id => { const b = document.getElementById(id); if (b) OPEN['vb|' + id] = b.style.display !== 'none' ? 1 : 0; });
+
   let t = null;
-  new MutationObserver(() => { if (!t) t = requestAnimationFrame(() => { t = null; setup(); subSetup(); }); })
+  new MutationObserver(() => { if (!t) t = requestAnimationFrame(() => { t = null; setup(); subSetup(); restoreOpen(); }); })
     .observe(document.documentElement, { childList: true, subtree: true });
 
   const css = document.createElement('style');
@@ -86,5 +123,5 @@
     '.card.coll>*:not(.coll-head){display:none!important}' +
     '.card.coll .coll-head h3,.card.coll>h3{margin-bottom:0}';
   document.head.appendChild(css);
-  setup(); subSetup();
+  setup(); subSetup(); restoreOpen();
 })();
