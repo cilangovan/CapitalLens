@@ -47,3 +47,37 @@ async function zkToolsRun() {
   const active = document.querySelector('.tab.active'); if (active && typeof loadTab === 'function') loadTab(active.id);
   if (typeof loadTab === 'function') loadTab('alerts');
 }
+
+// ── recovery-key check + weekly reminder ──
+const ZK_RK_DAYS = 7;
+async function zkCheckRecovery() {
+  const inp = document.getElementById('zk-rk'), msg = document.getElementById('zk-rk-msg'), btn = document.getElementById('zk-rk-btn');
+  if (!ZKCTX) return; const rk = inp.value.trim(); if (!rk) { msg.style.color = '#f87171'; msg.textContent = 'Type your recovery key first'; return; }
+  btn.disabled = true; msg.style.color = 'var(--muted)'; msg.textContent = 'Checking…';
+  try {
+    const k = await ZKCTX.call('/rest/v1/user_keys?select=*', {}, ZKCTX.token);
+    if (!k.ok || !k.d || !k.d.length) throw new Error('Could not read your key record');
+    let ok = true; try { await ZK.unlockWithRecovery(rk, k.d[0]); } catch (e) { ok = false; }
+    if (!ok) { msg.style.color = '#f87171'; msg.textContent = '❌ That key does not match this account. Find the key you saved right after the setup (the first one), and try again.'; return; }
+    await ZKCTX.store.put('settings', [{ key: 'recovery_check', at: new Date().toISOString() }], r => r.key);
+    msg.style.color = '#34d399'; msg.textContent = '✅ Correct. Your recovery key works. Next check due in ' + ZK_RK_DAYS + ' days.';
+    zkReminderRender(new Date().toISOString());
+  } catch (e) { msg.style.color = '#f87171'; msg.textContent = 'Could not check: ' + (e.message || e); }
+  finally { inp.value = ''; btn.disabled = false; }
+}
+function zkReminderRender(at) {
+  const last = document.getElementById('zk-rk-last'), days = at ? (Date.now() - new Date(at).getTime()) / 86400000 : Infinity;
+  if (last) last.textContent = at ? 'Last checked: ' + new Date(at).toLocaleDateString() + '.' : 'Never checked yet.';
+  let b = document.getElementById('zk-rk-banner');
+  if (days < ZK_RK_DAYS) { if (b) b.style.display = 'none'; return; }
+  if (!b) {
+    b = document.createElement('div'); b.id = 'zk-rk-banner';
+    b.style.cssText = 'position:fixed;left:0;right:0;top:0;z-index:45;background:#92400e;color:#fff;font-size:13px;padding:8px 14px;text-align:center;cursor:pointer';
+    b.onclick = () => { zkToolsOpen(); }; document.body.appendChild(b);
+  }
+  b.textContent = (at ? '🔑 Your recovery key has not been checked for ' + Math.floor(days) + ' days' : '🔑 You have not checked your recovery key yet') + ' — tap to check it now (takes 10 seconds)';
+  b.style.display = 'block';
+}
+async function zkReminderInit() {
+  try { const r = await ZKCTX.store.get('settings', 'recovery_check'); zkReminderRender(r && r.at); } catch (e) { zkReminderRender(null); }
+}

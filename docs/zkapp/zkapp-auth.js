@@ -61,6 +61,7 @@ async function _unlocked(token, dk) {
   const ops = ZKWatchlistOps.create({ store, call: zkCall, token, relayUrl: RELAY_URL, analyse: () => ZKWatchlist.run({ store, market }, new Date()) });
   ZKShim.install(PROXY, ZKShim.create({ store, call: zkCall, token, positions: () => store.load('positions'), defuse, ops }));
   startApp();
+  if (typeof zkReminderInit === 'function') zkReminderInit();
 }
 function logout() {
   clearTimeout(_inactivityTimer); ZKCTX = null;

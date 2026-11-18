@@ -15,7 +15,7 @@ s = s.replace("<h2>🌐 CapitalLens Demo</h2>", "<h2>🔒 CapitalLens</h2>").rep
 s = s.replace('value="demo@capitallens.test" ', "")
 s = s.replace('<span class="pill" style="background:#f59e0b;color:#111">DEMO</span>', '<span class="pill" style="background:#0f766e;color:#fff">PRIVATE</span>')
 s = s.replace('<button id="logout-btn" onclick="logout()">Sign out</button>',
-  '<button onclick="zkToolsOpen()" style="background:none;border:1px solid var(--border);color:var(--text);font-size:11px;padding:3px 10px;border-radius:6px;cursor:pointer;margin-right:8px">🔄 Refresh data</button>\n  <button id="logout-btn" onclick="logout()">Sign out</button>')
+  '<button onclick="zkToolsOpen()" style="background:none;border:1px solid var(--border);color:var(--text);font-size:11px;padding:3px 10px;border-radius:6px;cursor:pointer;margin-right:8px">⚙ Settings</button>\n  <button id="logout-btn" onclick="logout()">Sign out</button>')
 s = s.replace('<div style="text-align:center;margin-top:6px">\n        \n      </div>', '<div style="text-align:center;margin-top:10px;font-size:12px"><a href="../zk/" style="color:var(--muted)">Create account · recovery · upgrade an existing account</a></div>')
 s = s.replace("onkeydown=\"if(event.key==='Enter')doLogin()\"", 'onkeydown="loginKey(event)"')
 panel = """
@@ -28,7 +28,14 @@ panel = """
 </style>
 <div id="zk-tools" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;align-items:center;justify-content:center">
   <div style="background:var(--card,#161b22);border:1px solid var(--border);border-radius:12px;padding:20px;width:min(560px,92vw);max-height:90vh;overflow:auto">
-    <h3 style="margin:0 0 6px">🔄 Refresh your data</h3>
+    <h3 style="margin:0 0 6px">⚙ Settings</h3>
+    <div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin:0 0 14px">
+      <b style="font-size:13px">🔑 Check your recovery key</b>
+      <p style="font-size:12px;color:var(--muted);margin:6px 0 8px">Your recovery key is the only way back in if you forget your password, and nobody can recreate it. Type it here to confirm it still works. It is checked in this browser only: it is not sent anywhere or saved. <span id="zk-rk-last"></span></p>
+      <input id="zk-rk" type="password" placeholder="Recovery key (XXXX-XXXX-…)" autocomplete="off" style="width:100%;margin-bottom:6px">
+      <button id="zk-rk-btn" onclick="zkCheckRecovery()">Check my key</button> <span id="zk-rk-msg" style="font-size:12px"></span>
+    </div>
+    <h3 style="margin:0 0 6px;font-size:15px">🔄 Refresh your data</h3>
     <p style="font-size:12px;color:var(--muted);margin:0 0 12px">Runs in this browser: Trading 212 sync, snapshot, every analysis, then your alert report. Your Trading 212 key is used once and never saved. Leave both fields empty to just re-analyse stored data.</p>
     <input id="zk-key" type="password" placeholder="Trading 212 API key" autocomplete="off" style="width:100%;margin-bottom:6px">
     <input id="zk-sec" type="password" placeholder="Trading 212 API secret" autocomplete="off" style="width:100%;margin-bottom:6px">

@@ -464,7 +464,7 @@
   <span id="guest-badge" class="guest-badge" style="display:none">👁 Guest</span>
   <span id="last-updated"></span>
   <button id="change-pw-btn" onclick="openChangePw()" style="display:none;background:none;border:1px solid var(--border);color:var(--muted);font-size:11px;padding:3px 10px;border-radius:6px;cursor:pointer;margin-left:4px">🔑 Password</button>
-  <button onclick="zkToolsOpen()" style="background:none;border:1px solid var(--border);color:var(--text);font-size:11px;padding:3px 10px;border-radius:6px;cursor:pointer;margin-right:8px">🔄 Refresh data</button>
+  <button onclick="zkToolsOpen()" style="background:none;border:1px solid var(--border);color:var(--text);font-size:11px;padding:3px 10px;border-radius:6px;cursor:pointer;margin-right:8px">⚙ Settings</button>
   <button id="logout-btn" onclick="logout()">Sign out</button>
 </header>
 
@@ -549,7 +549,14 @@
 </style>
 <div id="zk-tools" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;align-items:center;justify-content:center">
   <div style="background:var(--card,#161b22);border:1px solid var(--border);border-radius:12px;padding:20px;width:min(560px,92vw);max-height:90vh;overflow:auto">
-    <h3 style="margin:0 0 6px">🔄 Refresh your data</h3>
+    <h3 style="margin:0 0 6px">⚙ Settings</h3>
+    <div style="border:1px solid var(--border);border-radius:10px;padding:12px;margin:0 0 14px">
+      <b style="font-size:13px">🔑 Check your recovery key</b>
+      <p style="font-size:12px;color:var(--muted);margin:6px 0 8px">Your recovery key is the only way back in if you forget your password, and nobody can recreate it. Type it here to confirm it still works. It is checked in this browser only: it is not sent anywhere or saved. <span id="zk-rk-last"></span></p>
+      <input id="zk-rk" type="password" placeholder="Recovery key (XXXX-XXXX-…)" autocomplete="off" style="width:100%;margin-bottom:6px">
+      <button id="zk-rk-btn" onclick="zkCheckRecovery()">Check my key</button> <span id="zk-rk-msg" style="font-size:12px"></span>
+    </div>
+    <h3 style="margin:0 0 6px;font-size:15px">🔄 Refresh your data</h3>
     <p style="font-size:12px;color:var(--muted);margin:0 0 12px">Runs in this browser: Trading 212 sync, snapshot, every analysis, then your alert report. Your Trading 212 key is used once and never saved. Leave both fields empty to just re-analyse stored data.</p>
     <input id="zk-key" type="password" placeholder="Trading 212 API key" autocomplete="off" style="width:100%;margin-bottom:6px">
     <input id="zk-sec" type="password" placeholder="Trading 212 API secret" autocomplete="off" style="width:100%;margin-bottom:6px">
@@ -585,9 +592,9 @@
 <script src="../zk/postgrest.js" integrity="sha384-TAmHrohvRyy+jJUgcLXNgsD0jeI83fkiX/OXoe1YrQQamDYsaHVmru/kUFga4EoP"></script>
 <script src="../zk/shim.js" integrity="sha384-0QDZwdIqWMZ2rCgxEc7tIanSKHibPDQUqyNakwekAFKzXQrHb0LaAiEA5vxWXfBy"></script>
 <script src="../zk/pipeline.js" integrity="sha384-A1MnDmc9/7vt+iAzgKXQvLfxTpIPps9x+mea4NaZTAlHUbJLSlVpjAhn8Napkyuf"></script>
-<script src="../zkapp/handler-names.js" integrity="sha384-U63Iir0oSg8N/UEqo0QHR+2z6cQ/TletWORNz3/LQWtKlFY+rLpBuGJ61p6lZyVU"></script>
-<script src="zkapp-auth.js" integrity="sha384-84aAx8SBuYWBqZqJU4kXOzyDQqVAZ8QCzwlTvP78Q/3tZVKAa+V8aIHt97F41Ijm"></script>
-<script src="../zkapp/zkapp-tools.js" integrity="sha384-pW34Q7bgAdC4upLkpgPBiQAKHmAN3mkwFvWB7BIutAr44LtJxxC0zBPJ6YM62xnT"></script>
+<script src="../zkapp/handler-names.js" integrity="sha384-h4AOeUX1GWO5exYYM3iGteisbL3jX4oqPl17iLoEJ0nVv7JkWbqkXBt6n0qOsZPT"></script>
+<script src="zkapp-auth.js" integrity="sha384-p9D77gTvfKRH/+FR+ArpPaw6fD8IQiS57xH+IZDDhw0UtmVaNRUUhfzDQskEd1ar"></script>
+<script src="../zkapp/zkapp-tools.js" integrity="sha384-ePksPUmS/rVnX2lsrGT1U7/X5ajAnQJ4J7Kdz9B0Ie3BBW+F0272Sn3+KyCZoVsy"></script>
 <script src="../js/overview.js" integrity="sha384-f+QSyl5SS2iPOFY3pgJYd2BLt63G69oTicIMLBn0vDSdy39NsxqlBRGjO1DkYuC+"></script>
 <script src="../js/heatmap.js" integrity="sha384-ejTjRk7y+eXbpYbK6mwsIrt4MeF2TkJf7+kQzNf1i3KKcnRfk+khUABYy4DEhqWh"></script>
 <script src="../js/positions.js" integrity="sha384-oUyv1ow0QmvO7ZEY6PwkRJKWoijhi350akLfapoGTox2LCBsgIoUvruRsSx0bR3y"></script>
