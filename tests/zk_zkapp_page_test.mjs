@@ -2,10 +2,17 @@
 // Static + smoke checks of the generated private dashboard page (no browser available here; real-browser check is a separate step).
 import { readFileSync, existsSync } from 'node:fs';
 import vm from 'node:vm';
+import { createHash } from 'node:crypto';
 let pass = 0, fail = 0; const ok = (n, c) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + n); };
 const html = readFileSync(new URL('../docs/zkapp/index.html', import.meta.url), 'utf8'), dir = new URL('../docs/zkapp/', import.meta.url);
 const srcs = [...html.matchAll(/<script src="([^"]+)"/g)].map(m => m[1]).filter(s => !s.startsWith('http'));
 ok('every script the page loads exists', srcs.every(s => existsSync(new URL(s, dir))));
+// every script is pinned by hash and the hash matches the file as committed (a stale page would be refused by the browser; a tampered file too)
+const tags = [...html.matchAll(/<script src="([^"]+)"([^>]*)><\/script>/g)], unpinned = [], stale = [];
+for (const [, src, rest] of tags) { const m = /integrity="sha384-([^"]+)"/.exec(rest); if (!m) { unpinned.push(src); continue; } if (src.startsWith('http')) continue; if (!existsSync(new URL(src, dir))) continue;
+  if (createHash('sha384').update(readFileSync(new URL(src, dir))).digest('base64') !== m[1]) stale.push(src); }
+ok(`all ${tags.length} script tags carry an integrity hash`, unpinned.length === 0); if (unpinned.length) console.log('   unpinned:', unpinned);
+ok('every integrity hash matches the committed file (run scripts/build_zkapp.py after editing any script)', stale.length === 0); if (stale.length) console.log('   stale:', stale);
 const csp = /Content-Security-Policy" content="([^"]+)"/.exec(html)[1], conn = /connect-src ([^;]+)/.exec(csp)[1].split(' ');
 ok('CSP lets the page reach only Supabase (demo), the relay and ntfy', conn.join() === "'self',https://ggprfdetivzekjxlpvyq.supabase.co,https://capitallens-relay.itsme-daf.workers.dev,https://ntfy.sh" && /default-src 'none'/.test(csp) && !/legacy|workers\.dev\/(?!$)/.test(csp.replace('capitallens-relay.itsme-daf.workers.dev', '')));
 ok('no demo shell or legacy worker left in the page', !/demo-(auth|shim)|capitallens-proxy/.test(html + readFileSync(new URL('zkapp-auth.js', dir), 'utf8')));

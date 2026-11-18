@@ -1,0 +1,42 @@
+name: Zero-knowledge tests
+
+# Every browser-side security module has tests, and the private page (docs/zkapp/index.html) is generated and pinned by
+# script hashes. This fails the push if a test fails OR if someone edited a script without regenerating the page
+# (a stale hash would make browsers refuse the script).
+on:
+  push:
+    paths: ['docs/**', 'tests/**', 'scripts/**', 'cloudflare-worker/**', 'config/**', '.github/workflows/zk_tests.yml']
+  pull_request:
+    paths: ['docs/**', 'tests/**', 'scripts/**', 'cloudflare-worker/**', 'config/**']
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: zk-tests-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  zk:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Private page is up to date
+        run: |
+          python3 scripts/build_zkapp.py
+          git diff --exit-code -- docs/zkapp || (echo "docs/zkapp is stale: run python3 scripts/build_zkapp.py and commit" && exit 1)
+      - name: Relay syntax
+        run: cp cloudflare-worker/relay.js /tmp/relay.mjs && node --check /tmp/relay.mjs
+      - name: Zero-knowledge test suites
+        run: |
+          fail=0
+          for t in tests/zk_*_test.mjs; do echo "== $t"; node "$t" || fail=1; done
+          exit $fail

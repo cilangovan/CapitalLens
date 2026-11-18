@@ -36,8 +36,17 @@ panel = """
 """
 s = s.replace('<script src="../js/api.js"></script>', panel + '<script src="../js/api.js"></script>', 1)
 zk = ["../js/zkcrypto.js"] + [f"../zk/{m}.js" for m in ["store", "t212sync", "market", "alertfmt", "symbols", "returns", "valuebuy", "monitor", "analystratings", "piehistory", "profitbooking", "strategy", "holdingdecision", "watchlist", "watchlistops", "alertreport", "flow", "notify", "postgrest", "shim", "pipeline"]]
-tags = "\n".join(f'<script src="{p}"></script>' for p in zk)
-s = s.replace('<script src="demo-shim.js"></script>\n<script src="demo-auth.js"></script>', tags + '\n<script src="zkapp-auth.js"></script>\n<script src="zkapp-tools.js"></script>')
+import base64, hashlib
+def sri(rel):
+    return "sha384-" + base64.b64encode(hashlib.sha384((root / "docs/zkapp" / rel).resolve().read_bytes()).digest()).decode()
+tags = "\n".join(f'<script src="{p}" integrity="{sri(p)}"></script>' for p in zk)
+s = s.replace('<script src="demo-shim.js"></script>\n<script src="demo-auth.js"></script>', tags + f'\n<script src="zkapp-auth.js" integrity="{sri("zkapp-auth.js")}"></script>\n<script src="zkapp-tools.js" integrity="{sri("zkapp-tools.js")}"></script>')
 assert "demo-auth" not in s and "zkapp-auth.js" in s
+import re
+def _add_sri(m):
+    src = m.group(1)
+    if src.startswith("http") or "integrity=" in m.group(0): return m.group(0)
+    return f'<script src="{src}" integrity="{sri(src)}"></script>'
+s = re.sub(r'<script src="([^"]+)"[^>]*></script>', _add_sri, s)      # every local script is pinned by hash (tamper-evident; rebuilt on each change)
 (root / "docs/zkapp/index.html").write_text(s)
 print("wrote docs/zkapp/index.html", len(s))
