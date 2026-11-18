@@ -117,6 +117,8 @@ async function pdOpen(key, ticker = null, ev) {
   catch (e) { el.innerHTML = `<div class="dd-panel"><div class="w-dim">Couldn't load: ${pdEsc(e.message)}</div></div>`; return; }
   pdRender();
 }
+function pdSetTab(k) { PD.tab = k; pdRender(); }
+function pdSetRange(k) { PD.range = k; pdRender(); }
 function pdClose() {
   const el = document.getElementById('pd'); if (el) el.className = '';
   document.body.style.overflow = ''; PD.key = null;
@@ -148,7 +150,7 @@ function pdRender() {
       <button class="dd-back" style="display:block;visibility:hidden">·</button>
     </div>
     ${PD.ticker ? '' : `<div class="pd-tabs">${[['overview', 'Overview'], ['holdings', 'Holdings']].map(([k, l]) =>
-      `<button class="${PD.tab === k ? 'active' : ''}" onclick="PD.tab='${k}'; pdRender()">${l}</button>`).join('')}</div>`}
+      `<button class="${PD.tab === k ? 'active' : ''}" onclick="pdSetTab('${k}')">${l}</button>`).join('')}</div>`}
     ${PD.tab === 'holdings' && !PD.ticker ? pdHoldings(live) : `
     <div class="pd-value">${pdGbp(live.value)}</div>
     <div class="pd-kpis">
@@ -159,7 +161,7 @@ function pdRender() {
     </div>
     <div class="dd-card pd-chartcard">
       <div id="pd-chart" class="dd-chart"></div>
-      <div class="dd-ranges pd-ranges">${PD_RANGES.map(([k, l]) => `<button class="${PD.range === k ? 'active' : ''}" onclick="PD.range='${k}'; pdRender()">${l}</button>`).join('')}</div>
+      <div class="dd-ranges pd-ranges">${PD_RANGES.map(([k, l]) => `<button class="${PD.range === k ? 'active' : ''}" onclick="pdSetRange('${k}')">${l}</button>`).join('')}</div>
       <div id="pd-period" class="pd-period"></div>
     </div>
     ${!h ? '<div class="pd-verify warn">History not built yet — runs after the daily Trading 212 sync.</div>'

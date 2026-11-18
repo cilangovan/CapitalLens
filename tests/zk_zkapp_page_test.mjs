@@ -15,6 +15,7 @@ ok(`all ${tags.length} script tags carry an integrity hash`, unpinned.length ===
 ok('every integrity hash matches the committed file (run scripts/build_zkapp.py after editing any script)', stale.length === 0); if (stale.length) console.log('   stale:', stale);
 const csp = /Content-Security-Policy" content="([^"]+)"/.exec(html)[1], conn = /connect-src ([^;]+)/.exec(csp)[1].split(' ');
 ok('CSP lets the page reach only Supabase (demo), the relay and ntfy', conn.join() === "'self',https://ggprfdetivzekjxlpvyq.supabase.co,https://capitallens-relay.itsme-daf.workers.dev,https://ntfy.sh" && /default-src 'none'/.test(csp) && !/legacy|workers\.dev\/(?!$)/.test(csp.replace('capitallens-relay.itsme-daf.workers.dev', '')));
+ok("script policy is strictly 'self' (no 'unsafe-inline', no 'unsafe-eval', no remote scripts) and the page has no inline <script> or inline on* handler left to run", /script-src 'self';/.test(csp) && !/unsafe-eval/.test(csp) && !/<script>[^<]/.test(html) && !/javascript:/.test(html));
 ok('no demo shell or legacy worker left in the page', !/demo-(auth|shim)|capitallens-proxy/.test(html + readFileSync(new URL('zkapp-auth.js', dir), 'utf8')));
 const order = srcs.map(s => s.split('/').pop());
 const before = (a, b) => order.indexOf(a) >= 0 && order.indexOf(a) < order.indexOf(b);
@@ -26,7 +27,9 @@ ctx.MutationObserver = function () { this.observe = () => {}; this.disconnect = 
 ctx.Response.prototype.json = Response.prototype.json; vm.createContext(ctx);
 let err = null; for (const s of srcs) { try { vm.runInContext(readFileSync(new URL(s, dir), 'utf8'), ctx, { filename: s }); } catch (e) { err = `${s}: ${e.message}`; break; } }
 ok('all page scripts load in order without errors', err === null); if (err) console.log('   ', err);
-const need = ['ZK', 'ZKStore', 'ZKMarket', 'ZKT212', 'ZKMonitor', 'ZKAnalystRatings', 'ZKReturns', 'ZKPieHistory', 'ZKProfitBooking', 'ZKStrategy', 'ZKHoldingDecision', 'ZKValueBuy', 'ZKWatchlist', 'ZKWatchlistOps', 'ZKAlertReport', 'ZKFlow', 'ZKNotify', 'ZKQuery', 'ZKShim', 'ZKPipeline', 'ZKSymbols', 'ZKAlertFmt'];
+const need = ['ZK', 'ZKStore', 'ZKMarket', 'ZKT212', 'ZKMonitor', 'ZKAnalystRatings', 'ZKReturns', 'ZKPieHistory', 'ZKProfitBooking', 'ZKStrategy', 'ZKHoldingDecision', 'ZKValueBuy', 'ZKWatchlist', 'ZKWatchlistOps', 'ZKHandlers', 'ZKAlertReport', 'ZKFlow', 'ZKNotify', 'ZKQuery', 'ZKShim', 'ZKPipeline', 'ZKSymbols', 'ZKAlertFmt'];
+const names = vm.runInContext('window.ZK_HANDLER_NAMES', ctx), RUNTIME = new Set(['toggleInstCard']) /* assigned to window when the Strategy tab renders */, notGlobal = names.filter(n => !RUNTIME.has(n) && typeof ctx[n] !== 'function');
+ok(`all ${names.length} allowlisted handler functions exist as global functions`, names.length > 40 && notGlobal.length === 0); if (notGlobal.length) console.log('   not global:', notGlobal);
 const missing = need.filter(n => typeof vm.runInContext(`typeof ${n}`, ctx) !== 'string' || vm.runInContext(`typeof ${n}`, ctx) === 'undefined'); ok('all zero-knowledge modules are available to the page', missing.length === 0); if (missing.length) console.log('   missing:', missing);
 // every inline handler in the markup resolves to a function
 const handlers = new Set([...html.matchAll(/on(?:click|change|keydown|input)="(?:if\([^)]*\))?\s*([A-Za-z_]\w*)\(/g)].map(m => m[1])), notFn = [...handlers].filter(h => { try { return vm.runInContext(`typeof ${h}`, ctx) !== 'function'; } catch (e) { return true; } });

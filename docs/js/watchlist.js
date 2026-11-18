@@ -48,7 +48,7 @@ function wlSetCat(cat, silent) {
   q.placeholder = c.ph; q.value = '';
   document.getElementById('w-results').innerHTML = '';
   document.getElementById('w-picks').innerHTML = c.picks.map(p =>
-    `<button class="w-pick" onclick="document.getElementById('w-q').value='${p}'; wlSearch('${p}')">${p}</button>`).join('');
+    `<button class="w-pick" onclick="wlPick('${p}')">${p}</button>`).join('');
   if (!silent) renderWatchlist(); else wlRenderCats();
 }
 
@@ -86,6 +86,7 @@ function wlSchedulePoll() {
 }
 
 // ── search ────────────────────────────────────────────────────
+function wlPick(p) { document.getElementById('w-q').value = p; wlSearch(p); }
 function wlSearch(q) {
   clearTimeout(WL.searchTimer);
   const box = document.getElementById('w-results');

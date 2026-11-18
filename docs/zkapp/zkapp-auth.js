@@ -49,6 +49,8 @@ async function doLogin() {
   } catch (e) { setErr('pw-error', 'Could not unlock: ' + e.message); }
   finally { setBtnLoading('login-btn', false); document.getElementById('login-pw').value = ''; }
 }
+function loginKey(ev) { if (ev && ev.key === 'Enter') doLogin(); }
+ZKHandlers.install(document);                      // strict CSP: inline on* attributes are converted and run through a whitelisted, eval-free interpreter
 function loginGuest() { setErr('pw-error', 'Guest mode is retired: every read needs your own sign-in.'); }
 
 async function _unlocked(token, dk) {

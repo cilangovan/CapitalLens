@@ -112,7 +112,7 @@ function ddRender() {
       <div class="dd-prof">${pr.sector ? `<div><span class="w-dim">Sector</span> <b>${ddEsc(pr.sector)}</b></div>` : ''}${pr.industry ? `<div><span class="w-dim">Industry</span> <b>${ddEsc(pr.industry)}</b></div>` : ''}
         ${pr.employees ? `<div><span class="w-dim">Employees</span> <b>${Number(pr.employees).toLocaleString('en-GB')}</b></div>` : ''}${pr.country ? `<div><span class="w-dim">Country</span> <b>${ddEsc(pr.country)}</b></div>` : ''}
         ${pr.website ? `<div><a href="${ddEsc(pr.website)}" target="_blank" rel="noopener">${ddEsc(pr.website.replace(/^https?:\/\/(www\.)?/, ''))} ↗</a></div>` : ''}</div>
-      ${pr.summary ? `<p class="dd-summary" id="dd-sum">${ddEsc(pr.summary)}</p><span class="w-more" onclick="document.getElementById('dd-sum').classList.toggle('open'); this.textContent = this.textContent === 'More' ? 'Less' : 'More'">More</span>` : ''}</div>` : ''}
+      ${pr.summary ? `<p class="dd-summary" id="dd-sum">${ddEsc(pr.summary)}</p><span class="w-more" onclick="ddToggleSummary(this)">More</span>` : ''}</div>` : ''}
 
     <div class="dd-card"><div class="dd-h">💡 Insights</div>
       <div class="dd-ins">
@@ -183,6 +183,7 @@ function ddPlan(i, row, a) {
 
 // ── chart data ────────────────────────────────────────────────
 function ddSetRange(r) { DD.range = r; if (['1d', '5d', '5y'].includes(r)) DD.ma.clear(); ddLoadChart(); }
+function ddToggleSummary(btn) { document.getElementById('dd-sum').classList.toggle('open'); btn.textContent = btn.textContent === 'More' ? 'Less' : 'More'; }
 function ddToggleMA(m) { DD.ma.has(m) ? DD.ma.delete(m) : DD.ma.add(m); ddRender(); }
 
 async function ddLoadChart() {

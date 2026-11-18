@@ -47,7 +47,7 @@ async function loadReturns() {
 
     <div class="card">
       <div class="rt-head"><h3>Profit by period</h3></div>
-      <div class="dd-ranges rt-periods">${d.periods.map(x => `<button class="${RT.period === x.label ? 'active' : ''}" onclick="RT.period='${x.label}'; rtPeriod()">${x.label}</button>`).join('')}</div>
+      <div class="dd-ranges rt-periods">${d.periods.map(x => `<button class="${RT.period === x.label ? 'active' : ''}" onclick="rtSetPeriod('${x.label}')">${x.label}</button>`).join('')}</div>
       <div id="rt-period"></div>
     </div>
 
@@ -123,6 +123,7 @@ function rtTable(rows, head, cells) {
   return `<table class="pb-rules"><tr>${head.map(h => `<th>${h}</th>`).join('')}</tr>${rows.map(x => `<tr>${cells(x).map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</table>`;
 }
 
+function rtSetPeriod(label) { RT.period = label; rtPeriod(); }
 function rtPeriod() {
   const x = RT.d.periods.find(p => p.label === RT.period) || RT.d.periods[RT.d.periods.length - 1];
   document.querySelectorAll('.rt-periods button').forEach(b => b.classList.toggle('active', b.textContent === x.label));
