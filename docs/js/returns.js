@@ -60,9 +60,17 @@ async function loadReturns() {
         <div class="w-dim w-small">Performance of your picks, ignoring when you added money (time-weighted)${d.twr_annual_pct != null ? ` — ${rtPct(d.twr_annual_pct)} a year` : ''}.</div></div>
     </div>
 
-    <div class="card"><h3>Account value vs money put in</h3>
-      <div class="rt-legend"><span><i style="background:${RT_LINE}"></i>Account value</span><span><i class="dash"></i>Money put in</span><span class="w-dim">gap = profit</span></div>
+    <div class="card"><h3>Profit over time</h3>
+      <div class="rt-chartbar">
+        <div class="dd-ranges rt-views">
+          <button data-v="profit" onclick="rtSetView('profit')">Profit £</button>
+          <button data-v="value" onclick="rtSetView('value')">Value vs money in</button>
+        </div>
+        <div class="dd-ranges rt-ranges">${['1M', '3M', '6M', 'YTD', '1Y', 'All'].map(r => `<button data-r="${r}" onclick="rtSetRange('${r}')">${r}</button>`).join('')}</div>
+      </div>
+      <div id="rt-vc-head" class="rt-vc-head"></div>
       <div class="rt-chart"><canvas id="rt-value-chart"></canvas></div>
+      <div id="rt-vc-note" class="w-dim w-small" style="margin-top:6px"></div>
     </div>
 
     <div class="grid2">
@@ -129,21 +137,7 @@ function rtCharts() {
   if (typeof Chart === 'undefined') return;
   const s = RT.d.series, grid = '#2d3353';
   const money = v => IS_GUEST ? '£***' : '£' + Math.round(v).toLocaleString('en-GB');
-  RT.charts.push(new Chart(document.getElementById('rt-value-chart'), {
-    type: 'line',
-    data: { labels: s.dates, datasets: [
-      { label: 'Account value', data: s.value, borderColor: RT_LINE, borderWidth: 2, pointRadius: 0, tension: 0.2,
-        fill: { target: 1, above: 'rgba(12,163,12,.14)', below: 'rgba(230,103,103,.16)' } },
-      { label: 'Money put in', data: s.net_in, borderColor: RT_MUTED, borderWidth: 2, borderDash: [5, 4], pointRadius: 0, stepped: true },
-    ] },
-    options: { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
-      plugins: { legend: { display: false }, tooltip: { callbacks: {
-        title: i => new Date(i[0].label).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }),
-        label: c => `${c.dataset.label}: ${money(c.raw)}`,
-        footer: i => { const v = i.find(x => x.datasetIndex === 0)?.raw, n = i.find(x => x.datasetIndex === 1)?.raw; return v != null && n != null ? `Profit: ${IS_GUEST ? '£***' : (v - n >= 0 ? '+' : '−') + '£' + Math.abs(Math.round(v - n)).toLocaleString('en-GB')}` : ''; } } } },
-      scales: { x: { type: 'category', ticks: { color: RT_MUTED, maxTicksLimit: 6, callback(v) { return new Date(this.getLabelForValue(v)).toLocaleDateString('en-GB', { month: 'short', year: '2-digit' }); } }, grid: { display: false } },
-                y: { ticks: { color: RT_MUTED, callback: v => money(v), maxTicksLimit: 5 }, grid: { color: grid } } } },
-  }));
+  rtValueChart();
   const months = Object.keys(RT.r.monthly_breakdown || {}).sort().slice(-24);
   const vals = months.map(k => RT.r.monthly_breakdown[k].profit);
   RT.charts.push(new Chart(document.getElementById('rt-month-chart'), {
@@ -156,4 +150,80 @@ function rtCharts() {
       scales: { x: { ticks: { color: RT_MUTED, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 }, grid: { display: false } },
                 y: { ticks: { color: RT_MUTED, callback: v => money(v), maxTicksLimit: 5 }, grid: { color: grid } } } },
   }));
+}
+
+// ── Value / profit chart ──────────────────────────────────────
+RT.view = 'profit'; RT.range = 'All';
+function rtSetView(v) { RT.view = v; rtValueChart(); }
+function rtSetRange(r) { RT.range = r; rtValueChart(); }
+
+function rtSlice() {
+  const s = RT.d.series, n = s.dates.length;
+  const last = new Date(s.dates[n - 1]);
+  let from = null;
+  if (RT.range === 'YTD') from = new Date(last.getFullYear(), 0, 1);
+  else if (RT.range !== 'All') { const m = { '1M': 1, '3M': 3, '6M': 6, '1Y': 12 }[RT.range]; from = new Date(last); from.setMonth(from.getMonth() - m); }
+  let i0 = 0;
+  if (from) { i0 = s.dates.findIndex(d => new Date(d) >= from); if (i0 < 0) i0 = 0; if (n - i0 < 2) i0 = Math.max(0, n - 2); }
+  return { dates: s.dates.slice(i0), value: s.value.slice(i0), net: s.net_in.slice(i0) };
+}
+
+function rtValueChart() {
+  const cv = document.getElementById('rt-value-chart');
+  if (!cv || typeof Chart === 'undefined' || !RT.d) return;
+  if (RT.vc) { RT.vc.destroy(); RT.vc = null; }
+  document.querySelectorAll('.rt-views button').forEach(b => b.classList.toggle('active', b.dataset.v === RT.view));
+  document.querySelectorAll('.rt-ranges button').forEach(b => b.classList.toggle('active', b.dataset.r === RT.range));
+  const x = rtSlice(), n = x.dates.length;
+  const profit = x.value.map((v, i) => +(v - x.net[i]).toFixed(2));
+  const money = v => IS_GUEST ? '£***' : '£' + Math.round(v).toLocaleString('en-GB');
+  const signed = v => IS_GUEST ? '£***' : (v >= 0 ? '+' : '−') + '£' + Math.abs(Math.round(v)).toLocaleString('en-GB');
+  const dateFmt = d => new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
+  const gridC = '#2d3353';
+
+  // Headline for the selected range
+  const dProfit = profit[n - 1] - profit[0];
+  const head = document.getElementById('rt-vc-head');
+  const note = document.getElementById('rt-vc-note');
+  if (RT.view === 'profit') {
+    head.innerHTML = `<span class="rt-mid ${rtCls(profit[n - 1])}">${signed(profit[n - 1])}</span> <span class="w-dim w-small">total profit now</span>` +
+      (RT.range !== 'All' ? ` · <span class="${rtCls(dProfit)}">${signed(dProfit)}</span> <span class="w-dim w-small">in this period</span>` : '');
+    note.textContent = 'Green = you are ahead of what you put in, red = behind. The line moves only with real gains/losses, not with deposits.';
+  } else {
+    head.innerHTML = `<span class="rt-mid">${money(x.value[n - 1])}</span> <span class="w-dim w-small">account value · ${money(x.net[n - 1])} put in</span>`;
+    note.textContent = 'Blue line = account value, grey steps = money you put in. The space between them is your profit (green) or loss (red).';
+  }
+
+  const common = { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
+    scales: { x: { type: 'category', ticks: { color: RT_MUTED, maxTicksLimit: 6, maxRotation: 0, callback(v) {
+      const d = new Date(this.getLabelForValue(v)); return RT.range === '1M' || RT.range === '3M' ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : d.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' }); } }, grid: { display: false } } } };
+
+  if (RT.view === 'profit') {
+    RT.vc = new Chart(cv, { type: 'line',
+      data: { labels: x.dates, datasets: [{ label: 'Profit', data: profit, borderWidth: 2, pointRadius: 0, tension: 0.15,
+        borderColor: RT_UP, segment: { borderColor: c => (c.p1.parsed.y >= 0 ? RT_UP : RT_DOWN) },
+        fill: { target: 'origin', above: 'rgba(12,163,12,.18)', below: 'rgba(230,103,103,.2)' } }] },
+      options: { ...common, plugins: { legend: { display: false }, tooltip: { callbacks: {
+        title: i => dateFmt(i[0].label),
+        label: c => `Profit: ${signed(c.raw)}`,
+        afterLabel: c => IS_GUEST ? '' : [`Account value: ${money(x.value[c.dataIndex])}`, `Money put in: ${money(x.net[c.dataIndex])}`, `Return on money in: ${x.net[c.dataIndex] > 0 ? rtPct(c.raw / x.net[c.dataIndex] * 100) : '—'}`] } } },
+        scales: { ...common.scales, y: { ticks: { color: RT_MUTED, callback: v => signed(v), maxTicksLimit: 6 },
+          grid: { color: c => (c.tick && c.tick.value === 0 ? '#8892a4' : gridC), lineWidth: c => (c.tick && c.tick.value === 0 ? 1.5 : 1) } } } },
+    });
+  } else {
+    const all = x.value.concat(x.net), lo = Math.min(...all), hi = Math.max(...all), pad = (hi - lo) * 0.08 || 1;
+    RT.vc = new Chart(cv, { type: 'line',
+      data: { labels: x.dates, datasets: [
+        { label: 'Account value', data: x.value, borderColor: RT_LINE, borderWidth: 2.5, pointRadius: 0, tension: 0.15,
+          fill: { target: 1, above: 'rgba(12,163,12,.20)', below: 'rgba(230,103,103,.22)' } },
+        { label: 'Money put in', data: x.net, borderColor: RT_MUTED, borderWidth: 2, pointRadius: 0, stepped: true },
+      ] },
+      options: { ...common, plugins: { legend: { display: false }, tooltip: { callbacks: {
+        title: i => dateFmt(i[0].label),
+        label: c => `${c.dataset.label}: ${money(c.raw)}`,
+        footer: i => { const v = i.find(q => q.datasetIndex === 0)?.raw, m = i.find(q => q.datasetIndex === 1)?.raw; return v != null && m != null ? `Profit: ${signed(v - m)}` : ''; } } } },
+        scales: { ...common.scales, y: { min: Math.max(0, Math.floor((lo - pad) / 10) * 10), max: Math.ceil((hi + pad) / 10) * 10,
+          ticks: { color: RT_MUTED, callback: v => money(v), maxTicksLimit: 6 }, grid: { color: gridC } } } },
+    });
+  }
 }
