@@ -49,4 +49,11 @@ const seen = []; globalThis.fetch = async u => { seen.push(String(u)); return ne
 SH.install('https://x.test/rest/v1', sh);
 const a = await (await fetch('https://x.test/rest/v1/watchlist?select=ticker')).json(), b = await (await fetch('https://other.test/a')).json();
 ok('install(): dashboard calls answered locally, other requests go to the network untouched', a[0].ticker === 'AAPL' && b === 'net' && seen.length === 1 && seen[0] === 'https://other.test/a');
+// 4) JSON kept as text by the browser-side analysis must survive defuse (which swaps every double quote)
+tables.value_buy_scores = [{ ticker: 'GOOGL', score: 84, entry_zones: JSON.stringify([{ label: 'Ideal', rating: 'high', note: 'near "52w" low' }]), scorecard: JSON.stringify([{ category: 'Valuation', score: 17, max: 20 }]),
+  earnings: JSON.stringify({}), this_week: JSON.stringify({ action: 'BUY', price: 301.5, rationale: ['RSI low'] }) }, { ticker: 'BAD', score: 50, entry_zones: 'not json', scorecard: null, earnings: '{}', this_week: '{"a":1}' }];
+const vb = await (await sh.handle('/value_buy_scores?select=*&order=score.desc')).json();
+ok('value_buy_scores: entry zones, scorecard and this-week target arrive as real objects, not mangled text', Array.isArray(vb[0].entry_zones) && vb[0].entry_zones[0].label === 'Ideal' && vb[0].scorecard[0].max === 20 && vb[0].this_week.price === 301.5 && vb[0].this_week.action === 'BUY');
+ok('value_buy_scores: text inside the parsed data is still defused', vb[0].entry_zones[0].note === 'near ‹52w‹ low');
+ok('value_buy_scores: unparsable text is left alone and does not break the call', vb[1].entry_zones === 'not json' && vb[1].scorecard === null && vb[1].this_week.a === 1);
 console.log(`\n${pass} passed · ${fail} failed`); process.exit(fail ? 1 : 0);

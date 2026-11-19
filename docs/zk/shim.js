@@ -9,6 +9,9 @@
     profit_booking: 'profit_booking', profit_booking_summary: 'profit_booking_summary', returns_summary: 'returns_summary', realised_pnl: 'realised_pnl', dividends: 'dividends',
     pie_history: 'pie_history', watchlist: 'watchlist', watchlist_analysis: 'watchlist_analysis' };
   const SHARED = new Set(['instrument_exposure', 'instrument_country_weights', 'instrument_sector_weights', 'instruments', 'user_ui_prefs', 'market_cache', 'ipo_calendar']);
+  // JSON stored as text by the browser-side analysis. Parsed BEFORE defuse (which swaps every double quote), then defused as real data.
+  const JSON_COLS = { value_buy_scores: ['entry_zones', 'scorecard', 'earnings', 'this_week'] };
+  const parseJsonCols = (route, rows) => !JSON_COLS[route] ? rows : rows.map(r => { const o = Object.assign({}, r); for (const c of JSON_COLS[route]) if (typeof o[c] === 'string') { try { o[c] = JSON.parse(o[c]); } catch (e) {} } return o; });
   const ACTIONS = { read: n => ({ read_at: n }), unread: () => ({ read_at: null }), archive: n => ({ archived_at: n, dismissed_at: null, read_at: n }), dismiss: n => ({ dismissed_at: n, archived_at: null, read_at: n }), restore: () => ({ archived_at: null, dismissed_at: null }) };
   const json = (status, body) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 
@@ -51,6 +54,7 @@
       if (route in ENCRYPTED) {
         let rows = await opts.store.load(ENCRYPTED[route]);
         if (route === 'alerts') rows = rows.map(forDashboard);
+        rows = parseJsonCols(route, rows);
         if (method !== 'GET') return json(405, { error: 'Writes go through the encrypted store' });
         return json(200, defuse(Q().run(rows, params)));
       }
