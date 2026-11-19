@@ -32,6 +32,26 @@ ok('active tab follows the market', /w-cat active[^>]*data-ipo-mkt="UK"/.test(IP
 ok('empty market shows a message', /No IPOs tracked/.test(IPO.html([], 'HK', T)));
 ok('XSS: injected tags, attributes and javascript: link stay inert text', !/<script|<img|<b>n<\/b>|"><b>x/.test(h) && !/href="javascript:/.test(h) && /&lt;script&gt;/.test(h) && /&lt;b&gt;n&lt;\/b&gt;/.test(h));
 ok('no inline event handlers (strict CSP)', !/\son(click|change|input)=/.test(h));
+// watch / remove
+const watched = new Set(['US:A']);
+const hw = IPO.html(rows, 'ALL', T, watched);
+ok('watch: ⭐ Watching tab appears only when watching is available, with its count', /data-ipo-mkt="WATCH"[^>]*>⭐ Watching <span class="a-count">1<\/span>/.test(hw) && !/data-ipo-mkt="WATCH"/.test(IPO.html(rows, 'ALL', T)));
+ok('watch: watched IPO shows a remove button, others a Watch button; none when unavailable', /data-ipo-watch="US:A"[^>]*aria-pressed="true">★ Watching · tap to remove/.test(hw) && /data-ipo-watch="US:B"[^>]*aria-pressed="false">☆ Watch/.test(hw) && !/data-ipo-watch/.test(IPO.html(rows, 'ALL', T)));
+ok('watch: the Watching tab lists only watched IPOs; empty state explains how', IPO.select(rows, 'WATCH', T, watched).map(r => r.id).join() === 'US:A' && /Nothing watched yet/.test(IPO.html(rows, 'WATCH', T, new Set())));
+ok('watch: an id that is not a calendar id never gets a button (XSS-safe attribute)', !/data-ipo-watch="[^"]*(<|>|\s)/.test(IPO.html([{ id: 'x" onclick="1', market: 'US', name: 'Bad', status: 'upcoming' }], 'ALL', T, new Set())));
+const sent = []; globalThis.PROXY = 'https://p/rest/v1'; let nextOk = true;
+globalThis.fetch = async (u, o) => { sent.push([u, JSON.parse(o.body)]); return { ok: nextOk, status: nextOk ? 200 : 500 }; };
+const St = IPO._state; St.watched = new Set(['US:A']);
+await IPO.toggleWatch('US:B');
+ok('toggle: watching saves via POST ipo/watch and shows at once', St.watched.has('US:B') && sent[0][0].endsWith('/ipo/watch') && sent[0][1].id === 'US:B');
+await IPO.toggleWatch('US:A');
+ok('toggle: removing posts ipo/unwatch and drops it from the list', !St.watched.has('US:A') && sent[1][0].endsWith('/ipo/unwatch') && sent[1][1].id === 'US:A');
+nextOk = false; await IPO.toggleWatch('US:A');
+ok('toggle: a failed save is undone and says so', !St.watched.has('US:A') && /Could not save/.test(St.msg));
+await IPO.toggleWatch('US:B');
+ok('toggle: a failed remove is undone too', St.watched.has('US:B') && /Could not remove/.test(St.msg));
+const n = sent.length; await IPO.toggleWatch('not an id'); St.watched = null; await IPO.toggleWatch('US:A');
+ok('toggle: bad ids and "watch not available" send nothing', sent.length === n);
 const cfg = JSON.parse(readFileSync(new URL('../config/ipo_calendar.json', import.meta.url)));
 ok('seed file: unique ids, valid markets/ratings, ratings named by source', new Set(cfg.ipos.map(r => r.id)).size === cfg.ipos.length && cfg.ipos.every(r => ['US', 'UK', 'IN', 'HK', 'EU', 'JP', 'CN', 'SG', 'AU', 'OTHER'].includes(r.market) && (r.rating === 'Not rated' || r.rating_source)));
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

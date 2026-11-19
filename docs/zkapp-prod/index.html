@@ -205,6 +205,8 @@
   .ipo-dates div { background:var(--bg3); border-radius:6px; padding:5px 8px; display:flex; flex-direction:column; font-size:12px; }
   .ipo-meta { font-size:13px; font-weight:600; margin-top:6px; }
   .ipo-note { font-size:12px; line-height:1.5; margin-top:4px; overflow-wrap:anywhere; }
+  .ipo-watch { margin-top:8px; min-height:40px; padding:8px 14px; border-radius:8px; border:1px solid var(--border); background:var(--bg3); color:var(--text); font-size:13px; font-weight:600; cursor:pointer; width:100%; }
+  .ipo-watch.on { border-color:var(--yellow); color:var(--yellow); background:rgba(245,158,11,.12); }
   .ipo-src { font-size:11px; margin-top:6px; overflow-wrap:anywhere; } .ipo-src a { color:var(--accent); }
   .w-title { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; }
   .w-link { color:var(--text); font-weight:700; text-decoration:none; border-bottom:1px dotted var(--muted); }
@@ -645,7 +647,7 @@
 <script src="../zk/flow.js?v=20e28c527026" integrity="sha384-hVVnTNbtEc0PugPGy3hz26UGX/wZxYbAk5YbwXx2TLqLeqDcqENHC2/YZ1BTpUbW"></script>
 <script src="../zk/notify.js?v=34d4bf55f41f" integrity="sha384-zF94I6jfpN993hI3TgEldHc41jGJLL61WllCe3xzVorjTyzz9Fkm/fKiuBEYGk/p"></script>
 <script src="../zk/postgrest.js?v=4fb32c84005f" integrity="sha384-TAmHrohvRyy+jJUgcLXNgsD0jeI83fkiX/OXoe1YrQQamDYsaHVmru/kUFga4EoP"></script>
-<script src="../zk/shim.js?v=02ecc4e4373f" integrity="sha384-TTZ3f7Xc4WHBmarzSgBHnZISfJS0tpkT88UT77uTB0YIjjd2KkykI8ooogyMJOKN"></script>
+<script src="../zk/shim.js?v=140458d3dff0" integrity="sha384-q5/bz5/krv8jDguMJC7H8xWNr/Lujwf/8qtoElEMlfpaR16Swaa7+Rmiaz1oqTgC"></script>
 <script src="../zk/pipeline.js?v=bfa0c8ccf1ce" integrity="sha384-A1MnDmc9/7vt+iAzgKXQvLfxTpIPps9x+mea4NaZTAlHUbJLSlVpjAhn8Napkyuf"></script>
 <script src="../zkapp/handler-names.js?v=b2538cdf3622" integrity="sha384-Yw5ll8YHGaLCjqUBwss7CpQMGrrL+hCEJ12vxRAKu2tHzOPactEw+oQ87XdRYUVE"></script>
 <script src="zkapp-auth.js?v=e4e3f3f3c96c" integrity="sha384-GnL+tt2xaReXl/dGzx6s4bTZqCJ0KSQEazlFqVcFTAkrCRnlBVQPqUwzIaHlB4sm"></script>
@@ -661,7 +663,7 @@
 <script src="../js/tickertips.js?v=62c3f21e8fa6" integrity="sha384-uol0Rwj54jmfrLQJnoQ9rmmclnnHE5cMDN7Ci+Jn2Mo6W4tqHoZ53Ay3/BTEgS52"></script>
 <script src="../js/collapse.js?v=7edc1cf73e08" integrity="sha384-A619AiWc9t9/ZdVUpzglvO2kPNeCq9597UZcOa4ctslPfQiU48P+lXZWq9vS6k05"></script>
 <script src="../js/watchlist.js?v=feeed3c882fe" integrity="sha384-+jqXwq3uWtkT4SnGIKM2M7yijo4yoKa72fEAgdjsMBrh6h8bmZJqJnTM/FwL1UvY"></script>
-<script src="../js/ipo.js?v=33bf38b81295" integrity="sha384-dvOT/9b3Gs1lE3bs1fPN83RKZmE7P0Nx1uRX9cvAQTR/ZM9CTU1vOkMNOQ6xHx4p"></script>
+<script src="../js/ipo.js?v=b0a575e3f0cb" integrity="sha384-16inLfk3pq3DsMBSeGE4nFzroDTYN1fqZL79d4773vmEJKbhcWmpOnIxRn/crkHh"></script>
 <script src="../js/drilldown.js?v=ba8270c24f2b" integrity="sha384-hHTBmsskCBTraWDyh1WLn3feg0fatRote5yhCIhSkh1klwGAK/pWFjF9UDh0uaa+"></script>
 <script src="../js/pie_drill.js?v=8c51986cc5fc" integrity="sha384-LGniYIiV4KXlc6vLeJvRBeHO2GBHNioliyzl+pXCCNMM4JWGtEmuNOipp/f0Jb2T"></script>
 <script src="../js/router.js?v=bcfc4888d172" integrity="sha384-Eve7gCPZkMSdV7g3eB/b+Srsyi0BdSRPLX+5uHye7GLIArTrN9Y/BBhlg6JqNz7b"></script>

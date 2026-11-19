@@ -4,7 +4,7 @@
 // Clicks use one delegated listener (no inline handlers), so it works under the strict CSP of the private app too.
 (function (root) {
   'use strict';
-  const MARKETS = [['ALL', '🌐', 'All'], ['US', '🇺🇸', 'US'], ['UK', '🇬🇧', 'UK'], ['IN', '🇮🇳', 'India'], ['HK', '🇭🇰', 'HK'], ['OTHER', '🌍', 'Other']];
+  const MARKETS = [['ALL', '🌐', 'All'], ['WATCH', '⭐', 'Watching'], ['US', '🇺🇸', 'US'], ['UK', '🇬🇧', 'UK'], ['IN', '🇮🇳', 'India'], ['HK', '🇭🇰', 'HK'], ['OTHER', '🌍', 'Other']];
   const FLAG = { US: '🇺🇸', UK: '🇬🇧', IN: '🇮🇳', HK: '🇭🇰', EU: '🇪🇺', JP: '🇯🇵', CN: '🇨🇳', SG: '🇸🇬', AU: '🇦🇺', OTHER: '🌍' };
   const CCY = { USD: '$', GBP: '£', EUR: '€', INR: '₹', HKD: 'HK$', JPY: '¥', CNY: '¥', SGD: 'S$', AUD: 'A$' };
   const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -12,6 +12,7 @@
                   rumoured: ['Rumoured', '', 5], listed: ['Listed', 'dim', 6], postponed: ['Postponed', 'r', 7], withdrawn: ['Withdrawn', 'r', 7] };
   const RATING = { Subscribe: 'g', Neutral: 'y', Avoid: 'r', 'Not rated': 'dim' };
   const esc = s => String(s == null ? '' : s).replace(/[&<>"'`]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c]));
+  const ID_RE = /^[A-Z]{2,5}:[A-Z0-9_.\-]{1,40}$/;
   const isDate = d => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}/.test(d);
 
   const fmtDate = (d, today) => { if (!isDate(d)) return 'TBC'; const y = +d.slice(0, 4), m = +d.slice(5, 7) - 1, day = +d.slice(8, 10);
@@ -37,16 +38,18 @@
   }
   const marketOf = r => (['US', 'UK', 'IN', 'HK'].includes(r.market) ? r.market : 'OTHER');
 
-  function select(rows, market, today) {
-    const list = (rows || []).filter(r => market === 'ALL' || marketOf(r) === market).map(r => Object.assign({}, r, { _phase: phaseOf(r, today) }));
+  function select(rows, market, today, watched) {
+    const list = (rows || []).filter(r => market === 'ALL' || (market === 'WATCH' ? !!(watched && watched.has(r.id)) : marketOf(r) === market)).map(r => Object.assign({}, r, { _phase: phaseOf(r, today) }));
     const key = r => (isDate(r.start_date) ? r.start_date : isDate(r.listing_date) ? r.listing_date : '9999');
     return list.sort((x, y) => (PHASE[x._phase] || PHASE.rumoured)[2] - (PHASE[y._phase] || PHASE.rumoured)[2]
       || (x._phase === 'listed' ? (key(y) > key(x) ? 1 : -1) : (key(x) > key(y) ? 1 : key(x) < key(y) ? -1 : 0)));
   }
 
-  function card(r, today) {
+  function card(r, today, watched) {
     const [label, tone] = PHASE[r._phase] || PHASE.rumoured, rate = RATING[r.rating] !== undefined ? r.rating : 'Not rated';
     const size = fmtSize(r.deal_size_usd), url = /^https?:\/\//.test(r.source_url || '') ? r.source_url : null;
+    const on = !!(watched && watched.has(r.id));
+    const btn = watched && ID_RE.test(r.id || '') ? `<button class="ipo-watch${on ? ' on' : ''}" data-ipo-watch="${esc(r.id)}" aria-pressed="${on}">${on ? '★ Watching · tap to remove' : '☆ Watch'}</button>` : '';
     const ticker = r.ticker ? ` <span class="w-dim">${esc(r.ticker)}</span>` : '';
     return `<div class="ipo-card ipo-${esc(tone || 'n')}">
       <div class="ipo-top"><div class="ipo-name"><b>${esc(r.name)}</b>${ticker}</div>
@@ -59,26 +62,29 @@
         <div><span class="w-dim">Lists</span><b>${esc(fmtDate(r.listing_date, today))}</b></div></div>
       <div class="ipo-meta">${esc(fmtPrice(r.price_low, r.price_high, r.currency))}${size ? ` · ${esc(size)}` : ''}</div>
       ${r.note ? `<div class="ipo-note w-dim">${esc(r.note)}</div>` : ''}
+      ${btn}
       <div class="ipo-src w-dim">${url ? `<a href="${esc(url)}" target="_blank" rel="noopener noreferrer">${esc(r.source_name || 'Source')}</a>` : esc(r.source_name || '')}${r.as_of ? ` · as of ${esc(fmtDate(r.as_of, today))}` : ''}</div>
     </div>`;
   }
 
-  function html(rows, market, today) {
-    const count = m => select(rows, m, today).length;
-    const tabs = MARKETS.map(([k, ic, lb]) => `<button class="w-cat${market === k ? ' active' : ''}" data-ipo-mkt="${k}">${ic} ${lb} <span class="a-count">${count(k)}</span></button>`).join('');
-    const list = select(rows, market, today);
-    const body = list.length ? list.map(r => card(r, today)).join('')
-      : `<div class="w-dim" style="padding:12px 4px">No IPOs tracked for this market yet.</div>`;
+  function html(rows, market, today, watched) {
+    watched = watched || null;
+    const count = m => select(rows, m, today, watched).length;
+    const tabs = MARKETS.filter(m => m[0] !== 'WATCH' || watched).map(([k, ic, lb]) => `<button class="w-cat${market === k ? ' active' : ''}" data-ipo-mkt="${k}">${ic} ${lb} <span class="a-count">${count(k)}</span></button>`).join('');
+    const list = select(rows, market, today, watched);
+    const body = list.length ? list.map(r => card(r, today, watched)).join('')
+      : `<div class="w-dim" style="padding:12px 4px">${market === 'WATCH' ? 'Nothing watched yet. Tap ☆ Watch on any IPO to track it here.' : 'No IPOs tracked for this market yet.'}</div>`;
     return `<div class="w-cats">${tabs}</div>${body}
       <div class="w-dim w-small">Opens/closes = subscription window (US: roadshow launch / expected pricing). Ratings are third-party and show their source; “Not rated” means no source rates it. Information only, not advice.</div>`;
   }
 
-  const S = { market: 'ALL', rows: [], loaded: false, error: null };
+  const S = { market: 'ALL', rows: [], loaded: false, error: null, watched: null, msg: '', busy: new Set() };
   const todayIso = () => new Date().toISOString().slice(0, 10);
   function paint() {
     const el = typeof document !== 'undefined' && document.getElementById('ipo-content');
     if (!el) return;
-    el.innerHTML = S.error ? `<div style="color:var(--red);padding:8px">Could not load IPOs: ${esc(S.error)}</div>` : html(S.rows, S.market, todayIso());
+    el.innerHTML = S.error ? `<div style="color:var(--red);padding:8px">Could not load IPOs: ${esc(S.error)}</div>`
+      : (S.msg ? `<div style="color:var(--red);padding:6px 2px;font-size:12px">${esc(S.msg)}</div>` : '') + html(S.rows, S.market, todayIso(), S.watched);
   }
   async function loadIpo() {
     const el = document.getElementById('ipo-content');
@@ -88,15 +94,33 @@
       if (!r.ok) throw new Error(`${r.status}`);
       S.rows = await r.json(); S.error = null;
     } catch (e) { S.error = e.message; }
+    try {                                   // per-user watch list (encrypted in the private app); where it is not offered, the Watch buttons are simply not shown
+      const w = await fetch(`${PROXY}/ipo_watch?select=id`);
+      S.watched = w.ok ? new Set((await w.json()).map(x => x.id)) : null;
+    } catch (e) { S.watched = null; }
+    if (S.market === 'WATCH' && !S.watched) S.market = 'ALL';
     S.loaded = true; paint();
+  }
+  // Watch / remove one IPO. The change shows at once and is undone with a message if saving fails.
+  async function toggleWatch(id) {
+    if (!S.watched || !ID_RE.test(id) || S.busy.has(id)) return;
+    const was = S.watched.has(id);
+    S.busy.add(id); S.msg = ''; was ? S.watched.delete(id) : S.watched.add(id); paint();
+    try {
+      const r = await fetch(`${PROXY}/ipo/${was ? 'unwatch' : 'watch'}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+      if (!r.ok) throw new Error(`${r.status}`);
+    } catch (e) { was ? S.watched.add(id) : S.watched.delete(id); S.msg = `Could not ${was ? 'remove' : 'save'} that IPO (${e.message}). Try again.`; }
+    S.busy.delete(id); paint();
   }
   if (typeof document !== 'undefined') {
     document.addEventListener('click', e => {
-      const b = e.target && e.target.closest && e.target.closest('[data-ipo-mkt]');
-      if (b && MARKETS.some(m => m[0] === b.getAttribute('data-ipo-mkt'))) { S.market = b.getAttribute('data-ipo-mkt'); paint(); }
+      const t = e.target && e.target.closest ? e.target : null; if (!t) return;
+      const w = t.closest('[data-ipo-watch]'); if (w) { toggleWatch(w.getAttribute('data-ipo-watch')); return; }
+      const b = t.closest('[data-ipo-mkt]');
+      if (b && MARKETS.some(m => m[0] === b.getAttribute('data-ipo-mkt'))) { S.market = b.getAttribute('data-ipo-mkt'); S.msg = ''; paint(); }
     });
     root.loadIpo = loadIpo;
   }
-  root.IPO = { html, select, phaseOf, fmtDate, fmtPrice, fmtSize };
+  root.IPO = { html, select, phaseOf, fmtDate, fmtPrice, fmtSize, toggleWatch, _state: S };
   if (typeof module !== 'undefined' && module.exports) module.exports = root.IPO;
 })(typeof window !== 'undefined' ? window : globalThis);

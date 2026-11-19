@@ -7,7 +7,7 @@
   const ENCRYPTED = { portfolio_snapshots: 'portfolio_snapshots', portfolio_snapshots_all: 'portfolio_snapshots', positions: 'positions', positions_all: 'positions', alerts: 'alerts',
     analyst_ratings: 'analyst_ratings', holding_decisions: 'holding_decisions', value_buy_scores: 'value_buy_scores', strategy_recommendations: 'strategy_recommendations',
     profit_booking: 'profit_booking', profit_booking_summary: 'profit_booking_summary', returns_summary: 'returns_summary', realised_pnl: 'realised_pnl', dividends: 'dividends',
-    pie_history: 'pie_history', watchlist: 'watchlist', watchlist_analysis: 'watchlist_analysis' };
+    pie_history: 'pie_history', watchlist: 'watchlist', watchlist_analysis: 'watchlist_analysis', ipo_watch: 'ipo_watch' };
   const SHARED = new Set(['instrument_exposure', 'instrument_country_weights', 'instrument_sector_weights', 'instruments', 'user_ui_prefs', 'market_cache', 'ipo_calendar']);
   // JSON stored as text by the browser-side analysis. Parsed BEFORE defuse (which swaps every double quote), then defused as real data.
   const JSON_COLS = { value_buy_scores: ['entry_zones', 'scorecard', 'earnings', 'this_week'] };
@@ -35,6 +35,14 @@
         let body = {}; try { body = JSON.parse(init.body || '{}'); } catch (e) {}
         const v = Number(body.value); if (!/^[a-z_]{3,40}$/.test(body.key || '') || !Number.isFinite(v) || v < 0 || v > 1e6) return json(400, { error: 'Bad setting' });
         await opts.store.put('app_settings', [{ key: body.key, value: String(v) }], r => r.key); return json(200, { ok: true, value: v });
+      }
+      if (/^ipo\/(watch|unwatch)$/.test(route)) {                // per-user IPO watch list, stored encrypted like the stock watchlist
+        if (method !== 'POST') return json(405, { error: 'Method not allowed' });
+        let body = {}; try { body = JSON.parse(init.body || '{}'); } catch (e) {}
+        const id = String(body.id || ''); if (!/^[A-Z]{2,5}:[A-Z0-9_.\-]{1,40}$/.test(id)) return json(400, { error: 'Bad IPO id' });
+        if (route === 'ipo/watch') { if (!(await opts.store.load('ipo_watch')).some(r => r.id === id)) await opts.store.put('ipo_watch', [{ id, added_at: now() }], r => r.id); }
+        else await opts.store.remove('ipo_watch', id);
+        return json(200, { ok: true });
       }
       if (/^(chart|search|watchlist\/(add|remove))$/.test(route)) {
         if (method !== 'POST') return json(405, { error: 'Method not allowed' });

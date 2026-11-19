@@ -10,7 +10,7 @@ let pass = 0, fail = 0; const ok = (n, c) => { c ? pass++ : fail++; console.log(
 const files = readdirSync(new URL('../docs/js/', import.meta.url)).filter(f => f.endsWith('.js')), calls = [];
 for (const f of files) { const src = readFileSync(new URL('../docs/js/' + f, import.meta.url), 'utf8');
   for (const m of src.matchAll(/api\(\s*'([a-z_]+)'\s*,\s*([`'])((?:\\.|(?!\2).)*)\2/g)) calls.push([f, m[1], m[3].replace(/\$\{[^}]*\}/g, '1')]);
-  for (const m of src.matchAll(/\$\{PROXY\}\/([a-z_]+)(\?[^`'"]*)?/g)) if (!/^(auth|chart|search|watchlist|settings|alerts)$/.test(m[1]) || m[1] === 'alerts' && m[2]) calls.push([f, m[1], (m[2] || '').replace(/\$\{[^}]*\}/g, '1')]); }
+  for (const m of src.matchAll(/\$\{PROXY\}\/([a-z_]+)(\?[^`'"]*)?/g)) if (!/^(auth|chart|search|watchlist|settings|alerts|ipo)$/.test(m[1]) || m[1] === 'alerts' && m[2]) calls.push([f, m[1], (m[2] || '').replace(/\$\{[^}]*\}/g, '1')]); }
 const known = new Set([...Object.keys(SH.ENCRYPTED), ...SH.SHARED, 'institutional_flow_reports']);
 const unknown = calls.filter(([, t]) => !known.has(t)), bad = calls.filter(([, , p]) => { try { Q.parse(p); return false; } catch (e) { return true; } });
 ok(`all ${calls.length} dashboard data queries map to an encrypted or shared table`, calls.length > 30 && unknown.length === 0); if (unknown.length) console.log('   unmapped:', unknown.map(u => u.join(' ')).join('\n            '));
@@ -56,4 +56,15 @@ const vb = await (await sh.handle('/value_buy_scores?select=*&order=score.desc')
 ok('value_buy_scores: entry zones, scorecard and this-week target arrive as real objects, not mangled text', Array.isArray(vb[0].entry_zones) && vb[0].entry_zones[0].label === 'Ideal' && vb[0].scorecard[0].max === 20 && vb[0].this_week.price === 301.5 && vb[0].this_week.action === 'BUY');
 ok('value_buy_scores: text inside the parsed data is still defused', vb[0].entry_zones[0].note === 'near ‹52w‹ low');
 ok('value_buy_scores: unparsable text is left alone and does not break the call', vb[1].entry_zones === 'not json' && vb[1].scorecard === null && vb[1].this_week.a === 1);
+// 5) per-user IPO watch list: stored encrypted, watch is idempotent, unwatch removes, bad ids refused
+const post = (path, body) => sh.handle(path, { method: 'POST', body: JSON.stringify(body) });
+tables.ipo_watch = [];
+store.remove = store.remove || (async (k, key) => { tables[k] = (tables[k] || []).filter(r => r.id !== key); });
+const w1 = await post('/ipo/watch', { id: 'US:ANT' }), w2 = await post('/ipo/watch', { id: 'US:ANT' }), w3 = await post('/ipo/watch', { id: 'UK:AIRTELMONEY' });
+ok('ipo/watch saves to the encrypted ipo_watch table, once per IPO', w1.status === 200 && w2.status === 200 && w3.status === 200 && tables.ipo_watch.map(r => r.id).sort().join() === 'UK:AIRTELMONEY,US:ANT');
+const listed = await (await sh.handle('/ipo_watch?select=id')).json();
+ok('ipo_watch reads back through the dashboard query', listed.map(r => r.id).sort().join() === 'UK:AIRTELMONEY,US:ANT');
+const u1 = await post('/ipo/unwatch', { id: 'US:ANT' });
+ok('ipo/unwatch removes it and leaves the others', u1.status === 200 && tables.ipo_watch.map(r => r.id).join() === 'UK:AIRTELMONEY');
+ok('bad ids and wrong methods are refused', (await post('/ipo/watch', { id: '../x' })).status === 400 && (await post('/ipo/watch', {})).status === 400 && (await sh.handle('/ipo/watch', { method: 'GET' })).status === 405);
 console.log(`\n${pass} passed · ${fail} failed`); process.exit(fail ? 1 : 0);
