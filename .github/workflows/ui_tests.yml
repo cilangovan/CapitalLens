@@ -4,7 +4,7 @@ name: UI tests (mobile layout)
 # Runs on every dashboard change, and daily after the data refresh (new data can break a layout too).
 on:
   push:
-    paths: ['docs/**', 'tests/**', '.github/workflows/ui_tests.yml']
+    paths: ['docs/**', 'tests/**', 'documentation/**', '.github/workflows/ui_tests.yml']
   pull_request:
     paths: ['docs/**', 'tests/**']
   schedule:
@@ -42,3 +42,5 @@ jobs:
         run: python -u tests/login_flash_browser_test.py
       - name: IPO watch / remove (real clicks)
         run: python -u tests/ipo_watch_browser_test.py
+      - name: Documentation portal fits phone screens
+        run: python -u tests/docs_layout_test.py

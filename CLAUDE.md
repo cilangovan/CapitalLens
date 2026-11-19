@@ -12,6 +12,7 @@ anything new the owner asks for as a *standing* rule is added here in the same c
 6. **Be consistent**: reuse the existing patterns (collapsible cards, chips, `.w-cats` tabs, `api()` helper, defuse, encrypted store). Before adding UI, look at how the nearest existing feature does it.
 7. **Be honest about data**: if data can't be verified, say so in the UI (no fake "clear" status). Never invent ratings, prices or dates; name the source.
 8. When finishing a task, report what was verified and what could not be (e.g. no live data offline).
+9. **Documentation is part of the product, in git.** `documentation/` holds the complete docs: a page per menu (`documentation/menus/`), the UI and style guide, database and data flows, workflows, architecture and security, engineering guide. Any change to a menu, UI pattern, table, workflow or rule updates the matching page **in the same commit**, then run `python3 scripts/build_docs.py` (it regenerates `documentation/reference/*` from the code and the portal `docs/help/`). Never edit `docs/help/*` or `documentation/reference/*` by hand.
 
 ## UI rules
 - **Mobile first.** The owner views on a phone. Every dashboard/section must fit 360px and 390px with no sideways scroll, and this is checked by automated UI tests every time (`tests/ui_layout_test.py`, `tests/ipo_layout_test.py`). Tap targets >= 40px.
@@ -22,6 +23,7 @@ anything new the owner asks for as a *standing* rule is added here in the same c
 - A **Profit Booking Strategy** dashboard supports profit-booking and capital-protection decisions.
 - Shares held outside pies (NVIDIA, SpaceX, SGLN…) are listed on the positions dashboard in an **Untagged** category. The Emerging Markets pie is included everywhere.
 - History (value, 24h change, rate of return, 1D–1Y charts) comes from Trading 212's own data stored in Supabase, shown as a positions drill-down.
+- **Every dashboard has a footer with a 📘 Documentation link** to the portal (`/help/`, relative to the page: `help/` from `docs/index.html`, `../help/` from the others), plus a link on the sign-in box. The portal also fits 360px/390px (`tests/docs_layout_test.py`).
 - No login flash on refresh: the sign-in box stays hidden until the saved-session check finishes (`tests/login_flash_browser_test.py`).
 
 ## Data and security rules

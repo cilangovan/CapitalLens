@@ -5,9 +5,9 @@ name: Zero-knowledge tests
 # (a stale hash would make browsers refuse the script).
 on:
   push:
-    paths: ['docs/**', 'tests/**', 'scripts/**', 'cloudflare-worker/**', 'config/**', 'CLAUDE.md', '.github/workflows/zk_tests.yml']
+    paths: ['docs/**', 'tests/**', 'scripts/**', 'cloudflare-worker/**', 'config/**', 'CLAUDE.md', 'documentation/**', 'db/**', 'services/**', '.github/workflows/**']
   pull_request:
-    paths: ['docs/**', 'tests/**', 'scripts/**', 'cloudflare-worker/**', 'config/**', 'CLAUDE.md']
+    paths: ['docs/**', 'tests/**', 'scripts/**', 'cloudflare-worker/**', 'config/**', 'CLAUDE.md', 'documentation/**', 'db/**', 'services/**', '.github/workflows/**']
   workflow_dispatch:
 
 permissions:
@@ -43,6 +43,8 @@ jobs:
           git diff --exit-code -- docs/zkapp docs/zkapp-prod docs/zk-prod || (echo "generated pages are stale: run python3 scripts/build_zkapp.py and commit" && exit 1)
       - name: Owner's standing requirements (CLAUDE.md)
         run: python3 tests/standards_test.py
+      - name: Documentation portal is up to date
+        run: python3 scripts/build_docs.py --check
       - name: Relay syntax
         run: cp cloudflare-worker/relay.js /tmp/relay.mjs && node --check /tmp/relay.mjs
       - name: Zero-knowledge test suites

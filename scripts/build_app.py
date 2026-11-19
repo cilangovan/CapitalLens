@@ -16,6 +16,7 @@ def sub(s, a, b):
 
 # ── index.html ────────────────────────────────────────────────────────────────
 s = (DOCS / "index.html").read_text(encoding="utf-8")
+s = s.replace('href="help/"', 'href="../help/"')                       # documentation portal (footer + sign-in link)
 s = s.replace('src="js/', 'src="../js/').replace('src="vendor/', 'src="../vendor/')
 s = sub(s, '<script src="../js/auth.js"></script>', '<script src="app-auth.js"></script>')
 s = sub(s, '<script src="../js/api.js"></script>', '<script src="../js/api.js"></script>\n<script src="app-shim.js"></script>')

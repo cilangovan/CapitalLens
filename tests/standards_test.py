@@ -2,7 +2,8 @@
 1. CLAUDE.md exists and still carries every section.  2. No Claude/Anthropic/Co-Authored-By in commit messages.
 3. Every dashboard gets every module (legacy page and demo page load the same scripts).
 4. Every table the dashboards read is served: by the legacy worker, the private app's shim, or is a documented private-app-only route.
-5. No inline <script> blocks or javascript: URLs (strict CSP) in the source pages.  6. Generated pages exist for every dashboard."""
+5. No inline <script> blocks or javascript: URLs (strict CSP) in the source pages.  6. Generated pages exist for every dashboard.
+7. Documentation (documentation/ + docs/help portal): every menu, table and workflow documented, portal not stale, footer link on every dashboard."""
 import re, subprocess, sys
 from pathlib import Path
 
@@ -17,7 +18,10 @@ need = ["How to work", "UI rules", "Data and security rules", "Product rules", "
 check("CLAUDE.md exists and keeps every required section and rule", all(n in doc for n in need), str([n for n in need if n not in doc]))
 
 log = subprocess.run(["git", "log", "--format=%H%x1f%B%x1e"], cwd=ROOT, capture_output=True, text=True).stdout
-hits = [c.split("\x1f")[0][:8] for c in log.split("\x1e") if re.search(r"co-authored-by|claude|anthropic", c, re.I)]
+SIGNATURE = re.compile(r"co-authored-by|claude|anthropic", re.I)
+def signed(msg): return bool(SIGNATURE.search(re.sub(r"CLAUDE\.md", "", msg, flags=re.I)))       # the standing-requirements FILE is named CLAUDE.md; mentioning it is fine
+hits = [c.split("\x1f")[0][:8] for c in log.split("\x1e") if signed(c)]
+check("signature check self-test: flags a real signature, allows the CLAUDE.md file name", signed("fix\n\nCo-Authored-By: Claude <x@y>") and signed("made by Claude") and not signed("CLAUDE.md: rules"))
 check("no Claude / Anthropic / Co-Authored-By signature in any commit message", not hits, f"commits: {hits[:5]}")
 
 def scripts(f): return {s.split("/")[-1] for s in re.findall(r'<script src="([^"?]+)', (ROOT / f).read_text())}
@@ -46,6 +50,37 @@ for f in ("docs/index.html", "docs/demo/index.html"):
     problems += [f"{f}: inline <script>" for m in re.finditer(r"<script(?![^>]*\bsrc=)[^>]*>\s*\S", t)]
     problems += [f"{f}: javascript: URL" for _ in re.finditer(r"""(?:href|src)=["']\s*javascript:""", t, re.I)]
 check("no inline scripts or javascript: URLs in the source pages (strict CSP)", not problems, str(problems[:3]))
+
+# ── documentation is part of the product (CLAUDE.md: docs in git, linked from every footer) ─────────────────────
+sys.path.insert(0, str(ROOT / "scripts"))
+import build_docs
+md_files = {str(p.relative_to(ROOT / "documentation")) for p in (ROOT / "documentation").rglob("*.md")}
+check("every documentation/*.md page is in the portal navigation and every nav page exists", md_files == set(build_docs.PAGES), f"not in NAV: {sorted(md_files - set(build_docs.PAGES))} · missing file: {sorted(set(build_docs.PAGES) - md_files)}")
+stale = build_docs.build(check=True)
+check("generated references and the docs/help portal are up to date (run scripts/build_docs.py)", not stale, str(stale[:4]))
+menus = re.findall(r"""onclick="showTab\('(\w+)',this\)""", (ROOT / "docs/index.html").read_text())
+def broken_links():
+    out = []
+    for f in (ROOT / "docs/help").rglob("*.html"):
+        for h in re.findall(r'href="([^"]+)"', f.read_text()):
+            if re.match(r"[a-z]+:", h): continue
+            path = (f.parent / h.split("#")[0]).resolve() if h.split("#")[0] else f
+            if not path.exists() and not (path.is_dir() and (path / "index.html").exists()): out.append(f"{f.relative_to(ROOT)} -> {h}")
+    return out
+check("every internal link in the documentation portal resolves", not broken_links(), str(broken_links()[:4]))
+check("every dashboard menu has its own documentation page", len(menus) >= 9 and "**missing**" not in (ROOT / "documentation/reference/menu-map.md").read_text(), "see documentation/reference/menu-map.md")
+dbdoc = (ROOT / "documentation/database.md").read_text()
+check("every database table is explained in documentation/database.md", all(t in dbdoc for t in build_docs.tables()), str([t for t in build_docs.tables() if t not in dbdoc]))
+wfdoc = (ROOT / "documentation/workflows.md").read_text().lower()
+check("every GitHub Actions workflow is explained in documentation/workflows.md",
+      all(re.sub(r"\s*\(.*", "", w["name"]).lower() in wfdoc or w["file"].lower() in wfdoc for w in build_docs.workflows()), str([w["file"] for w in build_docs.workflows() if re.sub(r"\s*\(.*", "", w["name"]).lower() not in wfdoc and w["file"].lower() not in wfdoc]))
+foot = [("docs/index.html", 'href="help/"'), ("docs/demo/index.html", 'href="../help/"'), ("docs/app/index.html", 'href="../help/"'), ("docs/zkapp/index.html", 'href="../help/"'),
+        ("docs/zkapp-prod/index.html", 'href="../help/"'), ("docs/zk/index.html", 'href="../help/"'), ("docs/zk-prod/index.html", 'href="../help/"')]
+nofoot = [f for f, h in foot if not ('class="app-footer"' in (ROOT / f).read_text() and h in (ROOT / f).read_text() and "📘 Documentation" in (ROOT / f).read_text())]
+check("every dashboard footer links to the documentation portal", not nofoot, str(nofoot))
+check("footer link is a 40px tap target", all("min-height:40px" in (ROOT / f).read_text().replace(" ", "") for f in ("docs/index.html", "docs/demo/index.html", "docs/zk/index.html")))
+check("documentation portal has no script and a strict CSP", all("<script" not in p.read_text() and "default-src 'none'" in p.read_text() for p in (ROOT / "docs/help").rglob("*.html")))
+check("CLAUDE.md records the documentation rule", "documentation/" in doc and "Documentation" in doc)
 
 check("generated pages exist for every dashboard", all((ROOT / p).exists() for p in ("docs/app/index.html", "docs/zkapp/index.html", "docs/zkapp-prod/index.html")))
 print("\nstandards: " + ("all good" if not bad else f"{bad} failed")); sys.exit(1 if bad else 0)
