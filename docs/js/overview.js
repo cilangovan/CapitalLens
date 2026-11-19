@@ -28,10 +28,11 @@ function ovHeadline(snap) {
   const cash = +snap.cash || 0, total = +snap.total_value || 0;
   if (has) {
     const cost = +a.invested, res = +a.ppl || 0;
-    return { exact: true, total, investments: cost + res, cost, result: res, pct: cost ? res / cost * 100 : 0, cash };
+    const reserved = (+a.blocked || 0) + (+a.pieCash || 0);   // cash held for pending limit orders (+ pie cash) — not "free"
+    return { exact: true, total, investments: cost + res, cost, result: res, pct: cost ? res / cost * 100 : 0, cash, reserved };
   }
   const inv = +snap.invested || 0, ppl = +snap.total_ppl || (total - inv);
-  return { exact: false, total, investments: inv, cost: null, result: ppl, pct: inv ? ppl / inv * 100 : 0, cash };
+  return { exact: false, total, investments: inv, cost: null, result: ppl, pct: inv ? ppl / inv * 100 : 0, cash, reserved: null };
 }
 
 async function loadOverview() {
@@ -58,6 +59,7 @@ async function loadOverview() {
     <div class="stat-card"><div class="label">Investments</div><div class="value">${fmtGbp(H.investments)}</div><div class="sub">${H.exact ? 'value of your shares' : 'total − free cash (estimate)'}</div></div>
     ${H.exact ? `<div class="stat-card"><div class="label">Cost basis</div><div class="value">${fmtGbp(H.cost)}</div><div class="sub">money put into them</div></div>` : ''}
     <div class="stat-card"><div class="label">Cash</div><div class="value">${fmtGbp(cash)}</div><div class="sub">free cash</div></div>
+    ${H.exact && H.reserved > 0 ? `<div class="stat-card"><div class="label">Reserved</div><div class="value">${fmtGbp(H.reserved)}</div><div class="sub">held for pending orders</div></div>` : ''}
     <div class="stat-card"><div class="label">Unrealised P&amp;L</div><div class="value ${clr(ppl)}">${fmtGbp(ppl)}</div><div class="sub ${clr(pplPct)}">${IS_GUEST ? '' : fmt(pplPct)+'%' + (H.exact ? ' of cost' : '')}</div></div>
     <div class="stat-card"><div class="label">Winners</div><div class="value green">${winners}</div></div>
     <div class="stat-card"><div class="label">Losers</div><div class="value red">${losers}</div></div>

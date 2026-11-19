@@ -23,5 +23,8 @@ ok('Unrealised % is on cost basis (T212: −0.46%), not on total − free cash',
 ok('Total and free cash are kept separate from Investments', H.total === 9214.07 && H.cash === 4343.84);
 const O = ctx.ovHeadline({ total_value: 100, cash: 20, invested: 80, total_ppl: 5 });
 ok('old snapshot without account figures: falls back, flagged as not exact', !O.exact && O.cost === null && O.investments === 80 && O.result === 5 && Math.abs(O.pct - 6.25) < 1e-9);
+const R = ctx.ovHeadline({ total_value: 9201.75, cash: 4343.72, raw: { account: { invested: 4758.85, ppl: -23.11, total: 9201.75, free: 4343.72, blocked: 122.29, pieCash: 0 } } });
+ok('reserved cash (pending limit orders) is its own figure and closes the gap', Math.abs(R.reserved - 122.29) < 0.005 && Math.abs(R.investments + R.cash + R.reserved - R.total) < 0.005);
+ok('estimate path reports no reserved figure', O.reserved === null);
 ok('empty snapshot does not throw', ctx.ovHeadline(undefined).total === 0);
 console.log(`${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

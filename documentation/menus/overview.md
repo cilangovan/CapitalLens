@@ -8,7 +8,7 @@ Tab id `overview` · loader `loadOverview()` · `docs/js/overview.js`
 
 | Card | What it shows | Data |
 |---|---|---|
-| **Stats strip** (`#stats-strip`) | **Total Value** (whole account incl. cash), **Investments** (value of your shares = cost basis + unrealised result), **Cost basis** (money put into the shares you hold), **Cash** (free cash), **Unrealised P&L** (£ and % **of cost basis**), Winners, Losers, Positions, Alerts | The snapshot's own Trading 212 account figures (`raw.account`: `invested`, `ppl`, `total`, `free`) so the numbers match the Trading 212 app; per-position counts from `positions` |
+| **Stats strip** (`#stats-strip`) | **Total Value** (whole account incl. cash), **Investments** (value of your shares = cost basis + unrealised result), **Cost basis** (money put into the shares you hold), **Cash** (free cash), **Reserved** (cash held for pending limit orders plus pie cash; shown only when above zero), **Unrealised P&L** (£ and % **of cost basis**), Winners, Losers, Positions, Alerts | The snapshot's own Trading 212 account figures (`raw.account`: `invested`, `ppl`, `total`, `free`, `blocked`, `pieCash`) so the numbers match the Trading 212 app; per-position counts from `positions` |
 | **Gain % by Position** | Bar chart of each holding's gain. Period buttons **1D · 1W · 1M · 3M · 1Y · All**. Holdings with no data for a period show "No data yet for this period" instead of a zero bar | `positions` of the latest snapshot compared with the snapshot nearest the period start |
 | **Portfolio by Pie** | Doughnut of value per pie. Pie colours are derived from the pie name, so no user pie names are stored in code | `positions.pie` |
 | **Active Alerts** | The unread inbox alerts, newest first | `alerts` |
