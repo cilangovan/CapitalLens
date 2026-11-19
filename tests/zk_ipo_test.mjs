@@ -38,6 +38,7 @@ const hw = IPO.html(rows, 'ALL', T, watched);
 ok('watch: ⭐ Watching tab appears only when watching is available, with its count', /data-ipo-mkt="WATCH"[^>]*>⭐ Watching <span class="a-count">1<\/span>/.test(hw) && !/data-ipo-mkt="WATCH"/.test(IPO.html(rows, 'ALL', T)));
 ok('watch: watched IPO shows a remove button, others a Watch button; none when unavailable', /data-ipo-watch="US:A"[^>]*aria-pressed="true">★ Watching · tap to remove/.test(hw) && /data-ipo-watch="US:B"[^>]*aria-pressed="false">☆ Watch/.test(hw) && !/data-ipo-watch/.test(IPO.html(rows, 'ALL', T)));
 ok('watch: the Watching tab lists only watched IPOs; empty state explains how', IPO.select(rows, 'WATCH', T, watched).map(r => r.id).join() === 'US:A' && /Nothing watched yet/.test(IPO.html(rows, 'WATCH', T, new Set())));
+ok('watch: a watched IPO has a ✕ remove button, an unwatched one does not, and none appear when watching is unavailable', /class="w-x ipo-x" data-ipo-watch="US:A"/.test(hw) && !/ipo-x" data-ipo-watch="US:B"/.test(hw) && !/ipo-x/.test(IPO.html(rows, 'ALL', T)));
 ok('watch: an id that is not a calendar id never gets a button (XSS-safe attribute)', !/data-ipo-watch="[^"]*(<|>|\s)/.test(IPO.html([{ id: 'x" onclick="1', market: 'US', name: 'Bad', status: 'upcoming' }], 'ALL', T, new Set())));
 const sent = []; globalThis.PROXY = 'https://p/rest/v1'; let nextOk = true;
 globalThis.fetch = async (u, o) => { sent.push([u, JSON.parse(o.body)]); return { ok: nextOk, status: nextOk ? 200 : 500 }; };

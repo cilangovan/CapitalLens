@@ -33,7 +33,7 @@ IPOs across **all markets**: where each lists, status, rating **with its source*
 | Market tabs | **ALL**, **⭐ Watching** (only when per-user watching is available), **US**, **UK**, **IN**, **HK**, **OTHER** |
 | Status (phase) | open · closed · upcoming · priced · filed · rumoured · listed · postponed · withdrawn, derived from the dates |
 | Each row | Name, ticker, exchange, sector, rating pill (hover for source), **Opens / Closes / Lists**, price range or price, deal size, note, source link |
-| **Watch / Remove** | Per-user, stored encrypted in the private app (`ipo_watch`); the Watching tab lists your picks. Legacy and demo dashboards hide the buttons |
+| **Watch / Remove** | A ☆ Watch button on every card; a watched card shows ★ Watching and a **✕** (same ✕ as the stock watchlist, top right, 40px) that removes it from your list. Per-user, stored encrypted in the private app (`ipo_watch`); the Watching tab lists your picks. Legacy and demo dashboards hide the buttons |
 
 - **Honest ratings:** a rating other than *Not rated* must carry a `rating_source`; ratings are never invented. Today all rows are *Not rated* until a rating source is chosen.
 - **Honest dates:** an IPO whose price is not final says so in its note (for example "final price not confirmed").

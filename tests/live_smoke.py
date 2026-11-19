@@ -45,7 +45,7 @@ def main():
                 print("✓ sign-in reaches the worker from the live site")
         # fake session → data calls must be refused cleanly
         page.evaluate("() => { sessionStorage.setItem('t212_auth','master'); sessionStorage.setItem('t212_token','fake-session-ci'); }")
-        page.reload(wait_until="networkidle")
+        page.reload(wait_until="load")      # a fake session lands on a dashboard that keeps polling, so the network never goes idle
         page.wait_for_timeout(4000)
         sub = page.evaluate("() => (document.getElementById('login-subtitle')||{}).textContent || ''")
         print("after fake session:", sub.strip())

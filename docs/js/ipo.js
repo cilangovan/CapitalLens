@@ -50,10 +50,11 @@
     const size = fmtSize(r.deal_size_usd), url = /^https?:\/\//.test(r.source_url || '') ? r.source_url : null;
     const on = !!(watched && watched.has(r.id));
     const btn = watched && ID_RE.test(r.id || '') ? `<button class="ipo-watch${on ? ' on' : ''}" data-ipo-watch="${esc(r.id)}" aria-pressed="${on}">${on ? '★ Watching · tap to remove' : '☆ Watch'}</button>` : '';
+    const x = on && ID_RE.test(r.id || '') ? `<button class="w-x ipo-x" data-ipo-watch="${esc(r.id)}" title="Remove from my watchlist" aria-label="Remove ${esc(r.name)} from my watchlist">✕</button>` : '';   // same ✕ as the stock watchlist
     const ticker = r.ticker ? ` <span class="w-dim">${esc(r.ticker)}</span>` : '';
     return `<div class="ipo-card ipo-${esc(tone || 'n')}">
       <div class="ipo-top"><div class="ipo-name"><b>${esc(r.name)}</b>${ticker}</div>
-        <span class="ipo-pill ${esc(tone)}">${esc(label)}</span></div>
+        <span class="ipo-pill ${esc(tone)}">${esc(label)}</span>${x}</div>
       <div class="ipo-chips"><span class="w-chip">${FLAG[r.market] || '🌍'} ${esc(r.exchange || 'Exchange TBC')}</span>${r.sector ? `<span class="w-chip">${esc(r.sector)}</span>` : ''}
         <span class="ipo-pill ${RATING[rate]}" title="${esc(r.rating_source ? 'Rating source: ' + r.rating_source : 'No rating source yet')}">★ ${esc(rate)}</span></div>
       <div class="ipo-dates">
