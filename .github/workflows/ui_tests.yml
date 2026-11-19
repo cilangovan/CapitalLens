@@ -38,3 +38,5 @@ jobs:
         run: python -u tests/ui_layout_test.py
       - name: IPO card fits phone screens
         run: python -u tests/ipo_layout_test.py
+      - name: No sign-in flash on refresh (private app, real browser)
+        run: python -u tests/login_flash_browser_test.py
