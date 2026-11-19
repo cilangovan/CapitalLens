@@ -3,7 +3,7 @@
 > **Generated** by `scripts/build_docs.py` from `db/schema.sql` and `db/tenant/*.sql`. Do not edit by hand; change the SQL and rebuild.
 > Concepts, data flows and who writes each table are in [Database & data flows](../database.md).
 
-36 tables in the `public` schema.
+38 tables in the `public` schema.
 
 | Table | Columns | Defined in |
 |---|---|---|
@@ -21,7 +21,9 @@
 | [`instruments`](#instruments) | 8 | `db/schema.sql`, `db/tenant/01_schema.sql` |
 | [`ipo_calendar`](#ipo_calendar) | 22 | `db/tenant/15_ipo_calendar.sql` |
 | [`market_cache`](#market_cache) | 3 | `db/tenant/12_market_cache.sql` |
+| [`ops_daily`](#ops_daily) | 7 | `db/tenant/16_ops_dashboard.sql` |
 | [`pie_history`](#pie_history) | 4 | `db/schema.sql`, `db/tenant/01_schema.sql` |
+| [`platform_admins`](#platform_admins) | 2 | `db/tenant/16_ops_dashboard.sql` |
 | [`portfolio_snapshots`](#portfolio_snapshots) | 10 | `db/schema.sql`, `db/tenant/01_schema.sql` |
 | [`portfolio_snapshots_archive`](#portfolio_snapshots_archive) | 8 | `db/schema.sql` |
 | [`positions`](#positions) | 16 | `db/schema.sql`, `db/tenant/01_schema.sql` |
@@ -258,6 +260,18 @@
 | `payload` | `jsonb not null` |
 | `fetched_at` | `timestamptz not null default now()` |
 
+## ops_daily
+
+| Column | Definition |
+|---|---|
+| `day` | `date primary key` |
+| `db_bytes` | `bigint not null` |
+| `enc_rows` | `bigint not null` |
+| `users` | `integer not null` |
+| `active_7d` | `integer not null` |
+| `signups` | `integer not null` |
+| `recorded_at` | `timestamptz not null default now()` |
+
 ## pie_history
 
 Per-pie daily series for the positions drill-down. Rebuilt daily by services/pie_history_service.py.
@@ -268,6 +282,13 @@ Per-pie daily series for the positions drill-down. Rebuilt daily by services/pie
 | `updated_at` | `timestamp with time zone default now()` |
 | `series` | `jsonb not null` |
 | `user_id` | `uuid not null default auth.uid() references auth.users(id) on delete cascade` |
+
+## platform_admins
+
+| Column | Definition |
+|---|---|
+| `user_id` | `uuid primary key` |
+| `added_at` | `timestamptz not null default now()` |
 
 ## portfolio_snapshots
 

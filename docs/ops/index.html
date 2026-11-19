@@ -1,0 +1,50 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="referrer" content="no-referrer">
+<meta name="robots" content="noindex,nofollow">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self' 'unsafe-inline'; connect-src https://ggprfdetivzekjxlpvyq.supabase.co https://api.github.com; base-uri 'none'; form-action 'none'; frame-ancestors 'none'">
+<title>CapitalLens · platform operations</title>
+<style>
+ *{box-sizing:border-box} body{font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:#0f1117;color:#e2e8f0;margin:0;padding:14px;max-width:960px;margin:0 auto}
+ h1{font-size:18px;margin:0 0 2px} h2{font-size:14px;margin:0 0 8px;color:#a5b4fc} .dim{color:#8892a4;font-size:12px}
+ .card{background:#1a1d27;border:1px solid #2d3353;border-radius:10px;padding:14px;margin:12px 0}
+ input{width:100%;padding:11px;margin:4px 0 10px;background:#0f1117;border:1px solid #2d3353;border-radius:6px;color:#e2e8f0;font-size:15px}
+ button{background:#6366f1;border:0;color:#fff;border-radius:6px;padding:11px 16px;min-height:44px;font-size:14px;cursor:pointer;margin-right:6px} button.alt{background:#2d3353}
+ .grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(140px,1fr));gap:10px} .tile{background:#0f1117;border:1px solid #2d3353;border-radius:8px;padding:10px}
+ .tile .l{font-size:11px;color:#8892a4;text-transform:uppercase} .tile .v{font-size:20px;font-weight:700;margin-top:2px} .tile .s{font-size:11px;color:#8892a4}
+ .scroll{overflow-x:auto} table{border-collapse:collapse;width:100%;font-size:13px} th,td{text-align:left;padding:6px 8px;border-bottom:1px solid #2d3353;white-space:nowrap} th{color:#8892a4;font-weight:600}
+ .bar{height:8px;background:#6366f1;border-radius:4px;min-width:2px} .ok{color:#4ade80} .bad{color:#f87171} .warn{color:#fbbf24} .hide{display:none}
+ .err{color:#f87171;font-size:13px;min-height:18px} .spin{display:inline-block;width:14px;height:14px;border:2px solid #2d3353;border-top-color:#6366f1;border-radius:50%;animation:r 1s linear infinite;vertical-align:middle} @keyframes r{to{transform:rotate(360deg)}}
+ code{background:#0f1117;padding:2px 5px;border-radius:4px;word-break:break-all}
+</style></head><body>
+<h1>Platform operations</h1><div class="dim">Staff only · aggregate and operational data · no customer content</div>
+
+<div id="login" class="card">
+  <h2>Sign in</h2>
+  <label class="dim" for="em">Staff email</label><input id="em" type="email" autocomplete="username">
+  <label class="dim" for="pw">Password</label><input id="pw" type="password" autocomplete="current-password">
+  <button id="btn-login">Sign in</button><div id="login-err" class="err"></div>
+</div>
+
+<div id="mfa" class="card hide">
+  <h2 id="mfa-title">Second factor</h2>
+  <div id="mfa-enrol" class="hide dim">No authenticator is set up for this account yet. Add this key to your authenticator app (type it in as a time-based key):<br><code id="mfa-secret"></code></div>
+  <label class="dim" for="mfa-code">6-digit code</label><input id="mfa-code" inputmode="numeric" autocomplete="one-time-code" maxlength="6">
+  <button id="btn-mfa">Verify</button><div id="mfa-err" class="err"></div>
+</div>
+
+<div id="app" class="hide">
+  <div class="card"><button class="alt" id="btn-refresh">Refresh</button><button class="alt" id="btn-out">Sign out</button> <span id="stamp" class="dim"></span></div>
+  <div id="denied" class="card hide err"></div>
+  <div id="stats" class="grid"></div>
+  <div class="card"><h2>Database growth (daily snapshots)</h2><div id="growth" class="scroll"><span class="spin"></span></div></div>
+  <div class="card"><h2>Largest tables</h2><div id="tables" class="scroll"></div></div>
+  <div class="card"><h2>Stored records by kind (counts only, all encrypted)</h2><div id="kinds" class="scroll"></div></div>
+  <div class="card"><h2>Sign-ups, last 30 days</h2><div id="signups" class="scroll"></div></div>
+  <div class="card"><h2>Privileged access events, last 7 days</h2><div id="audit" class="scroll"></div></div>
+  <div class="card"><h2>Recent workflow runs (GitHub Actions)</h2><div id="runs" class="scroll"><span class="spin"></span></div></div>
+  <div class="card"><h2>Not shown yet</h2><div class="dim">API calls, egress, Cloudflare R2 backup size and Worker errors need a read-only token held server-side. Tracked in the ops epic (#23); until then use the Supabase and Cloudflare dashboards.</div></div>
+</div>
+<script src="ops.js"></script>
+</body></html>

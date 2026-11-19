@@ -10,81 +10,30 @@
 <a class="back" href="../">← Open the app</a></header>
 <div class="layout"><details class="side side-m"><summary>Contents</summary><nav><div class="nav-sec">Start here</div><a href="index.html">Documentation home</a><a href="product-overview.html">Product overview</a><div class="nav-sec">Menus</div><a href="menus/app-shell.html">App shell: sign-in, header, footer</a><a href="menus/overview.html">📊 Overview</a><a href="menus/pnl-bubbles.html">🫧 P&amp;L Bubbles</a><a href="menus/positions.html">📋 Positions</a><a href="menus/analyst.html">🔬 Analyst</a><a href="menus/strategy.html">🎯 Strategy</a><a href="menus/profit-booking.html">💰 Profit Booking</a><a href="menus/returns.html">📈 Returns</a><a href="menus/watchlist.html">⭐ Watchlist &amp; IPO Watch</a><a href="menus/alerts.html">🔔 Alerts</a><a href="menus/settings-and-account.html">⚙ Settings &amp; account</a><div class="nav-sec">Design</div><a href="ui-design-system.html">UI &amp; style guide</a><div class="nav-sec">Data</div><a href="database.html">Database &amp; data flows</a><a href="reference/database-tables.html">Table reference (generated)</a><div class="nav-sec">Operations</div><a href="workflows.html">Workflows &amp; schedules</a><a href="reference/workflows.html">Workflow reference (generated)</a><a href="architecture-and-security.html">Architecture &amp; security</a><a href="ops-dashboard.html" class=cur>Internal ops dashboard (planned)</a><div class="nav-sec">Engineering</div><a href="engineering-guide.html">Engineering guide</a><a href="reference/menu-map.html">Menu map (generated)</a></nav></details><div class="side side-d"><nav><div class="nav-sec">Start here</div><a href="index.html">Documentation home</a><a href="product-overview.html">Product overview</a><div class="nav-sec">Menus</div><a href="menus/app-shell.html">App shell: sign-in, header, footer</a><a href="menus/overview.html">📊 Overview</a><a href="menus/pnl-bubbles.html">🫧 P&amp;L Bubbles</a><a href="menus/positions.html">📋 Positions</a><a href="menus/analyst.html">🔬 Analyst</a><a href="menus/strategy.html">🎯 Strategy</a><a href="menus/profit-booking.html">💰 Profit Booking</a><a href="menus/returns.html">📈 Returns</a><a href="menus/watchlist.html">⭐ Watchlist &amp; IPO Watch</a><a href="menus/alerts.html">🔔 Alerts</a><a href="menus/settings-and-account.html">⚙ Settings &amp; account</a><div class="nav-sec">Design</div><a href="ui-design-system.html">UI &amp; style guide</a><div class="nav-sec">Data</div><a href="database.html">Database &amp; data flows</a><a href="reference/database-tables.html">Table reference (generated)</a><div class="nav-sec">Operations</div><a href="workflows.html">Workflows &amp; schedules</a><a href="reference/workflows.html">Workflow reference (generated)</a><a href="architecture-and-security.html">Architecture &amp; security</a><a href="ops-dashboard.html" class=cur>Internal ops dashboard (planned)</a><div class="nav-sec">Engineering</div><a href="engineering-guide.html">Engineering guide</a><a href="reference/menu-map.html">Menu map (generated)</a></nav></div>
 <main><article><h1 id="internal-operations-dashboard-platform-team-only">Internal operations dashboard (platform team only)</h1>
-<p>Status: <strong>planned</strong> (epic #23). Nothing here is built yet. This page is the design and will be kept in step with every panel and alert.</p>
+<p>Status: <strong>phase 1 built</strong> (epic #23). Page: <code>docs/ops/</code> (not linked from any customer page, <code>noindex</code>). Built in-house on purpose: no third-party monitoring service and no service-role key leaves our own systems.</p>
 <h2 id="who-and-what">Who and what</h2>
-<p>For the people who run CapitalLens, <strong>not customers</strong>. It answers: is anything failing, how fast is the database growing, how many API calls and how much egress are we using, who is active, what do the logs say, and are the Cloudflare R2 backups healthy.</p>
-<h2 id="rules-non-negotiable">Rules (non-negotiable)</h2>
-<ul>
-<li><strong>Platform staff only, enforced on the server side.</strong> A hidden link or a client-side flag is not access control.</li>
-<li><strong>Aggregate and operational data only.</strong> No portfolio data, ciphertext, API keys, Trading 212 keys or emails. The zero-knowledge model must still hold.</li>
-<li><strong>Read-only credentials</strong> kept as secrets, never in git or in page JavaScript.</li>
-<li><strong>Every panel names its source</strong>, and estimates are labelled.</li>
-</ul>
-<h2 id="planned-panels">Planned panels</h2>
-<div class="tbl"><table>
-<thead>
-<tr>
-<th>Panel</th>
-<th>Shows</th>
-<th>Source (to verify)</th>
-<th>Alert</th>
-</tr>
-</thead>
-<tbody>
-<tr>
-<td>Failed runs</td>
-<td>GitHub Actions failures, last success time, failing step; Worker errors</td>
-<td>GitHub API, Cloudflare Workers analytics</td>
-<td>scheduled job missed or failed twice</td>
-</tr>
-<tr>
-<td>Database</td>
-<td>size, daily growth, size per table, connections, days to plan limit</td>
-<td>Supabase metrics / management API</td>
-<td>80% of plan size</td>
-</tr>
-<tr>
-<td>API calls</td>
-<td>requests by endpoint, error rate, latency, per-provider counters (market data, Trading 212)</td>
-<td>Supabase usage, Worker analytics</td>
-<td>error-rate spike</td>
-</tr>
-<tr>
-<td>Ingress / egress</td>
-<td>bandwidth against plan allowance</td>
-<td>Supabase usage</td>
-<td>80% of allowance</td>
-</tr>
-<tr>
-<td>Active users</td>
-<td>daily/weekly/monthly active, sign-ups, failed sign-ins (counts only)</td>
-<td>Supabase auth aggregates</td>
-<td>none</td>
-</tr>
-<tr>
-<td>Logs</td>
-<td>search across API, Postgres, Auth and Worker logs, with redaction</td>
-<td>Supabase logs, Worker logs</td>
-<td>none</td>
-</tr>
-<tr>
-<td>R2 backups</td>
-<td>bucket size and growth, last backup time and size, restore-test age</td>
-<td>Cloudflare API</td>
-<td>backup older than 26 h or much smaller</td>
-</tr>
-</tbody>
-</table></div>
-<h2 id="delivery-proposed-in-15-awaiting-owner-approval">Delivery (proposed in #15, awaiting owner approval)</h2>
-<p><strong>Grafana Cloud free tier</strong> (10,000 series, 50 GB logs, 14-day retention, 3 users per the vendor's pricing pages) with its own sign-in and MFA. Data comes through least-privilege read-only connections:</p>
-<ul>
-<li><strong>Database, active users, growth:</strong> a dedicated <code>ops</code> schema of views (counts and sizes only) read by an <code>ops_reader</code> role. The Supabase Metrics API is <strong>not</strong> used for these because it needs the project's service-role key, which bypasses row-level security.</li>
-<li><strong>R2 and Workers:</strong> Cloudflare GraphQL Analytics with a read-only token.</li>
-<li><strong>Failed runs:</strong> GitHub Actions API with a read-only token.</li>
-<li><strong>History beyond 14 days:</strong> a small <code>ops.daily_stats</code> table (one row a day), or the paid plan if needed.</li>
-</ul>
-<p>Credentials live only in Grafana's data-source settings, never in git or page JavaScript.</p>
+<p>For the people who run CapitalLens, <strong>not customers</strong>. Phase 1 shows: database size and daily growth, largest tables, stored-record counts by kind, users and active users (24 h, 7 d, 30 d), sign-ups for the last 30 days, privileged-access events from the audit log, and recent GitHub Actions runs with failures.</p>
+<h2 id="how-access-is-enforced-in-postgres-not-in-the-browser">How access is enforced (in Postgres, not in the browser)</h2>
+<ol>
+<li>The page signs in with Supabase Auth using a <strong>dedicated staff account</strong>, separate from any customer account.</li>
+<li>The account must be listed in <code>platform_admins</code> <strong>and</strong> have passed a <strong>second factor (authenticator app)</strong>. The database functions <code>ops_overview()</code> and <code>ops_record_daily()</code> refuse any session that is not both (the token must carry <code>aal2</code>). A password alone is never enough.</li>
+<li>The functions are <code>security definer</code> with a fixed <code>search_path</code> and return <strong>counts and sizes only</strong>: no email, key, ciphertext or portfolio data. Customers have no grants and no policies on <code>platform_admins</code> or <code>ops_daily</code>.</li>
+<li>The page holds only the public key. The session lives in memory (nothing in browser storage) and ends on sign-out or reload.</li>
+<li>Hiding the URL is not the protection; the database refusing everyone else is.</li>
+</ol>
+<h2 id="making-a-staff-account-owner-steps">Making a staff account (owner steps)</h2>
+<ol>
+<li>In the Supabase dashboard, Authentication, add a user (a new staff email and a strong password stored in your password manager).</li>
+<li>Tell the engineer the account's email. They run one statement that inserts that account's id into <code>platform_admins</code>.</li>
+<li>Open <code>/ops/</code> on the Pages site, sign in, and add the authenticator on first sign-in (type the shown key into your authenticator app), then enter the 6-digit code.</li>
+</ol>
+<h2 id="what-is-not-shown-yet">What is not shown yet</h2>
+<p>API calls, egress, Cloudflare R2 backup size and growth, and Worker errors need a read-only token. They will be fetched by a small server-side function that checks the same staff and second-factor rule, so no token is ever in a page (tracked in #16 to #21). Until then use the Supabase and Cloudflare dashboards. GitHub run data is public, so it is read directly.</p>
+<h2 id="data-and-tables">Data and tables</h2>
+<p><code>platform_admins</code>, <code>ops_daily</code> (see the database page); migration <code>db/tenant/16_ops_dashboard.sql</code>. Growth needs at least two days of snapshots; the page says so rather than inventing a trend. A snapshot is recorded each time staff open or refresh the page ("nothing runs while the app is closed").</p>
+<h2 id="tests">Tests</h2>
+<p><code>tests/zk_ops_test.mjs</code> (helpers, no secrets in the page, strict CSP, no storage, the database rule requires the second factor, no grants for customers) and <code>tests/ops_layout_test.py</code> (phone layout and the signed-out view).</p>
 <h2 id="backlog">Backlog</h2>
-<p>Epic #23, with #15 tooling and access, #16 database, #17 API and egress, #18 active users, #19 failed runs, #20 R2, #21 logs and redaction, #22 documentation and runbook. The public/admin documentation split is tracked in #10; this page moves to the admin-only docs when that is done.</p></article>
+<p>Epic #23: #15 tooling and access (decided: build in-house), #16 database, #17 API and egress, #18 active users, #19 failed runs, #20 R2, #21 logs and redaction, #22 documentation. The public/admin documentation split is #10; this page moves to the admin-only docs when that is done.</p></article>
 <footer class="foot"><a href="https://github.com/cilangovan/CapitalLens/blob/main/documentation/ops-dashboard.md">Edit this page on GitHub</a> · <a href="../">Back to the dashboard</a> · <a href="index.html">Documentation home</a></footer></main></div>
 </body></html>

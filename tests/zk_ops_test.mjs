@@ -1,0 +1,22 @@
+// Run: node tests/zk_ops_test.mjs — the internal ops page: helpers, and the security properties that can be checked from the repo.
+import { readFileSync } from 'node:fs'; import { createRequire } from 'node:module';
+const require = createRequire(import.meta.url), O = require('../docs/ops/ops.js');
+const read = p => readFileSync(new URL('../' + p, import.meta.url), 'utf8');
+let pass = 0, fail = 0; const ok = (n, c) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + n); };
+ok('escapes HTML so server data cannot inject markup', O.esc('<img src=x onerror=1>"\'') === '&lt;img src=x onerror=1&gt;&quot;&#39;');
+ok('bytes formatting', O.bytes(0) === '0 B' && O.bytes(1536) === '1.50 KB' && O.bytes(19625651) === '18.7 MB');
+ok('growth needs two days of snapshots (no invented trend)', O.growth([]) === null && O.growth([{ day: '2026-11-19', db_bytes: 1 }]) === null);
+const g = O.growth([{ day: '2026-11-19', db_bytes: 1000 }, { day: '2026-11-21', db_bytes: 3000 }, { day: '2026-11-20', db_bytes: 2000 }]);
+ok('growth is per day between earliest and latest, whatever the order', g && g.days === 2 && g.perDayBytes === 1000 && g.from === '2026-11-19');
+const rs = O.runSummary([{ status: 'completed', conclusion: 'success' }, { status: 'completed', conclusion: 'failure' }, { status: 'in_progress' }, { status: 'completed', conclusion: 'timed_out' }]);
+ok('run summary counts only finished runs; failure and timeout are failures', rs.total === 3 && rs.failed === 2);
+const html = read('docs/ops/index.html'), js = read('docs/ops/ops.js'), sql = read('db/tenant/16_ops_dashboard.sql');
+ok('page has a strict CSP, no inline script, noindex', /default-src 'none'/.test(html) && !/<script(?![^>]*\bsrc=)[^>]*>/i.test(html) && /noindex/.test(html) && !/onclick=|javascript:/i.test(html));
+ok('page talks only to our database and public GitHub data', /connect-src https:\/\/ggprfdetivzekjxlpvyq\.supabase\.co https:\/\/api\.github\.com;/.test(html));
+ok('no secret key in the page (publishable key only)', !/service_role|sb_secret_|eyJ[A-Za-z0-9_-]{20,}/.test(js + html));
+ok('session is kept in memory only (no browser storage)', !/localStorage|sessionStorage|document\.cookie/.test(js));
+ok('database refuses anyone who is not listed AND signed in with a second factor', /'aal'\) = 'aal2'|->> 'aal', ''\) = 'aal2'/.test(sql) && /platform_admins/.test(sql) && /ops_require_admin/.test(sql));
+ok('customers get no grants on the admin tables and no policies', /revoke all on public\.platform_admins from anon, authenticated/.test(sql) && /revoke all on public\.ops_daily from anon, authenticated/.test(sql) && !/create policy/i.test(sql));
+ok('functions are security definer with a fixed search_path', (sql.match(/security definer set search_path = ''/g) || []).length >= 5);
+ok('no email, key or ciphertext column is returned', !/\bemail\b/.test(sql.replace(/^--.*$/gm, '')) && !/\bct\b|nonce/.test(sql.replace(/^--.*$/gm, '')));
+console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

@@ -103,6 +103,7 @@ python -u tests/ipo_layout_test.py
 python -u tests/login_flash_browser_test.py
 python -u tests/ipo_watch_browser_test.py
 python -u tests/docs_layout_test.py
+python -u tests/ops_layout_test.py
 ```
 
 ## Watchlist Analysis

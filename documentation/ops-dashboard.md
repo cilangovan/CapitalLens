@@ -1,41 +1,37 @@
 # Internal operations dashboard (platform team only)
 
-Status: **planned** (epic #23). Nothing here is built yet. This page is the design and will be kept in step with every panel and alert.
+Status: **phase 1 built** (epic #23). Page: `docs/ops/` (not linked from any customer page, `noindex`). Built in-house on purpose: no third-party monitoring service and no service-role key leaves our own systems.
 
 ## Who and what
 
-For the people who run CapitalLens, **not customers**. It answers: is anything failing, how fast is the database growing, how many API calls and how much egress are we using, who is active, what do the logs say, and are the Cloudflare R2 backups healthy.
+For the people who run CapitalLens, **not customers**. Phase 1 shows: database size and daily growth, largest tables, stored-record counts by kind, users and active users (24 h, 7 d, 30 d), sign-ups for the last 30 days, privileged-access events from the audit log, and recent GitHub Actions runs with failures.
 
-## Rules (non-negotiable)
+## How access is enforced (in Postgres, not in the browser)
 
-- **Platform staff only, enforced on the server side.** A hidden link or a client-side flag is not access control.
-- **Aggregate and operational data only.** No portfolio data, ciphertext, API keys, Trading 212 keys or emails. The zero-knowledge model must still hold.
-- **Read-only credentials** kept as secrets, never in git or in page JavaScript.
-- **Every panel names its source**, and estimates are labelled.
+1. The page signs in with Supabase Auth using a **dedicated staff account**, separate from any customer account.
+2. The account must be listed in `platform_admins` **and** have passed a **second factor (authenticator app)**. The database functions `ops_overview()` and `ops_record_daily()` refuse any session that is not both (the token must carry `aal2`). A password alone is never enough.
+3. The functions are `security definer` with a fixed `search_path` and return **counts and sizes only**: no email, key, ciphertext or portfolio data. Customers have no grants and no policies on `platform_admins` or `ops_daily`.
+4. The page holds only the public key. The session lives in memory (nothing in browser storage) and ends on sign-out or reload.
+5. Hiding the URL is not the protection; the database refusing everyone else is.
 
-## Planned panels
+## Making a staff account (owner steps)
 
-| Panel | Shows | Source (to verify) | Alert |
-|---|---|---|---|
-| Failed runs | GitHub Actions failures, last success time, failing step; Worker errors | GitHub API, Cloudflare Workers analytics | scheduled job missed or failed twice |
-| Database | size, daily growth, size per table, connections, days to plan limit | Supabase metrics / management API | 80% of plan size |
-| API calls | requests by endpoint, error rate, latency, per-provider counters (market data, Trading 212) | Supabase usage, Worker analytics | error-rate spike |
-| Ingress / egress | bandwidth against plan allowance | Supabase usage | 80% of allowance |
-| Active users | daily/weekly/monthly active, sign-ups, failed sign-ins (counts only) | Supabase auth aggregates | none |
-| Logs | search across API, Postgres, Auth and Worker logs, with redaction | Supabase logs, Worker logs | none |
-| R2 backups | bucket size and growth, last backup time and size, restore-test age | Cloudflare API | backup older than 26 h or much smaller |
+1. In the Supabase dashboard, Authentication, add a user (a new staff email and a strong password stored in your password manager).
+2. Tell the engineer the account's email. They run one statement that inserts that account's id into `platform_admins`.
+3. Open `/ops/` on the Pages site, sign in, and add the authenticator on first sign-in (type the shown key into your authenticator app), then enter the 6-digit code.
 
-## Delivery (proposed in #15, awaiting owner approval)
+## What is not shown yet
 
-**Grafana Cloud free tier** (10,000 series, 50 GB logs, 14-day retention, 3 users per the vendor's pricing pages) with its own sign-in and MFA. Data comes through least-privilege read-only connections:
+API calls, egress, Cloudflare R2 backup size and growth, and Worker errors need a read-only token. They will be fetched by a small server-side function that checks the same staff and second-factor rule, so no token is ever in a page (tracked in #16 to #21). Until then use the Supabase and Cloudflare dashboards. GitHub run data is public, so it is read directly.
 
-- **Database, active users, growth:** a dedicated `ops` schema of views (counts and sizes only) read by an `ops_reader` role. The Supabase Metrics API is **not** used for these because it needs the project's service-role key, which bypasses row-level security.
-- **R2 and Workers:** Cloudflare GraphQL Analytics with a read-only token.
-- **Failed runs:** GitHub Actions API with a read-only token.
-- **History beyond 14 days:** a small `ops.daily_stats` table (one row a day), or the paid plan if needed.
+## Data and tables
 
-Credentials live only in Grafana's data-source settings, never in git or page JavaScript.
+`platform_admins`, `ops_daily` (see the database page); migration `db/tenant/16_ops_dashboard.sql`. Growth needs at least two days of snapshots; the page says so rather than inventing a trend. A snapshot is recorded each time staff open or refresh the page ("nothing runs while the app is closed").
+
+## Tests
+
+`tests/zk_ops_test.mjs` (helpers, no secrets in the page, strict CSP, no storage, the database rule requires the second factor, no grants for customers) and `tests/ops_layout_test.py` (phone layout and the signed-out view).
 
 ## Backlog
 
-Epic #23, with #15 tooling and access, #16 database, #17 API and egress, #18 active users, #19 failed runs, #20 R2, #21 logs and redaction, #22 documentation and runbook. The public/admin documentation split is tracked in #10; this page moves to the admin-only docs when that is done.
+Epic #23: #15 tooling and access (decided: build in-house), #16 database, #17 API and egress, #18 active users, #19 failed runs, #20 R2, #21 logs and redaction, #22 documentation. The public/admin documentation split is #10; this page moves to the admin-only docs when that is done.

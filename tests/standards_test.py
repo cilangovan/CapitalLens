@@ -58,6 +58,8 @@ md_files = {str(p.relative_to(ROOT / "documentation")) for p in (ROOT / "documen
 check("every documentation/*.md page is in the portal navigation and every nav page exists", md_files == set(build_docs.PAGES), f"not in NAV: {sorted(md_files - set(build_docs.PAGES))} · missing file: {sorted(set(build_docs.PAGES) - md_files)}")
 stale = build_docs.build(check=True)
 check("generated references and the docs/help portal are up to date (run scripts/build_docs.py)", not stale, str(stale[:4]))
+ops_links = [str(f.relative_to(ROOT)) for f in list((ROOT / "docs").rglob("*.html")) + list((ROOT / "docs").rglob("*.js")) if "docs/ops/" not in str(f) and "docs/help/" not in str(f) and re.search(r"""(?:href|src|location)[^>]{0,40}['\"](?:\.\./|/CapitalLens/)?ops/""", f.read_text(errors="ignore"))]
+check("the internal ops page is not linked from any customer page", not ops_links, str(ops_links[:3]))
 menus = re.findall(r"""onclick="showTab\('(\w+)',this\)""", (ROOT / "docs/index.html").read_text())
 def broken_links():
     out = []

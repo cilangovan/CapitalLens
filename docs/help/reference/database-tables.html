@@ -14,7 +14,7 @@
 <p><strong>Generated</strong> by <code>scripts/build_docs.py</code> from <code>db/schema.sql</code> and <code>db/tenant/*.sql</code>. Do not edit by hand; change the SQL and rebuild.
 Concepts, data flows and who writes each table are in <a href="../database.html">Database &amp; data flows</a>.</p>
 </blockquote>
-<p>36 tables in the <code>public</code> schema.</p>
+<p>38 tables in the <code>public</code> schema.</p>
 <div class="tbl"><table>
 <thead>
 <tr>
@@ -95,9 +95,19 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 <td><code>db/tenant/12_market_cache.sql</code></td>
 </tr>
 <tr>
+<td><a href="#ops_daily"><code>ops_daily</code></a></td>
+<td>7</td>
+<td><code>db/tenant/16_ops_dashboard.sql</code></td>
+</tr>
+<tr>
 <td><a href="#pie_history"><code>pie_history</code></a></td>
 <td>4</td>
 <td><code>db/schema.sql</code>, <code>db/tenant/01_schema.sql</code></td>
+</tr>
+<tr>
+<td><a href="#platform_admins"><code>platform_admins</code></a></td>
+<td>2</td>
+<td><code>db/tenant/16_ops_dashboard.sql</code></td>
 </tr>
 <tr>
 <td><a href="#portfolio_snapshots"><code>portfolio_snapshots</code></a></td>
@@ -936,6 +946,45 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 </tr>
 </tbody>
 </table></div>
+<h2 id="ops_daily">ops_daily</h2>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Definition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>day</code></td>
+<td><code>date primary key</code></td>
+</tr>
+<tr>
+<td><code>db_bytes</code></td>
+<td><code>bigint not null</code></td>
+</tr>
+<tr>
+<td><code>enc_rows</code></td>
+<td><code>bigint not null</code></td>
+</tr>
+<tr>
+<td><code>users</code></td>
+<td><code>integer not null</code></td>
+</tr>
+<tr>
+<td><code>active_7d</code></td>
+<td><code>integer not null</code></td>
+</tr>
+<tr>
+<td><code>signups</code></td>
+<td><code>integer not null</code></td>
+</tr>
+<tr>
+<td><code>recorded_at</code></td>
+<td><code>timestamptz not null default now()</code></td>
+</tr>
+</tbody>
+</table></div>
 <h2 id="pie_history">pie_history</h2>
 <p>Per-pie daily series for the positions drill-down. Rebuilt daily by services/pie_history_service.py.</p>
 <div class="tbl"><table>
@@ -961,6 +1010,25 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 <tr>
 <td><code>user_id</code></td>
 <td><code>uuid not null default auth.uid() references auth.users(id) on delete cascade</code></td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="platform_admins">platform_admins</h2>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Definition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>user_id</code></td>
+<td><code>uuid primary key</code></td>
+</tr>
+<tr>
+<td><code>added_at</code></td>
+<td><code>timestamptz not null default now()</code></td>
 </tr>
 </tbody>
 </table></div>
