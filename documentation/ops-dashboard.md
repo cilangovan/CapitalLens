@@ -25,9 +25,16 @@ For the people who run CapitalLens, **not customers**. It answers: is anything f
 | Logs | search across API, Postgres, Auth and Worker logs, with redaction | Supabase logs, Worker logs | none |
 | R2 backups | bucket size and growth, last backup time and size, restore-test age | Cloudflare API | backup older than 26 h or much smaller |
 
-## Delivery
+## Delivery (proposed in #15, awaiting owner approval)
 
-Recommended: **Grafana Cloud (free tier)** with its own sign-in, reading the sources above through read-only credentials, so no custom UI or access system has to be built. Alternatives (a hidden in-app admin page, or the Supabase and Cloudflare built-in dashboards) are listed in the tooling issue. The choice is recorded here once made.
+**Grafana Cloud free tier** (10,000 series, 50 GB logs, 14-day retention, 3 users per the vendor's pricing pages) with its own sign-in and MFA. Data comes through least-privilege read-only connections:
+
+- **Database, active users, growth:** a dedicated `ops` schema of views (counts and sizes only) read by an `ops_reader` role. The Supabase Metrics API is **not** used for these because it needs the project's service-role key, which bypasses row-level security.
+- **R2 and Workers:** Cloudflare GraphQL Analytics with a read-only token.
+- **Failed runs:** GitHub Actions API with a read-only token.
+- **History beyond 14 days:** a small `ops.daily_stats` table (one row a day), or the paid plan if needed.
+
+Credentials live only in Grafana's data-source settings, never in git or page JavaScript.
 
 ## Backlog
 

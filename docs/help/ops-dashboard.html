@@ -75,8 +75,15 @@
 </tr>
 </tbody>
 </table></div>
-<h2 id="delivery">Delivery</h2>
-<p>Recommended: <strong>Grafana Cloud (free tier)</strong> with its own sign-in, reading the sources above through read-only credentials, so no custom UI or access system has to be built. Alternatives (a hidden in-app admin page, or the Supabase and Cloudflare built-in dashboards) are listed in the tooling issue. The choice is recorded here once made.</p>
+<h2 id="delivery-proposed-in-15-awaiting-owner-approval">Delivery (proposed in #15, awaiting owner approval)</h2>
+<p><strong>Grafana Cloud free tier</strong> (10,000 series, 50 GB logs, 14-day retention, 3 users per the vendor's pricing pages) with its own sign-in and MFA. Data comes through least-privilege read-only connections:</p>
+<ul>
+<li><strong>Database, active users, growth:</strong> a dedicated <code>ops</code> schema of views (counts and sizes only) read by an <code>ops_reader</code> role. The Supabase Metrics API is <strong>not</strong> used for these because it needs the project's service-role key, which bypasses row-level security.</li>
+<li><strong>R2 and Workers:</strong> Cloudflare GraphQL Analytics with a read-only token.</li>
+<li><strong>Failed runs:</strong> GitHub Actions API with a read-only token.</li>
+<li><strong>History beyond 14 days:</strong> a small <code>ops.daily_stats</code> table (one row a day), or the paid plan if needed.</li>
+</ul>
+<p>Credentials live only in Grafana's data-source settings, never in git or page JavaScript.</p>
 <h2 id="backlog">Backlog</h2>
 <p>Epic #23, with #15 tooling and access, #16 database, #17 API and egress, #18 active users, #19 failed runs, #20 R2, #21 logs and redaction, #22 documentation and runbook. The public/admin documentation split is tracked in #10; this page moves to the admin-only docs when that is done.</p></article>
 <footer class="foot"><a href="https://github.com/cilangovan/CapitalLens/blob/main/documentation/ops-dashboard.md">Edit this page on GitHub</a> · <a href="../">Back to the dashboard</a> · <a href="index.html">Documentation home</a></footer></main></div>
