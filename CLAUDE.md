@@ -41,5 +41,7 @@ anything new the owner asks for as a *standing* rule is added here in the same c
 - Wants dip alerts, when to sell / buy more, rebalancing advice, email + phone notifications (see deferral above), and a dashboard that supports buy/sell decisions. Walk the owner step by step through connecting Trading 212.
 - Product backlog = **GitHub Issues** on `cilangovan/CapitalLens` (no Jira). Log backlog items there.
 
+- **Internal operations dashboard** (epic #23): for platform staff only, access enforced server-side, aggregate/operational data only (no portfolio data, ciphertext, keys or emails), read-only credentials in secrets, documented in `documentation/ops-dashboard.md`.
+
 ## Adding a new standing rule
 When the owner says "always / from now on / every dashboard…", append it to the right section above in the same commit, and add a check to `tests/standards_test.py` if a machine can verify it.

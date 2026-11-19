@@ -1,0 +1,34 @@
+# Internal operations dashboard (platform team only)
+
+Status: **planned** (epic #23). Nothing here is built yet. This page is the design and will be kept in step with every panel and alert.
+
+## Who and what
+
+For the people who run CapitalLens, **not customers**. It answers: is anything failing, how fast is the database growing, how many API calls and how much egress are we using, who is active, what do the logs say, and are the Cloudflare R2 backups healthy.
+
+## Rules (non-negotiable)
+
+- **Platform staff only, enforced on the server side.** A hidden link or a client-side flag is not access control.
+- **Aggregate and operational data only.** No portfolio data, ciphertext, API keys, Trading 212 keys or emails. The zero-knowledge model must still hold.
+- **Read-only credentials** kept as secrets, never in git or in page JavaScript.
+- **Every panel names its source**, and estimates are labelled.
+
+## Planned panels
+
+| Panel | Shows | Source (to verify) | Alert |
+|---|---|---|---|
+| Failed runs | GitHub Actions failures, last success time, failing step; Worker errors | GitHub API, Cloudflare Workers analytics | scheduled job missed or failed twice |
+| Database | size, daily growth, size per table, connections, days to plan limit | Supabase metrics / management API | 80% of plan size |
+| API calls | requests by endpoint, error rate, latency, per-provider counters (market data, Trading 212) | Supabase usage, Worker analytics | error-rate spike |
+| Ingress / egress | bandwidth against plan allowance | Supabase usage | 80% of allowance |
+| Active users | daily/weekly/monthly active, sign-ups, failed sign-ins (counts only) | Supabase auth aggregates | none |
+| Logs | search across API, Postgres, Auth and Worker logs, with redaction | Supabase logs, Worker logs | none |
+| R2 backups | bucket size and growth, last backup time and size, restore-test age | Cloudflare API | backup older than 26 h or much smaller |
+
+## Delivery
+
+Recommended: **Grafana Cloud (free tier)** with its own sign-in, reading the sources above through read-only credentials, so no custom UI or access system has to be built. Alternatives (a hidden in-app admin page, or the Supabase and Cloudflare built-in dashboards) are listed in the tooling issue. The choice is recorded here once made.
+
+## Backlog
+
+Epic #23, with #15 tooling and access, #16 database, #17 API and egress, #18 active users, #19 failed runs, #20 R2, #21 logs and redaction, #22 documentation and runbook. The public/admin documentation split is tracked in #10; this page moves to the admin-only docs when that is done.
