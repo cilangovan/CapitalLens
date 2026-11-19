@@ -190,6 +190,20 @@
   .w-card .green { color:var(--green); } .w-card .red { color:var(--red); }
   .w-chev { color:var(--muted); width:14px; flex-shrink:0; }
   .w-head { gap:8px; }
+  .ipo-card { background:var(--bg2); border:1px solid var(--border); border-left:3px solid var(--border); border-radius:8px; padding:10px 12px; margin-bottom:10px; }
+  .ipo-card.ipo-g { border-left-color:var(--green); } .ipo-card.ipo-y { border-left-color:var(--yellow); } .ipo-card.ipo-b { border-left-color:var(--blue); } .ipo-card.ipo-r { border-left-color:var(--red); }
+  .ipo-top { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+  .ipo-name { font-size:14px; min-width:0; overflow-wrap:anywhere; }
+  .ipo-chips { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin:6px 0; }
+  .ipo-chips .w-chip { margin:0; }
+  .ipo-pill { display:inline-block; padding:3px 9px; border-radius:999px; font-size:11px; font-weight:700; background:var(--bg3); white-space:nowrap; }
+  .ipo-pill.g { background:rgba(34,197,94,.18); color:var(--green); } .ipo-pill.y { background:rgba(245,158,11,.18); color:var(--yellow); }
+  .ipo-pill.b { background:rgba(59,130,246,.18); color:#93c5fd; } .ipo-pill.r { background:rgba(239,68,68,.18); color:#fca5a5; } .ipo-pill.dim { color:var(--muted); }
+  .ipo-dates { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; margin:8px 0 4px; }
+  .ipo-dates div { background:var(--bg3); border-radius:6px; padding:5px 8px; display:flex; flex-direction:column; font-size:12px; }
+  .ipo-meta { font-size:13px; font-weight:600; margin-top:6px; }
+  .ipo-note { font-size:12px; line-height:1.5; margin-top:4px; overflow-wrap:anywhere; }
+  .ipo-src { font-size:11px; margin-top:6px; overflow-wrap:anywhere; } .ipo-src a { color:var(--accent); }
   .w-title { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; }
   .w-link { color:var(--text); font-weight:700; text-decoration:none; border-bottom:1px dotted var(--muted); }
   .w-link:hover { color:var(--accent); border-bottom-color:var(--accent); }
@@ -545,6 +559,7 @@
 
 <div id="watchlist" class="tab">
   <div id="watchlist-content"><div class="loading">Loading…</div></div>
+  <div class="card" id="ipo-card"><h3>🚀 IPO Watch</h3><div id="ipo-content"><div class="loading">Loading…</div></div></div>
 </div>
 
 <div id="alerts" class="tab">
@@ -566,6 +581,7 @@
 <script src="js/tickertips.js"></script>
 <script src="js/collapse.js"></script>
 <script src="js/watchlist.js"></script>
+<script src="js/ipo.js"></script>
 <script src="js/drilldown.js"></script>
 <script src="js/pie_drill.js"></script>
 <script src="js/router.js"></script>

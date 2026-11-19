@@ -36,3 +36,5 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
         run: python -u tests/ui_layout_test.py
+      - name: IPO card fits phone screens
+        run: python -u tests/ipo_layout_test.py

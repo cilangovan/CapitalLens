@@ -15,7 +15,7 @@ const loaders = {
   strategy:  loadStrategy,
   profit:    loadProfit,
   returns:   loadReturns,
-  watchlist: loadWatchlist,
+  watchlist: async () => { if (typeof loadIpo === 'function') loadIpo().catch(() => {}); await loadWatchlist(); },
   alerts:    loadAlerts,
 };
 const loaded = {};

@@ -8,7 +8,7 @@
     analyst_ratings: 'analyst_ratings', holding_decisions: 'holding_decisions', value_buy_scores: 'value_buy_scores', strategy_recommendations: 'strategy_recommendations',
     profit_booking: 'profit_booking', profit_booking_summary: 'profit_booking_summary', returns_summary: 'returns_summary', realised_pnl: 'realised_pnl', dividends: 'dividends',
     pie_history: 'pie_history', watchlist: 'watchlist', watchlist_analysis: 'watchlist_analysis' };
-  const SHARED = new Set(['instrument_exposure', 'instrument_country_weights', 'instrument_sector_weights', 'instruments', 'user_ui_prefs', 'market_cache']);
+  const SHARED = new Set(['instrument_exposure', 'instrument_country_weights', 'instrument_sector_weights', 'instruments', 'user_ui_prefs', 'market_cache', 'ipo_calendar']);
   const ACTIONS = { read: n => ({ read_at: n }), unread: () => ({ read_at: null }), archive: n => ({ archived_at: n, dismissed_at: null, read_at: n }), dismiss: n => ({ dismissed_at: n, archived_at: null, read_at: n }), restore: () => ({ archived_at: null, dismissed_at: null }) };
   const json = (status, body) => new Response(JSON.stringify(body), { status, headers: { 'Content-Type': 'application/json' } });
 

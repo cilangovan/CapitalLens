@@ -1,0 +1,62 @@
+{
+  "note": "Curated IPO calendar, upserted into public.ipo_calendar by services/ipo_service.py. Public information only. Edit and push to update; rows missing here are left untouched in the database. A rating needs a named source; otherwise leave it 'Not rated'.",
+  "as_of": "2026-11-19",
+  "ipos": [
+    {
+      "id": "US:ANT", "market": "US", "exchange": "Nasdaq (Global Select)", "name": "Anthropic", "ticker": "ANT", "sector": "AI",
+      "status": "upcoming", "start_date": "2026-11-10", "end_date": "2026-11-18", "listing_date": "2026-11-19",
+      "currency": "USD", "price_low": 70, "price_high": 78, "deal_size_usd": 61050000000,
+      "rating": "Not rated", "rating_source": null,
+      "note": "825M Class A shares, roadshow launched 10 Nov, pricing expected evening of 18 Nov, first trade expected 19 Nov. Plus a separate $26bn private placement. Final price not confirmed here.",
+      "source_name": "Renaissance Capital / TMGM", "source_url": "https://www.renaissancecapital.com/IPO-Center/News/122723/us-ipo-week-ahead-ai-giant-anthropic-gears-up-for-historic-ipo"
+    },
+    {
+      "id": "US:DPC", "market": "US", "exchange": "NYSE", "name": "Doncasters Group", "ticker": "DPC", "sector": "Aerospace components",
+      "status": "filed", "start_date": null, "end_date": null, "listing_date": null,
+      "currency": "USD", "price_low": 28, "price_high": 32, "deal_size_usd": 700000000,
+      "rating": "Not rated", "rating_source": null,
+      "note": "Terms set, trade date not yet announced. Jefferies and Morgan Stanley.",
+      "source_name": "Renaissance Capital calendar", "source_url": "https://www.renaissancecapital.com/ipo-center/calendar"
+    },
+    {
+      "id": "UK:AIRTELMONEY", "market": "UK", "exchange": "LSE (Main Market)", "name": "Airtel Money", "ticker": null, "sector": "Fintech / mobile money",
+      "status": "listed", "start_date": null, "end_date": "2026-10-13", "listing_date": "2026-10-14",
+      "currency": "GBP", "price_low": 1.96, "price_high": 1.96, "deal_size_usd": 703000000,
+      "rating": "Not rated", "rating_source": null,
+      "note": "Fixed-price offer of 270M shares at 1.96 GBP, secondary sale only. Ticker not confirmed here.",
+      "source_name": "Reuters via Finimize", "source_url": "https://finimize.com/content/airtel-money-lines-up-a-7-billion-london-ipo"
+    },
+    {
+      "id": "IN:VEDANTPOLY", "market": "IN", "exchange": "India (SME board)", "name": "Vedant Poly Fabs", "ticker": null, "sector": null,
+      "status": "listed", "start_date": "2026-11-02", "end_date": "2026-11-04", "listing_date": "2026-11-09",
+      "currency": "INR", "price_low": 94, "price_high": 94, "deal_size_usd": null,
+      "rating": "Not rated", "rating_source": null,
+      "note": "About 56.7 crore INR issue. Listing exchange (NSE or BSE SME) not confirmed here.",
+      "source_name": "IPO Guru / GMP IPO Watch", "source_url": "https://www.gmpipowatch.in/blog/ipos-this-week-2026-11-09"
+    },
+    {
+      "id": "IN:ANTALA", "market": "IN", "exchange": "India (exchange not confirmed)", "name": "Antala Industries", "ticker": null, "sector": null,
+      "status": "listed", "start_date": null, "end_date": null, "listing_date": "2026-11-11",
+      "currency": "INR", "price_low": 66, "price_high": 66, "deal_size_usd": null,
+      "rating": "Not rated", "rating_source": null,
+      "note": "Issue price 66 INR. Open and close dates not confirmed here.",
+      "source_name": "GMP IPO Watch", "source_url": "https://www.gmpipowatch.in/blog/ipos-this-week-2026-11-09"
+    },
+    {
+      "id": "IN:AVAADAELECTRO", "market": "IN", "exchange": "NSE/BSE (mainboard, expected)", "name": "Avaada Electro", "ticker": null, "sector": "Solar manufacturing",
+      "status": "rumoured", "start_date": null, "end_date": null, "listing_date": null,
+      "currency": "INR", "price_low": null, "price_high": null, "deal_size_usd": null,
+      "rating": "Not rated", "rating_source": null,
+      "note": "Reported as a November candidate; dates and price band not confirmed until the final RHP is filed.",
+      "source_name": "IPO Central", "source_url": "https://ipocentral.in/?p=278541"
+    },
+    {
+      "id": "IN:MAHANADICOAL", "market": "IN", "exchange": "NSE/BSE (mainboard, expected)", "name": "Mahanadi Coalfields", "ticker": null, "sector": "Coal",
+      "status": "rumoured", "start_date": null, "end_date": null, "listing_date": null,
+      "currency": "INR", "price_low": null, "price_high": null, "deal_size_usd": null,
+      "rating": "Not rated", "rating_source": null,
+      "note": "Reported as a November candidate; dates and price band not confirmed until the final RHP is filed.",
+      "source_name": "IPO Central", "source_url": "https://ipocentral.in/?p=278541"
+    }
+  ]
+}

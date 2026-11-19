@@ -191,6 +191,20 @@
   .w-card .green { color:var(--green); } .w-card .red { color:var(--red); }
   .w-chev { color:var(--muted); width:14px; flex-shrink:0; }
   .w-head { gap:8px; }
+  .ipo-card { background:var(--bg2); border:1px solid var(--border); border-left:3px solid var(--border); border-radius:8px; padding:10px 12px; margin-bottom:10px; }
+  .ipo-card.ipo-g { border-left-color:var(--green); } .ipo-card.ipo-y { border-left-color:var(--yellow); } .ipo-card.ipo-b { border-left-color:var(--blue); } .ipo-card.ipo-r { border-left-color:var(--red); }
+  .ipo-top { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+  .ipo-name { font-size:14px; min-width:0; overflow-wrap:anywhere; }
+  .ipo-chips { display:flex; flex-wrap:wrap; gap:6px; align-items:center; margin:6px 0; }
+  .ipo-chips .w-chip { margin:0; }
+  .ipo-pill { display:inline-block; padding:3px 9px; border-radius:999px; font-size:11px; font-weight:700; background:var(--bg3); white-space:nowrap; }
+  .ipo-pill.g { background:rgba(34,197,94,.18); color:var(--green); } .ipo-pill.y { background:rgba(245,158,11,.18); color:var(--yellow); }
+  .ipo-pill.b { background:rgba(59,130,246,.18); color:#93c5fd; } .ipo-pill.r { background:rgba(239,68,68,.18); color:#fca5a5; } .ipo-pill.dim { color:var(--muted); }
+  .ipo-dates { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:6px; margin:8px 0 4px; }
+  .ipo-dates div { background:var(--bg3); border-radius:6px; padding:5px 8px; display:flex; flex-direction:column; font-size:12px; }
+  .ipo-meta { font-size:13px; font-weight:600; margin-top:6px; }
+  .ipo-note { font-size:12px; line-height:1.5; margin-top:4px; overflow-wrap:anywhere; }
+  .ipo-src { font-size:11px; margin-top:6px; overflow-wrap:anywhere; } .ipo-src a { color:var(--accent); }
   .w-title { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; }
   .w-link { color:var(--text); font-weight:700; text-decoration:none; border-bottom:1px dotted var(--muted); }
   .w-link:hover { color:var(--accent); border-bottom-color:var(--accent); }
@@ -532,6 +546,7 @@
 
 <div id="watchlist" class="tab">
   <div id="watchlist-content"><div class="loading">Loading…</div></div>
+  <div class="card" id="ipo-card"><h3>🚀 IPO Watch</h3><div id="ipo-content"><div class="loading">Loading…</div></div></div>
 </div>
 
 <div id="alerts" class="tab">
@@ -629,7 +644,7 @@
 <script src="../zk/flow.js?v=20e28c527026" integrity="sha384-hVVnTNbtEc0PugPGy3hz26UGX/wZxYbAk5YbwXx2TLqLeqDcqENHC2/YZ1BTpUbW"></script>
 <script src="../zk/notify.js?v=34d4bf55f41f" integrity="sha384-zF94I6jfpN993hI3TgEldHc41jGJLL61WllCe3xzVorjTyzz9Fkm/fKiuBEYGk/p"></script>
 <script src="../zk/postgrest.js?v=4fb32c84005f" integrity="sha384-TAmHrohvRyy+jJUgcLXNgsD0jeI83fkiX/OXoe1YrQQamDYsaHVmru/kUFga4EoP"></script>
-<script src="../zk/shim.js?v=b0d6b7cde338" integrity="sha384-0QDZwdIqWMZ2rCgxEc7tIanSKHibPDQUqyNakwekAFKzXQrHb0LaAiEA5vxWXfBy"></script>
+<script src="../zk/shim.js?v=e4076d686190" integrity="sha384-w++9d7Mo7gfm2XeH+QtWUN83HLSBWJAmITVQWwE5Qrbr3rQawoZLP7deu9wLd0qn"></script>
 <script src="../zk/pipeline.js?v=bfa0c8ccf1ce" integrity="sha384-A1MnDmc9/7vt+iAzgKXQvLfxTpIPps9x+mea4NaZTAlHUbJLSlVpjAhn8Napkyuf"></script>
 <script src="../zkapp/handler-names.js?v=b2538cdf3622" integrity="sha384-Yw5ll8YHGaLCjqUBwss7CpQMGrrL+hCEJ12vxRAKu2tHzOPactEw+oQ87XdRYUVE"></script>
 <script src="zkapp-auth.js?v=81cb33b2ea1a" integrity="sha384-jRP6Hs1ilaTeEjlFAMA0T6yNKFH1xJft8EQVkxpl2vRV96muxa92H1OcQ50KN0iL"></script>
@@ -645,8 +660,9 @@
 <script src="../js/tickertips.js?v=62c3f21e8fa6" integrity="sha384-uol0Rwj54jmfrLQJnoQ9rmmclnnHE5cMDN7Ci+Jn2Mo6W4tqHoZ53Ay3/BTEgS52"></script>
 <script src="../js/collapse.js?v=7edc1cf73e08" integrity="sha384-A619AiWc9t9/ZdVUpzglvO2kPNeCq9597UZcOa4ctslPfQiU48P+lXZWq9vS6k05"></script>
 <script src="../js/watchlist.js?v=feeed3c882fe" integrity="sha384-+jqXwq3uWtkT4SnGIKM2M7yijo4yoKa72fEAgdjsMBrh6h8bmZJqJnTM/FwL1UvY"></script>
+<script src="../js/ipo.js?v=33bf38b81295" integrity="sha384-dvOT/9b3Gs1lE3bs1fPN83RKZmE7P0Nx1uRX9cvAQTR/ZM9CTU1vOkMNOQ6xHx4p"></script>
 <script src="../js/drilldown.js?v=ba8270c24f2b" integrity="sha384-hHTBmsskCBTraWDyh1WLn3feg0fatRote5yhCIhSkh1klwGAK/pWFjF9UDh0uaa+"></script>
 <script src="../js/pie_drill.js?v=8c51986cc5fc" integrity="sha384-LGniYIiV4KXlc6vLeJvRBeHO2GBHNioliyzl+pXCCNMM4JWGtEmuNOipp/f0Jb2T"></script>
-<script src="../js/router.js?v=3801e11f5d62" integrity="sha384-JUCUATOWLZh6rZ9ioYGbax2S/8LNTNtNlJFcrLQ8lCQHFozLK7dhB4pvGEjM0x8J"></script>
+<script src="../js/router.js?v=bcfc4888d172" integrity="sha384-Eve7gCPZkMSdV7g3eB/b+Srsyi0BdSRPLX+5uHye7GLIArTrN9Y/BBhlg6JqNz7b"></script>
 </body>
 </html>
