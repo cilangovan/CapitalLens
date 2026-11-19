@@ -81,8 +81,14 @@ def save_snapshot_to_supabase(summary, pies, alerts, account, state):
     acc       = account or {}
     total     = float(acc.get("total", 0))
     cash      = float(acc.get("free", 0))
-    invested  = total - cash
-    total_ppl = sum(p["ppl"] for p in summary)
+    # Trading 212's own split: investments value = cost basis + unrealised result
+    # (total - free cash would also count cash reserved for pending orders and pie cash)
+    if acc.get("invested") is not None:
+        invested  = float(acc["invested"]) + float(acc.get("ppl") or 0)
+        total_ppl = float(acc.get("ppl") or 0)
+    else:
+        invested  = total - cash
+        total_ppl = sum(p["ppl"] for p in summary)
 
     # 1. Insert snapshot
     snap = sb_insert("portfolio_snapshots", {

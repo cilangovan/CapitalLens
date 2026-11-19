@@ -70,6 +70,10 @@
 <h2 id="html-style">HTML / style</h2>
 <p><code>#overview.tab &gt; #stats-strip.stats-strip</code> then a <code>.grid2</code> of two <code>.card</code>s (one column below 700px), then full-width cards. Period buttons are <code>.period-btn</code> (min height 40px). Colours: gains <code>var(--green)</code>, losses <code>var(--red)</code>. Charts use the vendored <code>chart.umd.min.js</code>.</p>
 <h2 id="tests">Tests</h2>
-<p><code>tests/ui_layout_test.py</code> (360/390px, no sideways scroll), <code>tests/zk_overview_stale_test.mjs</code> (stale-data warning).</p></article>
+<p><code>tests/ui_layout_test.py</code> (360/390px, no sideways scroll), <code>tests/zk_overview_stale_test.mjs</code> (stale-data warning).</p>
+<h2 id="how-the-numbers-add-up-card">How the numbers add up (card)</h2>
+<p>A collapsible card under the stats strip with one bar and the formulas, using the snapshot's Trading 212 account figures: Total Value = Investments + Cash + Reserved (+ Other, only if something is left unexplained); Investments = cost basis + unrealised result; Unrealised % = result ÷ cost basis. If the snapshot has no account breakdown it says so instead of drawing numbers. Its open/closed state is remembered per user like every card.</p>
+<h2 id="snapshot-columns">Snapshot columns</h2>
+<p>New snapshots store <code>invested</code> = cost basis + unrealised result and <code>total_ppl</code> = Trading 212's unrealised result (both from the account figures), not total minus free cash. Older snapshots keep the old values and are labelled as estimates.</p></article>
 <footer class="foot"><a href="https://github.com/cilangovan/CapitalLens/blob/main/documentation/menus/overview.md">Edit this page on GitHub</a> · <a href="../../">Back to the dashboard</a> · <a href="../index.html">Documentation home</a></footer></main></div>
 </body></html>

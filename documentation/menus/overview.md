@@ -32,3 +32,11 @@ Tab id `overview` · loader `loadOverview()` · `docs/js/overview.js`
 ## Tests
 
 `tests/ui_layout_test.py` (360/390px, no sideways scroll), `tests/zk_overview_stale_test.mjs` (stale-data warning).
+
+## How the numbers add up (card)
+
+A collapsible card under the stats strip with one bar and the formulas, using the snapshot's Trading 212 account figures: Total Value = Investments + Cash + Reserved (+ Other, only if something is left unexplained); Investments = cost basis + unrealised result; Unrealised % = result ÷ cost basis. If the snapshot has no account breakdown it says so instead of drawing numbers. Its open/closed state is remembered per user like every card.
+
+## Snapshot columns
+
+New snapshots store `invested` = cost basis + unrealised result and `total_ppl` = Trading 212's unrealised result (both from the account figures), not total minus free cash. Older snapshots keep the old values and are labelled as estimates.

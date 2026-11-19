@@ -135,9 +135,13 @@
 
         const { alerts, summary } = analyse(positions, pieMap, state, nowDate);
         const acc = account || {}, total = num(acc.total), cash = num(acc.free), createdAt = nowDate.toISOString();
+        // Trading 212's own split: investments value = cost basis + unrealised result (total − free cash would also count reserved/pie cash)
+        const hasAcc = acc.invested != null && Number.isFinite(+acc.invested);
+        const investedVal = hasAcc ? num(acc.invested) + num(acc.ppl) : total - cash;
+        const totalPpl = hasAcc ? num(acc.ppl) : summary.reduce((a, p) => a + p.ppl, 0);
         const snapId = newId();
-        const snap = { id: snapId, created_at: createdAt, total_value: rnd(total, 2), cash: rnd(cash, 2), invested: rnd(total - cash, 2),
-          total_ppl: rnd(summary.reduce((a, p) => a + p.ppl, 0), 2), run_count: state.run_count,
+        const snap = { id: snapId, created_at: createdAt, total_value: rnd(total, 2), cash: rnd(cash, 2), invested: rnd(investedVal, 2),
+          total_ppl: rnd(totalPpl, 2), run_count: state.run_count,
           raw: { pies, account: acc, highs: state.highs, instrument_meta: state.held_meta } };
         await store.put('portfolio_snapshots', [snap], r => r.id);
         await store.put('positions', summary.map(p => ({ id: newId(), snapshot_id: snapId, created_at: createdAt, ticker: p.ticker, display: p.display, pie: p.pie, exchange: p.exchange,

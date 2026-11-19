@@ -35,6 +35,21 @@ function ovHeadline(snap) {
   return { exact: false, total, investments: inv, cost: null, result: ppl, pct: inv ? ppl / inv * 100 : 0, cash, reserved: null };
 }
 
+// Bars that show how Trading 212's figures add up: Total = Investments + Cash + Reserved; Investments = Cost basis + Unrealised result.
+function ovFormulaHtml(H) {
+  if (!H || !H.exact || !(H.total > 0)) return '<div class="muted" style="font-size:12px">Needs a fresh Refresh: this snapshot has no Trading 212 account breakdown, so the figures above are estimates.</div>';
+  const g = n => '£' + (+n).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const pc = n => Math.max(0, Math.min(100, n / H.total * 100)).toFixed(2);
+  const reserved = H.reserved || 0, other = Math.max(0, H.total - H.investments - H.cash - reserved);
+  const seg = (n, c, l) => n > 0 ? `<span style="display:block;width:${pc(n)}%;background:${c};min-width:2px" title="${l} ${g(n)}"></span>` : '';
+  const row = (c, l, v) => `<div style="display:flex;justify-content:space-between;gap:8px;font-size:13px;padding:3px 0"><span><i style="display:inline-block;width:10px;height:10px;border-radius:2px;background:${c};margin-right:6px"></i>${l}</span><b>${g(v)}</b></div>`;
+  return `<div style="display:flex;height:22px;border-radius:5px;overflow:hidden;background:var(--border,#2a3441);margin:6px 0 8px">${seg(H.investments, '#14b8a6', 'Investments')}${seg(H.cash, '#64748b', 'Cash')}${seg(reserved, '#f59e0b', 'Reserved')}${seg(other, '#a855f7', 'Other')}</div>
+    ${row('#14b8a6', 'Investments', H.investments)}${row('#64748b', 'Cash (free)', H.cash)}${reserved > 0 ? row('#f59e0b', 'Reserved (pending orders / pie cash)', reserved) : ''}${other > 0.005 ? row('#a855f7', 'Other, not itemised', other) : ''}
+    <div style="border-top:1px solid var(--border,#2a3441);margin:8px 0;padding-top:8px;font-size:13px">
+      <div>Investments = cost basis ${g(H.cost)} ${H.result < 0 ? '−' : '+'} unrealised ${g(Math.abs(H.result))}</div>
+      <div>Unrealised % = ${g(H.result)} ÷ ${g(H.cost)} = <b>${H.pct.toFixed(2)}%</b></div></div>`;
+}
+
 async function loadOverview() {
   const [snaps, , alerts] = await Promise.all([
     api('portfolio_snapshots','?select=*&order=created_at.desc&limit=1'),
@@ -66,6 +81,11 @@ async function loadOverview() {
     <div class="stat-card"><div class="label">Positions</div><div class="value">${allPos.length}</div></div>
     <div class="stat-card"><div class="label">Alerts</div><div class="value yellow">${alertCount}</div></div>
   `;
+
+  const strip = document.getElementById('stats-strip');
+  let fx = document.getElementById('ov-formula');
+  if (!fx) { strip.insertAdjacentHTML('afterend', '<div class="card" id="ov-formula"><h3>How the numbers add up</h3><div id="ov-formula-body"></div></div>'); fx = document.getElementById('ov-formula'); }
+  document.getElementById('ov-formula-body').innerHTML = ovFormulaHtml(H);
 
   const alertsHtml = alerts.length
     ? alerts.map(a => {

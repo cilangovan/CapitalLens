@@ -55,7 +55,7 @@ let calls = [], PRICE = 2500, NO_PIES_SCOPE = false;
 globalThis.fetch = async (url, init) => {
   const path = url.replace('https://live.trading212.com', ''); calls.push(path);
   if (init.headers.Authorization !== AUTH) return new Response('{}', { status: 401 });
-  if (path === '/api/v0/equity/account/cash') return Response.json({ total: 12345.678, free: 345.6, invested: 12000 });
+  if (path === '/api/v0/equity/account/cash') return Response.json({ total: 12345.678, free: 345.6, invested: 12000, ppl: -50.25, blocked: 100 });
   if (path === '/api/v0/equity/portfolio') return Response.json([{ ticker: 'ITWNl_EQ', averagePrice: 3000, currentPrice: PRICE, ppl: -12.5, quantity: 3 }, { ticker: 'NVDA_US_EQ', averagePrice: 100, currentPrice: 150, ppl: 100, quantity: 2 }]);
   if (path === '/api/v0/equity/pies') return NO_PIES_SCOPE ? new Response('{"e":"scope"}', { status: 403 }) : Response.json([{ id: 11 }]);
   if (path === '/api/v0/equity/pies/11') return Response.json({ settings: { name: 'Core Pie' }, instruments: [
@@ -73,7 +73,8 @@ const mk = () => M.create({ store, client: T.client({ relayUrl: 'https://relay.t
 let r = await mk().run(KEY, SEC);
 ok('run saved a snapshot', r.saved && r.positions === 2 && r.pies === 1);
 const snaps = await store.load('portfolio_snapshots'), pos = await store.load('positions'), al = await store.load('alerts');
-ok('snapshot totals correct (total 12345.68, cash 345.6, invested 12000.08)', snaps.length === 1 && snaps[0].total_value === 12345.68 && snaps[0].cash === 345.6 && snaps[0].invested === 12000.08);
+ok('snapshot totals correct (total 12345.68, cash 345.6)', snaps.length === 1 && snaps[0].total_value === 12345.68 && snaps[0].cash === 345.6);
+ok('snapshot invested = Trading 212 cost basis + unrealised (11949.75), total_ppl = its unrealised (-50.25), not total - cash', snaps[0].invested === 11949.75 && snaps[0].total_ppl === -50.25);
 ok('positions linked to the snapshot, with pie names', pos.length === 2 && pos.every(p => p.snapshot_id === snaps[0].id) && pos.find(p => p.display === 'ITWNl').pie === 'Core Pie');
 ok('pie summary: value 1000, gain 28.21%, drift flagged for both holdings', snaps[0].raw.pies[0].value === 1000 && snaps[0].raw.pies[0].gain_pct === 28.21 && snaps[0].raw.pies[0].drifts.length === 2);
 ok('NVDA +50% raised a trim alert; Taiwan quiet on first run (high = current)', al.length === 1 && al[0].type === 'trim' && /Nvidia/.test(al[0].title));

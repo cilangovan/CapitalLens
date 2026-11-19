@@ -5,7 +5,7 @@ const body = src.slice(src.indexOf('// "5 min ago"'), src.indexOf('async functio
 let banner = null; const parent = { insertBefore: (el) => { banner = el; el.remove = () => { banner = null; }; } };
 const strip = { parentNode: parent };
 const doc = { getElementById: id => id === 'stats-strip' ? strip : id === 'stale-banner' ? banner : null, createElement: () => ({ style: {}, set innerHTML(v) { this._h = v; }, get innerHTML() { return this._h; } }) };
-const ctx = { document: doc, zkToolsOpen: undefined }; vm.createContext(ctx); vm.runInContext(body + ';this.ovAgo=ovAgo;this.ovHeadline=ovHeadline;this.ovStaleBanner=ovStaleBanner;', ctx);
+const ctx = { document: doc, zkToolsOpen: undefined }; vm.createContext(ctx); vm.runInContext(body + ';this.ovAgo=ovAgo;this.ovHeadline=ovHeadline;this.ovFormulaHtml=ovFormulaHtml;this.ovStaleBanner=ovStaleBanner;', ctx);
 let pass = 0, fail = 0; const ok = (n, c) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + n); };
 ok('relative age wording', ctx.ovAgo(20e3) === 'just now' && ctx.ovAgo(300e3) === '5 min ago' && ctx.ovAgo(3 * 3600e3) === '3 h ago' && ctx.ovAgo(60 * 3600e3) === '3 days ago');
 ctx.ovStaleBanner(5 * 60e3, 't'); ok('fresh snapshot: no banner', banner === null);
@@ -25,6 +25,9 @@ const O = ctx.ovHeadline({ total_value: 100, cash: 20, invested: 80, total_ppl: 
 ok('old snapshot without account figures: falls back, flagged as not exact', !O.exact && O.cost === null && O.investments === 80 && O.result === 5 && Math.abs(O.pct - 6.25) < 1e-9);
 const R = ctx.ovHeadline({ total_value: 9201.75, cash: 4343.72, raw: { account: { invested: 4758.85, ppl: -23.11, total: 9201.75, free: 4343.72, blocked: 122.29, pieCash: 0 } } });
 ok('reserved cash (pending limit orders) is its own figure and closes the gap', Math.abs(R.reserved - 122.29) < 0.005 && Math.abs(R.investments + R.cash + R.reserved - R.total) < 0.005);
+const FH = ctx.ovFormulaHtml(R);
+ok('formula card shows cost basis, unrealised and the -0.49% on the Trading 212 numbers', FH.includes('£4,758.85') && FH.includes('£23.11') && FH.includes('-0.49%') && FH.includes('Reserved'));
+ok('formula card says so when there is no account breakdown (no invented figures)', /estimates/.test(ctx.ovFormulaHtml(ctx.ovHeadline({ total_value: 100, cash: 20, invested: 80 }))));
 ok('estimate path reports no reserved figure', O.reserved === null);
 ok('empty snapshot does not throw', ctx.ovHeadline(undefined).total === 0);
 console.log(`${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);
