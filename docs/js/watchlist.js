@@ -36,7 +36,7 @@ async function loadWatchlist() {
       <div id="w-results"></div>
     </div>
     <div id="w-summary"></div>
-    <div id="w-list"><div class="loading">Loading…</div></div>`;
+    <div id="w-list"><div class="loading busy">Loading…</div></div>`;
   wlSetCat(WL.cat, true);
   await wlRefresh();
 }

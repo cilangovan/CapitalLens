@@ -83,7 +83,7 @@ function ddRender() {
         <div class="dd-ranges">${DD_RANGES.map(([k, l]) => `<button class="${DD.range === k ? 'active' : ''}" onclick="ddSetRange('${k}')">${l}</button>`).join('')}</div>
         <div class="dd-ma">${['50', '200'].map(m => `<button class="${DD.ma.has(m) ? 'active' : ''}" ${['1d', '5d', '5y'].includes(DD.range) ? 'disabled title="Moving averages show on 1M, 6M and 1Y"' : ''} onclick="ddToggleMA('${m}')">${m}D MA</button>`).join('')}</div>
       </div>
-      <div id="dd-chart" class="dd-chart"><div class="loading">Loading chart…</div></div>
+      <div id="dd-chart" class="dd-chart"><div class="loading busy">Loading chart…</div></div>
       <div id="dd-legend" class="dd-legend"></div>
     </div>
 
@@ -231,7 +231,7 @@ function ddDrawChart() {
   const box = document.getElementById('dd-chart'), leg = document.getElementById('dd-legend');
   if (!box) return;
   const c = DD.chart, a = ddData();
-  if (!c) { box.innerHTML = '<div class="loading">Loading chart…</div>'; return; }
+  if (!c) { box.innerHTML = '<div class="loading busy">Loading chart…</div>'; return; }
   if (c.error) { box.innerHTML = `<div class="w-dim dd-chart-msg">${ddEsc(c.error)}</div>`; leg.innerHTML = ''; return; }
   const P = c.points, W = Math.max(300, box.clientWidth || 600), H = Math.min(300, Math.max(200, W * 0.42));
   const m = { l: 52, r: 12, t: 12, b: 26 };

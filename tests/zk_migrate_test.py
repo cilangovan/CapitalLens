@@ -14,7 +14,7 @@ EMAIL="legacy@example.com"; OLD="old-plaintext-password"; NEW="brand new private
 UID=str(uuid.uuid4()); OTHER=str(uuid.uuid4()); random.seed(1)
 TICK=["SMGBl_EQ","QDVEd_EQ","VUSAa_EQ","NVDA_US_EQ","CS1l_EQ"]
 PLAIN={"users":{EMAIL:{"id":UID,"pw":OLD}},"keys":{},"enc":[],
- "tables":{t:[] for t in ["positions","positions_archive","portfolio_snapshots","portfolio_snapshots_archive","t212_orders","t212_transactions","t212_dividends","dividends","realised_pnl","watchlist","watchlist_analysis","pie_history","profit_booking","profit_booking_summary","returns_summary","holding_decisions","strategy_recommendations","value_buy_scores","alerts"]}}
+ "tables":{t:[] for t in ["positions","positions_archive","portfolio_snapshots","portfolio_snapshots_archive","t212_orders","t212_transactions","t212_dividends","dividends","realised_pnl","watchlist","watchlist_analysis","pie_history","profit_booking","profit_booking_summary","returns_summary","holding_decisions","strategy_recommendations","value_buy_scores","alerts","analyst_ratings"]}}
 T=PLAIN["tables"]
 for i in range(1,31): T["portfolio_snapshots"].append({"id":i,"user_id":UID,"created_at":f"2026-11-{i%28+1:02d}T05:00:00Z","total_value":1000+i})
 for i in range(1,2501): T["positions"].append({"id":i,"user_id":UID,"snapshot_id":i%30+1,"ticker":random.choice(TICK),"ppl":round(random.uniform(-50,200),2),"gain_pct":round(random.uniform(-10,30),2)})   # >2 pages
@@ -67,9 +67,9 @@ with sync_playwright() as p:
     ctx=b.new_context(); ctx.route("https://ggprfdetivzekjxlpvyq.supabase.co/**",handler)
     pg=ctx.new_page(); errs=[]; pg.on("pageerror",lambda e:errs.append(str(e)))
     pg.goto(f"http://127.0.0.1:{port}/zk/index.html",wait_until="networkidle"); pg.click("#btn-to-upgrade")
-    pg.fill("#up-email",EMAIL); pg.fill("#up-old",OLD); pg.fill("#up-new",OLD); pg.click("#btn-upgrade"); pg.wait_for_timeout(500)
+    pg.fill("#up-email",EMAIL); pg.fill("#up-old",OLD); pg.fill("#up-new",OLD); pg.fill("#up-new2",OLD); pg.click("#btn-upgrade"); pg.wait_for_timeout(500)
     check("new password equal to old is refused",("different" in pg.inner_text("#up-err")))
-    pg.fill("#up-new",NEW); pg.click("#btn-upgrade"); pg.wait_for_selector("#v-recovery:not(.hide)",timeout=120000)
+    pg.fill("#up-new",NEW); pg.fill("#up-new2",NEW); pg.click("#btn-upgrade"); pg.wait_for_selector("#v-recovery:not(.hide)",timeout=120000)
     log=pg.inner_text("#up-log")
     check("every table verified OK (no MISMATCH)","MISMATCH" not in log and "positions: 2500 → 2500 OK" in log and "t212_orders: 300 → 300 OK" in log and "returns_summary: 1 → 1 OK" in log)
     check("old password still works until the final step (rollback-safe)",PLAIN["users"][EMAIL]["pw"]==OLD)

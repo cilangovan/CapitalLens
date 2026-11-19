@@ -46,6 +46,7 @@
 </tbody>
 </table></div>
 <p><strong>No login flash on refresh.</strong> The sign-in box is hidden by CSS (<code>#login-screen:not(.show){visibility:hidden}</code>) until the saved-session check finishes. If a session is restored the dashboard appears directly; only if not is the box shown. Guarded by <code>tests/login_flash_browser_test.py</code> and <code>tests/zk_login_flash_test.mjs</code>.</p>
+<p><strong>Loading state.</strong> While the saved-session check runs (the key unlock takes a moment) the private app shows a full-screen <strong>boot splash</strong>: 🔒 CapitalLens, a spinning ring and "Unlocking your private dashboard…" (after 12 seconds it adds "Taking longer than usual. Check your connection, then reload."). The splash disappears the moment the sign-in box or the dashboard shows, so the screen is never blank. It is pure CSS (<code>#boot-splash</code> in <code>scripts/build_zkapp.py</code>). Inside the dashboard every card that is still fetching shows a small spinner beside "Loading…" (<code>.loading.busy</code>).</p>
 <h2 id="header">Header</h2>
 <ul>
 <li><strong>Pill:</strong> <code>LIVE</code> (legacy), <code>BETA</code> (multi-user), <code>DEMO</code>, <code>PRIVATE</code> (zero-knowledge).</li>

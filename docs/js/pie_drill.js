@@ -111,7 +111,7 @@ async function pdOpen(key, ticker = null, ev) {
   let el = document.getElementById('pd');
   if (!el) { el = document.createElement('div'); el.id = 'pd'; document.body.appendChild(el); }
   el.className = 'show'; document.body.style.overflow = 'hidden';
-  el.innerHTML = '<div class="dd-panel"><div class="loading">Loading…</div></div>';
+  el.innerHTML = '<div class="dd-panel"><div class="loading busy">Loading…</div></div>';
   try { history.pushState({ pd: key }, '', `#positions/${encodeURIComponent(ticker || key)}`); } catch (e) {}
   try { await Promise.all([PD.snap ? null : pdLoadSnapshotData(), pdHist(key), key === '__ALL__' ? pdHist('__DIRECT__') : null]); }
   catch (e) { el.innerHTML = `<div class="dd-panel"><div class="w-dim">Couldn't load: ${pdEsc(e.message)}</div></div>`; return; }

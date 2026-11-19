@@ -28,6 +28,14 @@
   }
   #login-screen.hidden { display: none; }
   #login-screen:not(.show) { visibility: hidden; }
+  #boot-splash { position:fixed; inset:0; z-index:998; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; background:var(--bg); color:var(--muted); font-size:13px; text-align:center; padding:24px; }
+  #boot-splash .bs-logo { font-size:20px; font-weight:600; color:var(--text); }
+  #boot-splash .bs-spin { width:36px; height:36px; border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:cl-rot .8s linear infinite; }
+  #boot-splash .bs-slow { opacity:0; animation:bs-slow 0s 12s forwards; }
+  @keyframes bs-slow { to { opacity:1; } }
+  @keyframes cl-rot { to { transform:rotate(360deg); } }
+  #login-screen.show ~ #boot-splash, #app.visible ~ #boot-splash { display:none; }
+  @media (prefers-reduced-motion: reduce) { #boot-splash .bs-spin { animation-duration:2.4s; } }
   .login-box {
     background: var(--bg2); border: 1px solid var(--border); border-radius: 12px;
     padding: 36px 32px; width: 340px; text-align: center;
@@ -355,6 +363,9 @@
   .xirr-banner .big { font-size: 48px; font-weight: 800; }
   .xirr-banner .label { font-size: 13px; color: var(--muted); margin-top: 4px; }
   .loading { color: var(--muted); font-size: 13px; padding: 20px; text-align: center; }
+  .loading.busy::before { content:''; display:inline-block; width:14px; height:14px; margin-right:8px; vertical-align:-2px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:cl-rot .8s linear infinite; }
+  @keyframes cl-rot { to { transform:rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .loading.busy::before { animation-duration:2.4s; } }
   .masked { color: var(--muted); letter-spacing: 2px; font-weight: 700; }
   canvas { max-width: 100%; }
   .period-btn {
@@ -506,7 +517,7 @@
 </nav>
 
 <div id="overview" class="tab active">
-  <div id="stats-strip" class="stats-strip"><div class="loading">Loading…</div></div>
+  <div id="stats-strip" class="stats-strip"><div class="loading busy">Loading…</div></div>
   <div class="grid2">
     <div class="card">
       <h3>Gain % by Position</h3>
@@ -522,48 +533,50 @@
     </div>
     <div class="card"><h3>Portfolio by Pie</h3><canvas id="pie-doughnut"></canvas></div>
   </div>
-  <div class="card"><h3>Active Alerts</h3><div id="active-alerts"><div class="loading">Loading…</div></div></div>
-  <div class="card" id="sector-map-card"><h3>📐 Sector Map</h3><div id="sector-map"><div class="loading">Loading…</div></div></div>
-  <div class="card" id="country-map-card"><h3>🌍 Country Exposure</h3><div id="country-map"><div class="loading">Loading…</div></div></div>
+  <div class="card"><h3>Active Alerts</h3><div id="active-alerts"><div class="loading busy">Loading…</div></div></div>
+  <div class="card" id="sector-map-card"><h3>📐 Sector Map</h3><div id="sector-map"><div class="loading busy">Loading…</div></div></div>
+  <div class="card" id="country-map-card"><h3>🌍 Country Exposure</h3><div id="country-map"><div class="loading busy">Loading…</div></div></div>
 </div>
 
 <div id="heatmap" class="tab">
-  <div class="card"><h3>P&amp;L Bubbles — daily / weekly / monthly <span id="heatmap-updated" style="font-size:12px;font-weight:400;color:var(--muted);margin-left:8px;"></span></h3><div id="heatmap-grid"><div class="loading">Loading…</div></div></div>
+  <div class="card"><h3>P&amp;L Bubbles — daily / weekly / monthly <span id="heatmap-updated" style="font-size:12px;font-weight:400;color:var(--muted);margin-left:8px;"></span></h3><div id="heatmap-grid"><div class="loading busy">Loading…</div></div></div>
 </div>
 
 <div id="positions" class="tab">
-  <div id="positions-list"><div class="loading">Loading…</div></div>
+  <div id="positions-list"><div class="loading busy">Loading…</div></div>
 </div>
 
 <div id="analyst" class="tab">
   <div id="pie-ratings" class="grid3"></div>
-  <div class="card"><h3>Full Analyst Ratings</h3><div id="analyst-table-wrap"><div class="loading">Loading…</div></div></div>
+  <div class="card"><h3>Full Analyst Ratings</h3><div id="analyst-table-wrap"><div class="loading busy">Loading…</div></div></div>
 </div>
 
 <div id="strategy" class="tab">
-  <div id="inst-flow-content"><div class="loading">Loading…</div></div>
-  <div id="holding-dec-content"><div class="loading">Loading…</div></div>
-  <div id="strategy-content"><div class="loading">Loading…</div></div>
+  <div id="inst-flow-content"><div class="loading busy">Loading…</div></div>
+  <div id="holding-dec-content"><div class="loading busy">Loading…</div></div>
+  <div id="strategy-content"><div class="loading busy">Loading…</div></div>
 </div>
 
 <div id="profit" class="tab">
-  <div id="profit-content"><div class="loading">Loading…</div></div>
+  <div id="profit-content"><div class="loading busy">Loading…</div></div>
 </div>
 
 <div id="returns" class="tab">
-  <div id="returns-content"><div class="loading">Loading…</div></div>
+  <div id="returns-content"><div class="loading busy">Loading…</div></div>
 </div>
 
 <div id="watchlist" class="tab">
-  <div id="watchlist-content"><div class="loading">Loading…</div></div>
-  <div class="card" id="ipo-card"><h3>🚀 IPO Watch</h3><div id="ipo-content"><div class="loading">Loading…</div></div></div>
+  <div id="watchlist-content"><div class="loading busy">Loading…</div></div>
+  <div class="card" id="ipo-card"><h3>🚀 IPO Watch</h3><div id="ipo-content"><div class="loading busy">Loading…</div></div></div>
 </div>
 
 <div id="alerts" class="tab">
-  <div id="alerts-log"><div class="loading">Loading…</div></div>
+  <div id="alerts-log"><div class="loading busy">Loading…</div></div>
 </div>
 <footer class="app-footer"><a href="../help/" id="docs-link">📘 Documentation</a><span>CapitalLens · screening aids, not financial advice</span></footer>
 </div><!-- /#app -->
+<div id="boot-splash" role="status" aria-live="polite"><div class="bs-logo">🔒 CapitalLens</div><div class="bs-spin"></div><div>Unlocking your private dashboard…</div><div class="bs-slow">Taking longer than usual. Check your connection, then reload.</div></div>
+
 
 <!-- ── JS MODULES ── -->
 
@@ -670,10 +683,10 @@
 <script src="../js/alerts.js?v=c1a925535e8e" integrity="sha384-7PUElfYc+mwl1Oqr4w1QMC2nMT/bAp4J9zS/16qW54Jje/e4gRiGKlHQAt8dqATu"></script>
 <script src="../js/tickertips.js?v=62c3f21e8fa6" integrity="sha384-uol0Rwj54jmfrLQJnoQ9rmmclnnHE5cMDN7Ci+Jn2Mo6W4tqHoZ53Ay3/BTEgS52"></script>
 <script src="../js/collapse.js?v=7edc1cf73e08" integrity="sha384-A619AiWc9t9/ZdVUpzglvO2kPNeCq9597UZcOa4ctslPfQiU48P+lXZWq9vS6k05"></script>
-<script src="../js/watchlist.js?v=feeed3c882fe" integrity="sha384-+jqXwq3uWtkT4SnGIKM2M7yijo4yoKa72fEAgdjsMBrh6h8bmZJqJnTM/FwL1UvY"></script>
+<script src="../js/watchlist.js?v=4f7b3392d2c3" integrity="sha384-5m2NcgaWOxVyctXUAt3O/v26XXMEisM+g406jjpkkw6ybxFBq9Dj/A2dqvnsZrLK"></script>
 <script src="../js/ipo.js?v=dafd186865da" integrity="sha384-9XDTsT8EO5VICfgEOjm9NyE8Yo24UaP8ImS5ksygJ5YVfgxdtM96fhfMEB39+XrB"></script>
-<script src="../js/drilldown.js?v=ba8270c24f2b" integrity="sha384-hHTBmsskCBTraWDyh1WLn3feg0fatRote5yhCIhSkh1klwGAK/pWFjF9UDh0uaa+"></script>
-<script src="../js/pie_drill.js?v=8c51986cc5fc" integrity="sha384-LGniYIiV4KXlc6vLeJvRBeHO2GBHNioliyzl+pXCCNMM4JWGtEmuNOipp/f0Jb2T"></script>
+<script src="../js/drilldown.js?v=d519a53e2ef7" integrity="sha384-oTN11du3ZVeysBSKTRDUUdTAkkdvwfMSSoAhv8YEzdTIqeaSK6U4FQcB9bU6Z54b"></script>
+<script src="../js/pie_drill.js?v=cad1c2b73eca" integrity="sha384-/anEbcNlaOlI6IjQZjvuAXRY/dXJIxxLKPaXPrGpww7W/Y7ZSKyQfe5znHrhAoqM"></script>
 <script src="../js/router.js?v=bcfc4888d172" integrity="sha384-Eve7gCPZkMSdV7g3eB/b+Srsyi0BdSRPLX+5uHye7GLIArTrN9Y/BBhlg6JqNz7b"></script>
 </body>
 </html>

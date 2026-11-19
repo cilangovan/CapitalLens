@@ -111,6 +111,20 @@ assert "demo-auth" not in s and "zkapp-auth.js" in s
 _LOGIN_CSS = "  #login-screen.hidden { display: none; }\n"
 assert _LOGIN_CSS in s
 s = s.replace(_LOGIN_CSS, _LOGIN_CSS + "  #login-screen:not(.show) { visibility: hidden; }\n", 1)
+# Boot splash: while the saved-session check runs there must be something on screen (never a blank page), CSS only (strict CSP).
+_SPLASH_CSS = """  #boot-splash { position:fixed; inset:0; z-index:998; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:14px; background:var(--bg); color:var(--muted); font-size:13px; text-align:center; padding:24px; }
+  #boot-splash .bs-logo { font-size:20px; font-weight:600; color:var(--text); }
+  #boot-splash .bs-spin { width:36px; height:36px; border:3px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:cl-rot .8s linear infinite; }
+  #boot-splash .bs-slow { opacity:0; animation:bs-slow 0s 12s forwards; }
+  @keyframes bs-slow { to { opacity:1; } }
+  @keyframes cl-rot { to { transform:rotate(360deg); } }
+  #login-screen.show ~ #boot-splash, #app.visible ~ #boot-splash { display:none; }
+  @media (prefers-reduced-motion: reduce) { #boot-splash .bs-spin { animation-duration:2.4s; } }
+"""
+s = s.replace("  #login-screen:not(.show) { visibility: hidden; }\n", "  #login-screen:not(.show) { visibility: hidden; }\n" + _SPLASH_CSS, 1)
+_SPLASH = '<div id="boot-splash" role="status" aria-live="polite"><div class="bs-logo">🔒 CapitalLens</div><div class="bs-spin"></div><div>Unlocking your private dashboard…</div><div class="bs-slow">Taking longer than usual. Check your connection, then reload.</div></div>\n'
+assert "</div><!-- /#app -->" in s
+s = s.replace("</div><!-- /#app -->", "</div><!-- /#app -->\n" + _SPLASH, 1)
 import re
 def _add_sri(m):
     src = m.group(1)

@@ -354,6 +354,9 @@
   .xirr-banner .big { font-size: 48px; font-weight: 800; }
   .xirr-banner .label { font-size: 13px; color: var(--muted); margin-top: 4px; }
   .loading { color: var(--muted); font-size: 13px; padding: 20px; text-align: center; }
+  .loading.busy::before { content:''; display:inline-block; width:14px; height:14px; margin-right:8px; vertical-align:-2px; border:2px solid var(--border); border-top-color:var(--accent); border-radius:50%; animation:cl-rot .8s linear infinite; }
+  @keyframes cl-rot { to { transform:rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) { .loading.busy::before { animation-duration:2.4s; } }
   .masked { color: var(--muted); letter-spacing: 2px; font-weight: 700; }
   canvas { max-width: 100%; }
   .period-btn {
@@ -506,7 +509,7 @@
 </nav>
 
 <div id="overview" class="tab active">
-  <div id="stats-strip" class="stats-strip"><div class="loading">Loading…</div></div>
+  <div id="stats-strip" class="stats-strip"><div class="loading busy">Loading…</div></div>
   <div class="grid2">
     <div class="card">
       <h3>Gain % by Position</h3>
@@ -522,45 +525,45 @@
     </div>
     <div class="card"><h3>Portfolio by Pie</h3><canvas id="pie-doughnut"></canvas></div>
   </div>
-  <div class="card"><h3>Active Alerts</h3><div id="active-alerts"><div class="loading">Loading…</div></div></div>
-  <div class="card" id="sector-map-card"><h3>📐 Sector Map</h3><div id="sector-map"><div class="loading">Loading…</div></div></div>
-  <div class="card" id="country-map-card"><h3>🌍 Country Exposure</h3><div id="country-map"><div class="loading">Loading…</div></div></div>
+  <div class="card"><h3>Active Alerts</h3><div id="active-alerts"><div class="loading busy">Loading…</div></div></div>
+  <div class="card" id="sector-map-card"><h3>📐 Sector Map</h3><div id="sector-map"><div class="loading busy">Loading…</div></div></div>
+  <div class="card" id="country-map-card"><h3>🌍 Country Exposure</h3><div id="country-map"><div class="loading busy">Loading…</div></div></div>
 </div>
 
 <div id="heatmap" class="tab">
-  <div class="card"><h3>P&amp;L Bubbles — daily / weekly / monthly <span id="heatmap-updated" style="font-size:12px;font-weight:400;color:var(--muted);margin-left:8px;"></span></h3><div id="heatmap-grid"><div class="loading">Loading…</div></div></div>
+  <div class="card"><h3>P&amp;L Bubbles — daily / weekly / monthly <span id="heatmap-updated" style="font-size:12px;font-weight:400;color:var(--muted);margin-left:8px;"></span></h3><div id="heatmap-grid"><div class="loading busy">Loading…</div></div></div>
 </div>
 
 <div id="positions" class="tab">
-  <div id="positions-list"><div class="loading">Loading…</div></div>
+  <div id="positions-list"><div class="loading busy">Loading…</div></div>
 </div>
 
 <div id="analyst" class="tab">
   <div id="pie-ratings" class="grid3"></div>
-  <div class="card"><h3>Full Analyst Ratings</h3><div id="analyst-table-wrap"><div class="loading">Loading…</div></div></div>
+  <div class="card"><h3>Full Analyst Ratings</h3><div id="analyst-table-wrap"><div class="loading busy">Loading…</div></div></div>
 </div>
 
 <div id="strategy" class="tab">
-  <div id="inst-flow-content"><div class="loading">Loading…</div></div>
-  <div id="holding-dec-content"><div class="loading">Loading…</div></div>
-  <div id="strategy-content"><div class="loading">Loading…</div></div>
+  <div id="inst-flow-content"><div class="loading busy">Loading…</div></div>
+  <div id="holding-dec-content"><div class="loading busy">Loading…</div></div>
+  <div id="strategy-content"><div class="loading busy">Loading…</div></div>
 </div>
 
 <div id="profit" class="tab">
-  <div id="profit-content"><div class="loading">Loading…</div></div>
+  <div id="profit-content"><div class="loading busy">Loading…</div></div>
 </div>
 
 <div id="returns" class="tab">
-  <div id="returns-content"><div class="loading">Loading…</div></div>
+  <div id="returns-content"><div class="loading busy">Loading…</div></div>
 </div>
 
 <div id="watchlist" class="tab">
-  <div id="watchlist-content"><div class="loading">Loading…</div></div>
-  <div class="card" id="ipo-card"><h3>🚀 IPO Watch</h3><div id="ipo-content"><div class="loading">Loading…</div></div></div>
+  <div id="watchlist-content"><div class="loading busy">Loading…</div></div>
+  <div class="card" id="ipo-card"><h3>🚀 IPO Watch</h3><div id="ipo-content"><div class="loading busy">Loading…</div></div></div>
 </div>
 
 <div id="alerts" class="tab">
-  <div id="alerts-log"><div class="loading">Loading…</div></div>
+  <div id="alerts-log"><div class="loading busy">Loading…</div></div>
 </div>
 <footer class="app-footer"><a href="../help/" id="docs-link">📘 Documentation</a><span>CapitalLens · screening aids, not financial advice</span></footer>
 </div><!-- /#app -->

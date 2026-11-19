@@ -80,6 +80,8 @@ nofoot = [f for f, h in foot if not ('class="app-footer"' in (ROOT / f).read_tex
 check("every dashboard footer links to the documentation portal", not nofoot, str(nofoot))
 check("footer link is a 40px tap target", all("min-height:40px" in (ROOT / f).read_text().replace(" ", "") for f in ("docs/index.html", "docs/demo/index.html", "docs/zk/index.html")))
 check("documentation portal has no script and a strict CSP", all("<script" not in p.read_text() and "default-src 'none'" in p.read_text() for p in (ROOT / "docs/help").rglob("*.html")))
+check("loading never leaves a blank screen: private pages carry the boot splash, source pages have the spinner style",
+      all('id="boot-splash"' in (ROOT / f).read_text() for f in ("docs/zkapp/index.html", "docs/zkapp-prod/index.html")) and all(".loading.busy::before" in (ROOT / f).read_text() for f in ("docs/index.html", "docs/demo/index.html")))
 check("CLAUDE.md records the documentation rule", "documentation/" in doc and "Documentation" in doc)
 
 check("generated pages exist for every dashboard", all((ROOT / p).exists() for p in ("docs/app/index.html", "docs/zkapp/index.html", "docs/zkapp-prod/index.html")))
