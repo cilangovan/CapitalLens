@@ -1,4 +1,4 @@
-"""Run: python tests/ipo_layout_test.py — the IPO card must fit a phone screen (no sideways overflow) on every market tab.
+"""Run: python tests/ipo_layout_test.py — the IPO card must fit a phone screen (no sideways overflow) with every country filter, My list and search results.
 Offline: renders the shipped seed rows plus a stress row (very long names) with the dashboard's own CSS."""
 import json, re, sys
 from pathlib import Path
@@ -18,8 +18,8 @@ with sync_playwright() as p:
         pg = b.new_page(viewport={"width": w, "height": 800})
         pg.set_content(f"<style>{css}</style><div class='tab active'><div class='card'><h3>IPO</h3><div id='ipo-content'></div></div></div>")
         pg.add_script_tag(path=str(ROOT / "docs/js/ipo.js"))
-        for mk in ("ALL", "WATCH", "US", "UK", "IN", "HK", "OTHER"):
-            pg.evaluate("([rows, mk]) => { document.getElementById('ipo-content').innerHTML = IPO.html(rows, mk, '2026-11-19', new Set(rows.slice(0, 3).map(r => r.id))); }", [rows, mk])
+        for mk in ("ALL", "US", "UK", "IN", "HK", "OTHER"):
+            pg.evaluate("([rows, mk]) => { document.getElementById('ipo-content').innerHTML = IPO.html(rows, { q: '', country: mk, exchange: mk === 'ALL' ? rows[0].exchange : 'ALL' }, '2026-11-19', new Set(rows.slice(0, 3).map(r => r.id))); }", [rows, mk])
             over = pg.evaluate("""() => { const W = document.documentElement.clientWidth, out = [];
               document.querySelectorAll('#ipo-content *').forEach(e => { const r = e.getBoundingClientRect(); if (r.width && (r.right > W + 1 || r.left < -1)) { let p = e.parentElement, clip = false;
                 while (p && p.id !== 'ipo-content') { if (/(auto|scroll|hidden|clip)/.test(getComputedStyle(p).overflowX)) { const q = p.getBoundingClientRect(); clip = q.right <= W + 1; break; } p = p.parentElement; }
@@ -29,5 +29,5 @@ with sync_playwright() as p:
                 bad += 1; print(f"✗ {w}px {mk}: {over}")
         pg.close()
     b.close()
-print("✓ IPO card fits 320/360/390px on every market tab" if not bad else f"{bad} layout problem(s)")
+print("✓ IPO card fits 320/360/390px with every country filter, My list and search results" if not bad else f"{bad} layout problem(s)")
 sys.exit(1 if bad else 0)

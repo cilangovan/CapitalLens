@@ -26,20 +26,26 @@ Three sections (tabs `.w-cats`): **📈 Stocks · 🛢 Commodities · ₿ Crypto
 
 ## 🚀 IPO Watch (card under the watchlist)
 
-IPOs across **all markets**: where each lists, status, rating **with its source**, and the opens / closes / listing dates.
+Works like the stock watchlist: **nothing is listed until you bookmark it.** The IPO calendar is only the thing you search.
+
+1. **Search** the calendar by company, ticker, sector, exchange or country name (for example `Anthropic`, `Nasdaq`, `India`). Several words narrow the result.
+2. **Filter** by **country** (chips: All countries, US, UK, India, HK, Other) and by **exchange** (dropdown built from the calendar). A filter on its own lists everything that matches.
+3. **☆ Bookmark** a result. It appears under **⭐ My IPO list** (and the result reads ★ In my list).
+4. **✕** on a card in My IPO list removes it (same ✕ as the stock watchlist, top right, 40px).
 
 | Element | Detail |
 |---|---|
-| Market tabs | **ALL**, **⭐ Watching** (only when per-user watching is available), **US**, **UK**, **IN**, **HK**, **OTHER** |
+| My IPO list | Empty by default ("Nothing here yet. Search above, then tap ☆ Bookmark…"). Per-user, stored encrypted in the private app (`ipo_watch`) |
+| Search results | Shown only while a query or a filter is set, with a count; hidden when cleared |
+| Each card | Name, ticker, exchange, sector, status, rating pill (hover for source), **Opens / Closes / Lists**, price range or price, deal size, note, source link |
 | Status (phase) | open · closed · upcoming · priced · filed · rumoured · listed · postponed · withdrawn, derived from the dates |
-| Each row | Name, ticker, exchange, sector, rating pill (hover for source), **Opens / Closes / Lists**, price range or price, deal size, note, source link |
-| **Watch / Remove** | A ☆ Watch button on every card; a watched card shows ★ Watching and a **✕** (same ✕ as the stock watchlist, top right, 40px) that removes it from your list. Per-user, stored encrypted in the private app (`ipo_watch`); the Watching tab lists your picks. Legacy and demo dashboards hide the buttons |
+| Legacy and demo dashboards | Search and filters work; there is no per-user list, so no Bookmark buttons |
 
 - **Honest ratings:** a rating other than *Not rated* must carry a `rating_source`; ratings are never invented. Today all rows are *Not rated* until a rating source is chosen.
 - **Honest dates:** an IPO whose price is not final says so in its note (for example "final price not confirmed").
-- Data: shared public table `ipo_calendar`, upserted from `config/ipo_calendar.json` by `services/ipo_service.py` (workflow `IPO Calendar`, weekdays 06:15 UTC). There is no live exchange feed; the calendar is curated JSON with a named source on every row.
-- Per-user watch: routes `POST ipo/watch` and `ipo/unwatch` are answered in the browser by `docs/zk/shim.js` into the encrypted store (no database migration needed; `enc_rows.kind = 'ipo_watch'`).
+- Data: shared public table `ipo_calendar` (the searchable catalogue, nothing about any customer), upserted from `config/ipo_calendar.json` by `services/ipo_service.py` (workflow `IPO Calendar`, weekdays 06:15 UTC). There is no live exchange feed; the catalogue is curated JSON with a named source on every row.
+- Per-user list: routes `POST ipo/watch` and `ipo/unwatch` are answered in the browser by `docs/zk/shim.js` into the encrypted store (no database migration needed; `enc_rows.kind = 'ipo_watch'`).
 
 ## Tests
 
-`tests/zk_watchlist_test.mjs`, `tests/zk_watchlistops_test.mjs`, `tests/zk_ipo_test.mjs`, `tests/ipo_service_test.py`, `tests/ipo_layout_test.py` (320/360/390px), `tests/ipo_watch_browser_test.py`.
+`tests/zk_watchlist_test.mjs`, `tests/zk_watchlistops_test.mjs`, `tests/zk_ipo_test.mjs`, `tests/ipo_service_test.py`, `tests/ipo_layout_test.py` (320/360/390px, every filter), `tests/ipo_watch_browser_test.py` (real typing, filters, bookmark, ✕).

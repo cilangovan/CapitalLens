@@ -50,7 +50,13 @@
 - Prices from London lines quoted in pence are shown in pence.
 - Data: <code>watchlist</code> and <code>watchlist_analysis</code> (<code>services/watchlist_service.py</code>; private app: <code>docs/zk/watchlist.js</code>, <code>watchlistops.js</code>). Weekly budgets are settings: <code>watchlist_weekly_budget</code>, <code>commodity_weekly_budget</code>, <code>crypto_weekly_budget</code>.</p>
 <h2 id="ipo-watch-card-under-the-watchlist">🚀 IPO Watch (card under the watchlist)</h2>
-<p>IPOs across <strong>all markets</strong>: where each lists, status, rating <strong>with its source</strong>, and the opens / closes / listing dates.</p>
+<p>Works like the stock watchlist: <strong>nothing is listed until you bookmark it.</strong> The IPO calendar is only the thing you search.</p>
+<ol>
+<li><strong>Search</strong> the calendar by company, ticker, sector, exchange or country name (for example <code>Anthropic</code>, <code>Nasdaq</code>, <code>India</code>). Several words narrow the result.</li>
+<li><strong>Filter</strong> by <strong>country</strong> (chips: All countries, US, UK, India, HK, Other) and by <strong>exchange</strong> (dropdown built from the calendar). A filter on its own lists everything that matches.</li>
+<li><strong>☆ Bookmark</strong> a result. It appears under <strong>⭐ My IPO list</strong> (and the result reads ★ In my list).</li>
+<li><strong>✕</strong> on a card in My IPO list removes it (same ✕ as the stock watchlist, top right, 40px).</li>
+</ol>
 <div class="tbl"><table>
 <thead>
 <tr>
@@ -60,30 +66,34 @@
 </thead>
 <tbody>
 <tr>
-<td>Market tabs</td>
-<td><strong>ALL</strong>, <strong>⭐ Watching</strong> (only when per-user watching is available), <strong>US</strong>, <strong>UK</strong>, <strong>IN</strong>, <strong>HK</strong>, <strong>OTHER</strong></td>
+<td>My IPO list</td>
+<td>Empty by default ("Nothing here yet. Search above, then tap ☆ Bookmark…"). Per-user, stored encrypted in the private app (<code>ipo_watch</code>)</td>
+</tr>
+<tr>
+<td>Search results</td>
+<td>Shown only while a query or a filter is set, with a count; hidden when cleared</td>
+</tr>
+<tr>
+<td>Each card</td>
+<td>Name, ticker, exchange, sector, status, rating pill (hover for source), <strong>Opens / Closes / Lists</strong>, price range or price, deal size, note, source link</td>
 </tr>
 <tr>
 <td>Status (phase)</td>
 <td>open · closed · upcoming · priced · filed · rumoured · listed · postponed · withdrawn, derived from the dates</td>
 </tr>
 <tr>
-<td>Each row</td>
-<td>Name, ticker, exchange, sector, rating pill (hover for source), <strong>Opens / Closes / Lists</strong>, price range or price, deal size, note, source link</td>
-</tr>
-<tr>
-<td><strong>Watch / Remove</strong></td>
-<td>A ☆ Watch button on every card; a watched card shows ★ Watching and a <strong>✕</strong> (same ✕ as the stock watchlist, top right, 40px) that removes it from your list. Per-user, stored encrypted in the private app (<code>ipo_watch</code>); the Watching tab lists your picks. Legacy and demo dashboards hide the buttons</td>
+<td>Legacy and demo dashboards</td>
+<td>Search and filters work; there is no per-user list, so no Bookmark buttons</td>
 </tr>
 </tbody>
 </table></div>
 <ul>
 <li><strong>Honest ratings:</strong> a rating other than <em>Not rated</em> must carry a <code>rating_source</code>; ratings are never invented. Today all rows are <em>Not rated</em> until a rating source is chosen.</li>
 <li><strong>Honest dates:</strong> an IPO whose price is not final says so in its note (for example "final price not confirmed").</li>
-<li>Data: shared public table <code>ipo_calendar</code>, upserted from <code>config/ipo_calendar.json</code> by <code>services/ipo_service.py</code> (workflow <code>IPO Calendar</code>, weekdays 06:15 UTC). There is no live exchange feed; the calendar is curated JSON with a named source on every row.</li>
-<li>Per-user watch: routes <code>POST ipo/watch</code> and <code>ipo/unwatch</code> are answered in the browser by <code>docs/zk/shim.js</code> into the encrypted store (no database migration needed; <code>enc_rows.kind = 'ipo_watch'</code>).</li>
+<li>Data: shared public table <code>ipo_calendar</code> (the searchable catalogue, nothing about any customer), upserted from <code>config/ipo_calendar.json</code> by <code>services/ipo_service.py</code> (workflow <code>IPO Calendar</code>, weekdays 06:15 UTC). There is no live exchange feed; the catalogue is curated JSON with a named source on every row.</li>
+<li>Per-user list: routes <code>POST ipo/watch</code> and <code>ipo/unwatch</code> are answered in the browser by <code>docs/zk/shim.js</code> into the encrypted store (no database migration needed; <code>enc_rows.kind = 'ipo_watch'</code>).</li>
 </ul>
 <h2 id="tests">Tests</h2>
-<p><code>tests/zk_watchlist_test.mjs</code>, <code>tests/zk_watchlistops_test.mjs</code>, <code>tests/zk_ipo_test.mjs</code>, <code>tests/ipo_service_test.py</code>, <code>tests/ipo_layout_test.py</code> (320/360/390px), <code>tests/ipo_watch_browser_test.py</code>.</p></article>
+<p><code>tests/zk_watchlist_test.mjs</code>, <code>tests/zk_watchlistops_test.mjs</code>, <code>tests/zk_ipo_test.mjs</code>, <code>tests/ipo_service_test.py</code>, <code>tests/ipo_layout_test.py</code> (320/360/390px, every filter), <code>tests/ipo_watch_browser_test.py</code> (real typing, filters, bookmark, ✕).</p></article>
 <footer class="foot"><a href="https://github.com/cilangovan/CapitalLens/blob/main/documentation/menus/watchlist.md">Edit this page on GitHub</a> · <a href="../../">Back to the dashboard</a> · <a href="../index.html">Documentation home</a></footer></main></div>
 </body></html>
