@@ -263,6 +263,7 @@ function wlCard(i) {
         <span class="w-tag ${rsiCls}">RSI ${a.rsi ?? '—'} · ${_wesc(a.rsi_label)}</span>
         <span class="w-tag ${volCls}">Volume ${_wesc(vol.label)}${vol.ratio ? ` · ${vol.ratio}× avg` : ''}</span>
         <span class="w-tag ${qCls}">Quality ${_wesc(q.label)}</span>
+        ${wlAnalystChip(a)}
       </div>
       <div class="w-why">${(a.why || []).map(w => `<div>• ${_wesc(w)}</div>`).join('')}</div>
       ${(i.alternatives || []).length ? `<div class="w-alts">🛒 On Trading 212: ${(i.alternatives).map(x =>
@@ -287,6 +288,15 @@ function wlCard(i) {
         <div class="w-dim w-small">Source: Yahoo Finance daily data (${_wesc(a.symbol)}), close ${_wesc(a.as_of)} · updated ${new Date(row.updated_at).toLocaleString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })} · not financial advice.</div>
       </div>` : ''}
     </div></div>`;
+}
+
+// Analyst view as a chip: Yahoo's recommendation and analyst count, or an honest "no coverage" (never an invented rating).
+function wlAnalystChip(a) {
+  const an = (a && a.analyst) || {}, n = +an.count || 0, rec = String(an.rec || 'none').toLowerCase();
+  if (rec === 'none' || !n) return '<span class="w-tag" title="Source: Yahoo Finance analyst data">Analysts: no coverage</span>';
+  const label = rec.replace(/_/g, ' ').replace(/^./, c => c.toUpperCase());
+  const cls = (rec === 'strong_buy' || rec === 'buy') ? 'g' : (['sell', 'underperform', 'strong_sell'].includes(rec) ? 'r' : 'y');
+  return `<span class="w-tag ${cls}" title="Source: Yahoo Finance analyst data">Analysts: ${_wesc(label)} (${n})</span>`;
 }
 
 async function wlSaveBudget() {

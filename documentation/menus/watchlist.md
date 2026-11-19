@@ -18,7 +18,7 @@ Three sections (tabs `.w-cats`): **📈 Stocks · 🛢 Commodities · ₿ Crypto
 | 🟡 HOLD | Wait for the price points |
 | 🔴 AVOID | Not this week |
 
-  together with **price points with £ per step, how much to buy** (from the per-category weekly budget), **RSI**, **volume** and **quality**.
+  together with **price points with £ per step, how much to buy** (from the per-category weekly budget), **RSI**, **volume** and **quality** and an **analyst chip** (Yahoo Finance recommendation and number of analysts, or "no coverage"; never an invented rating).
 - **✕ Remove** stops all tracking of that item.
 - **Tap a name** for the full detail page: live chart (1D…5Y with 50/200-day moving averages), day and 52-week range, key stats, analyst rating and target, trading / profitability / leverage, company profile, insights and score radar, and this week's plan. Live prices use the `/chart` route (Yahoo Finance).
 - Prices from London lines quoted in pence are shown in pence.
