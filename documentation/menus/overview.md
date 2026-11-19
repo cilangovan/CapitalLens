@@ -8,7 +8,7 @@ Tab id `overview` · loader `loadOverview()` · `docs/js/overview.js`
 
 | Card | What it shows | Data |
 |---|---|---|
-| **Stats strip** (`#stats-strip`) | Total Value, Invested, Cash, Total P&L (£ and %), Positions, Winners, Losers, Alerts | Latest row of `portfolio_snapshots` and its `positions` |
+| **Stats strip** (`#stats-strip`) | **Total Value** (whole account incl. cash), **Investments** (value of your shares = cost basis + unrealised result), **Cost basis** (money put into the shares you hold), **Cash** (free cash), **Unrealised P&L** (£ and % **of cost basis**), Winners, Losers, Positions, Alerts | The snapshot's own Trading 212 account figures (`raw.account`: `invested`, `ppl`, `total`, `free`) so the numbers match the Trading 212 app; per-position counts from `positions` |
 | **Gain % by Position** | Bar chart of each holding's gain. Period buttons **1D · 1W · 1M · 3M · 1Y · All**. Holdings with no data for a period show "No data yet for this period" instead of a zero bar | `positions` of the latest snapshot compared with the snapshot nearest the period start |
 | **Portfolio by Pie** | Doughnut of value per pie. Pie colours are derived from the pie name, so no user pie names are stored in code | `positions.pie` |
 | **Active Alerts** | The unread inbox alerts, newest first | `alerts` |
@@ -16,6 +16,9 @@ Tab id `overview` · loader `loadOverview()` · `docs/js/overview.js`
 | **🌍 Country Exposure** | Value by country, looking through ETFs | `instrument_country_weights` |
 
 ## Behaviour
+
+- **Definitions match Trading 212** (Investments value, Unrealised result, Cost basis). Older snapshots that lack the account figures fall back to total − free cash, labelled "estimate", with no Cost basis tile.
+- **Why a figure can still differ from the Trading 212 app:** the dashboard shows the snapshot taken at the time shown in the header ("Updated … ago"), while the app is live; Total Value includes cash, the app's Investments screen does not.
 
 - **Stale data warning:** a snapshot older than 12 hours is flagged beside the "updated" time.
 - **All-time period** uses Trading 212's own profit figure; shorter periods difference two snapshots.

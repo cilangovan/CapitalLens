@@ -18,6 +18,22 @@ function ovStaleBanner(ageMs, ts) {
     (priv ? `<button onclick="zkToolsOpen()" style="background:var(--accent);color:#fff;border:0;border-radius:6px;padding:4px 12px;font-size:12px;cursor:pointer">Refresh now</button>` : `<span class="w-dim">The scheduled update will refresh them.</span>`);
 }
 
+// Headline numbers, defined the way Trading 212 defines them (its own account figures, stored in the snapshot as raw.account):
+//   Investments = cost basis + unrealised result · Cost basis = money put into the shares you hold · Unrealised result = T212's own P&L,
+//   shown as a % of cost basis · Cash = free cash · Total = whole account value. Older snapshots without raw.account fall back to the
+//   previous calculation and say so (never a silent different definition).
+function ovHeadline(snap) {
+  snap = snap || {};
+  const a = snap.raw && snap.raw.account, has = !!(a && a.invested != null && Number.isFinite(+a.invested));
+  const cash = +snap.cash || 0, total = +snap.total_value || 0;
+  if (has) {
+    const cost = +a.invested, res = +a.ppl || 0;
+    return { exact: true, total, investments: cost + res, cost, result: res, pct: cost ? res / cost * 100 : 0, cash };
+  }
+  const inv = +snap.invested || 0, ppl = +snap.total_ppl || (total - inv);
+  return { exact: false, total, investments: inv, cost: null, result: ppl, pct: inv ? ppl / inv * 100 : 0, cash };
+}
+
 async function loadOverview() {
   const [snaps, , alerts] = await Promise.all([
     api('portfolio_snapshots','?select=*&order=created_at.desc&limit=1'),
@@ -26,11 +42,7 @@ async function loadOverview() {
   ]);
 
   const snap = snaps[0] || {};
-  const tv = snap.total_value || 0;
-  const cash = snap.cash || 0;
-  const inv = snap.invested || 0;
-  const ppl = snap.total_ppl || (tv - inv);
-  const pplPct = inv ? (ppl / inv * 100) : 0;
+  const H = ovHeadline(snap), tv = H.total, cash = H.cash, ppl = H.result, pplPct = H.pct;
   const ts = snap.created_at ? new Date(snap.created_at).toLocaleString('en-GB') : '—';
   const ageMs = snap.created_at ? Date.now() - new Date(snap.created_at).getTime() : null;
   document.getElementById('last-updated').textContent = `Updated: ${ts}${ageMs !== null && ageMs >= 0 ? ' (' + ovAgo(ageMs) + ')' : ''}`;
@@ -42,10 +54,11 @@ async function loadOverview() {
   const alertCount = alerts.length;
 
   document.getElementById('stats-strip').innerHTML = `
-    <div class="stat-card"><div class="label">Total Value</div><div class="value">${fmtGbp(tv)}</div></div>
-    <div class="stat-card"><div class="label">Invested</div><div class="value">${fmtGbp(inv)}</div></div>
-    <div class="stat-card"><div class="label">Cash</div><div class="value">${fmtGbp(cash)}</div></div>
-    <div class="stat-card"><div class="label">Total P&amp;L</div><div class="value ${clr(ppl)}">${fmtGbp(ppl)}</div><div class="sub ${clr(pplPct)}">${IS_GUEST ? '' : fmt(pplPct)+'%'}</div></div>
+    <div class="stat-card"><div class="label">Total Value</div><div class="value">${fmtGbp(tv)}</div><div class="sub">account incl. cash</div></div>
+    <div class="stat-card"><div class="label">Investments</div><div class="value">${fmtGbp(H.investments)}</div><div class="sub">${H.exact ? 'value of your shares' : 'total − free cash (estimate)'}</div></div>
+    ${H.exact ? `<div class="stat-card"><div class="label">Cost basis</div><div class="value">${fmtGbp(H.cost)}</div><div class="sub">money put into them</div></div>` : ''}
+    <div class="stat-card"><div class="label">Cash</div><div class="value">${fmtGbp(cash)}</div><div class="sub">free cash</div></div>
+    <div class="stat-card"><div class="label">Unrealised P&amp;L</div><div class="value ${clr(ppl)}">${fmtGbp(ppl)}</div><div class="sub ${clr(pplPct)}">${IS_GUEST ? '' : fmt(pplPct)+'%' + (H.exact ? ' of cost' : '')}</div></div>
     <div class="stat-card"><div class="label">Winners</div><div class="value green">${winners}</div></div>
     <div class="stat-card"><div class="label">Losers</div><div class="value red">${losers}</div></div>
     <div class="stat-card"><div class="label">Positions</div><div class="value">${allPos.length}</div></div>

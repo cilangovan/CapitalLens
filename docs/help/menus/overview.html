@@ -24,8 +24,8 @@
 <tbody>
 <tr>
 <td><strong>Stats strip</strong> (<code>#stats-strip</code>)</td>
-<td>Total Value, Invested, Cash, Total P&amp;L (£ and %), Positions, Winners, Losers, Alerts</td>
-<td>Latest row of <code>portfolio_snapshots</code> and its <code>positions</code></td>
+<td><strong>Total Value</strong> (whole account incl. cash), <strong>Investments</strong> (value of your shares = cost basis + unrealised result), <strong>Cost basis</strong> (money put into the shares you hold), <strong>Cash</strong> (free cash), <strong>Unrealised P&amp;L</strong> (£ and % <strong>of cost basis</strong>), Winners, Losers, Positions, Alerts</td>
+<td>The snapshot's own Trading 212 account figures (<code>raw.account</code>: <code>invested</code>, <code>ppl</code>, <code>total</code>, <code>free</code>) so the numbers match the Trading 212 app; per-position counts from <code>positions</code></td>
 </tr>
 <tr>
 <td><strong>Gain % by Position</strong></td>
@@ -56,7 +56,13 @@
 </table></div>
 <h2 id="behaviour">Behaviour</h2>
 <ul>
-<li><strong>Stale data warning:</strong> a snapshot older than 12 hours is flagged beside the "updated" time.</li>
+<li><strong>Definitions match Trading 212</strong> (Investments value, Unrealised result, Cost basis). Older snapshots that lack the account figures fall back to total − free cash, labelled "estimate", with no Cost basis tile.</li>
+<li>
+<p><strong>Why a figure can still differ from the Trading 212 app:</strong> the dashboard shows the snapshot taken at the time shown in the header ("Updated … ago"), while the app is live; Total Value includes cash, the app's Investments screen does not.</p>
+</li>
+<li>
+<p><strong>Stale data warning:</strong> a snapshot older than 12 hours is flagged beside the "updated" time.</p>
+</li>
 <li><strong>All-time period</strong> uses Trading 212's own profit figure; shorter periods difference two snapshots.</li>
 <li>Guest mode masks values with <code>***</code>.</li>
 <li>All sector, country, name and flag data comes from the database, never from a list in JavaScript.</li>
