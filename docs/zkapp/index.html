@@ -27,6 +27,7 @@
     display: flex; align-items: center; justify-content: center; z-index: 999;
   }
   #login-screen.hidden { display: none; }
+  #login-screen:not(.show) { visibility: hidden; }
   .login-box {
     background: var(--bg2); border: 1px solid var(--border); border-radius: 12px;
     padding: 36px 32px; width: 340px; text-align: center;
@@ -647,7 +648,7 @@
 <script src="../zk/shim.js?v=02ecc4e4373f" integrity="sha384-TTZ3f7Xc4WHBmarzSgBHnZISfJS0tpkT88UT77uTB0YIjjd2KkykI8ooogyMJOKN"></script>
 <script src="../zk/pipeline.js?v=bfa0c8ccf1ce" integrity="sha384-A1MnDmc9/7vt+iAzgKXQvLfxTpIPps9x+mea4NaZTAlHUbJLSlVpjAhn8Napkyuf"></script>
 <script src="handler-names.js?v=b2538cdf3622" integrity="sha384-Yw5ll8YHGaLCjqUBwss7CpQMGrrL+hCEJ12vxRAKu2tHzOPactEw+oQ87XdRYUVE"></script>
-<script src="zkapp-auth.js?v=7cb585363394" integrity="sha384-eUgu8Z+V7M3bX8fNynXT/735zmLX81MeDw9XzlYFVDe735NS6LC/499k83eW0aZI"></script>
+<script src="zkapp-auth.js?v=f4c605f95961" integrity="sha384-f40UpPZzqkyPfGcHmBKmvwzGyzSNyAmpvz4bmrWjclAU7TePByW5DPRe+lX+M6Jp"></script>
 <script src="zkapp-tools.js?v=70b63c4652ed" integrity="sha384-9JkjIJA6rabzdaIRFQgtC38RpAPM83YdHCY8u7GhdzgSH6VGM0zeF0NXurPonwxC"></script>
 <script src="../js/overview.js?v=7895821aabb9" integrity="sha384-lSQdNEwf1iit15HBLgg5GHBH7mBp0v7czTGlSiWvlQIxjC1Hg5nr7Wlds4f2GjTt"></script>
 <script src="../js/heatmap.js?v=afa428f9e73c" integrity="sha384-ejTjRk7y+eXbpYbK6mwsIrt4MeF2TkJf7+kQzNf1i3KKcnRfk+khUABYy4DEhqWh"></script>

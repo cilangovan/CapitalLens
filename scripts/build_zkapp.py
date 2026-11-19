@@ -107,6 +107,10 @@ def sri(rel):
 tags = "\n".join(f'<script src="{p}" integrity="{sri(p)}"></script>' for p in zk)
 s = s.replace('<script src="demo-shim.js"></script>\n<script src="demo-auth.js"></script>', tags + f'\n<script src="handler-names.js"></script>\n<script src="zkapp-auth.js" integrity="{sri("zkapp-auth.js")}"></script>\n<script src="zkapp-tools.js" integrity="{sri("zkapp-tools.js")}"></script>')
 assert "demo-auth" not in s and "zkapp-auth.js" in s
+# No sign-in flash on refresh: the box stays hidden until zkapp-auth.js has checked for a saved session in this tab, and only then is shown.
+_LOGIN_CSS = "  #login-screen.hidden { display: none; }\n"
+assert _LOGIN_CSS in s
+s = s.replace(_LOGIN_CSS, _LOGIN_CSS + "  #login-screen:not(.show) { visibility: hidden; }\n", 1)
 import re
 def _add_sri(m):
     src = m.group(1)

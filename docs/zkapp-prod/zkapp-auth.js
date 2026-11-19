@@ -92,4 +92,6 @@ window.addEventListener('DOMContentLoaded', async function () {
     const tok = sessionStorage.getItem('zkp_token'), dkb = sessionStorage.getItem('zkp_dk');       // unlocked earlier in this tab (e.g. on /zk/)
     if (tok && dkb) await _unlocked(tok, await crypto.subtle.importKey('raw', ZK.unb64(dkb), 'AES-GCM', true, ['encrypt', 'decrypt']));
   } catch (e) { try { sessionStorage.removeItem('zkp_token'); sessionStorage.removeItem('zkp_dk'); } catch (x) {} }
+  finally { const app = document.getElementById('app'); if (!app || !app.classList.contains('visible')) showLoginScreen(); }       // the sign-in box stays hidden (CSS) while a saved session is being restored; shown only when there is none
 });
+function showLoginScreen() { const el = document.getElementById('login-screen'); if (el) el.classList.add('show'); }
