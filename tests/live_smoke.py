@@ -49,7 +49,7 @@ def main():
         page.wait_for_timeout(4000)
         sub = page.evaluate("() => (document.getElementById('login-subtitle')||{}).textContent || ''")
         print("after fake session:", sub.strip())
-        fails = [l for l in log if l.startswith("FAILED") and "workers.dev" in l]
+        fails = [l for l in log if l.startswith("FAILED") and "workers.dev" in l and "ERR_ABORTED" not in l]      # ERR_ABORTED = the page cancelled in-flight calls when the fake session was rejected; CORS/network failures are ERR_FAILED etc.
         if fails:
             ok = False
         print("\n".join(log[:60]))
