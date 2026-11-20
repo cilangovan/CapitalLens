@@ -16,7 +16,7 @@ Trading 212 quotes in the instrument's own currency. **Pence-quoted lines (GBX) 
 
 ## Drill-down pop-up (tap a pie, the whole account, or a holding)
 
-Modelled on the Trading 212 pie screen: **value · last 24h · rate of return · chart · holdings**. Chart ranges **1D 1W 1M 3M 1Y MAX**:
+Modelled on the Trading 212 pie screen: **value · last 24h · rate of return · chart · holdings**. Chart ranges **1D 1W 1M 3M 6M 9M 1Y MAX**:
 
 | Range | Source |
 |---|---|

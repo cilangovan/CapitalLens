@@ -7,7 +7,8 @@
 const DD = { ticker: null, range: '1d', ma: new Set(), chart: null, cache: {} };
 // Validated against the dark surface (dataviz validate_palette: all checks pass)
 const DDC = { up: '#0ca30c', down: '#e66767', ma50: '#3987e5', ma200: '#d95926', grid: '#2d3353', ink: '#8892a4' };
-const DD_RANGES = [['1d', '1D'], ['5d', '5D'], ['1mo', '1M'], ['6mo', '6M'], ['1y', '1Y'], ['5y', '5Y']];
+const DD_RANGES = [['1d', '1D'], ['5d', '1W'], ['1mo', '1M'], ['3mo', '3M'], ['6mo', '6M'], ['9mo', '9M'], ['1y', '1Y'], ['5y', '5Y']];
+const DD_SLICE = { '3mo': ['1y', 63], '9mo': ['1y', 189] }; // spans Yahoo has no range for: the last N daily closes of the 1y chart
 const ddEsc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const ddNum = (v, d = 2) => v == null || isNaN(v) ? '—' : Number(v).toLocaleString('en-GB', { minimumFractionDigits: d, maximumFractionDigits: d });
 const ddBig = v => v == null ? '—' : v >= 1e12 ? `${ddNum(v / 1e12)}T` : v >= 1e9 ? `${ddNum(v / 1e9)}B` : v >= 1e6 ? `${ddNum(v / 1e6)}M` : v >= 1e3 ? `${ddNum(v / 1e3)}K` : ddNum(v, 0);
@@ -193,8 +194,9 @@ async function ddLoadChart() {
   DD.chart = null; ddRender();
   try {
     const r = await fetch(`${PROXY}/chart`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: SESSION_TOKEN, symbol: ticker, range: DD.range }) });
-    const d = await r.json().catch(() => ({}));
+      body: JSON.stringify({ token: SESSION_TOKEN, symbol: ticker, range: (DD_SLICE[DD.range] || [DD.range])[0] }) });
+    let d = await r.json().catch(() => ({}));
+    if (DD_SLICE[DD.range] && d.points?.length) d = { ...d, points: d.points.slice(-DD_SLICE[DD.range][1]) };
     if (!r.ok || !d.points?.length) throw new Error(d.error || `HTTP ${r.status}`);
     DD.cache[key] = { at: Date.now(), data: d };
     if (DD.ticker === ticker) { DD.chart = d; ddRender(); }
@@ -202,7 +204,7 @@ async function ddLoadChart() {
     if (DD.ticker !== ticker) return;
     // fallback: stored daily closes
     const h = ddData().history;
-    const n = { '1mo': 22, '6mo': 126, '1y': 252, '5y': 260 }[DD.range];
+    const n = { '1mo': 22, '3mo': 63, '6mo': 126, '9mo': 189, '1y': 252, '5y': 260 }[DD.range];
     if (h?.closes?.length && n) {
       const k = Math.max(0, h.closes.length - n);
       DD.chart = { fallback: `Live chart unavailable (${e.message}) — showing stored daily closes.`, meta: {},

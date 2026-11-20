@@ -20,7 +20,7 @@ Three sections (tabs `.w-cats`): **📈 Stocks · 🛢 Commodities · ₿ Crypto
 
   together with **price points with £ per step, how much to buy** (from the per-category weekly budget), **RSI**, **volume** and **quality** and an **analyst chip** (Yahoo Finance recommendation and number of analysts, or "no coverage"; never an invented rating).
 - **✕ Remove** stops all tracking of that item.
-- **Tap a name** for the full detail page: live chart (1D…5Y with 50/200-day moving averages), day and 52-week range, key stats, analyst rating and target, trading / profitability / leverage, company profile, insights and score radar, and this week's plan. Live prices use the `/chart` route (Yahoo Finance).
+- **Tap a name** for the full detail page: live chart (1D · 1W · 1M · 3M · 6M · 9M · 1Y · 5Y with 50/200-day moving averages; 3M and 9M are the last 63 / 189 daily closes of the 1-year chart), day and 52-week range, key stats, analyst rating and target, trading / profitability / leverage, company profile, insights and score radar, and this week's plan. Live prices use the `/chart` route (Yahoo Finance).
 - Prices from London lines quoted in pence are shown in pence.
 - Data: `watchlist` and `watchlist_analysis` (`services/watchlist_service.py`; private app: `docs/zk/watchlist.js`, `watchlistops.js`). Weekly budgets are settings: `watchlist_weekly_budget`, `commodity_weekly_budget`, `crypto_weekly_budget`.
 

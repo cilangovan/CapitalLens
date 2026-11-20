@@ -1,13 +1,13 @@
 // ── POSITIONS DRILL-DOWN ──────────────────────────────────────
 // Pop-up per pie / whole account / single holding, like the Trading 212 pie screen:
-// value · last 24h · rate of return · chart 1D 1W 1M 3M 1Y MAX · holdings.
+// value · last 24h · rate of return · chart 1D 1W 1M 3M 6M 9M 1Y MAX · holdings.
 //   1D           → your intraday portfolio snapshots (actual Trading 212 values)
 //   1W … MAX     → pie_history: holdings rebuilt from your Trading 212 trade history, valued at daily closes
 //   Rate of return (all-time) = T212 return ÷ invested, exactly as the app shows it.
 
 const PD = { key: null, ticker: null, tab: 'overview', range: '1d', hist: {}, intraday: null, snap: null, meta: {} };
-const PD_RANGES = [['1d', '1D'], ['1w', '1W'], ['1m', '1M'], ['3m', '3M'], ['1y', '1Y'], ['max', 'MAX']];
-const PD_DAYS = { '1w': 7, '1m': 30, '3m': 91, '1y': 365 };
+const PD_RANGES = [['1d', '1D'], ['1w', '1W'], ['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['9m', '9M'], ['1y', '1Y'], ['max', 'MAX']];
+const PD_DAYS = { '1w': 7, '1m': 30, '3m': 91, '6m': 182, '9m': 273, '1y': 365 };
 const PDC = { up: '#0ca30c', down: '#e66767', grid: '#2d3353', ink: '#8892a4' };   // validated (dark surface)
 const pdEsc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const pdGbp = (v, sign) => v == null || isNaN(v) ? '—' : `${sign && v > 0 ? '+' : v < 0 ? '−' : ''}£${Math.abs(v).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;

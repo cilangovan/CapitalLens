@@ -87,4 +87,13 @@ check("loading never leaves a blank screen: private pages carry the boot splash,
 check("CLAUDE.md records the documentation rule", "documentation/" in doc and "Documentation" in doc)
 
 check("generated pages exist for every dashboard", all((ROOT / p).exists() for p in ("docs/app/index.html", "docs/zkapp/index.html", "docs/zkapp-prod/index.html")))
+# every graph's range selector offers 1D 1W 1M 3M 6M 9M 1Y (owner's standing rule)
+src = lambda f: (ROOT / f).read_text()
+check("every graph range selector offers 1D 1W 1M 3M 6M 9M 1Y",
+      "['1D', 1], ['1W', 7], ['1M', 30], ['3M', 91], ['6M', 182], ['9M', 273], ['1Y', 365]" in src("docs/js/overview.js") and "key:'6M'" in src("docs/js/overview.js") and "key:'9M'" in src("docs/js/overview.js")
+      and all('id="pf-6M"' in src(f) and 'id="pf-9M"' in src(f) for f in ("docs/index.html", "docs/demo/index.html"))
+      and "['6m', '6M'], ['9m', '9M']" in src("docs/js/pie_drill.js") and "['3mo', '3M']" in src("docs/js/drilldown.js") and "['9mo', '9M']" in src("docs/js/drilldown.js")
+      and "'1D', '1W', '1M', '3M', '6M', '9M'" in src("docs/js/returns.js"))
+check("CLAUDE.md records the same-time-ranges rule", "1D · 1W · 1M · 3M · 6M · 9M · 1Y" in doc)
+
 print("\nstandards: " + ("all good" if not bad else f"{bad} failed")); sys.exit(1 if bad else 0)

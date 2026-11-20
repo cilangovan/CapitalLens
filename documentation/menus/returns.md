@@ -13,7 +13,7 @@ Built from your **real Trading 212 money flows** (every deposit, withdrawal, tra
 | Card | What it shows |
 |---|---|
 | **Profit by period** | Period buttons with profit for each |
-| **Profit over time / value chart** | Switch between *profit* and *value*; ranges **1M · 3M · 6M · YTD · 1Y · All** |
+| **Profit over time / value chart** | Switch between *profit* and *value*; ranges **1D · 1W · 1M · 3M · 6M · 9M · YTD · 1Y · All** |
 | **Money in** | Deposits and withdrawals |
 | **Monthly profit** | Month-by-month profit |
 | **Year by year** | Annual summary |

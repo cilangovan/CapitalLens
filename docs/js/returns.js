@@ -66,7 +66,7 @@ async function loadReturns() {
           <button data-v="profit" onclick="rtSetView('profit')">Profit £</button>
           <button data-v="value" onclick="rtSetView('value')">Value vs money in</button>
         </div>
-        <div class="dd-ranges rt-ranges">${['1M', '3M', '6M', 'YTD', '1Y', 'All'].map(r => `<button data-r="${r}" onclick="rtSetRange('${r}')">${r}</button>`).join('')}</div>
+        <div class="dd-ranges rt-ranges">${['1D', '1W', '1M', '3M', '6M', '9M', 'YTD', '1Y', 'All'].map(r => `<button data-r="${r}" onclick="rtSetRange('${r}')">${r}</button>`).join('')}</div>
       </div>
       <div id="rt-vc-head" class="rt-vc-head"></div>
       <div class="rt-chart"><canvas id="rt-value-chart"></canvas></div>
@@ -163,7 +163,8 @@ function rtSlice() {
   const last = new Date(s.dates[n - 1]);
   let from = null;
   if (RT.range === 'YTD') from = new Date(last.getFullYear(), 0, 1);
-  else if (RT.range !== 'All') { const m = { '1M': 1, '3M': 3, '6M': 6, '1Y': 12 }[RT.range]; from = new Date(last); from.setMonth(from.getMonth() - m); }
+  else if (RT.range === '1D' || RT.range === '1W') { from = new Date(last); from.setDate(from.getDate() - (RT.range === '1D' ? 1 : 7)); }
+  else if (RT.range !== 'All') { const m = { '1M': 1, '3M': 3, '6M': 6, '9M': 9, '1Y': 12 }[RT.range]; from = new Date(last); from.setMonth(from.getMonth() - m); }
   let i0 = 0;
   if (from) { i0 = s.dates.findIndex(d => new Date(d) >= from); if (i0 < 0) i0 = 0; if (n - i0 < 2) i0 = Math.max(0, n - 2); }
   return { dates: s.dates.slice(i0), value: s.value.slice(i0), net: s.net_in.slice(i0) };
@@ -197,7 +198,7 @@ function rtValueChart() {
 
   const common = { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
     scales: { x: { type: 'category', ticks: { color: RT_MUTED, maxTicksLimit: 6, maxRotation: 0, callback(v) {
-      const d = new Date(this.getLabelForValue(v)); return RT.range === '1M' || RT.range === '3M' ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : d.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' }); } }, grid: { display: false } } } };
+      const d = new Date(this.getLabelForValue(v)); return ['1D', '1W', '1M', '3M'].includes(RT.range) ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : d.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' }); } }, grid: { display: false } } } };
 
   if (RT.view === 'profit') {
     RT.vc = new Chart(cv, { type: 'line',
