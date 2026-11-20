@@ -161,7 +161,7 @@
       const log = m => { $('t2-log').textContent += m + '\n'; };
       let r;
       if (kind === 'snap') {
-        r = await ZKMonitor.create({ store, log, client: ZKT212.client({ relayUrl: RELAY, log }) }).run(k, sec);
+        r = await ZKMonitor.create({ store, log, client: ZKT212.client({ relayUrl: RELAY, log }), supportLevels: async () => { const x = await call('/rest/v1/support_levels?select=*', {}, S.token); return x.ok ? await x.json() : []; } }).run(k, sec);
         if (!r.saved) say('t2-err', 'Nothing saved: ' + r.reason);
         r = { failed: [] };
       } else r = await ZKT212.create({ store, relayUrl: RELAY, log }).run(k, sec, { full });

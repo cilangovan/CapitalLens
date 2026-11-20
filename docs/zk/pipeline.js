@@ -15,7 +15,7 @@
       }
       if (key && secret) {
         await step('Trading 212 history', async () => { const r = await M.T212.create({ store, relayUrl: deps.relayUrl, log }).run(key, secret, { full: !!opts.full }); return r && r.failed && r.failed.length ? { error: 'incomplete for ' + r.failed.join(', ') } : r; });
-        await step('Portfolio snapshot', async () => { const r = await M.Monitor.create({ store, log, client: M.Client.client({ relayUrl: deps.relayUrl, log }) }).run(key, secret); return r && r.saved === false ? { error: r.reason } : r; });
+        await step('Portfolio snapshot', async () => { const r = await M.Monitor.create({ store, log, client: M.Client.client({ relayUrl: deps.relayUrl, log }), supportLevels: deps.supportLevels }).run(key, secret); return r && r.saved === false ? { error: r.reason } : r; });
       } else log('No Trading 212 credentials entered: re-analysing the data already stored');
       await step('Analyst ratings', () => M.Analyst.run({ store, market }, now()));
       const ratings = await store.load('analyst_ratings').catch(() => []);

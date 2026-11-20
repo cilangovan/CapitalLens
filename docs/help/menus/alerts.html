@@ -21,6 +21,13 @@
 <li><strong>A data-coverage note</strong> saying what could and could not be checked.</li>
 </ol>
 <p><strong>No alert and no "clear" status is produced for a holding whose data cannot be verified</strong>; the report says so instead.</p>
+<h2 id="support-zone-alerts-private-app-issue-51">Support-zone alerts (private app, issue #51)</h2>
+<p>Raised on the <strong>morning Refresh</strong> (nothing runs while the app is closed) for stocks you hold that have a level in <code>support_levels</code> (see <a href="strategy.html">Strategy › Support Levels</a>). Type <code>support</code>, in the same review-report style: live price, the zone, distance, your average cost, the <strong>source and capture date</strong>, a review flag, and "an external view, not our calculation".</p>
+<ul>
+<li><strong>Transitions only:</strong> 🛡️ <em>reached its support zone</em> (from above or approaching; default priority) and 🔻 <em>below its support zone</em> (high priority). The first time a stock is seen its status is only recorded, so stocks already in or below a zone do not flood the inbox. Back above or reclaiming the zone raises nothing. The same alert is not repeated within 24 hours.</li>
+<li><strong>Honest about data:</strong> the Trading 212 quote currency must equal the zone's currency; if it is unknown or different, nothing is compared and no alert is raised.</li>
+<li>Code: <code>analyse()</code> in <code>docs/zk/monitor.js</code> (levels passed in by <code>docs/zkapp/zkapp-tools.js</code> / <code>docs/zk/zk.js</code>); status stored in the encrypted <code>monitor_state</code> (<code>support_status</code>). Test: <code>tests/zk_support_alert_test.mjs</code>.</li>
+</ul>
 <h2 id="inbox-behaviour">Inbox behaviour</h2>
 <p>Like email:</p>
 <div class="tbl"><table>

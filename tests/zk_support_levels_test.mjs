@@ -40,6 +40,24 @@ ok('range formatting: zone, single value, approximate', SL.range(levels[0]) === 
 ok('nothing held with a level on file: says so and does not list the others', /None of the stocks you hold/.test(SL.html([], 3)) && !/QCOM/.test(SL.html([], 3)));
 ok('nothing from the data can become HTML (name, source, tags escaped)', !/<script>|<img |<b>x/.test(h) && /&lt;script&gt;/.test(h));
 
+// ── #52 stale levels ──
+ok('age in days, and the stale warning appears after 14 days (card pill + sentence), not before', SL.ageDays('2026-11-20', '2026-12-04') === 14 && SL.ageDays('2026-11-20', '2026-12-05') === 15 && SL.ageDays('junk', '2026-12-05') === null);
+const fresh = SL.html(rows, 0, '2026-12-04'), stale = SL.html(rows, 0, '2026-12-05');
+ok('stale: "Captured 15 days ago" pill and "may have moved" note; fresh at 14 days shows neither', /Captured 15 days ago/.test(stale) && /may have moved/.test(stale) && !/days ago/.test(fresh));
+// ── #50 in-house 200-week EMA ──
+const week = 7 * 86400, t0 = Date.UTC(2021, 0, 4) / 1000;                                   // a Monday
+const series = (n, f, perWeek = 5) => { const out = []; for (let w = 0; w < n; w++) for (let d = 0; d < perWeek; d++) out.push([t0 + w * week + d * 86400, f(w)]); return out; };
+const flat = SL.ema200w(series(260, () => 100));
+ok('200-week EMA of a flat series is that price, from 260 weekly closes', flat && Math.abs(flat.value - 100) < 1e-9 && flat.weeks === 260);
+const rise = SL.ema200w(series(260, w => 100 + w));
+ok('on a steadily rising series the EMA lags below the latest close and above the first-200-week average', rise.value < 359 && rise.value > 199.5 + 1);
+ok('weekly close = LAST close of the week (daily noise inside a week does not change the EMA)', Math.abs(SL.ema200w(series(210, w => 50).map((p, i) => i % 5 === 4 ? p : [p[0], 999])).value - 50) < 1e-9);
+ok('fewer than 200 weekly closes → null (never a guess); junk points ignored', SL.ema200w(series(150, () => 100)) === null && SL.ema200w([[1, 'x'], null, [2, -5]]) === null && SL.ema200w(null) === null);
+const cl = SL.computedLevel('NVDA', 'NVIDIA', flat, 'USD', '2026-11-20');
+ok('computed level is labelled as computed, with the method, and never reads as an analyst source', cl.source_name === 'CapitalLens (computed)' && cl.computed && /computed/.test(cl.tags[0].t) && /260 weekly closes/.test(cl.note) && cl.zone_low === 100);
+const crow = SL.build([cl], new Set(['NVDA']), { NVDA: { price: 101, sym: '$' } })[0], chtml = SL.html([crow], 0, '2030-01-01');
+ok('computed card says it is computed, is never marked stale, and the header names no capture date for it', /Computed by CapitalLens, not an analyst view/.test(chtml) && !/days ago/.test(chtml) && !/captured \d/.test(chtml.replace(/Captured \$/, '')) );
+
 const strat = readFileSync(new URL('../docs/js/strategy.js', import.meta.url), 'utf8');
 ok('regression guard: the section is placed directly under Entry Analysis and before the weekly allocation', strat.indexOf("vbHtml + '<div id=\"support-levels-content\">") > 0 && /support-levels-content[^;]*\+ stratHtml/.test(strat) && /loadSupportLevels\(vbRows\)/.test(strat));
 for (const f of ['docs/index.html', 'docs/demo/index.html']) { const t = readFileSync(new URL('../' + f, import.meta.url), 'utf8'); ok(`${f} loads support.js after strategy.js`, t.indexOf('support.js') > t.indexOf('strategy.js') && t.indexOf('strategy.js') > 0); }

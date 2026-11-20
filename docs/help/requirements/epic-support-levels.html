@@ -40,7 +40,7 @@
 </tr>
 <tr>
 <td><strong>Status</strong></td>
-<td>Built, rolled out to every dashboard (live, demo, app, zkapp, zkapp-prod). Live-data behaviour not verifiable offline; see <a href="#verification">Verification</a></td>
+<td>Built (incl. follow-ups #50, #51, #52), rolled out to every dashboard (live, demo, app, zkapp, zkapp-prod). Live-data behaviour not verifiable offline; see <a href="#verification">Verification</a></td>
 </tr>
 </tbody>
 </table></div>
@@ -59,10 +59,10 @@
 <li>Demo parity: a demo-only table refreshed by the daily demo refresh.</li>
 <li>Every dashboard, mobile first (360px / 390px), collapsible with the state remembered per user.</li>
 </ul>
+<p><strong>Added after first release (20 Nov 2026):</strong> stale-level warning after 14 days (#52); in-house 200-week EMA level for held US stocks that have no analyst level (#50); in-app alert when a held stock reaches or breaks its zone, evaluated on Refresh (#51). Details in the <a href="../menus/strategy.html">Strategy</a> and <a href="../menus/alerts.html">Alerts</a> pages.</p>
 <p><strong>Out of scope (for now)</strong></p>
 <ul>
-<li>Calculating support levels ourselves (the levels are an external view; computing them is a possible later epic).</li>
-<li>Alerts or push when a held stock reaches or breaks a zone (candidate follow-up, see §9).</li>
+<li>Computing zones from breakouts and trendlines (only the 200-week EMA is computed so far). Phone push for zone alerts (in-app inbox only, like the other alerts).</li>
 <li>Non-US listings (levels are in USD and matched on US tickers; other markets show nothing rather than a wrong comparison).</li>
 <li>A screen for editing levels. They are data, updated by an upsert migration.</li>
 </ul>
@@ -288,6 +288,10 @@
 <td><code>tests/support_layout_test.py</code> (CI: UI tests)</td>
 </tr>
 <tr>
+<td>Alerts: transitions only, first sight records only, 24h cooldown, currency mismatch, Python parity untouched</td>
+<td><code>tests/zk_support_alert_test.mjs</code></td>
+</tr>
+<tr>
 <td>Shared table names its source, demo-only copy, refresh hook, module on every dashboard</td>
 <td><code>tests/standards_test.py</code></td>
 </tr>
@@ -295,11 +299,11 @@
 </table></div>
 <h2 id="9-risks-gaps-and-open-questions">9. Risks, gaps and open questions</h2>
 <ol>
-<li><strong>Licensing.</strong> The levels come from a third party (KwickScan.com). Showing them to other users at the planned public launch (about 100 users) needs the source's permission or a licensed or self-computed alternative. Until then the table is owner-curated. Tracked as #49 (licence research: where to look and what to ask) under "Public launch readiness", linked from #11 (licensed data before public signup) and #12 (provider research).</li>
+<li><strong>Licensing.</strong> The levels come from a third party (KwickScan.com). Showing them to other users at the planned public launch (about 100 users) needs the source's permission or a licensed or self-computed alternative. Until then the table is owner-curated. Tracked as #49 (licence research: where to look and what to ask) under "Public launch readiness", linked from #11 (licensed data before public signup) and #12 (provider research). <strong>Findings so far (20 Nov 2026, from kwickscan.com and its Terms page, tracked as #49):</strong> the footer reads "a product of DDI Learning"; support contact support@kwickscan.com; the site says its data comes from third-party providers, can be late, missing or wrong, and is educational only. The Terms page does <strong>not</strong> address redistribution, commercial use, third-party use of outputs or attribution; it says one person per account, "don't share your access", and that accounts may be suspended for scraping or misuse. Permission is therefore unresolved: ask in writing before showing the levels to other users. This is not legal advice.</li>
 <li><strong>Staleness.</strong> Levels are a capture on a date, not a live feed. The section prints the capture date; a level can be out of date when the market has moved. A review cadence (#52) or a computed level (#50) is the fix.</li>
 <li><strong>Source's "high".</strong> The "% from high" the source shows is not defined in the screenshots, so the dashboard also shows its own live drawdown from the 52-week high and labels the two differently.</li>
 <li><strong>Held list for non-US stocks.</strong> Matching is by US ticker; a stock held on another exchange gets no card (by design, see §3).</li>
-<li><strong>Follow-ups (not built):</strong> an alert when a held stock enters or breaks a zone (#51); computing levels in-house (200-week EMA, previous breakouts, trendlines) so the data needs no third party (#50).</li>
+<li><strong>Built as follow-ups:</strong> zone alerts (#51), a computed 200-week EMA level (#50) and the stale warning (#52). <strong>Still open:</strong> breakout and trendline levels (so computed levels can replace the analyst ones entirely) and phone push for zone alerts. The computed level uses the same Yahoo-based price history as the charts, so it stays personal-use until #11/#12 are decided.</li>
 <li><strong>Not verified:</strong> live Supabase behaviour (the SQL file was written but not executed against a database in this build) and real-holdings behaviour (the owner's holdings are encrypted; the logic is tested with sample rows). <code>db/tenant/23_support_levels.sql</code> was applied to the production and demo projects on 20 Nov 2026 (the demo seed was run and checked; the section itself has not been checked on the live app with real holdings, press Refresh and look at Strategy).</li>
 </ol></article>
 <footer class="foot"><a href="https://github.com/cilangovan/CapitalLens/blob/main/documentation/requirements/epic-support-levels.md">Edit this page on GitHub</a> · <a href="../../">Back to the dashboard</a> · <a href="../index.html">Documentation home</a></footer></main></div>

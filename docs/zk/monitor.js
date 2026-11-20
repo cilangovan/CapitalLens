@@ -40,7 +40,8 @@
   }
 
   // Pure analysis: positions + pies + state -> { alerts, summary }. Marks cooldowns in state.
-  function analyse(positions, pieMap, state, nowDate) {
+  // extra.levels (optional): rows of public.support_levels. Alerts on TRANSITIONS only (reached the zone / broke below it); first sight of a stock just records its status.
+  function analyse(positions, pieMap, state, nowDate, extra) {
     const F = A(), alerts = [], summary = [], meta = state.held_meta || {}, nowS = nowDate.getTime() / 1000;
     const cooldown = (key, hours) => nowS - (state.last_alerts[key] || 0) < hours * 3600;
     const mark = key => { state.last_alerts[key] = nowS; };
@@ -66,6 +67,24 @@
         const key = 'dip_' + ticker;
         if (!cooldown(key, 6)) mk('dip', key, `🟡 ${label} — down ${dip.toFixed(1)}% from tracked high`, `${label} — dip threshold crossed`,
           'Watch only for now; review the news and analyst view before adding.', 'default');
+      }
+      const SL = root.SupportLevels, lv = SL && extra && extra.levels ? extra.levels.find(l => l.symbol === SL.symOf(ticker)) : null, ccy = (meta[ticker] || {}).ccy;
+      if (lv && ccy && ccy === lv.currency) {                       // price and zone must be in the same currency, otherwise no comparison (no guess)
+        const [c, u] = unitPrice(cur, ccy), st = SL.status(lv, c).key, sym = lv.symbol, prev = (state.support_status = state.support_status || {})[sym];
+        state.support_status[sym] = st;
+        const kind = !prev || prev === st ? null : st === 'below' ? 'break' : (st === 'in' && (prev === 'above' || prev === 'near')) ? 'reached' : null;
+        const key = `support_${kind}_${ticker}`;
+        if (kind && !cooldown(key, 24)) {
+          const s = new F.Section(`${label} — ${kind === 'break' ? 'broke below its support zone' : 'reached its support zone'}`), z = SL.range(lv), d = SL.status(lv, c).pct;
+          s.table('Measure', 'Result', [[`Live ${u} price`, F.money(c, u)], [lv.level_label, z], [kind === 'break' ? 'Below the zone by' : 'Position', kind === 'break' ? F.pct(d, 1, false) : 'inside the zone'],
+            ['Your average cost', F.money(unitPrice(avg, ccy)[0], u)], ['Pie', pieName], ['Exchange', exchange]]);
+          s.line(`Source: ${lv.source_name}, level captured ${SL.fmtDate(lv.as_of)}; live price from Trading 212, ${F.dayMonth(nowDate)} ${F.hhmm(nowDate)} UTC. An external view, not our calculation.`);
+          s.line(kind === 'break' ? 'Review flag: the level has failed for now; reclaiming the top of the zone would be the first sign of recovery. Check the news before acting.'
+                                  : 'Review flag: price is testing the level. Holding is the constructive read; a close below the zone is the warning sign.');
+          alerts.push({ type: 'support', ticker: display, key, priority: kind === 'break' ? 'high' : 'default',
+            title: `${kind === 'break' ? '🔻' : '🛡️'} ${label} — ${kind === 'break' ? 'below' : 'in'} its support zone ${z}`, body: F.renderText([s]), push: F.renderPush([s]) });
+          mark(key);
+        }
       }
       if (gainPct >= TRIM_GAIN_PCT) {
         const key = 'trim_' + ticker;
@@ -133,7 +152,8 @@
         const data = (state.instrument_meta_cache || {}).data || {};
         state.held_meta = {}; for (const t of held) if (data[t]) state.held_meta[t] = data[t];
 
-        const { alerts, summary } = analyse(positions, pieMap, state, nowDate);
+        let levels = []; try { levels = opts.supportLevels ? (await opts.supportLevels()) || [] : []; } catch (e) { log('  skipped support levels: ' + e.message); }
+        const { alerts, summary } = analyse(positions, pieMap, state, nowDate, { levels });
         const acc = account || {}, total = num(acc.total), cash = num(acc.free), createdAt = nowDate.toISOString();
         // Trading 212's own split: investments value = cost basis + unrealised result (total − free cash would also count reserved/pie cash)
         const hasAcc = acc.invested != null && Number.isFinite(+acc.invested);

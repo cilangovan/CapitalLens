@@ -14,8 +14,10 @@ for page in ("docs/index.html", "docs/demo/index.html"):
               L("INTC", 51, 52, tags=[{"t": "200-week EMA", "tone": "neutral"}, {"t": "Previous breakout", "tone": "good"}]), L("NVDA", 138, 140), L("QCOM", 150, 160), L("NOW", 80, 83),
               L("LONG", 1234.5, 1299.5, name="A Very Long Company Name Holdings International Incorporated Group", approx=True, currency="HKD",
                 tags=[{"t": "A very long tag label that keeps going and going " * 2, "tone": "warn"}], source_name="Very long source name " * 5)]
+    levels.append(L("OLD", 10, 11, as_of="2026-01-01"))                       # stale chip + note
+    levels.append(L("CMP", 200.12, 200.12, computed=True, source_name="CapitalLens (computed)", note="200-week EMA from 260 weekly closes", tags=[{"t": "200-week EMA (computed)", "tone": "neutral"}]))
     live = {"META": {"price": 596.22, "high52": 796, "avgCost": 500, "sym": "$"}, "CRM": {"price": 183.31, "high52": 360, "sym": "$"}, "INTC": {"price": 48, "sym": "$"},
-            "NVDA": {"price": 139, "sym": "$"}, "QCOM": {"price": 155.5, "sym": "$"}, "NOW": {"price": 82, "sym": "$"}}
+            "NVDA": {"price": 139, "sym": "$"}, "OLD": {"price": 10.5, "sym": "$"}, "CMP": {"price": 210, "sym": "$"}, "QCOM": {"price": 155.5, "sym": "$"}, "NOW": {"price": 82, "sym": "$"}}
     held = [l["symbol"] for l in levels]
     with sync_playwright() as p:
         b = p.chromium.launch(args=["--no-sandbox"])
@@ -23,7 +25,7 @@ for page in ("docs/index.html", "docs/demo/index.html"):
             pg = b.new_page(viewport={"width": w, "height": 800})
             pg.set_content(f"<style>{css}</style><div class='tab active'><div id='support-levels-content'></div></div>")
             pg.add_script_tag(path=str(ROOT / "docs/js/support.js"))
-            pg.evaluate("([lv, held, live]) => { document.getElementById('support-levels-content').innerHTML = SupportLevels.html(SupportLevels.build(lv, new Set(held), live), 0); }", [levels, held, live])
+            pg.evaluate("([lv, held, live]) => { document.getElementById('support-levels-content').innerHTML = SupportLevels.html(SupportLevels.build(lv, new Set(held), live), 0, '2026-11-25'); }", [levels, held, live])
             res = pg.evaluate("""() => { const W = document.documentElement.clientWidth, out = [];
               document.querySelectorAll('#support-levels-content *').forEach(e => { const r = e.getBoundingClientRect(); if (r.width && (r.right > W + 1 || r.left < -1)) { let p = e.parentElement, clip = false;
                 while (p && p.id !== 'support-levels-content') { if (/(auto|scroll|hidden|clip)/.test(getComputedStyle(p).overflowX)) { const q = p.getBoundingClientRect(); clip = q.right <= W + 1; break; } p = p.parentElement; }

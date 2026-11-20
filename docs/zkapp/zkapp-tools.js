@@ -29,7 +29,7 @@ async function zkToolsSaveTopic() {
   const v = document.getElementById('zk-topic').value.trim(), msg = document.getElementById('zk-topic-msg');
   try { await ZKNotify.saveTopic(ZKCTX.store, v); msg.textContent = 'Saved (encrypted). Phone alerts on.'; document.getElementById('zk-topic').value = ''; } catch (e) { msg.textContent = e.message; }
 }
-const ZK_ANALYSIS_VERSION = 'lynch-3';      // bump when a release changes what the analysis produces: every browser then re-analyses once on its next login
+const ZK_ANALYSIS_VERSION = 'lynch-4';      // bump when a release changes what the analysis produces: every browser then re-analyses once on its next login
 const ZK_AUTO_MAX_HOURS = 6;
 async function zkAutoRefresh() {            // re-analyse stored data (no Trading 212 call, no credentials) after login when stale or after an app update
   if (!ZKCTX || ZK_RUN.running || window.__zkAutoDone) return; window.__zkAutoDone = true;
@@ -51,7 +51,7 @@ async function zkToolsRun(auto) {
   zkToolsClose();                                                                               // minimise straight away: progress shows in the corner chip
   const log = m => { logEl.textContent += m + '\n'; logEl.scrollTop = logEl.scrollHeight; if (String(m).trim()) ZK_RUN.last = String(m).trim().slice(0, 70); };
   try {
-    const p = ZKPipeline.create({ store: ZKCTX.store, market: ZKCTX.market, call: ZKCTX.call, token: ZKCTX.token, relayUrl: RELAY_URL, log });
+    const p = ZKPipeline.create({ store: ZKCTX.store, market: ZKCTX.market, call: ZKCTX.call, token: ZKCTX.token, relayUrl: RELAY_URL, log, supportLevels: async () => { const x = await ZKCTX.call('/rest/v1/support_levels?select=*', {}, ZKCTX.token); return x.ok ? await x.json() : []; } });
     const r = await p.run(key, sec, { full });
     if (r.ok) { try { await ZKCTX.store.put('settings', [{ key: 'last_analysis', at: new Date().toISOString(), version: ZK_ANALYSIS_VERSION }], x => x.key); } catch (e) {} }
     status.textContent = r.ok ? (auto === true ? 'Data re-analysed automatically.' : 'Done — everything refreshed.') : 'Finished with problems: ' + r.results.filter(x => !x.ok).map(x => x.name).join(', ');
