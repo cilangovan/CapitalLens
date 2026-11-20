@@ -5,7 +5,7 @@
 | **Epic** | Support Levels for held stocks |
 | **Menu** | 🎯 Strategy, directly under 🎯 Entry Analysis |
 | **Requirement ID** | UI-20 ([UI requirements](ui-requirements.md)) |
-| **Owner** | HOOP (`cilangovan`) |
+| **Owner** | HOOP (`cilangovan`) · GitHub epic #48 |
 | **Raised** | 20 Nov 2026 |
 | **Status** | Built, rolled out to every dashboard (live, demo, app, zkapp, zkapp-prod). Live-data behaviour not verifiable offline; see [Verification](#verification) |
 
@@ -116,9 +116,9 @@ Which of these appear on the dashboard depends only on what the owner actually h
 
 ## 9. Risks, gaps and open questions
 
-1. **Licensing.** The levels come from a third party (KwickScan.com). Showing them to other users at the planned public launch (about 100 users) needs the source's permission or a licensed or self-computed alternative. Until then the table is owner-curated. Track with the "Public launch readiness" market-data item.
-2. **Staleness.** Levels are a capture on a date, not a live feed. The section prints the capture date; a level can be out of date when the market has moved. A review cadence (or a computed level) is the fix.
+1. **Licensing.** The levels come from a third party (KwickScan.com). Showing them to other users at the planned public launch (about 100 users) needs the source's permission or a licensed or self-computed alternative. Until then the table is owner-curated. Tracked as #49 (licence research: where to look and what to ask) under "Public launch readiness", linked from #11 (licensed data before public signup) and #12 (provider research).
+2. **Staleness.** Levels are a capture on a date, not a live feed. The section prints the capture date; a level can be out of date when the market has moved. A review cadence (#52) or a computed level (#50) is the fix.
 3. **Source's "high".** The "% from high" the source shows is not defined in the screenshots, so the dashboard also shows its own live drawdown from the 52-week high and labels the two differently.
 4. **Held list for non-US stocks.** Matching is by US ticker; a stock held on another exchange gets no card (by design, see §3).
-5. **Follow-ups (not built):** an alert when a held stock enters or breaks a zone; computing levels in-house (200-week EMA, previous breakouts, trendlines) so the data needs no third party.
-6. **Not verified:** live Supabase behaviour (the SQL file was written but not executed against a database in this build) and real-holdings behaviour (the owner's holdings are encrypted; the logic is tested with sample rows). Run `db/tenant/23_support_levels.sql` on the production and demo projects, then press Refresh.
+5. **Follow-ups (not built):** an alert when a held stock enters or breaks a zone (#51); computing levels in-house (200-week EMA, previous breakouts, trendlines) so the data needs no third party (#50).
+6. **Not verified:** live Supabase behaviour (the SQL file was written but not executed against a database in this build) and real-holdings behaviour (the owner's holdings are encrypted; the logic is tested with sample rows). `db/tenant/23_support_levels.sql` was applied to the production and demo projects on 20 Nov 2026 (the demo seed was run and checked; the section itself has not been checked on the live app with real holdings, press Refresh and look at Strategy).
