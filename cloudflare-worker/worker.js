@@ -8,6 +8,7 @@
  *   /search                POST {token, q, category} → {results:[…]}  stock: Yahoo global · crypto: Yahoo + T212 crypto ETPs · commodity: T212 ETCs + Yahoo futures
  *   /watchlist/add         POST {token, symbol, category} → {ok}  (bookmarks + triggers analysis)
  *   /watchlist/remove      POST {token, symbol} → {ok}  (stops tracking, deletes analysis)
+ *   /watchlist/order       POST {token, category, order:[tickers]} → {ok}  (card order; [] = back to automatic)
  *   /chart                 POST {token, symbol, range} → {meta, points}  live Yahoo chart (1d|5d|1mo|6mo|1y|5y)
  *   /settings/set          POST {token, key, value} → {ok}  (whitelisted keys only)
  *   /alerts/action         POST {token, ids:[..], action} → {ok, updated}  (read|unread|archive|dismiss|restore)
@@ -409,6 +410,17 @@ async function handleSearch(req, env) {
   ] });
 }
 
+// Card order for one watchlist section: order[i] gets sort_order i; every other card in the section goes back to automatic (null).
+async function handleWatchlistOrder(req, env) {
+  const { token, category, order } = await req.json().catch(() => ({}));
+  if (!(await verifySession(env, token))) return json({ error: 'Invalid or expired session' }, 401);
+  if (!['stock', 'commodity', 'crypto'].includes(category)) return json({ error: 'Unknown category' }, 400);
+  if (!Array.isArray(order) || order.length > 300 || !order.every(t => typeof t === 'string' && SYMBOL_RE.test(t))) return json({ error: 'Bad order' }, 400);
+  await sbWrite(env, 'PATCH', 'watchlist', `category=eq.${encodeURIComponent(category)}`, { sort_order: null });
+  for (let k = 0; k < order.length; k++) await sbWrite(env, 'PATCH', 'watchlist', `category=eq.${encodeURIComponent(category)}&ticker=eq.${encodeURIComponent(order[k])}`, { sort_order: k });
+  return json({ ok: true, category, updated: order.length });
+}
+
 async function handleWatchlist(req, env, op) {
   const { token, symbol, category = 'stock' } = await req.json().catch(() => ({}));
   if (!(await verifySession(env, token))) return json({ error: 'Invalid or expired session' }, 401);
@@ -534,6 +546,7 @@ async function route(request, env) {
     if (path === '/search' && request.method === 'POST')           return handleSearch(request, env).catch(e => { console.error(e); return json({ error: 'Server error' }, 500); });
     if (path === '/watchlist/add' && request.method === 'POST')    return handleWatchlist(request, env, 'add').catch(e => { console.error(e); return json({ error: 'Server error' }, 500); });
     if (path === '/watchlist/remove' && request.method === 'POST') return handleWatchlist(request, env, 'remove').catch(e => { console.error(e); return json({ error: 'Server error' }, 500); });
+    if (path === '/watchlist/order' && request.method === 'POST')  return handleWatchlistOrder(request, env).catch(e => { console.error(e); return json({ error: 'Server error' }, 500); });
     if (path === '/chart' && request.method === 'POST')            return handleChart(request, env).catch(e => { console.error(e); return json({ error: 'Server error' }, 500); });
     if (path === '/settings/set' && request.method === 'POST')     return handleSetting(request, env).catch(e => { console.error(e); return json({ error: 'Server error' }, 500); });
     if (path === '/alerts/action' && request.method === 'POST') return handleAlertAction(request, env).catch(e => { console.error(e); return json({ error: 'Server error' }, 500); });

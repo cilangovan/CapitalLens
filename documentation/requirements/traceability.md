@@ -17,6 +17,7 @@
 | UI-13 returns | `docs/js/returns.js` | `zk_returns_test.mjs`, `zk_t212sync_test.mjs` |
 | UI-14 watchlist | `docs/js/watchlist.js`, `docs/zk/watchlist.js` | `zk_watchlist_test.mjs`, `zk_watchlistops_test.mjs`, `zk_watchlist_analyst_chip_test.mjs` |
 | UI-20 Support Levels | `docs/js/support.js`, `docs/zk/monitor.js` (alerts), `db/tenant/23_support_levels.sql`, `docs/js/strategy.js` | `zk_support_levels_test.mjs`, `zk_support_alert_test.mjs`, `support_layout_test.py`, `standards_test.py` |
+| UI-21 Watchlist order | `docs/js/watchlist.js`, `docs/zk/shim.js`, `docs/zk/watchlistops.js`, `cloudflare-worker/worker.js`, `db/tenant/24_watchlist_order.sql` | `zk_watchlist_order_test.mjs`, `watchlist_order_layout_test.py` |
 | UI-15 IPO Watch | `docs/js/ipo.js`, `docs/zk/ipo*.js` | `zk_ipo_test.mjs`, `ipo_layout_test.py`, `ipo_watch_browser_test.py`, `ipo_service_test.py` |
 | UI-9, CH-40 drill-down | `docs/js/pie_drill.js`, `docs/zk/piehistory.js` | `zk_piehistory_test.mjs` |
 | UI-17 settings, refresh | `docs/zk/zk.js`, `t212sync.js`, `notify.js` | `zk_autorefresh_test.mjs`, `zk_notify_test.mjs`, `zk_zkapp_page_test.mjs` |

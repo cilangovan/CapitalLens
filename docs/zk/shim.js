@@ -44,6 +44,17 @@
         else await opts.store.remove('ipo_watch', id);
         return json(200, { ok: true });
       }
+      if (route === 'watchlist/order') {                         // card order per user: sort_order lives inside the encrypted watchlist row (the server never sees tickers or order)
+        if (method !== 'POST') return json(405, { error: 'Method not allowed' });
+        let body = {}; try { body = JSON.parse(init.body || '{}'); } catch (e) {}
+        const cat = body.category, order = body.order;
+        if (!['stock', 'commodity', 'crypto'].includes(cat) || !Array.isArray(order) || order.length > 300 || !order.every(t => typeof t === 'string' && /^[A-Za-z0-9.\-^=&]{1,24}$/.test(t))) return json(400, { error: 'Bad order' });
+        const rank = new Map(order.map((t, k) => [t, k])), rows = (await opts.store.load('watchlist')).filter(r => (r.category || 'stock') === cat), changed = [];
+        rows.forEach(r => { const want = rank.has(r.ticker) ? rank.get(r.ticker) : null, had = Number.isFinite(r.sort_order) ? r.sort_order : null;
+          if (want !== had) { const o = Object.assign({}, r); if (want === null) delete o.sort_order; else o.sort_order = want; changed.push(o); } });
+        if (changed.length) await opts.store.put('watchlist', changed, r => r.ticker);
+        return json(200, { ok: true, category: cat, updated: changed.length });
+      }
       if (/^(chart|search|watchlist\/(add|remove))$/.test(route)) {
         if (method !== 'POST') return json(405, { error: 'Method not allowed' });
         if (!opts.ops) return json(501, { error: 'This feature is not available here' });

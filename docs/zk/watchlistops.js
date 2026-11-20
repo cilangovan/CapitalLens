@@ -76,7 +76,7 @@
       }
       if (hit.type === 'Futures') hit.name = hit.name.replace(/\s+[A-Z][a-z]{2}\s+\d{2,4}$/, '') + ' (futures)';
       const prev = await opts.store.get('watchlist', hit.symbol);
-      await opts.store.put('watchlist', [{ ticker: hit.symbol, name: hit.name, exchange: hit.exchange, type: hit.type, category, t212_ticker: withT212.t212_ticker, alternatives, added_at: prev && prev.added_at ? prev.added_at : now() }], r => r.ticker);
+      await opts.store.put('watchlist', [{ ticker: hit.symbol, name: hit.name, exchange: hit.exchange, type: hit.type, category, t212_ticker: withT212.t212_ticker, alternatives, added_at: prev && prev.added_at ? prev.added_at : now(), ...(prev && Number.isFinite(prev.sort_order) ? { sort_order: prev.sort_order } : {}) }], r => r.ticker);   // re-adding keeps your card position
       let queued = false; if (opts.analyse) { queued = true; Promise.resolve().then(() => opts.analyse()).catch(() => {}); }   // analysis runs in the background; the dashboard polls for it
       return { ok: true, added: hit.symbol, category, t212_ticker: withT212.t212_ticker, alternatives, analysis_queued: queued };
     }

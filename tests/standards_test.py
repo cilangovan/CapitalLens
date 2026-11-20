@@ -125,6 +125,13 @@ check("Support Levels: shared table names its source and capture date; demo gets
 check("Support Levels: shown for held stocks only, loaded on every dashboard (legacy, demo, app, zkapp, zkapp-prod)",
       "held.has(l.symbol)" in _slj and all("support.js" in (ROOT / f).read_text() for f in ["docs/index.html", "docs/demo/index.html", "docs/app/index.html", "docs/zkapp/index.html", "docs/zkapp-prod/index.html"]))
 
+# Watchlist card order: arrangeable, saved per user, encrypted in the private app (UI-21)
+_wlj = (ROOT / "docs/js/watchlist.js").read_text(); _wls = (ROOT / "docs/zk/shim.js").read_text(); _wlw = (ROOT / "cloudflare-worker/worker.js").read_text()
+check("Watchlist order: ▲▼ arrange mode saves per user (encrypted sort_order in the private app, worker + column on legacy), never as plaintext prefs",
+      all(x in _wlj for x in ["wlMove", "wlArrange", "/watchlist/order", "wlResetOrder"]) and "route === 'watchlist/order'" in _wls and "sort_order" in _wls
+      and "/watchlist/order" in _wlw and "add column if not exists sort_order" in (ROOT / "db/tenant/24_watchlist_order.sql").read_text()
+      and "user_ui_prefs" not in _wlj and "min-width:40px; min-height:40px" in (ROOT / "docs/index.html").read_text() and "min-width:40px; min-height:40px" in (ROOT / "docs/demo/index.html").read_text())
+
 _ret = (ROOT / "db/tenant/20_demo_returns.sql").read_text() if (ROOT / "db/tenant/20_demo_returns.sql").exists() else ""
 check("demo refresh seeds the Returns dashboard (returns_summary + realised_pnl)", all(x in _ret for x in ["insert into public.returns_summary", "insert into public.realised_pnl", "public.seed_demo_returns(t)"]))
 

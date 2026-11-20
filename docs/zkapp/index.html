@@ -232,6 +232,10 @@
   .w-qp { font-weight:600; } .w-qc { font-size:12px; min-width:54px; text-align:right; }
   .w-pill.sm { padding:2px 7px; font-size:10px; }
   .w-card.collapsed .w-head { padding:10px 12px; }
+  .w-summary .w-pick { min-height:40px; padding:0 14px; } .w-pick.on { border-color:var(--accent); color:var(--accent); }
+  .w-head.w-arr { cursor:default; padding:6px 8px 6px 12px; } .w-rank { width:22px; flex:none; color:var(--muted); font-size:12px; font-variant-numeric:tabular-nums; }
+  .w-mv { display:flex; gap:6px; flex:none; } .w-mv button { min-width:40px; min-height:40px; border-radius:8px; border:1px solid var(--border); background:var(--bg3); color:var(--text); font-size:16px; cursor:pointer; }
+  .w-mv button:disabled { opacity:.3; cursor:default; }
   .w-actions-row { display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; }
   .w-actions-row a.w-more { text-decoration:none; }
   @media (max-width:600px) { .w-quick .w-pill.sm { display:none; } .w-title .w-dim { display:none; } }
@@ -691,14 +695,14 @@
 <script src="../zk/holdingdecision.js?v=7392c7ec4257" integrity="sha384-2+gTFXTv8esvPsJFrYpRGmAvwDktreG9VcsvenCtIBrKq8/0R7LEMvQy2u0xSX5I"></script>
 <script src="../zk/handlers.js?v=cfb162e6a781" integrity="sha384-Gy28bEVUEp4DRN65uyJXc15+GhVvmgt1pbIxgYXBy/ESK3x89/R4MJ6jEO5TItFP"></script>
 <script src="../zk/watchlist.js?v=ed37b3d0e08c" integrity="sha384-g/g2WGZJTqpQ5YZC1N0EKHBOhQXOr1wd4a8Or4DHuJpKuPYtYVSEoy85nUIvLnTi"></script>
-<script src="../zk/watchlistops.js?v=7e739fdd68f5" integrity="sha384-qf9UmM4kFDpJEZDzZuHjULQS89jEEEDl2DFKEKcp+DFySR9uIaDzp6wn592MQGvk"></script>
+<script src="../zk/watchlistops.js?v=e4ac2bdfb4af" integrity="sha384-k3siDiy85awQzUeWGSrD5b9bmgVbT8ne1IrDlqib/vm6Ml2CfuewAbs4Tm9QoLa6"></script>
 <script src="../zk/alertreport.js?v=34a1d44afad7" integrity="sha384-3f4RNihasz9FAsS3berMV+noVrBlABjbaPSxN58J4hKjxgPCiC925JMrnMBVvBWf"></script>
 <script src="../zk/flow.js?v=20e28c527026" integrity="sha384-hVVnTNbtEc0PugPGy3hz26UGX/wZxYbAk5YbwXx2TLqLeqDcqENHC2/YZ1BTpUbW"></script>
 <script src="../zk/notify.js?v=34d4bf55f41f" integrity="sha384-zF94I6jfpN993hI3TgEldHc41jGJLL61WllCe3xzVorjTyzz9Fkm/fKiuBEYGk/p"></script>
 <script src="../zk/postgrest.js?v=4fb32c84005f" integrity="sha384-TAmHrohvRyy+jJUgcLXNgsD0jeI83fkiX/OXoe1YrQQamDYsaHVmru/kUFga4EoP"></script>
-<script src="../zk/shim.js?v=16acb0872234" integrity="sha384-w034AS1nNNsITB/kKWorWJKxeMyV3EnCnWm1sYmMxwZpj6a7YFaFXH9TXUCDCd5Q"></script>
+<script src="../zk/shim.js?v=1d3e9fbc9d9d" integrity="sha384-bagMoVH0500dlu4vQCp9uOtoKIeiIsEfqFJ+Tql2X08azvlYAx1Mc2T7/Jgllfzb"></script>
 <script src="../zk/pipeline.js?v=45647fb371fe" integrity="sha384-n/plhVV12IStqZmUkOdi6bWbKfb5il7zPKDuFupbnl5iZ8V8+w6C8ULktYQYeipO"></script>
-<script src="handler-names.js?v=b2538cdf3622" integrity="sha384-Yw5ll8YHGaLCjqUBwss7CpQMGrrL+hCEJ12vxRAKu2tHzOPactEw+oQ87XdRYUVE"></script>
+<script src="handler-names.js?v=69a1f7b3580c" integrity="sha384-tZmc7jrkrSawAoHWQkgyiKWkatg0s1XJQZf0IIXN7YCvt7bhmPQVTmB7/9wYfNo9"></script>
 <script src="zkapp-auth.js?v=f4c605f95961" integrity="sha384-f40UpPZzqkyPfGcHmBKmvwzGyzSNyAmpvz4bmrWjclAU7TePByW5DPRe+lX+M6Jp"></script>
 <script src="zkapp-tools.js?v=24a40d116cc4" integrity="sha384-RC0C5zWhzJ5URzR1qO8uLPS3p7+/2uD5cWlfd2tp1Wg/BvHxfWpOF9Ior/3d4i0K"></script>
 
@@ -713,7 +717,7 @@
 <script src="../js/alerts.js?v=c1a925535e8e" integrity="sha384-7PUElfYc+mwl1Oqr4w1QMC2nMT/bAp4J9zS/16qW54Jje/e4gRiGKlHQAt8dqATu"></script>
 <script src="../js/tickertips.js?v=62c3f21e8fa6" integrity="sha384-uol0Rwj54jmfrLQJnoQ9rmmclnnHE5cMDN7Ci+Jn2Mo6W4tqHoZ53Ay3/BTEgS52"></script>
 <script src="../js/collapse.js?v=7edc1cf73e08" integrity="sha384-A619AiWc9t9/ZdVUpzglvO2kPNeCq9597UZcOa4ctslPfQiU48P+lXZWq9vS6k05"></script>
-<script src="../js/watchlist.js?v=53296eb4a608" integrity="sha384-xusvz8zSrzLMgKvXbmapI+L1jrLKgVSni/20W5yX5Iml4Otd9LMQxUrj6j3vSIRW"></script>
+<script src="../js/watchlist.js?v=1689ac711414" integrity="sha384-SvsZmIGkME5ER6vGv8EEJq1YDCCFdWr3+f4h/w5BkzLU8dtfT0jOicRUWVqQLKbk"></script>
 <script src="../js/ipo.js?v=58bc6a05010e" integrity="sha384-w2WqJ9XUpfPsALAECrICI4UKbZoAsLkseYzb1ZhGPg51tQBZ6umcsULt007LVvtD"></script>
 <script src="../js/drilldown.js?v=7a7ebba5e7de" integrity="sha384-AgVSh6Vu4OhUxdQcRxEqq2qOERV/U5LoS6ZpMboOBXL5mc2qydywkmRr3pibkqty"></script>
 <script src="../js/pie_drill.js?v=a37ab7984a56" integrity="sha384-nTtENlyK2gvQfk0vKkso90ijk/ep386j1uJBdlCwkhxjh9vNHGbWQ7gOFw1wkVPf"></script>

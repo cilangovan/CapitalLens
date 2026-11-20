@@ -7,6 +7,50 @@
 const WL = { cat: 'stock', items: [], analysis: {}, open: new Set(), pending: new Set(), searchTimer: null, poll: null,
              expanded: new Set((() => { try { return JSON.parse(localStorage.getItem('wl_expanded') || '[]'); } catch (e) { return []; } })()) };
 function wlSaveExpanded() { try { localStorage.setItem('wl_expanded', JSON.stringify([...WL.expanded])); } catch (e) {} }
+
+// ── CARD ORDER (⇅ Arrange) ──
+// You choose the order of the cards inside each section. It is saved per user: encrypted with the rest of your watchlist in the private app,
+// in the database on the legacy page (POST /watchlist/order). Cards you never arranged stay in the automatic order (this week's call) after the ones you did.
+// The demo has no writable store (501), so there the order is kept in this browser only.
+const WL_LOCAL_ORDER = 'wl_order_local';
+const WL_VERDICT_RANK = { ENTER: 0, ACCUMULATE: 1, HOLD: 2, AVOID: 3 };
+function wlLocalOrder() { try { return JSON.parse(localStorage.getItem(WL_LOCAL_ORDER) || '{}') || {}; } catch (e) { return {}; } }
+// items: the cards of one section; analysis: {ticker: {verdict}}. Arranged cards first (by sort_order), then the rest by this week's call.
+function wlSorted(items, analysis) {
+  const has = i => Number.isFinite(i.sort_order), rank = i => WL_VERDICT_RANK[(analysis[i.ticker] || {}).verdict] ?? 4;
+  return [...items].sort((a, b) => has(a) && has(b) ? a.sort_order - b.sort_order || a.ticker.localeCompare(b.ticker) : has(a) ? -1 : has(b) ? 1 : rank(a) - rank(b));
+}
+// Move one card up (-1) or down (+1): returns the new ticker order, or null when it is already at that end.
+function wlMoved(order, ticker, dir) {
+  const k = order.indexOf(ticker), n = k + dir; if (k < 0 || n < 0 || n >= order.length) return null;
+  const o = [...order]; [o[k], o[n]] = [o[n], o[k]]; return o;
+}
+function wlApplyLocalOrder() { const lo = wlLocalOrder(); WL.items.forEach(i => { if (!Number.isFinite(i.sort_order) && Number.isFinite(lo[i.ticker])) i.sort_order = lo[i.ticker]; }); }
+async function wlSaveOrder(cat, order) {
+  try {
+    const r = await fetch(`${PROXY}/watchlist/order`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: SESSION_TOKEN, category: cat, order }) });
+    if (r.status === 501) {                                    // demo: no writable store, keep it in this browser
+      const lo = wlLocalOrder(); WL.items.filter(i => wCat(i) === cat).forEach(i => { delete lo[i.ticker]; }); order.forEach((t, k) => { lo[t] = k; });
+      try { localStorage.setItem(WL_LOCAL_ORDER, JSON.stringify(lo)); } catch (e) {} return;
+    }
+    const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
+  } catch (e) { wlNote(`Couldn't save the order: ${e.message}${/session/i.test(e.message) ? ' — sign in again' : ''}`, true); }
+}
+function wlMove(ev, ticker, dir) {
+  ev.stopPropagation();
+  const mine = WL.items.filter(i => wCat(i) === WL.cat), order = wlSorted(mine, WL.analysis).map(i => i.ticker), next = wlMoved(order, ticker, dir); if (!next) return;
+  next.forEach((t, k) => { mine.find(i => i.ticker === t).sort_order = k; });
+  renderWatchlist();
+  const b = document.querySelector(`.w-card[data-t="${CSS.escape(ticker)}"] .w-mv [data-dir="${dir}"]`); if (b) { b.focus(); b.scrollIntoView({ block: 'nearest' }); }
+  clearTimeout(WL.orderTimer); const cat = WL.cat; WL.orderTimer = setTimeout(() => wlSaveOrder(cat, next), 400);   // several taps in a row save once
+}
+function wlArrange(on) { WL.arrange = !!on; renderWatchlist(); }
+function wlResetOrder() {
+  WL.items.filter(i => wCat(i) === WL.cat).forEach(i => { delete i.sort_order; });
+  const lo = wlLocalOrder(); WL.items.filter(i => wCat(i) === WL.cat).forEach(i => { delete lo[i.ticker]; }); try { localStorage.setItem(WL_LOCAL_ORDER, JSON.stringify(lo)); } catch (e) {}
+  clearTimeout(WL.orderTimer); renderWatchlist(); wlSaveOrder(WL.cat, []);
+  wlNote('Back to the automatic order (this week\'s call first).');
+}
 const WCATS = {
   stock:     { icon: '📈', label: 'Stocks',      key: 'watchlist_weekly_budget',
                ph: '🔍 Search any stock or ETF worldwide — name or symbol (e.g. Toyota, Rolls-Royce, 0700.HK)', picks: [] },
@@ -69,7 +113,7 @@ async function wlRefresh() {
     wlFetch('watchlist?select=*&order=added_at.desc'),
     wlFetch('watchlist_analysis?select=*'),
   ]);
-  WL.items = items;
+  WL.items = items; wlApplyLocalOrder();
   WL.analysis = Object.fromEntries(an.map(a => [a.ticker, a]));
   // a freshly added stock is pending until an analysis newer than its add time lands
   WL.items.forEach(i => {
@@ -204,7 +248,9 @@ function renderWatchlist() {
   });
   const allOpen = mine.every(i => WL.expanded.has(i.ticker));
   sum.innerHTML = `<div class="w-summary">
-    <button class="w-pick" onclick="wlExpandAll(${!allOpen})">${allOpen ? '▴ Collapse all' : '▾ Expand all'}</button>
+    ${WL.arrange ? '' : `<button class="w-pick" onclick="wlExpandAll(${!allOpen})">${allOpen ? '▴ Collapse all' : '▾ Expand all'}</button>`}
+    <button class="w-pick${WL.arrange ? ' on' : ''}" onclick="wlArrange(${!WL.arrange})" aria-pressed="${WL.arrange}">${WL.arrange ? '✓ Done' : '⇅ Arrange'}</button>
+    ${WL.arrange && mine.some(i => Number.isFinite(i.sort_order)) ? '<button class="w-pick" onclick="wlResetOrder()">↺ Automatic order</button>' : ''}
     ${Object.keys(VERDICT).map(v => `<span class="w-pill ${VERDICT[v].cls}">${VERDICT[v].label.split(' ')[1]} ${counts[v] || 0}</span>`).join('')}
   </div>
   <div class="w-budget">
@@ -213,19 +259,25 @@ function renderWatchlist() {
     <button onclick="wlSaveBudget()">Save</button>
     ${budget ? `<span class="w-dim">${budget.pool_source === 'your setting' ? 'your setting' : 'default: ' + _wesc(budget.pool_source || '')} · suggested buys this week £${spend}</span>` : ''}
   </div>`;
-  const order = { ENTER: 0, ACCUMULATE: 1, HOLD: 2, AVOID: 3 };
-  const items = [...mine].sort((a, b) => (order[WL.analysis[a.ticker]?.verdict] ?? 4) - (order[WL.analysis[b.ticker]?.verdict] ?? 4));
-  list.innerHTML = items.map(wlCard).join('');
+  const items = wlSorted(mine, WL.analysis);
+  list.innerHTML = (WL.arrange ? '<div class="w-dim w-small" style="margin:0 0 8px">Tap ▲ ▼ to move a card. Your order is saved to your login.</div>' : '') + items.map((i, k) => wlCard(i, k, items.length)).join('');
 }
 
-function wlCard(i) {
+function wlCard(i, pos, total) {
   const row = WL.analysis[i.ticker];
   const pending = WL.pending.has(i.ticker) || !row;
   const a = (row && row.data) || {};
   const ok = row && row.status === 'ok' && !pending;
   const v = ok ? (VERDICT[row.verdict] || VERDICT.HOLD) : null;
-  const exp = WL.expanded.has(i.ticker);
+  const exp = WL.expanded.has(i.ticker) && !WL.arrange;
   const t = _wesc(i.ticker);
+  if (WL.arrange) {                                            // Arrange mode: compact rows with big ▲ ▼ buttons, nothing else to tap by accident
+    const nm = _wesc(i.name || wSym(i.ticker));
+    return `<div class="w-card collapsed ${v ? v.cls : ''}" data-t="${t}"><div class="w-head w-arr"><span class="w-rank">${pos + 1}</span>
+      <div class="w-title"><b>${nm}</b> <span class="w-dim">${_wesc(wSym(i.ticker))}</span></div>
+      <div class="w-mv"><button type="button" data-dir="-1" onclick="wlMove(event,'${t}',-1)" aria-label="Move ${nm} up"${pos === 0 ? ' disabled' : ''}>▲</button>
+      <button type="button" data-dir="1" onclick="wlMove(event,'${t}',1)" aria-label="Move ${nm} down"${pos === total - 1 ? ' disabled' : ''}>▼</button></div></div></div>`;
+  }
   const head = `<div class="w-head" onclick="wlExpand('${t}')" role="button" aria-expanded="${exp}">
       <span class="w-chev">${exp ? '▾' : '▸'}</span>
       <div class="w-title">
