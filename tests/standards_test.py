@@ -114,6 +114,15 @@ check("demo sign-in does not pre-fill the master demo email", 'value="demo@capit
 _ins = (ROOT / "db/tenant/19_demo_insights.sql").read_text() if (ROOT / "db/tenant/19_demo_insights.sql").exists() else ""
 check("demo refresh seeds Analyst, Profit Booking and Strategy data", all(t in _ins for t in ["seed_demo_insights", "insert into public.profit_booking ", "insert into public.profit_booking_summary", "insert into public.value_buy_scores", "insert into public.strategy_recommendations", "insert into public.holding_decisions", "analyst_ratings", "institutional_flow_reports"]) and "public.seed_demo_insights(t)" in _ins)
 
+# Support Levels (epic: Strategy > Entry Analysis > Support Levels): public shared table, demo-only copy, held-only rendering, rolled out to every dashboard
+_sl = (ROOT / "db/tenant/23_support_levels.sql").read_text() if (ROOT / "db/tenant/23_support_levels.sql").exists() else ""
+_slj = (ROOT / "docs/js/support.js").read_text() if (ROOT / "docs/js/support.js").exists() else ""
+check("Support Levels: shared table names its source and capture date; demo gets a demo-only copy refreshed daily (never invented rows in the shared table)",
+      all(x in _sl for x in ["source_name text not null", "as_of", "create table if not exists public.demo_support_levels", "seed_demo_support_levels", "perform public.seed_demo_support_levels(t)"])
+      and not re.search(r"insert into public\.support_levels[^;]*Demo data", _sl) and "'/support_levels': '/demo_support_levels'" in (ROOT / "docs/demo/demo-shim.js").read_text())
+check("Support Levels: shown for held stocks only, loaded on every dashboard (legacy, demo, app, zkapp, zkapp-prod)",
+      "held.has(l.symbol)" in _slj and all("support.js" in (ROOT / f).read_text() for f in ["docs/index.html", "docs/demo/index.html", "docs/app/index.html", "docs/zkapp/index.html", "docs/zkapp-prod/index.html"]))
+
 _ret = (ROOT / "db/tenant/20_demo_returns.sql").read_text() if (ROOT / "db/tenant/20_demo_returns.sql").exists() else ""
 check("demo refresh seeds the Returns dashboard (returns_summary + realised_pnl)", all(x in _ret for x in ["insert into public.returns_summary", "insert into public.realised_pnl", "public.seed_demo_returns(t)"]))
 

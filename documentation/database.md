@@ -18,7 +18,7 @@ Making a change: apply as a migration, keep the SQL in `db/tenant/` and `supabas
 
 | Kind | Tables (examples) | Who can read | Notes |
 |---|---|---|---|
-| **Shared public data** | `instruments`, `instrument_exposure`, `instrument_country_weights`, `instrument_sector_weights`, `market_cache`, `ipo_calendar`, `institutional_flow_reports` | Any signed-in user (row-level security); writes only by the service role | Contains nothing about any customer. `instrument_*` are limited to instruments a user holds or watches |
+| **Shared public data** | `instruments`, `instrument_exposure`, `instrument_country_weights`, `instrument_sector_weights`, `market_cache`, `ipo_calendar`, `support_levels`, `institutional_flow_reports` | Any signed-in user (row-level security); writes only by the service role | Contains nothing about any customer. `instrument_*` are limited to instruments a user holds or watches |
 | **Per-user plaintext** (legacy / multi-user build) | `portfolio_snapshots`, `positions`, `alerts`, `analyst_ratings`, `holding_decisions`, `profit_booking(_summary)`, `strategy_recommendations`, `returns_summary`, `realised_pnl`, `dividends`, `value_buy_scores`, `watchlist(_analysis)`, `pie_history`, `t212_orders/dividends/transactions/sync_state` | Owner only (row-level security) | Used by the legacy, demo and multi-user dashboards |
 | **Zero-knowledge encrypted** (private app) | `enc_rows`, `user_keys` | Owner only, and even then only ciphertext | The same dashboard data as the previous row, encrypted in the browser. See below |
 
@@ -93,7 +93,7 @@ Nothing runs while the app is closed. The browser build and the Python services 
 | `pie_history` | Positions drill-down charts |
 | `instrument_exposure`, `instrument_*_weights` | Tooltips (names, flags), Sector Map, Country Exposure |
 | `analyst_ratings` | Analyst |
-| `institutional_flow_reports`, `holding_decisions`, `value_buy_scores`, `strategy_recommendations` | Strategy |
+| `institutional_flow_reports`, `holding_decisions`, `value_buy_scores`, `strategy_recommendations`, `support_levels` (public; demo copy `demo_support_levels`) | Strategy |
 | `profit_booking`, `profit_booking_summary` | Profit Booking |
 | `returns_summary`, `realised_pnl`, `dividends` | Returns |
 | `watchlist`, `watchlist_analysis`, `ipo_calendar`, `ipo_watch` (encrypted) | Watchlist & IPO Watch |

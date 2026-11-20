@@ -426,6 +426,26 @@
     .pb-rules td, .pb-rules th { padding:5px 6px; font-size:11px; }
   }
   @media(max-width:640px){ .pb-hold-head { grid-template-columns: 1fr 44px 64px 18px; } .pb-hold-head .pb-hide-sm { display:none; } }
+  /* Support Levels (Strategy, under Entry Analysis) */
+  .sl-sub { font-size:12px; color:var(--muted); margin:2px 0 12px; line-height:1.5; }
+  .sl-card { background:var(--bg2); border:1px solid var(--border); border-left:3px solid var(--border); border-radius:8px; padding:10px 12px; margin-bottom:10px; }
+  .sl-card.sl-g { border-left-color:var(--green); } .sl-card.sl-y { border-left-color:var(--yellow); } .sl-card.sl-r { border-left-color:var(--red); }
+  .sl-top { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+  .sl-name { font-size:14px; min-width:0; overflow-wrap:anywhere; } .sl-tick { font-size:11px; color:var(--muted); margin-left:4px; }
+  .sl-zone { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin:6px 0 2px; }
+  .sl-lbl { font-size:12px; color:var(--muted); } .sl-val { font-size:24px; font-weight:800; color:var(--green); }
+  .sl-tags { display:flex; flex-wrap:wrap; gap:6px; margin:6px 0; }
+  .sl-pill { display:inline-block; padding:3px 9px; border-radius:999px; font-size:11px; font-weight:700; background:var(--bg3); white-space:nowrap; }
+  .sl-pill.g { background:rgba(34,197,94,.18); color:var(--green); } .sl-pill.y { background:rgba(245,158,11,.18); color:var(--yellow); }
+  .sl-pill.r { background:rgba(239,68,68,.18); color:#fca5a5; } .sl-pill.dim { color:var(--muted); }
+  .sl-tags .sl-pill { white-space:normal; overflow-wrap:anywhere; max-width:100%; }
+  .sl-stats { display:flex; flex-wrap:wrap; gap:4px 14px; font-size:12px; color:var(--muted); margin:6px 0; } .sl-stats strong { color:var(--text); } .sl-dim { color:#64748b; }
+  .sl-note p { font-size:12px; line-height:1.55; margin:4px 0; color:var(--text); }
+  .sl-h4 { font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:16px 0 8px; }
+  .sl-tablewrap { overflow-x:auto; } .sl-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .sl-table th { text-align:left; font-size:11px; color:var(--muted); font-weight:600; padding:6px 8px; border-bottom:1px solid var(--border); }
+  .sl-table td { padding:8px; border-bottom:1px solid var(--border); } .sl-table .sl-g { color:var(--green); font-weight:700; white-space:nowrap; }
+  .sl-empty { font-size:13px; color:var(--muted); padding:8px 0; }
 </style>
 </head>
 <body>
@@ -673,7 +693,7 @@
 <script src="../zk/flow.js?v=20e28c527026" integrity="sha384-hVVnTNbtEc0PugPGy3hz26UGX/wZxYbAk5YbwXx2TLqLeqDcqENHC2/YZ1BTpUbW"></script>
 <script src="../zk/notify.js?v=34d4bf55f41f" integrity="sha384-zF94I6jfpN993hI3TgEldHc41jGJLL61WllCe3xzVorjTyzz9Fkm/fKiuBEYGk/p"></script>
 <script src="../zk/postgrest.js?v=4fb32c84005f" integrity="sha384-TAmHrohvRyy+jJUgcLXNgsD0jeI83fkiX/OXoe1YrQQamDYsaHVmru/kUFga4EoP"></script>
-<script src="../zk/shim.js?v=140458d3dff0" integrity="sha384-q5/bz5/krv8jDguMJC7H8xWNr/Lujwf/8qtoElEMlfpaR16Swaa7+Rmiaz1oqTgC"></script>
+<script src="../zk/shim.js?v=16acb0872234" integrity="sha384-w034AS1nNNsITB/kKWorWJKxeMyV3EnCnWm1sYmMxwZpj6a7YFaFXH9TXUCDCd5Q"></script>
 <script src="../zk/pipeline.js?v=bfa0c8ccf1ce" integrity="sha384-A1MnDmc9/7vt+iAzgKXQvLfxTpIPps9x+mea4NaZTAlHUbJLSlVpjAhn8Napkyuf"></script>
 <script src="handler-names.js?v=b2538cdf3622" integrity="sha384-Yw5ll8YHGaLCjqUBwss7CpQMGrrL+hCEJ12vxRAKu2tHzOPactEw+oQ87XdRYUVE"></script>
 <script src="zkapp-auth.js?v=f4c605f95961" integrity="sha384-f40UpPZzqkyPfGcHmBKmvwzGyzSNyAmpvz4bmrWjclAU7TePByW5DPRe+lX+M6Jp"></script>
@@ -683,7 +703,8 @@
 <script src="../js/heatmap.js?v=afa428f9e73c" integrity="sha384-ejTjRk7y+eXbpYbK6mwsIrt4MeF2TkJf7+kQzNf1i3KKcnRfk+khUABYy4DEhqWh"></script>
 <script src="../js/positions.js?v=4cc24568ab04" integrity="sha384-oUyv1ow0QmvO7ZEY6PwkRJKWoijhi350akLfapoGTox2LCBsgIoUvruRsSx0bR3y"></script>
 <script src="../js/analyst.js?v=d3956718ff6c" integrity="sha384-wkzFAN/FCqTsIqGGtdgOsQ4GtkoTs27E9/pea76RFkC7qf0E4lIfDMznjgfwfIzM"></script>
-<script src="../js/strategy.js?v=9ac3807649f6" integrity="sha384-PzNDa02tVWHKgSqR3OTyYwBRzclFHVvx2DAVb1MVUxupZiB0MfB6qnCC0NwarEm5"></script>
+<script src="../js/strategy.js?v=33a671640635" integrity="sha384-R2P7bHUvhbyAnG+SYGLUPtv90BExO69hjeRSCB1xa4xJjSlvofz5boZYQmP5EU6+"></script>
+<script src="../js/support.js?v=41adab121047" integrity="sha384-Oy+UJRBQfFckXHW2Iq/D47p13fVYhF1Dj2wXYvRiZ5EEZEzopNG7Fmg6omEI/c+g"></script>
 <script src="../js/profit.js?v=7d619d314ef1" integrity="sha384-JPAiuGzyUHCjo0GNl+NTpwlyipb6qO4A08SElSLPe+YTYAFLARgqV0wkqJKgG+hu"></script>
 <script src="../js/returns.js?v=0a142b1ac942" integrity="sha384-hQwjV68mS20UZQseIEX0s0ETm4T60mSCvpZWoh7+tW2b8vVMxBriLKKo1UmYYmCd"></script>
 <script src="../js/alerts.js?v=c1a925535e8e" integrity="sha384-7PUElfYc+mwl1Oqr4w1QMC2nMT/bAp4J9zS/16qW54Jje/e4gRiGKlHQAt8dqATu"></script>

@@ -429,6 +429,26 @@
     .pb-rules td, .pb-rules th { padding:5px 6px; font-size:11px; }
   }
   @media(max-width:640px){ .pb-hold-head { grid-template-columns: 1fr 44px 64px 18px; } .pb-hold-head .pb-hide-sm { display:none; } }
+  /* Support Levels (Strategy, under Entry Analysis) */
+  .sl-sub { font-size:12px; color:var(--muted); margin:2px 0 12px; line-height:1.5; }
+  .sl-card { background:var(--bg2); border:1px solid var(--border); border-left:3px solid var(--border); border-radius:8px; padding:10px 12px; margin-bottom:10px; }
+  .sl-card.sl-g { border-left-color:var(--green); } .sl-card.sl-y { border-left-color:var(--yellow); } .sl-card.sl-r { border-left-color:var(--red); }
+  .sl-top { display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+  .sl-name { font-size:14px; min-width:0; overflow-wrap:anywhere; } .sl-tick { font-size:11px; color:var(--muted); margin-left:4px; }
+  .sl-zone { display:flex; align-items:baseline; gap:10px; flex-wrap:wrap; margin:6px 0 2px; }
+  .sl-lbl { font-size:12px; color:var(--muted); } .sl-val { font-size:24px; font-weight:800; color:var(--green); }
+  .sl-tags { display:flex; flex-wrap:wrap; gap:6px; margin:6px 0; }
+  .sl-pill { display:inline-block; padding:3px 9px; border-radius:999px; font-size:11px; font-weight:700; background:var(--bg3); white-space:nowrap; }
+  .sl-pill.g { background:rgba(34,197,94,.18); color:var(--green); } .sl-pill.y { background:rgba(245,158,11,.18); color:var(--yellow); }
+  .sl-pill.r { background:rgba(239,68,68,.18); color:#fca5a5; } .sl-pill.dim { color:var(--muted); }
+  .sl-tags .sl-pill { white-space:normal; overflow-wrap:anywhere; max-width:100%; }
+  .sl-stats { display:flex; flex-wrap:wrap; gap:4px 14px; font-size:12px; color:var(--muted); margin:6px 0; } .sl-stats strong { color:var(--text); } .sl-dim { color:#64748b; }
+  .sl-note p { font-size:12px; line-height:1.55; margin:4px 0; color:var(--text); }
+  .sl-h4 { font-size:12px; text-transform:uppercase; letter-spacing:.06em; color:var(--muted); margin:16px 0 8px; }
+  .sl-tablewrap { overflow-x:auto; } .sl-table { width:100%; border-collapse:collapse; font-size:13px; }
+  .sl-table th { text-align:left; font-size:11px; color:var(--muted); font-weight:600; padding:6px 8px; border-bottom:1px solid var(--border); }
+  .sl-table td { padding:8px; border-bottom:1px solid var(--border); } .sl-table .sl-g { color:var(--green); font-weight:700; white-space:nowrap; }
+  .sl-empty { font-size:13px; color:var(--muted); padding:8px 0; }
 </style>
 </head>
 <body>
@@ -593,6 +613,7 @@
 <script src="js/positions.js"></script>
 <script src="js/analyst.js"></script>
 <script src="js/strategy.js"></script>
+<script src="js/support.js"></script>
 <script src="js/profit.js"></script>
 <script src="js/returns.js"></script>
 <script src="js/alerts.js"></script>

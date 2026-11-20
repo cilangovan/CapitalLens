@@ -4,7 +4,7 @@
 
 Tab id `strategy` · loader `loadStrategy()` · `docs/js/strategy.js`
 
-The tab stacks four sections (each a collapsible card):
+The tab stacks five sections (each a collapsible card):
 
 ## 1. 🌍 Global Institutional Capital (`#inst-flow-content`)
 
@@ -26,6 +26,18 @@ Live analysis per stock, grouped by pie: **PWI Scout · RSI · moving averages �
 - Data: `value_buy_scores` (`services/value_buy_service.py`, browser: `docs/zk/valuebuy.js`). The JSON columns `entry_zones`, `scorecard`, `earnings`, `this_week` are parsed **before** `defuse()` (which swaps quotes); the zero-knowledge shim does this in `parseJsonCols` (regression test in `tests/zk_shim_test.mjs`).
 - Rating chips: 🟢 Strong Buy, 🟡 Accumulate, ⚪ Hold/Wait. Action chips: 🚀 BUY NOW, 📈 DCA — ADD, 🔵 ACCUMULATE, ⏳ WAIT FOR DIP, 🛑 HOLD / AVOID.
 
+## 3b. 🛡️ Support Levels (`#support-levels-content`, directly under Entry Analysis)
+
+**Stocks you hold only.** For each held stock that has a support level on file: a card with the **zone** (e.g. META `$550–560`), the source's tags ("Crucial support zone", "200-week EMA", "Previous breakout"…), the **live price and how far it is from the zone**, the 52-week drawdown, and a short **commentary**; a **summary table** (stock · zone · live · status) closes the section. Cards are sorted most urgent first: below the zone, in the zone, approaching, above, no live price.
+
+- **Status** compares the live price with the zone: *Below the zone*, *In the zone*, *Approaching the zone* (within 3% above), *Above the zone*, or *Live price unavailable*. A single-number level ("wait for $150") counts as "in" within 1.5%.
+- **Live price** comes from the Entry Analysis rows (`value_buy_scores`, native currency, so it is comparable with a USD zone). If it is missing, or in another currency, the card says so; it never guesses. The price the source showed when captured is labelled as a snapshot.
+- **Commentary** is generated from the numbers only (distance to the zone, your average cost against the zone, the source's tags). It describes and never instructs; nothing here is advice.
+- **Held** = your latest positions snapshot (Trading 212 tickers mapped to symbols, e.g. `FB_US_EQ` → META). The match happens in your browser. Levels for stocks you do not hold are not shown; if none of your holdings has a level the section says so.
+- Data: public shared table `support_levels` (`db/tenant/23_support_levels.sql`): an **external analyst view** (every row names its source and capture date), not our calculation. Seeded from KwickScan.com "Support levels to watch" captured 20 Nov 2026: META, BE, HOOD, INTC, NVDA, QCOM, CRM, NOW with detail, and ORCL, AMZN, TSLA from the summary table only. Updating levels is a data change (an upsert in a migration), not a code change.
+- Demo: `demo_support_levels`, rebuilt by the daily demo refresh from the demo holdings' mock prices and labelled "Illustrative demo level / Demo data" (see [Demo](../demo.md)).
+- Module `docs/js/support.js` (`loadSupportLevels`), rolled out to every dashboard. Requirements and rollout: [Epic: Support Levels](../requirements/epic-support-levels.md).
+
 ## 4. Weekly allocation (`#strategy-content`)
 
 The **Aggressive-mode** plan:
@@ -38,9 +50,9 @@ The **Aggressive-mode** plan:
 
 ## Behaviour
 
-- Guest mode hides all four sections and shows "🔒 Sign in to view strategy recommendations".
+- Guest mode hides all five sections and shows "🔒 Sign in to view strategy recommendations".
 - Nothing here is advice; each section states its basis.
 
 ## Tests
 
-`tests/zk_strategy_test.mjs`, `tests/zk_flow_test.mjs`, `tests/zk_holding_value_test.mjs`, `tests/zk_shim_test.mjs` (Entry Analysis JSON regression).
+`tests/zk_strategy_test.mjs`, `tests/zk_flow_test.mjs`, `tests/zk_holding_value_test.mjs`, `tests/zk_shim_test.mjs` (Entry Analysis JSON regression), `tests/zk_support_levels_test.mjs` (Support Levels logic, escaping, placement), `tests/support_layout_test.py` (fits 320/360/390px, live and demo pages).

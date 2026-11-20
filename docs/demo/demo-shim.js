@@ -41,7 +41,7 @@
       return json(200, { points: p.points.slice(-N), meta: p.meta || {} });
     }
     if (/^\/(search|settings\/|watchlist\/|ipo\/)/.test(path)) return json(501, { error: 'This feature is not available in the demo' });
-    const DEMO_ONLY = { '/ipo_calendar': '/demo_ipo_calendar', '/institutional_flow_reports': '/demo_institutional_flow_reports' };
+    const DEMO_ONLY = { '/ipo_calendar': '/demo_ipo_calendar', '/support_levels': '/demo_support_levels', '/institutional_flow_reports': '/demo_institutional_flow_reports' };
     for (const k in DEMO_ONLY) if (path === k || path.startsWith(k + '?')) input = PROXY + DEMO_ONLY[k] + path.slice(k.length);
 
     const h = new Headers(init.headers || {});

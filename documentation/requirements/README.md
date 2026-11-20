@@ -11,6 +11,7 @@ The business-analysis record for CapitalLens: what the owner asked for, written 
 | [Security requirements](security-requirements.md) | Threats, controls, checks, accepted risks and open gaps |
 | [Logging and audit requirements](logging-requirements.md) | What is recorded, what must never be, retention, monitoring, gaps |
 | [Traceability and test scenarios](traceability.md) | Requirement → code → test matrix, test scenarios, the gap register |
+| [Epic: Support Levels](epic-support-levels.md) | Strategy › Entry Analysis › Support Levels for held stocks (UI-20) |
 | [Demo user](../demo-requirements.md) | Epic #32 requirements and wireframes (separate pack) |
 
 ## How to read an ID

@@ -537,7 +537,8 @@ async function loadStrategy() {
     stratHtml = '<div class="loading">No strategy data yet. Run the daily_services workflow.</div>';
   }
 
-  el.innerHTML = vbHtml + stratHtml;
+  el.innerHTML = vbHtml + '<div id="support-levels-content"></div>' + stratHtml;
+  if (typeof loadSupportLevels === 'function') loadSupportLevels(vbRows);
 }
 
 function toggleVB(id) {

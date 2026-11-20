@@ -16,6 +16,7 @@
 | UI-12 profit booking | `docs/zk/profitbooking.js` | `zk_profitbooking_test.mjs` (logic only) |
 | UI-13 returns | `docs/js/returns.js` | `zk_returns_test.mjs`, `zk_t212sync_test.mjs` |
 | UI-14 watchlist | `docs/js/watchlist.js`, `docs/zk/watchlist.js` | `zk_watchlist_test.mjs`, `zk_watchlistops_test.mjs`, `zk_watchlist_analyst_chip_test.mjs` |
+| UI-20 Support Levels | `docs/js/support.js`, `db/tenant/23_support_levels.sql`, `docs/js/strategy.js` | `zk_support_levels_test.mjs`, `support_layout_test.py`, `standards_test.py` |
 | UI-15 IPO Watch | `docs/js/ipo.js`, `docs/zk/ipo*.js` | `zk_ipo_test.mjs`, `ipo_layout_test.py`, `ipo_watch_browser_test.py`, `ipo_service_test.py` |
 | UI-9, CH-40 drill-down | `docs/js/pie_drill.js`, `docs/zk/piehistory.js` | `zk_piehistory_test.mjs` |
 | UI-17 settings, refresh | `docs/zk/zk.js`, `t212sync.js`, `notify.js` | `zk_autorefresh_test.mjs`, `zk_notify_test.mjs`, `zk_zkapp_page_test.mjs` |
@@ -43,6 +44,7 @@ Format: scenario, starting condition, steps → expected. IDs match the per-page
 | TS-UI5 | Untagged shares | Hold a share outside any pie → it appears under Untagged | ⬜ (#45) |
 | TS-UI6 | Alert triage | Mark read, archive, clear, restore, bulk → counts and views update; cleared item removed after 30 days | ✅ logic; 🟡 UI |
 | TS-UI7 | IPO bookmark | Search "Nasdaq", ☆ a result → it appears under My IPO list; ✕ removes it | ✅ |
+| TS-UI9 | Support Levels | Hold NVDA, open Strategy → card under Entry Analysis shows $138–140, live price, status; a stock you do not hold has no card; unplug live price → "Live price unavailable" | ✅ unit + layout; live data not verified offline |
 | TS-UI8 | No fake clear | Holding with no price data → alert report says it cannot be checked | ✅ |
 | TS-CH1…5 | Charts | See [Chart requirements](chart-requirements.md) | ✅ partly |
 | TS-DB1…6 | Data | See [Data requirements](data-requirements.md) | ✅ except TS-DB6 |

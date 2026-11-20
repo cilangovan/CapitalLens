@@ -8,7 +8,7 @@
     analyst_ratings: 'analyst_ratings', holding_decisions: 'holding_decisions', value_buy_scores: 'value_buy_scores', strategy_recommendations: 'strategy_recommendations',
     profit_booking: 'profit_booking', profit_booking_summary: 'profit_booking_summary', returns_summary: 'returns_summary', realised_pnl: 'realised_pnl', dividends: 'dividends',
     pie_history: 'pie_history', watchlist: 'watchlist', watchlist_analysis: 'watchlist_analysis', ipo_watch: 'ipo_watch' };
-  const SHARED = new Set(['instrument_exposure', 'instrument_country_weights', 'instrument_sector_weights', 'instruments', 'user_ui_prefs', 'market_cache', 'ipo_calendar']);
+  const SHARED = new Set(['instrument_exposure', 'instrument_country_weights', 'instrument_sector_weights', 'instruments', 'user_ui_prefs', 'market_cache', 'ipo_calendar', 'support_levels']);
   // JSON stored as text by the browser-side analysis. Parsed BEFORE defuse (which swaps every double quote), then defused as real data.
   const JSON_COLS = { value_buy_scores: ['entry_zones', 'scorecard', 'earnings', 'this_week'] };
   const parseJsonCols = (route, rows) => !JSON_COLS[route] ? rows : rows.map(r => { const o = Object.assign({}, r); for (const c of JSON_COLS[route]) if (typeof o[c] === 'string') { try { o[c] = JSON.parse(o[c]); } catch (e) {} } return o; });

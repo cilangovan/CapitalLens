@@ -3,7 +3,7 @@
 > **Generated** by `scripts/build_docs.py` from `db/schema.sql` and `db/tenant/*.sql`. Do not edit by hand; change the SQL and rebuild.
 > Concepts, data flows and who writes each table are in [Database & data flows](../database.md).
 
-38 tables in the `public` schema.
+39 tables in the `public` schema.
 
 | Table | Columns | Defined in |
 |---|---|---|
@@ -34,6 +34,7 @@
 | [`realised_pnl`](#realised_pnl) | 13 | `db/schema.sql`, `db/tenant/01_schema.sql` |
 | [`returns_summary`](#returns_summary) | 9 | `db/schema.sql`, `db/tenant/01_schema.sql` |
 | [`strategy_recommendations`](#strategy_recommendations) | 12 | `db/schema.sql`, `db/tenant/01_schema.sql` |
+| [`support_levels`](#support_levels) | 15 | `db/tenant/23_support_levels.sql` |
 | [`sync_jobs`](#sync_jobs) | 7 | `db/tenant/01_schema.sql`, `db/tenant/06_convert_legacy.sql` |
 | [`t212_dividends`](#t212_dividends) | 11 | `db/schema.sql`, `db/tenant/01_schema.sql` |
 | [`t212_orders`](#t212_orders) | 16 | `db/schema.sql`, `db/tenant/01_schema.sql` |
@@ -464,6 +465,27 @@ Positions of archived snapshots. Same columns as positions.
 | `weekly_budget` | `numeric` |
 | `market_mood` | `jsonb` |
 | `user_id` | `uuid not null default auth.uid() references auth.users(id) on delete cascade` |
+
+## support_levels
+
+| Column | Definition |
+|---|---|
+| `symbol` | `text primary key check (symbol ~ '^[A-Z0-9.\-]{1,12}$')` |
+| `e.g.` | `META (T212 META_US_EQ / FB_US_EQ both map here) name text not null` |
+| `level_label` | `text not null default 'Support zone' check (level_label in ('Support zone','Support level','My level','Wait for'))` |
+| `zone_low` | `numeric not null check (zone_low > 0)` |
+| `zone_high` | `numeric not null check (zone_high >= zone_low)` |
+| `approx` | `boolean not null default false` |
+| `currency` | `text not null default 'USD'` |
+| `tags` | `jsonb not null default '[]'::jsonb` |
+| `tone":"neutral|good|warn|bad"}]
+` | `snap_price numeric` |
+| `snap_pct_from_high` | `numeric` |
+| `as` | `shown by the source note text` |
+| `source_name` | `text not null` |
+| `source_url` | `text check (source_url is null or source_url ~ '^https?://')` |
+| `as_of` | `date not null default current_date` |
+| `updated_at` | `timestamptz not null default now()` |
 
 ## sync_jobs
 
