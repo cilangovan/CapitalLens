@@ -47,7 +47,8 @@ on conflict (symbol) do update set name = excluded.name, level_label = excluded.
   tags = excluded.tags, snap_price = excluded.snap_price, snap_pct_from_high = excluded.snap_pct_from_high, source_name = excluded.source_name, as_of = excluded.as_of, updated_at = now();
 
 -- ── Demo: a demo-only copy (nothing invented goes into the shared table the private app reads; docs/demo/demo-shim.js maps the route) ──
-create table if not exists public.demo_support_levels (like public.support_levels including defaults including constraints);
+-- including indexes: copies the primary key, which seed_demo_support_levels needs for ON CONFLICT (found by running the refresh against the demo project)
+create table if not exists public.demo_support_levels (like public.support_levels including defaults including constraints including indexes);
 alter table public.demo_support_levels enable row level security;
 do $p$ begin
   if not exists (select 1 from pg_policies where schemaname = 'public' and tablename = 'demo_support_levels' and policyname = 'demo_support_levels_read') then
