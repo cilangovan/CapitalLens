@@ -100,6 +100,7 @@ async function loadOverview() {
     const el = document.getElementById('sector-map');
     if (el) el.innerHTML = `<div style="color:var(--red);font-size:12px">Sector map error: ${e.message}</div>`;
   });
+  loadCountryDecline().catch(e => { const el = document.getElementById('ov-decline-body'); if (el) el.innerHTML = `<div style="color:var(--red);font-size:12px">Decline chart error: ${esc(e.message)}</div>`; });
   loadCountryMap().catch(e => {
     const el = document.getElementById('country-map');
     if (el) el.innerHTML = `<div style="color:var(--red);font-size:12px">Country map error: ${e.message}</div>`;
@@ -311,6 +312,59 @@ async function loadSectorMap() {
 
   html += `</div>`;
   el.innerHTML = html;
+}
+
+// ── MARKET DECLINE BY COUNTRY (your holdings, price change between two saved snapshots) ──
+const OV_RANGES = [['1D', 1], ['1W', 7], ['1M', 30], ['3M', 91], ['1Y', 365]];
+// Pick the newest snapshot that is at least ~80% of the span old; null if saved history is too short (never fake a span).
+function ovPickThen(snaps, days, nowMs) {
+  const list = (snaps || []).filter(x => x && x.created_at).map(x => ({ id: x.id, t: new Date(x.created_at).getTime() })).sort((a, b) => b.t - a.t);
+  if (list.length < 2) return { then: null, oldestDays: 0 };
+  const latest = list[0], oldest = list[list.length - 1], oldestDays = (latest.t - oldest.t) / 864e5;
+  const then = list.find(x => (latest.t - x.t) / 864e5 >= days * 0.8);
+  return { then: then || null, oldestDays, latest };
+}
+// Per-country price change: each holding's price move, weighted by value at the start and by its country weight (ETFs are split by their
+// country weights; holdings with no country data are grouped as "Unclassified", not hidden).
+function ovCountryDecline(posNow, posThen, weights) {
+  const then = {}; (posThen || []).forEach(p => { then[p.ticker] = p; });
+  const agg = {};
+  (posNow || []).forEach(p => {
+    const q = then[p.ticker], pn = +p.current_price, pt = q && +q.current_price, qty = q && +q.quantity;
+    if (!q || !(pn > 0) || !(pt > 0) || !(qty > 0)) return;
+    const base = pt * qty, r = pn / pt - 1, w = (weights && weights[p.ticker]) || [{ country: 'Unclassified', flag: '🏳️', pct: 100 }];
+    w.forEach(c => { const k = c.country, f = (+c.pct || 0) / 100; const a = agg[k] = agg[k] || { country: k, flag: c.flag || '', num: 0, den: 0 }; a.num += f * base * r; a.den += f * base; });
+  });
+  return Object.values(agg).filter(a => a.den > 0).map(a => ({ country: a.country, flag: a.flag, pct: a.num / a.den * 100, weight: a.den })).sort((a, b) => a.pct - b.pct);
+}
+function ovDeclineBars(rows) {
+  if (!rows || !rows.length) return '<div style="color:var(--muted);font-size:13px">No holdings with a price at both dates.</div>';
+  const mx = Math.max(0.01, ...rows.map(r => Math.abs(r.pct)));
+  return rows.map(r => { const w = Math.max(2, Math.round(Math.abs(r.pct) / mx * 46)), neg = r.pct < 0;
+    return `<div style="display:flex;align-items:center;gap:8px;margin:5px 0;font-size:13px"><span style="width:118px;flex:none;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(r.flag)} ${esc(r.country)}</span>`
+      + `<span style="flex:1;display:flex;align-items:center;height:18px"><span style="width:50%;display:flex;justify-content:flex-end">${neg ? `<span style="width:${w * 2}%;height:14px;background:var(--red,#f87171);border-radius:3px 0 0 3px"></span>` : ''}</span>`
+      + `<span style="width:50%">${neg ? '' : `<span style="display:block;width:${w * 2}%;height:14px;background:var(--green,#4ade80);border-radius:0 3px 3px 0"></span>`}</span></span>`
+      + `<b style="width:62px;flex:none;text-align:right;color:${neg ? 'var(--red,#f87171)' : 'var(--green,#4ade80)'}">${r.pct > 0 ? '+' : ''}${r.pct.toFixed(2)}%</b></div>`; }).join('');
+}
+async function loadCountryDecline(range) {
+  if (typeof IS_GUEST !== 'undefined' && IS_GUEST) return;
+  let card = document.getElementById('ov-decline');
+  if (!card) {
+    const anchor = document.getElementById('ov-formula') || document.getElementById('stats-strip'); if (!anchor) return;
+    anchor.insertAdjacentHTML('afterend', '<div class="card" id="ov-decline"><h3>Market decline by country</h3><div id="ov-decline-btns" style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0"></div><div id="ov-decline-body"><div class="loading busy">Loading…</div></div><div class="muted" style="font-size:11px;margin-top:6px">Your holdings by country, price change between saved snapshots (not index data). Funds are split by their country weights; holdings with no country data are grouped as Unclassified.</div></div>');
+    card = document.getElementById('ov-decline');
+    document.getElementById('ov-decline-btns').addEventListener('click', e => { const b = e.target.closest('[data-ovr]'); if (b) loadCountryDecline(b.dataset.ovr).catch(() => {}); });
+  }
+  range = range || '1W'; const days = (OV_RANGES.find(r => r[0] === range) || OV_RANGES[1])[1];
+  document.getElementById('ov-decline-btns').innerHTML = OV_RANGES.map(([k]) => `<button type="button" data-ovr="${k}" style="min-height:40px;min-width:48px;border-radius:8px;border:1px solid var(--border,#2d3353);background:${k === range ? 'var(--accent,#6366f1)' : 'transparent'};color:inherit;cursor:pointer">${k}</button>`).join('');
+  const body = document.getElementById('ov-decline-body');
+  const snaps = await api('portfolio_snapshots', '?select=id,created_at&order=created_at.desc&limit=400');
+  const pick = ovPickThen(snaps, days, Date.now());
+  if (!pick.then) { body.innerHTML = `<div style="color:var(--muted);font-size:13px">Not enough saved history for ${esc(range)} yet: the oldest snapshot is ${pick.oldestDays.toFixed(1)} days older than the latest. Pick a shorter span.</div>`; return; }
+  const [posNow, posThen] = await Promise.all([api('positions', `?snapshot_id=eq.${pick.latest.id}&select=ticker,current_price,quantity`), api('positions', `?snapshot_id=eq.${pick.then.id}&select=ticker,current_price,quantity`)]);
+  const weights = {}; try { (await api('instrument_country_weights', '?select=ticker,country,flag,pct')).forEach(r => { (weights[r.ticker] = weights[r.ticker] || []).push(r); }); } catch (e) {}
+  const span = (pick.latest.t - pick.then.t) / 864e5;
+  body.innerHTML = `<div class="muted" style="font-size:12px;margin-bottom:4px">Latest vs ${span.toFixed(1)} days earlier (${esc(new Date(pick.then.t).toLocaleDateString('en-GB'))})</div>` + ovDeclineBars(ovCountryDecline(posNow, posThen, weights));
 }
 
 // ── COUNTRY MAP ───────────────────────────────────────────────

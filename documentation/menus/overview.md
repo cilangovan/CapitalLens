@@ -40,3 +40,7 @@ A collapsible card under the stats strip with one bar and the formulas, using th
 ## Snapshot columns
 
 New snapshots store `invested` = cost basis + unrealised result and `total_ppl` = Trading 212's unrealised result (both from the account figures), not total minus free cash. Older snapshots keep the old values and are labelled as estimates.
+
+## Market decline by country (card)
+
+A collapsible card with 1D / 1W / 1M / 3M / 1Y buttons and one horizontal bar per country (red for a decline, green for a gain, worst first). It is **your holdings by country**, not index data: each holding's price change between the latest saved snapshot and an older one, weighted by its value at the start. Funds are split by their country weights (`instrument_country_weights`); holdings with no country data are grouped as **Unclassified**, never hidden. A holding with no price at both dates is left out. A span longer than the saved history says "not enough saved history yet" instead of showing a made-up bar. The older snapshot is the newest one that is at least about 80% of the span old, and its date is shown. Source: the `portfolio_snapshots` and `positions` tables. Guarded by `tests/zk_overview_stale_test.mjs`.

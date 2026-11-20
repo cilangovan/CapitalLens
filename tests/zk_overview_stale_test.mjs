@@ -1,11 +1,11 @@
 // Run: node tests/zk_overview_stale_test.mjs — the Overview must never present an old snapshot as live.
 import { readFileSync } from 'node:fs'; import vm from 'node:vm';
 const src = readFileSync(new URL('../docs/js/overview.js', import.meta.url), 'utf8');
-const body = src.slice(src.indexOf('// "5 min ago"'), src.indexOf('async function loadOverview'));
+const body = src.slice(src.indexOf('// "5 min ago"'), src.indexOf('async function loadOverview')) + '\n' + src.slice(src.indexOf('// ── MARKET DECLINE BY COUNTRY'), src.indexOf('async function loadCountryDecline'));
 let banner = null; const parent = { insertBefore: (el) => { banner = el; el.remove = () => { banner = null; }; } };
 const strip = { parentNode: parent };
 const doc = { getElementById: id => id === 'stats-strip' ? strip : id === 'stale-banner' ? banner : null, createElement: () => ({ style: {}, set innerHTML(v) { this._h = v; }, get innerHTML() { return this._h; } }) };
-const ctx = { document: doc, zkToolsOpen: undefined }; vm.createContext(ctx); vm.runInContext(body + ';this.ovAgo=ovAgo;this.ovHeadline=ovHeadline;this.ovFormulaHtml=ovFormulaHtml;this.ovStaleBanner=ovStaleBanner;', ctx);
+const ctx = { document: doc, zkToolsOpen: undefined, esc: s => String(s ?? '').replace(/[&<>"'`]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c])) }; vm.createContext(ctx); vm.runInContext(body + ';this.ovAgo=ovAgo;this.ovHeadline=ovHeadline;this.ovFormulaHtml=ovFormulaHtml;this.ovPickThen=ovPickThen;this.ovCountryDecline=ovCountryDecline;this.ovDeclineBars=ovDeclineBars;this.ovStaleBanner=ovStaleBanner;', ctx);
 let pass = 0, fail = 0; const ok = (n, c) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + n); };
 ok('relative age wording', ctx.ovAgo(20e3) === 'just now' && ctx.ovAgo(300e3) === '5 min ago' && ctx.ovAgo(3 * 3600e3) === '3 h ago' && ctx.ovAgo(60 * 3600e3) === '3 days ago');
 ctx.ovStaleBanner(5 * 60e3, 't'); ok('fresh snapshot: no banner', banner === null);
@@ -28,6 +28,18 @@ ok('reserved cash (pending limit orders) is its own figure and closes the gap', 
 const FH = ctx.ovFormulaHtml(R);
 ok('formula card shows cost basis, unrealised and the -0.49% on the Trading 212 numbers', FH.includes('£4,758.85') && FH.includes('£23.11') && FH.includes('-0.49%') && FH.includes('Reserved'));
 ok('formula card says so when there is no account breakdown (no invented figures)', /estimates/.test(ctx.ovFormulaHtml(ctx.ovHeadline({ total_value: 100, cash: 20, invested: 80 }))));
+const DAY = 864e5, t0 = Date.parse('2026-11-19T08:00:00Z');
+const snaps = [{ id: 3, created_at: new Date(t0).toISOString() }, { id: 2, created_at: new Date(t0 - 2 * DAY).toISOString() }, { id: 1, created_at: new Date(t0 - 8 * DAY).toISOString() }];
+ok('1W picks the snapshot at least ~80% of a week old', ctx.ovPickThen(snaps, 7, t0).then.id === 1 && ctx.ovPickThen(snaps, 1, t0).then.id === 2);
+ok('a span longer than saved history is refused, not faked', ctx.ovPickThen(snaps, 91, t0).then === null && ctx.ovPickThen(snaps, 91, t0).oldestDays === 8 && ctx.ovPickThen([snaps[0]], 7, t0).then === null);
+const now = [{ ticker: 'A', current_price: 90, quantity: 1 }, { ticker: 'B', current_price: 110, quantity: 1 }, { ticker: 'F', current_price: 105, quantity: 1 }, { ticker: 'N', current_price: 50, quantity: 1 }];
+const old = [{ ticker: 'A', current_price: 100, quantity: 1 }, { ticker: 'B', current_price: 100, quantity: 1 }, { ticker: 'F', current_price: 100, quantity: 1 }];
+const W = { A: [{ country: 'United States', flag: 'US', pct: 100 }], B: [{ country: 'India', flag: 'IN', pct: 100 }], F: [{ country: 'United States', flag: 'US', pct: 50 }, { country: 'India', flag: 'IN', pct: 50 }] };
+const CD = ctx.ovCountryDecline(now, old, W), us = CD.find(x => x.country === 'United States'), inn = CD.find(x => x.country === 'India');
+ok('country change is value-weighted and funds are split by country weights (US (-10·100 + 5·50)/150 = -5%, India (10·100 + 5·50)/150 = +8.33%)', Math.abs(us.pct - (-5)) < 1e-9 && Math.abs(inn.pct - 12.5 / 1.5) < 1e-9);
+ok('worst country comes first; a holding with no earlier price is left out, not guessed', CD[0].country === 'United States' && !CD.some(x => x.country === 'Unclassified'));
+ok('holdings with no country data are shown as Unclassified, not hidden', ctx.ovCountryDecline([{ ticker: 'Z', current_price: 8, quantity: 1 }], [{ ticker: 'Z', current_price: 10, quantity: 1 }], {})[0].country === 'Unclassified');
+ok('bars show red for a decline with its percentage and green for a gain', /-5\.00%/.test(ctx.ovDeclineBars(CD)) && /\+8\.33%/.test(ctx.ovDeclineBars(CD)) && /No holdings/.test(ctx.ovDeclineBars([])));
 ok('estimate path reports no reserved figure', O.reserved === null);
 ok('empty snapshot does not throw', ctx.ovHeadline(undefined).total === 0);
 console.log(`${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);
