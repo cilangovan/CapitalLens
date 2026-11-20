@@ -96,4 +96,9 @@ A.piesStatus = 200;
 A.portfolio = A.portfolio.filter(p => p.ticker !== 'CCCl_EQ'); A.orders = [{ ...buy(9, 'CCCl_EQ', 8, 55, '20'), order: { ...buy(9, 'CCCl_EQ', 8, 55, '20').order, side: 'SELL' } }, ...A.orders];
 const r6 = await refresh();
 ok('a closed position and a sell are described', r6.changes.lines.some(l => l === 'No longer held: CCCl') && r6.changes.lines.some(l => /1 sell/.test(l)));
+
+// The app's call() helper answers { ok, status, d }, not a fetch Response: support levels used to be skipped with "x.json is not a function" on every refresh
+const M2 = require('../docs/zk/monitor.js');
+ok('support levels load from the app\'s call() shape ({ok, d}) instead of throwing', (await M2.fetchSupportLevels(async () => ({ ok: true, status: 200, d: [{ ticker: 'A', level: 1 }] }), 't'))[0].ticker === 'A');
+ok('  …a real Response-like shape still works, and failures give an empty list', (await M2.fetchSupportLevels(async () => ({ ok: true, json: async () => [{ ticker: 'B' }] }), 't'))[0].ticker === 'B' && (await M2.fetchSupportLevels(async () => ({ ok: false, status: 500 }), 't')).length === 0);
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

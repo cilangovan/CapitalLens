@@ -136,7 +136,7 @@ check("legacy pipeline: snapshot + positions + alerts saved in one transaction (
       and "resume" in _sy and (ROOT / "tests/legacy_interrupt_test.py").exists())
 _mj = (ROOT / "docs/zk/monitor.js").read_text(); _pl = (ROOT / "docs/zk/pipeline.js").read_text(); _zt = (ROOT / "docs/zkapp/zkapp-tools.js").read_text()
 check("refresh is honest (issue #53): failed Trading 212 calls are explained, no zero-value snapshot, 'what changed' is shown, legacy run fails loudly, e2e test exists",
-      "refused the key" in _mj and "if (!account)" in _mj and "describeChanges" in _pl and "warnings" in _pl and "zkShowChanges" in _zt and "zk-changes" in (ROOT / "scripts/build_zkapp.py").read_text()
+      "refused the key" in _mj and "if (!account)" in _mj and "fetchSupportLevels" in _mj and "x.json()" not in _zt and "describeChanges" in _pl and "warnings" in _pl and "zkShowChanges" in _zt and "zk-changes" in (ROOT / "scripts/build_zkapp.py").read_text()
       and "sys.exit(1)" in _mp and "explain_t212" in _mp and (ROOT / "tests/zk_purchase_e2e_test.mjs").exists())
 _dr = (ROOT / "db/tenant/18_demo_refresh.sql").read_text()
 check("demo: daily refresh is one database function (atomic) run by pg_cron, never by a browser, so a page reload cannot cut it off",

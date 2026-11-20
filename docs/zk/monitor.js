@@ -195,6 +195,14 @@
     }
     return { run };
   }
-  root.ZKMonitor = { create, analyse, resolvePie, resolveExchange, summarisePie };
+  // Shared support-level fetch. The app's call() helper answers { ok, status, d } (not a fetch Response), which is why calling .json() on it threw
+  // "x.json is not a function" and silently skipped support levels in every refresh.
+  async function fetchSupportLevels(call, token) {
+    const x = await call('/rest/v1/support_levels?select=*', {}, token);
+    if (!x || !x.ok) return [];
+    const d = x.d !== undefined ? x.d : (typeof x.json === 'function' ? await x.json() : []);
+    return Array.isArray(d) ? d : [];
+  }
+  root.ZKMonitor = { create, analyse, resolvePie, resolveExchange, summarisePie, fetchSupportLevels };
   if (typeof module !== 'undefined') module.exports = root.ZKMonitor;
 })(typeof window !== 'undefined' ? window : globalThis);

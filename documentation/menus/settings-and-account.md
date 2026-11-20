@@ -36,6 +36,8 @@ After every refresh a box under the button lists, in plain words:
 - **Every problem and its fix**: a key Trading 212 refuses (HTTP 401/403: check live key and Portfolio / Account data permissions), a rate limit (wait a minute, refresh again), an unreadable balance or pie list. A failed call is **never silent**: the refresh is marked "Finished with problems", **nothing wrong is saved** (no zero-value snapshot; no snapshot without positions), and the box says the analyses (ratings, strategy, entry, holdings, alerts) used the previous snapshot from <date> so they do not include anything bought since.
 - If only the pie list could not be read, positions are still saved and you are warned that pie grouping may be incomplete.
 
+Support levels are read with one shared helper (`ZKMonitor.fetchSupportLevels`); an earlier version threw "x.json is not a function" on the app's own call() reply and silently skipped support-zone alerts on every refresh (fixed, tested).
+
 On the legacy page (server pipeline) the same failures make the GitHub Action fail and send a push "CapitalLens refresh failed" with the reason, instead of finishing green on old data. The demo has no live refresh.
 
 ## Legacy dashboard
