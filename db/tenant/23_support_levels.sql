@@ -59,17 +59,22 @@ grant select on public.demo_support_levels to anon, authenticated;
 
 -- Rebuilt on every daily demo refresh from the demo portfolio so every holding has a level close to its mock price. Illustrative, labelled as such.
 create or replace function public.seed_demo_support_levels(p_user uuid) returns integer language plpgsql security definer set search_path = '' as $$
-declare r record; n integer := 0; px numeric; lo numeric; hi numeric; h numeric; pick integer;
+declare r record; n integer := 0; px numeric; lo numeric; hi numeric; h numeric; pick integer; sy text;
 begin
   delete from public.demo_support_levels;
   for r in select v.ticker, v.display, (v.this_week->>'current')::numeric as cur, (v.this_week->>'high_52w')::numeric as hi52
-           from public.value_buy_scores v where v.user_id = p_user and v.this_week ? 'current' and v.ticker ~ '^[A-Z0-9.]{1,12}_US_EQ$' loop   -- US listings only (the table's symbol rule); LSE/Xetra ETFs have no level
+           from public.value_buy_scores v where v.user_id = p_user and v.this_week ? 'current' loop
     px := r.cur; if px is null or px <= 0 then continue; end if;
+    -- symbol = the Yahoo-style key the dashboard uses (US: AAPL, LSE: SGLN.L, Xetra: .DE, Amsterdam: .AS); tickers that do not map are skipped (the table's symbol rule)
+    sy := case when r.ticker = 'FB_US_EQ' then 'META' when r.ticker ~ '^[A-Z0-9.]{1,12}_US_EQ$' then regexp_replace(r.ticker, '_US_EQ$', '')
+               when r.ticker ~ '^[A-Z0-9]{1,10}l_EQ$' then regexp_replace(r.ticker, 'l_EQ$', '') || '.L' when r.ticker ~ '^[A-Z0-9]{1,10}d_EQ$' then regexp_replace(r.ticker, 'd_EQ$', '') || '.DE'
+               when r.ticker ~ '^[A-Z0-9]{1,10}a_EQ$' then regexp_replace(r.ticker, 'a_EQ$', '') || '.AS' end;
+    if sy is null then continue; end if;
     h := (abs(hashtext(r.ticker)) % 100) / 100.0;
     pick := (abs(hashtext(r.ticker || 'k')) % 3);
     lo := round(px * (0.90 + h * 0.04), 2); hi := round(lo * 1.03, 2);
     insert into public.demo_support_levels (symbol, name, level_label, zone_low, zone_high, approx, currency, tags, snap_price, snap_pct_from_high, note, source_name, as_of)
-      values (case when r.ticker = 'FB_US_EQ' then 'META' else regexp_replace(r.ticker, '_US_EQ$', '') end, coalesce(r.display, r.ticker), case pick when 0 then 'Support zone' when 1 then 'Support level' else 'My level' end, lo, hi, false, 'GBP',
+      values (sy, coalesce(r.display, r.ticker), case pick when 0 then 'Support zone' when 1 then 'Support level' else 'My level' end, lo, hi, false, 'GBP',
         case pick when 0 then '[{"t":"Crucial support zone","tone":"warn"}]'::jsonb when 1 then '[{"t":"200-week EMA","tone":"neutral"}]'::jsonb else '[{"t":"Previous breakout zone","tone":"good"}]'::jsonb end,
         round(px, 2), case when r.hi52 > 0 then round((px / r.hi52 - 1) * 100) end, 'Illustrative demo level', 'Demo data', current_date)
       on conflict (symbol) do nothing;

@@ -25,7 +25,7 @@ for page in ("docs/index.html", "docs/demo/index.html"):
             pg = b.new_page(viewport={"width": w, "height": 800})
             pg.set_content(f"<style>{css}</style><div class='tab active'><div id='support-levels-content'></div></div>")
             pg.add_script_tag(path=str(ROOT / "docs/js/support.js"))
-            pg.evaluate("([lv, held, live]) => { document.getElementById('support-levels-content').innerHTML = SupportLevels.html(SupportLevels.build(lv, new Set(held), live), 0, '2026-11-25'); }", [levels, held, live])
+            pg.evaluate("([lv, held, live]) => { document.getElementById('support-levels-content').innerHTML = SupportLevels.html(SupportLevels.build(lv, new Set(held), live), 0, '2026-11-25', { filter: 'ALL', counts: { ALL: 9, stock: 5, etf: 3, commodity: 1 }, failed: 2 }); }", [levels, held, live])
             res = pg.evaluate("""() => { const W = document.documentElement.clientWidth, out = [];
               document.querySelectorAll('#support-levels-content *').forEach(e => { const r = e.getBoundingClientRect(); if (r.width && (r.right > W + 1 || r.left < -1)) { let p = e.parentElement, clip = false;
                 while (p && p.id !== 'support-levels-content') { if (/(auto|scroll|hidden|clip)/.test(getComputedStyle(p).overflowX)) { const q = p.getBoundingClientRect(); clip = q.right <= W + 1; break; } p = p.parentElement; }

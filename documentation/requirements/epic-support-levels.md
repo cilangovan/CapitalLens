@@ -31,6 +31,8 @@ For every stock the owner **holds**, show on the Strategy tab, right under Entry
 
 **Added after first release (20 Nov 2026):** stale-level warning after 14 days (#52); in-house 200-week EMA level for held US stocks that have no analyst level (#50); in-app alert when a held stock reaches or breaks its zone, evaluated on Refresh (#51). Details in the [Strategy](../menus/strategy.md) and [Alerts](../menus/alerts.md) pages.
 
+**Type filter (20 Nov 2026):** the section can be filtered to Stocks (default), ETFs, Commodities or All. Analyst levels exist for stocks only; ETFs and commodity funds use the computed level.
+
 **Out of scope (for now)**
 
 - Computing zones from breakouts and trendlines (only the 200-week EMA is computed so far). Phone push for zone alerts (in-app inbox only, like the other alerts).
@@ -47,6 +49,7 @@ For every stock the owner **holds**, show on the Strategy tab, right under Entry
 | UI-20.4 | I want a short, honest commentary | AC1 built from the numbers only (distance, my average cost against the zone, the source's tags); AC2 never instructs (no "buy now / sell now / you should"); AC3 states that levels are an external view, not advice |
 | UI-20.5 | I want a summary table | AC1 one row per card: stock, zone, live, status; AC2 scrolls inside itself, never the page |
 | UI-20.6 | I want the section to be honest about data | AC1 no live price → "Live price unavailable" (no fake status); AC2 live price in a different currency from the zone → not compared and says so; AC3 the source's snapshot price is labelled as captured on its date |
+| UI-20.8 | I want to choose which kinds of holding I see | AC1 chips All / Stocks / ETFs / Commodities with held counts; AC2 Stocks by default; AC3 ETF and commodity levels are computed (200-week EMA), labelled, fetched only when that type is picked; AC4 London listings in pence, never pounds; AC5 funds with under 200 weeks of history say so; AC6 tap targets at least 40px |
 | UI-20.7 | I want it everywhere I look | AC1 legacy, demo, app, zkapp and zkapp-prod all load it; AC2 the demo shows illustrative levels for its mock holdings, refreshed daily; AC3 fits 320/360/390px; AC4 collapsible with the state stored per user |
 
 ## 5. How it behaves
@@ -113,6 +116,7 @@ Which of these appear on the dashboard depends only on what the owner actually h
 |---|---|
 | Status logic, held-only, sort order, honesty (no live price, currency mismatch), commentary, no advice wording, escaping, placement under Entry Analysis | `tests/zk_support_levels_test.mjs` (runs in CI with every `zk_*` test) |
 | Fits 320/360/390px on the live and demo pages, including a very long name and tag (the long-tag overflow found while building is guarded here) | `tests/support_layout_test.py` (CI: UI tests) |
+| Type filter: classification, Yahoo mapping, pence formatting, chips, lazy fetch, no double fetch, unknown filter ignored, empty/busy states (end to end with a mocked `/chart`) | `tests/zk_support_levels_test.mjs` |
 | Alerts: transitions only, first sight records only, 24h cooldown, currency mismatch, Python parity untouched | `tests/zk_support_alert_test.mjs` |
 | Shared table names its source, demo-only copy, refresh hook, module on every dashboard | `tests/standards_test.py` |
 

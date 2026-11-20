@@ -445,6 +445,9 @@
   .sl-tablewrap { overflow-x:auto; } .sl-table { width:100%; border-collapse:collapse; font-size:13px; }
   .sl-table th { text-align:left; font-size:11px; color:var(--muted); font-weight:600; padding:6px 8px; border-bottom:1px solid var(--border); }
   .sl-table td { padding:8px; border-bottom:1px solid var(--border); } .sl-table .sl-g { color:var(--green); font-weight:700; white-space:nowrap; }
+  .sl-filter { display:flex; flex-wrap:wrap; gap:8px; margin:6px 0 12px; }
+  .sl-chip { min-height:40px; padding:0 14px; border-radius:999px; background:var(--bg3); color:var(--muted); border:1px solid var(--border); font-size:13px; cursor:pointer; }
+  .sl-chip.active { background:var(--accent); border-color:var(--accent); color:#fff; } .sl-chip span { opacity:.8; margin-left:4px; font-size:11px; }
   .sl-empty { font-size:13px; color:var(--muted); padding:8px 0; }
 </style>
 </head>
@@ -704,7 +707,7 @@
 <script src="../js/positions.js?v=4cc24568ab04" integrity="sha384-oUyv1ow0QmvO7ZEY6PwkRJKWoijhi350akLfapoGTox2LCBsgIoUvruRsSx0bR3y"></script>
 <script src="../js/analyst.js?v=d3956718ff6c" integrity="sha384-wkzFAN/FCqTsIqGGtdgOsQ4GtkoTs27E9/pea76RFkC7qf0E4lIfDMznjgfwfIzM"></script>
 <script src="../js/strategy.js?v=33a671640635" integrity="sha384-R2P7bHUvhbyAnG+SYGLUPtv90BExO69hjeRSCB1xa4xJjSlvofz5boZYQmP5EU6+"></script>
-<script src="../js/support.js?v=b6bfc035179c" integrity="sha384-c4fYTxJG/EObvk3pxSu7kjy8AWjilXRjolr86O9G7MHnXHMUxr1uPFiQG4Z+4Ftj"></script>
+<script src="../js/support.js?v=95358640d9cb" integrity="sha384-TZX3AuXhXFtQGZXwjfmtBtTSXLsAQlCUl/9bpTTT3+UgNvn+bxigU7KHZE4GpWnh"></script>
 <script src="../js/profit.js?v=7d619d314ef1" integrity="sha384-JPAiuGzyUHCjo0GNl+NTpwlyipb6qO4A08SElSLPe+YTYAFLARgqV0wkqJKgG+hu"></script>
 <script src="../js/returns.js?v=0a142b1ac942" integrity="sha384-hQwjV68mS20UZQseIEX0s0ETm4T60mSCvpZWoh7+tW2b8vVMxBriLKKo1UmYYmCd"></script>
 <script src="../js/alerts.js?v=c1a925535e8e" integrity="sha384-7PUElfYc+mwl1Oqr4w1QMC2nMT/bAp4J9zS/16qW54Jje/e4gRiGKlHQAt8dqATu"></script>

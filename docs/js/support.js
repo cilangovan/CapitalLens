@@ -6,7 +6,7 @@
 // instead of guessing. Nothing here is advice; levels are not our calculation. Rendering escapes everything; no inline handlers.
 (function (root) {
   'use strict';
-  const CCY = { USD: '$', GBP: '£', EUR: '€', INR: '₹', HKD: 'HK$', JPY: '¥' };
+  const CCY = { USD: '$', GBP: '£', GBp: '', EUR: '€', INR: '₹', HKD: 'HK$', JPY: '¥' };    // GBp = pence (LSE listings): shown as 245p, never as £245
   const TONE = { good: 'g', warn: 'y', bad: 'r', neutral: '' };
   const ST = {                       // status key → [label, colour class, sort order]
     below: ['Below the zone', 'r', 0], in: ['In the zone', 'y', 1], near: ['Approaching the zone', 'y', 2], above: ['Above the zone', 'g', 3], nolive: ['Live price unavailable', 'dim', 4] };
@@ -21,9 +21,11 @@
     t = String(t || ''); if (t === 'FB_US_EQ') return 'META';
     return /_US_EQ$/.test(t) ? t.replace(/_US_EQ$/, '') : t.replace(/_EQ$/, '');
   }
-  const sym = lv => CCY[lv.currency] !== undefined ? CCY[lv.currency] : (lv.currency ? lv.currency + ' ' : '');
-  const range = lv => { const s = sym(lv), lo = num(lv.zone_low), hi = num(lv.zone_high), a = lv.approx ? '~' : '';
-    return lo === hi ? `${a}${s}${fmt(lo)}` : `${a}${s}${fmt(lo)}–${fmt(hi)}`; };
+  const sym = lv => CCY[lv.currency] !== undefined ? CCY[lv.currency] : (lv.currency ? lv.currency + ' ' : '');   // (also used for GBp = '')
+  const pence = lv => lv.currency === 'GBp';
+  const money = (lv, n) => pence(lv) ? `${fmt(n)}p` : `${sym(lv)}${fmt(n)}`;
+  const range = lv => { const s = sym(lv), lo = num(lv.zone_low), hi = num(lv.zone_high), a = lv.approx ? '~' : '', p = pence(lv) ? 'p' : '';
+    return lo === hi ? `${a}${s}${fmt(lo)}${p}` : `${a}${s}${fmt(lo)}–${fmt(hi)}${p}`; };
 
   // #52: levels are a capture on a date. Older than STALE_DAYS → say so on the card and in the section header. Computed levels are always today's.
   const STALE_DAYS = 14;
@@ -50,6 +52,23 @@
       note: `200-week EMA from ${ema.weeks} weekly closes` };
   }
 
+  // Instrument type for the filter. Source: the profit_booking row (kind = stock | etf, plus its sector); no row → stock. Commodity = a metals/commodity fund.
+  const TYPES = [['ALL', 'All'], ['stock', 'Stocks'], ['etf', 'ETFs'], ['commodity', 'Commodities']];
+  const COMMODITY_RE = /\b(gold|silver|platinum|palladium|precious|commodit\w*|copper|crude|oil|uranium)\b/i;
+  function typeOf(pb, name) {
+    if (!pb || pb.kind !== 'etf') return 'stock';
+    return COMMODITY_RE.test(`${pb.sector || ''} ${name || ''}`) ? 'commodity' : 'etf';
+  }
+  // Trading 212 ticker → [Yahoo symbol, currency of that listing]. US: USD. LSE (…l_EQ): Yahoo quotes in pence (GBp). Xetra and Amsterdam: EUR. Anything else: not mapped.
+  function yahooOf(t) {
+    t = String(t || ''); if (t === 'FB_US_EQ') return ['META', 'USD'];
+    let m = t.match(/^([A-Z0-9.]{1,12})_US_EQ$/); if (m) return [m[1], 'USD'];
+    m = t.match(/^([A-Z0-9]{1,10})l_EQ$/); if (m) return [m[1] + '.L', 'GBp'];
+    m = t.match(/^([A-Z0-9]{1,10})d_EQ$/); if (m) return [m[1] + '.DE', 'EUR'];
+    m = t.match(/^([A-Z0-9]{1,10})a_EQ$/); if (m) return [m[1] + '.AS', 'EUR'];
+    return null;
+  }
+
   // Where is the live price against the zone? A single-number level counts as "in" within 1.5%; "approaching" = within 3% above the zone.
   function status(lv, live) {
     const p = num(live), lo = num(lv.zone_low), hi = num(lv.zone_high);
@@ -65,27 +84,27 @@
   function comment(lv, live, st, avgCost) {
     const z = range(lv), out = [], pc = st.pct === null ? null : Math.abs(st.pct).toFixed(1);
     const wait = lv.level_label === 'Wait for';
-    if (st.key === 'nolive') out.push(`No live price to compare with ${z}. The captured price was ${num(lv.snap_price) === null ? 'not recorded' : sym(lv) + fmt(lv.snap_price)} on ${fmtDate(lv.as_of)}.`);
+    if (st.key === 'nolive') out.push(`No live price to compare with ${z}. The captured price was ${num(lv.snap_price) === null ? 'not recorded' : money(lv, lv.snap_price)} on ${fmtDate(lv.as_of)}.`);
     else if (st.key === 'above') out.push(wait ? `Trades ${pc}% above ${z}, the level the source says to wait for. Until it gets there the level is only a marker.`
       : `Trades ${pc}% above the zone, so support is not in play yet. It matters only if the price falls back to ${z}.`);
     else if (st.key === 'near') out.push(`Within ${pc}% of ${z}. Holding above it keeps the setup intact; a close below it weakens it.`);
     else if (st.key === 'in') out.push(`Price is inside ${z} right now, the area the source marks. Holding here is the constructive read; a close below the zone is the warning sign.`);
-    else out.push(`Price is ${pc}% below ${z}, so the level has failed for now. Reclaiming the top of the zone (${sym(lv)}${fmt(lv.zone_high)}) would be the first sign of recovery.`);
+    else out.push(`Price is ${pc}% below ${z}, so the level has failed for now. Reclaiming the top of the zone (${money(lv, lv.zone_high)}) would be the first sign of recovery.`);
     const ac = num(avgCost);
-    if (ac !== null && ac > 0 && st.key !== 'nolive') out.push(ac < num(lv.zone_low) ? `Your average cost (${sym(lv)}${fmt(ac)}) is below the zone, so a test of it would still be above cost.`
-      : ac > num(lv.zone_high) ? `Your average cost (${sym(lv)}${fmt(ac)}) is above the zone, so a test of it would be below cost.` : `Your average cost (${sym(lv)}${fmt(ac)}) sits inside the zone.`);
+    if (ac !== null && ac > 0 && st.key !== 'nolive') out.push(ac < num(lv.zone_low) ? `Your average cost (${money(lv, ac)}) is below the zone, so a test of it would still be above cost.`
+      : ac > num(lv.zone_high) ? `Your average cost (${money(lv, ac)}) is above the zone, so a test of it would be below cost.` : `Your average cost (${money(lv, ac)}) sits inside the zone.`);
     const tags = (Array.isArray(lv.tags) ? lv.tags : []).map(t => t && t.t).filter(Boolean);
     if (tags.length) out.push(`Source notes: ${tags.join(' · ')}.`);
     return out;
   }
 
   // held: Set of symbols you hold. live: { SYMBOL: { price, high52, avgCost, sym } } from Entry Analysis rows.
-  function build(levels, held, live) {
+  function build(levels, held, live, types) {
     return (levels || []).filter(l => l && held.has(l.symbol)).map(l => {
       const v = live[l.symbol] || null, ok = v && num(v.price) !== null && (v.sym === undefined || v.sym === null || v.sym === sym(l));
       const price = ok ? num(v.price) : null, st = status(l, price);
       const fromHigh = ok && num(v.high52) > 0 ? (price / num(v.high52) - 1) * 100 : null;
-      return { lv: l, price, st, fromHigh, avgCost: ok ? v.avgCost : null, text: comment(l, price, st, ok ? v.avgCost : null),
+      return { lv: l, type: (types && types[l.symbol]) || 'stock', price, st, fromHigh, avgCost: ok ? v.avgCost : null, text: comment(l, price, st, ok ? v.avgCost : null),
                mismatch: !!(v && num(v.price) !== null && !ok) };
     }).sort((a, b) => ST[a.st.key][2] - ST[b.st.key][2] || a.lv.symbol.localeCompare(b.lv.symbol));
   }
@@ -100,59 +119,102 @@
       <div class="sl-zone"><span class="sl-lbl">${esc(l.level_label)}</span><span class="sl-val">${esc(range(l))}</span></div>
       ${tags ? `<div class="sl-tags">${tags}</div>` : ''}
       <div class="sl-stats">
-        <span>Live <strong>${r.price === null ? '—' : esc(sym(l) + fmt(r.price))}</strong></span>
+        <span>Live <strong>${r.price === null ? '—' : esc(money(l, r.price))}</strong></span>
         ${dist ? `<span>${esc(dist)}</span>` : ''}
         ${r.fromHigh !== null ? `<span>${esc(r.fromHigh.toFixed(0))}% from 52w high</span>` : ''}
-        ${num(l.snap_price) !== null ? `<span class="sl-dim">Captured ${esc(sym(l) + fmt(l.snap_price))}${num(l.snap_pct_from_high) !== null ? ` (${esc(l.snap_pct_from_high)}% from high)` : ''}</span>` : ''}
+        ${num(l.snap_price) !== null ? `<span class="sl-dim">Captured ${esc(money(l, l.snap_price))}${num(l.snap_pct_from_high) !== null ? ` (${esc(l.snap_pct_from_high)}% from high)` : ''}</span>` : ''}
       </div>
       <div class="sl-note">${r.text.map(t => `<p>${esc(t)}</p>`).join('')}${l.computed ? `<p>${esc('Computed by CapitalLens, not an analyst view: ' + l.note + '.')}</p>` : ''}${stale ? `<p>${esc('This level is ' + age + ' days old; the market may have moved since.')}</p>` : ''}${r.mismatch ? '<p>Live price is in a different currency, so it is not compared with this zone.</p>' : ''}</div>
     </div>`;
   }
   function table(rows) {
-    return `<div class="sl-tablewrap"><table class="sl-table"><thead><tr><th>Stock</th><th>Zone</th><th>Live</th><th>Status</th></tr></thead><tbody>${rows.map(r => {
+    return `<div class="sl-tablewrap"><table class="sl-table"><thead><tr><th>Holding</th><th>Zone</th><th>Live</th><th>Status</th></tr></thead><tbody>${rows.map(r => {
       const l = r.lv, s = ST[r.st.key];
-      return `<tr><td><strong>${esc(l.symbol)}</strong></td><td class="sl-g">${esc(range(l))}</td><td>${r.price === null ? '—' : esc(sym(l) + fmt(r.price))}</td><td>${pill(s[0], s[1])}</td></tr>`;
+      return `<tr><td><strong>${esc(l.symbol)}</strong></td><td class="sl-g">${esc(range(l))}</td><td>${r.price === null ? '—' : esc(money(l, r.price))}</td><td>${pill(s[0], s[1])}</td></tr>`;
     }).join('')}</tbody></table></div>`;
   }
-  function html(rows, notHeld, today) {
-    if (!rows.length) return `<div class="card"><h3>🛡️ Support Levels</h3><div class="sl-empty">None of the stocks you hold has a support level on file yet.${notHeld ? ` ${esc(notHeld)} level${notHeld === 1 ? '' : 's'} exist for stocks you do not hold, and they are not shown.` : ''}</div></div>`;
+  const filterRows = (rows, type) => type === 'ALL' || !type ? rows : rows.filter(r => r.type === type);
+  function chips(ui) {
+    return `<div class="sl-filter" role="group" aria-label="Instrument type">${TYPES.map(([k, label]) => `<button type="button" class="sl-chip${ui.filter === k ? ' active' : ''}" data-sl-type="${k}">${esc(label)}${ui.counts && ui.counts[k] != null ? ` <span>${esc(ui.counts[k])}</span>` : ''}</button>`).join('')}</div>`;
+  }
+  function html(rows, notHeld, today, ui) {
+    const f = ui && ui.filter ? ui.filter : null, what = f && f !== 'ALL' ? (TYPES.find(t => t[0] === f) || [0, 'holdings'])[1].toLowerCase() : 'stocks';
+    if (ui && ui.busy) return `<div class="card"><h3>🛡️ Support Levels</h3>${chips(ui)}<div class="loading busy">Computing levels…</div></div>`;
+    if (ui) rows = filterRows(rows, f);
+    if (!rows.length) return `<div class="card"><h3>🛡️ Support Levels</h3>${ui ? chips(ui) : ''}<div class="sl-empty">None of the ${esc(what)} you hold has a support level yet.${ui && ui.failed ? ` ${esc(ui.failed)} had no level: a computed 200-week EMA needs at least 200 weeks of price history.` : ''}${notHeld ? ` ${esc(notHeld)} level${notHeld === 1 ? '' : 's'} exist for stocks you do not hold, and they are not shown.` : ''}</div></div>`;
     const src = [...new Set(rows.map(r => r.lv.source_name).filter(Boolean))].join(', '), asof = rows.filter(r => !r.lv.computed).map(r => r.lv.as_of).filter(Boolean).sort()[0];
     return `<div class="card"><h3>🛡️ Support Levels</h3>
-      <div class="sl-sub">Stocks you hold only · where buyers have stepped in before, against the live price. Source: ${esc(src || 'not named')}${asof ? `, captured ${esc(fmtDate(asof))}` : ''}. Levels are an external view or a plain indicator, not advice.</div>
+      ${ui ? chips(ui) : ''}<div class="sl-sub">${ui ? 'Holdings you own only, filter by type' : 'Stocks you hold only'} · where buyers have stepped in before, against the live price. Source: ${esc(src || 'not named')}${asof ? `, captured ${esc(fmtDate(asof))}` : ''}. Levels are an external view or a plain indicator, not advice.${ui && ui.failed ? ` ${esc(ui.failed)} had no computable level (needs 200 weeks of price history).` : ''}</div>
       ${rows.map(r => card(r, today)).join('')}
       <h4 class="sl-h4">Summary</h4>${table(rows)}</div>`;
   }
 
-  // 5 years of daily closes through the dashboard's own /chart route (cached for the page's life); null when unavailable
+  // 5 years of daily closes through the dashboard's own /chart route (cached for the page's life); null when unavailable.
+  // Returns the EMA plus the last close and 52-week high from the SAME series (so level and price are in the same unit) and the quote currency.
   const EMA_CACHE = new Map();
-  function emaFor(sym) {
-    if (!EMA_CACHE.has(sym)) EMA_CACHE.set(sym, (async () => {
+  function emaFor(ysym, dflt) {
+    if (!EMA_CACHE.has(ysym)) EMA_CACHE.set(ysym, (async () => {
       try {
-        const r = await fetch(`${PROXY}/chart`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: typeof SESSION_TOKEN !== 'undefined' ? SESSION_TOKEN : undefined, symbol: sym, range: '5y' }) });
-        const d = r.ok ? await r.json().catch(() => null) : null;
-        return d && d.points ? ema200w(d.points) : null;
+        const r = await fetch(`${PROXY}/chart`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: typeof SESSION_TOKEN !== 'undefined' ? SESSION_TOKEN : undefined, symbol: ysym, range: '5y' }) });
+        const d = r.ok ? await r.json().catch(() => null) : null, e = d && d.points ? ema200w(d.points) : null; if (!e) return null;
+        const cl = d.points.map(p => num(p && p[1])).filter(x => x !== null && x > 0);
+        return Object.assign(e, { last: cl[cl.length - 1], high52: Math.max(...cl.slice(-252)), currency: (d.meta && typeof d.meta.currency === 'string' && /^[A-Za-z]{3}$/.test(d.meta.currency) ? d.meta.currency : dflt) });
       } catch (e) { return null; }
     })());
-    return EMA_CACHE.get(sym);
+    return EMA_CACHE.get(ysym);
+  }
+
+  // Page state: everything is fetched once; the filter only re-draws. Computed levels for ETFs/commodities are fetched the first time their type is shown.
+  const S = { levels: [], pos: [], types: {}, names: {}, live: {}, avg: {}, extra: new Map(), done: new Set(), failed: {}, filter: 'stock', busy: false, today: '', notHeld: 0, ready: false };
+  const keyOf = t => { const y = yahooOf(t); return y ? y[0] : symOf(t); };
+  async function ensure(type) {
+    const types = type === 'ALL' ? ['stock', 'etf', 'commodity'] : [type];
+    for (const ty of types) {
+      if (S.done.has(ty)) continue;
+      const have = new Set(S.levels.map(l => l.symbol)), want = S.pos.filter(p => yahooOf(p.ticker) && (S.types[keyOf(p.ticker)] || 'stock') === ty && !have.has(keyOf(p.ticker))).slice(0, 15);
+      await Promise.all(want.map(async p => {
+        const [ys, dc] = yahooOf(p.ticker), c = await emaFor(ys, dc);
+        if (!c) { S.failed[ty] = (S.failed[ty] || 0) + 1; return; }
+        const lv = computedLevel(ys, S.names[ys] || p.display || ys, c, c.currency, S.today);
+        S.extra.set(ys, lv); S.live[ys] = { price: c.last, high52: c.high52, avgCost: dc === 'USD' && c.currency === 'USD' ? S.avg[ys] : null, sym: sym(lv) };
+      }));
+      S.done.add(ty);
+    }
+  }
+  const counts = () => { const c = { ALL: 0, stock: 0, etf: 0, commodity: 0 }; for (const p of S.pos) { if (!yahooOf(p.ticker)) continue; c[S.types[keyOf(p.ticker)] || 'stock']++; c.ALL++; } return c; };
+  function paint() {
+    const el = typeof document !== 'undefined' && document.getElementById('support-levels-content'); if (!el) return;
+    const held = new Set(S.pos.map(p => keyOf(p.ticker))), rows = build(S.levels.concat([...S.extra.values()]), held, S.live, S.types);
+    const failed = S.filter === 'ALL' ? Object.values(S.failed).reduce((a, b) => a + b, 0) : (S.failed[S.filter] || 0);
+    el.innerHTML = html(rows, S.notHeld, S.today, { filter: S.filter, counts: counts(), busy: S.busy, failed });
+  }
+  async function pick(type) {
+    if (!TYPES.some(t => t[0] === type)) return;
+    S.filter = type; S.busy = !!S.ready && !(type === 'ALL' ? ['stock', 'etf', 'commodity'] : [type]).every(t => S.done.has(t)); paint();
+    if (S.busy) { try { await ensure(type); } catch (e) { /* shown as "no level" below */ } S.busy = false; paint(); }
   }
   async function load(vbRows) {
     const el = typeof document !== 'undefined' && document.getElementById('support-levels-content'); if (!el) return;
     if (typeof IS_GUEST !== 'undefined' && IS_GUEST) { el.innerHTML = ''; return; }
     try {
       const snap = (await api('portfolio_snapshots', '?select=id&order=created_at.desc&limit=1'))[0];
-      const pos = snap ? await api('positions', `?snapshot_id=eq.${snap.id}&select=ticker`) : [];
-      const levels = await api('support_levels', '?select=*&order=symbol.asc');
-      const held = new Set(pos.map(p => symOf(p.ticker))), live = {};
-      (vbRows || []).forEach(v => { const t = v.this_week || {}, k = symOf(v.ticker); if (num(t.current) !== null) live[k] = { price: t.current, high52: t.high_52w, avgCost: t.avg_cost, sym: v.currency_symbol || null }; });
-      const have = new Set(levels.map(l => l.symbol)), today = new Date().toISOString().slice(0, 10), extra = [];
-      const names = {}; (vbRows || []).forEach(v => { names[symOf(v.ticker)] = v.display || v.ticker; });
-      const want = pos.filter(p => /^[A-Z0-9.]{1,12}_US_EQ$/.test(p.ticker || '') && !have.has(symOf(p.ticker))).map(p => symOf(p.ticker)).slice(0, 15);
-      await Promise.all(want.map(async s => { const c = await emaFor(s); if (c) extra.push(computedLevel(s, names[s], c, 'USD', today)); }));
-      const rows = build(levels.concat(extra), held, live);
-      el.innerHTML = html(rows, levels.filter(l => !held.has(l.symbol)).length, today);
+      S.pos = snap ? await api('positions', `?snapshot_id=eq.${snap.id}&select=ticker,display`) : [];
+      S.levels = await api('support_levels', '?select=*&order=symbol.asc');
+      const pb = await api('profit_booking', '?select=ticker,kind,sector').catch(() => []), pbBy = {}; (pb || []).forEach(r => { pbBy[r.ticker] = r; });
+      S.names = {}; S.live = {}; S.avg = {}; S.types = {}; S.extra = new Map(); S.done = new Set(); S.failed = {}; S.busy = false; S.today = new Date().toISOString().slice(0, 10);
+      (vbRows || []).forEach(v => { const t = v.this_week || {}, k = symOf(v.ticker), key = keyOf(v.ticker); S.names[key] = v.display || v.ticker;
+        if (num(t.current) !== null) S.live[k] = S.live[key] = { price: t.current, high52: t.high_52w, avgCost: t.avg_cost, sym: v.currency_symbol || null }; if (num(t.avg_cost) !== null) S.avg[key] = t.avg_cost; });
+      S.pos.forEach(p => { S.types[keyOf(p.ticker)] = typeOf(pbBy[p.ticker], S.names[keyOf(p.ticker)] || p.display); });
+      const held = new Set(S.pos.map(p => symOf(p.ticker)).concat(S.pos.map(p => keyOf(p.ticker))));
+      S.notHeld = S.levels.filter(l => !held.has(l.symbol)).length;
+      S.filter = 'stock'; S.busy = true; S.ready = false; paint();
+      await ensure('stock'); S.busy = false; S.ready = true; paint();
     } catch (e) { el.innerHTML = '<div class="card"><h3>🛡️ Support Levels</h3><div class="sl-empty">Support levels could not be loaded. Try Refresh.</div></div>'; }
   }
+  if (typeof document !== 'undefined') document.addEventListener('click', e => {
+    const b = e.target && e.target.closest ? e.target.closest('[data-sl-type]') : null; if (b) pick(b.getAttribute('data-sl-type'));
+  });
   root.loadSupportLevels = load;
-  root.SupportLevels = { symOf, status, comment, build, html, range, fmtDate, ageDays, ema200w, computedLevel, STALE_DAYS };
+  root.SupportLevels = { symOf, status, comment, build, html, range, fmtDate, ageDays, ema200w, computedLevel, STALE_DAYS, typeOf, yahooOf, filterRows, TYPES, money, _state: S, _pick: pick };
   if (typeof module !== 'undefined' && module.exports) module.exports = root.SupportLevels;
 })(typeof window !== 'undefined' ? window : globalThis);

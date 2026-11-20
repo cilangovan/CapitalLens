@@ -58,6 +58,48 @@ ok('computed level is labelled as computed, with the method, and never reads as 
 const crow = SL.build([cl], new Set(['NVDA']), { NVDA: { price: 101, sym: '$' } })[0], chtml = SL.html([crow], 0, '2030-01-01');
 ok('computed card says it is computed, is never marked stale, and the header names no capture date for it', /Computed by CapitalLens, not an analyst view/.test(chtml) && !/days ago/.test(chtml) && !/captured \d/.test(chtml.replace(/Captured \$/, '')) );
 
+// ── type filter: Stocks (default) · ETFs · Commodities · All ──
+ok('instrument type from the profit_booking row: no row/stock → stock; ETF → etf; metals/commodity ETF → commodity (by sector or name)',
+  SL.typeOf(null) === 'stock' && SL.typeOf({ kind: 'stock', sector: 'Technology' }) === 'stock' && SL.typeOf({ kind: 'etf', sector: 'Diversified ETF' }, 'Vanguard FTSE All-World') === 'etf'
+  && SL.typeOf({ kind: 'etf', sector: 'Gold & Precious Metals' }) === 'commodity' && SL.typeOf({ kind: 'etf', sector: 'Precious metals' }) === 'commodity' && SL.typeOf({ kind: 'etf', sector: 'Other' }, 'WisdomTree Copper') === 'commodity');
+ok('Trading 212 → Yahoo symbol and quote currency: US USD, LSE pence (GBp), Xetra/Amsterdam EUR, unknown → null',
+  JSON.stringify(SL.yahooOf('NVDA_US_EQ')) === '["NVDA","USD"]' && JSON.stringify(SL.yahooOf('FB_US_EQ')) === '["META","USD"]' && JSON.stringify(SL.yahooOf('SGLNl_EQ')) === '["SGLN.L","GBp"]'
+  && JSON.stringify(SL.yahooOf('VWCEd_EQ')) === '["VWCE.DE","EUR"]' && JSON.stringify(SL.yahooOf('VUSAa_EQ')) === '["VUSA.AS","EUR"]' && SL.yahooOf('weird') === null && SL.yahooOf(null) === null);
+ok('pence listings are shown as 245p, never as a pound figure', SL.money({ currency: 'GBp' }, 245.5) === '245.5p' && SL.range(L('SGLN.L', 54.25, 55.88, { currency: 'GBp' })) === '54.25–55.88p' && SL.money({ currency: 'USD' }, 12) === '$12');
+const mix = [L('NVDA', 138, 140), L('SGLN.L', 54, 56, { currency: 'GBp' }), L('VWCE.DE', 109, 112, { currency: 'EUR' })];
+const types = { NVDA: 'stock', 'SGLN.L': 'commodity', 'VWCE.DE': 'etf' }, lv2 = { NVDA: { price: 139, sym: '$' }, 'SGLN.L': { price: 55, sym: '' }, 'VWCE.DE': { price: 120, sym: '€' } };
+const mrows = SL.build(mix, new Set(Object.keys(types)), lv2, types);
+ok('rows carry their type, and the filter keeps only that type (ALL keeps everything)', mrows.find(r => r.lv.symbol === 'SGLN.L').type === 'commodity' && SL.filterRows(mrows, 'etf').map(r => r.lv.symbol).join() === 'VWCE.DE'
+  && SL.filterRows(mrows, 'stock').length === 1 && SL.filterRows(mrows, 'ALL').length === 3);
+const ui = f => ({ filter: f, counts: { ALL: 3, stock: 1, etf: 1, commodity: 1 } });
+const fh = SL.html(mrows, 0, '2026-11-20', ui('commodity'));
+ok('filter chips: All · Stocks · ETFs · Commodities with held counts, active one marked, via data attributes (no inline handlers)',
+  /data-sl-type="ALL"/.test(fh) && /data-sl-type="stock"/.test(fh) && /data-sl-type="etf"/.test(fh) && /data-sl-type="commodity"/.test(fh) && /sl-chip active" data-sl-type="commodity"/.test(fh) && !/onclick=/.test(fh));
+ok('commodity view lists only the commodity fund, in pence; the other types are not shown', /SGLN\.L/.test(fh) && /54–56p/.test(fh) && !/NVDA/.test(fh) && !/VWCE/.test(fh));
+ok('empty type says so in words and keeps the chips; busy shows the loading spinner and the chips', /None of the etfs you hold has a support level yet/.test(SL.html([], 0, '2026-11-20', { ...ui('etf'), failed: 2 })) && /2 had no level/.test(SL.html([], 0, '2026-11-20', { ...ui('etf'), failed: 2 }))
+  && /loading busy/.test(SL.html([], 0, '2026-11-20', { ...ui('etf'), busy: true })) && /data-sl-type="etf"/.test(SL.html([], 0, '2026-11-20', { ...ui('etf'), busy: true })));
+ok('without a filter state the section renders exactly as before (no chips)', !/data-sl-type/.test(SL.html(mrows, 0, '2026-11-20')));
+
+// ── end to end: default Stocks only, ETFs/Commodities fetched lazily when picked ──
+const calls = []; let box = { html: '' };
+const wk = (n, f) => { const out = []; for (let w = 0; w < n; w++) for (let d = 0; d < 5; d++) out.push([t0 + w * week + d * 86400, f(w)]); return out; };
+Object.assign(globalThis, { IS_GUEST: false, PROXY: 'https://x.test', SESSION_TOKEN: 't', document: { getElementById: id => id === 'support-levels-content' ? { set innerHTML(v) { box.html = v; }, get innerHTML() { return box.html; } } : null, addEventListener() {} },
+  api: async (route) => ({ portfolio_snapshots: [{ id: 1 }], positions: [{ ticker: 'NVDA_US_EQ', display: 'NVIDIA' }, { ticker: 'SGLNl_EQ', display: 'Gold ETC' }, { ticker: 'VWCEd_EQ', display: 'FTSE All-World' }, { ticker: 'SHORTl_EQ', display: 'New fund' }],
+    support_levels: [lvl0()], profit_booking: [{ ticker: 'SGLNl_EQ', kind: 'etf', sector: 'Precious metals' }, { ticker: 'VWCEd_EQ', kind: 'etf', sector: 'Diversified ETF' }, { ticker: 'NVDA_US_EQ', kind: 'stock', sector: 'Technology' }, { ticker: 'SHORTl_EQ', kind: 'etf', sector: 'Diversified ETF' }] }[route.split('?')[0]] || [] ),
+  fetch: async (url, init) => { const b = JSON.parse(init.body); calls.push(b.symbol); const meta = { currency: b.symbol === 'SGLN.L' ? 'GBp' : 'EUR' };
+    return { ok: true, json: async () => ({ points: b.symbol === 'SHORT.L' ? wk(50, () => 100) : wk(260, () => b.symbol === 'SGLN.L' ? 2500 : 120), meta }) }; } });
+function lvl0() { return L('NVDA', 138, 140); }
+await globalThis.loadSupportLevels([{ ticker: 'NVDA_US_EQ', display: 'NVIDIA', currency_symbol: '$', this_week: { current: 139, high_52w: 200, avg_cost: 120 } }]);
+ok('default view is Stocks only: NVDA shown from its table level, and NO price history is fetched for ETFs or commodities', /NVDA/.test(box.html) && !/SGLN/.test(box.html) && calls.length === 0 && /sl-chip active" data-sl-type="stock"/.test(box.html));
+ok('chips show how many of each type you hold (1 stock, 2 ETFs, 1 commodity)', /data-sl-type="etf">ETFs <span>2<\/span>/.test(box.html) && /data-sl-type="commodity">Commodities <span>1<\/span>/.test(box.html) && /data-sl-type="stock">Stocks <span>1<\/span>/.test(box.html));
+await SL._pick('commodity');
+ok('picking Commodities fetches only the commodity fund and shows a computed 200-week EMA in pence, labelled computed', calls.join() === 'SGLN.L' && /SGLN\.L/.test(box.html) && /2,?500p/.test(box.html) && /CapitalLens \(computed\)/.test(box.html) && !/NVDA/.test(box.html));
+await SL._pick('etf'); if (process.env.DBG) console.log(calls, box.html.replace(/<[^>]+>/g, ' ').replace(/\\s+/g, ' '));
+ok('picking ETFs fetches the ETFs once; a fund with under 200 weeks of history says so instead of showing a level', calls.sort().join() === 'SGLN.L,SHORT.L,VWCE.DE' && /VWCE\.DE/.test(box.html) && !/SHORT\.L/.test(box.html.replace(/had no level/, '')) && /1 had no computable level/.test(box.html) && /€120/.test(box.html));
+const before = calls.length; await SL._pick('commodity'); await SL._pick('etf'); await SL._pick('ALL');
+ok('switching back is instant: nothing is fetched twice; All shows every type together', calls.length === before && /NVDA/.test(box.html) && /SGLN\.L/.test(box.html) && /VWCE\.DE/.test(box.html));
+ok('an unknown filter value is ignored', (await SL._pick('<img>'), SL._state.filter === 'ALL'));
+
 const strat = readFileSync(new URL('../docs/js/strategy.js', import.meta.url), 'utf8');
 ok('regression guard: the section is placed directly under Entry Analysis and before the weekly allocation', strat.indexOf("vbHtml + '<div id=\"support-levels-content\">") > 0 && /support-levels-content[^;]*\+ stratHtml/.test(strat) && /loadSupportLevels\(vbRows\)/.test(strat));
 for (const f of ['docs/index.html', 'docs/demo/index.html']) { const t = readFileSync(new URL('../' + f, import.meta.url), 'utf8'); ok(`${f} loads support.js after strategy.js`, t.indexOf('support.js') > t.indexOf('strategy.js') && t.indexOf('strategy.js') > 0); }

@@ -60,6 +60,7 @@
 <li>Every dashboard, mobile first (360px / 390px), collapsible with the state remembered per user.</li>
 </ul>
 <p><strong>Added after first release (20 Nov 2026):</strong> stale-level warning after 14 days (#52); in-house 200-week EMA level for held US stocks that have no analyst level (#50); in-app alert when a held stock reaches or breaks its zone, evaluated on Refresh (#51). Details in the <a href="../menus/strategy.html">Strategy</a> and <a href="../menus/alerts.html">Alerts</a> pages.</p>
+<p><strong>Type filter (20 Nov 2026):</strong> the section can be filtered to Stocks (default), ETFs, Commodities or All. Analyst levels exist for stocks only; ETFs and commodity funds use the computed level.</p>
 <p><strong>Out of scope (for now)</strong></p>
 <ul>
 <li>Computing zones from breakouts and trendlines (only the 200-week EMA is computed so far). Phone push for zone alerts (in-app inbox only, like the other alerts).</li>
@@ -105,6 +106,11 @@
 <td>UI-20.6</td>
 <td>I want the section to be honest about data</td>
 <td>AC1 no live price → "Live price unavailable" (no fake status); AC2 live price in a different currency from the zone → not compared and says so; AC3 the source's snapshot price is labelled as captured on its date</td>
+</tr>
+<tr>
+<td>UI-20.8</td>
+<td>I want to choose which kinds of holding I see</td>
+<td>AC1 chips All / Stocks / ETFs / Commodities with held counts; AC2 Stocks by default; AC3 ETF and commodity levels are computed (200-week EMA), labelled, fetched only when that type is picked; AC4 London listings in pence, never pounds; AC5 funds with under 200 weeks of history say so; AC6 tap targets at least 40px</td>
 </tr>
 <tr>
 <td>UI-20.7</td>
@@ -286,6 +292,10 @@
 <tr>
 <td>Fits 320/360/390px on the live and demo pages, including a very long name and tag (the long-tag overflow found while building is guarded here)</td>
 <td><code>tests/support_layout_test.py</code> (CI: UI tests)</td>
+</tr>
+<tr>
+<td>Type filter: classification, Yahoo mapping, pence formatting, chips, lazy fetch, no double fetch, unknown filter ignored, empty/busy states (end to end with a mocked <code>/chart</code>)</td>
+<td><code>tests/zk_support_levels_test.mjs</code></td>
 </tr>
 <tr>
 <td>Alerts: transitions only, first sight records only, 24h cooldown, currency mismatch, Python parity untouched</td>
