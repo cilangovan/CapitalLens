@@ -113,3 +113,6 @@ check("demo sign-in does not pre-fill the master demo email", 'value="demo@capit
 # demo must show Analyst / Profit Booking / Strategy data: the daily refresh has to seed them (pre-sales mock-up)
 _ins = (ROOT / "db/tenant/19_demo_insights.sql").read_text() if (ROOT / "db/tenant/19_demo_insights.sql").exists() else ""
 check("demo refresh seeds Analyst, Profit Booking and Strategy data", all(t in _ins for t in ["seed_demo_insights", "insert into public.profit_booking ", "insert into public.profit_booking_summary", "insert into public.value_buy_scores", "insert into public.strategy_recommendations", "insert into public.holding_decisions", "analyst_ratings", "institutional_flow_reports"]) and "public.seed_demo_insights(t)" in _ins)
+
+_ret = (ROOT / "db/tenant/20_demo_returns.sql").read_text() if (ROOT / "db/tenant/20_demo_returns.sql").exists() else ""
+check("demo refresh seeds the Returns dashboard (returns_summary + realised_pnl)", all(x in _ret for x in ["insert into public.returns_summary", "insert into public.realised_pnl", "public.seed_demo_returns(t)"]))
