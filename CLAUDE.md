@@ -42,6 +42,8 @@ anything new the owner asks for as a *standing* rule is added here in the same c
 - Wants dip alerts, when to sell / buy more, rebalancing advice, email + phone notifications (see deferral above), and a dashboard that supports buy/sell decisions. Walk the owner step by step through connecting Trading 212.
 - Product backlog = **GitHub Issues** on `cilangovan/CapitalLens` (no Jira). Log backlog items there.
 
+- **Demo user for pre-sales** (epic #32): a permanent demo account with a dummy email and dummy password for onboarding prospects; **only the owner can reset it** (enforced in Postgres, not just the UI). Its data is mock (never real holdings), refreshed daily so it always looks live (current dates, real market moves), and it runs the same features as the live dashboards. Credentials never go in the repo.
+
 - **Internal operations dashboard** (epic #23, page `docs/ops/`): for platform staff only, built in-house (no third-party monitoring, no service-role key outside our systems). Access is enforced in Postgres: listed in `platform_admins` AND signed in with a second factor (`aal2`). Aggregate/operational data only (no portfolio data, ciphertext, keys or emails), nothing stored in the browser, never linked from customer pages, exempt from the "every dashboard" roll-out. Documented in `documentation/ops-dashboard.md`; guarded by `tests/zk_ops_test.mjs` and `tests/ops_layout_test.py`.
 
 ## Adding a new standing rule
