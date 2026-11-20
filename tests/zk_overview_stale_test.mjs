@@ -5,7 +5,7 @@ const body = src.slice(src.indexOf('// "5 min ago"'), src.indexOf('async functio
 let banner = null; const parent = { insertBefore: (el) => { banner = el; el.remove = () => { banner = null; }; } };
 const strip = { parentNode: parent };
 const doc = { getElementById: id => id === 'stats-strip' ? strip : id === 'stale-banner' ? banner : null, createElement: () => ({ style: {}, set innerHTML(v) { this._h = v; }, get innerHTML() { return this._h; } }) };
-const ctx = { document: doc, zkToolsOpen: undefined, esc: s => String(s ?? '').replace(/[&<>"'`]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c])) }; vm.createContext(ctx); vm.runInContext(body + ';this.ovAgo=ovAgo;this.ovHeadline=ovHeadline;this.ovFormulaHtml=ovFormulaHtml;this.ovPickThen=ovPickThen;this.ovCountryDecline=ovCountryDecline;this.ovDeclineBars=ovDeclineBars;this.ovStaleBanner=ovStaleBanner;', ctx);
+const ctx = { document: doc, zkToolsOpen: undefined, esc: s => String(s ?? '').replace(/[&<>"'`]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c])) }; vm.createContext(ctx); vm.runInContext(body + ';this.ovAgo=ovAgo;this.ovHeadline=ovHeadline;this.ovFormulaHtml=ovFormulaHtml;this.ovPickThen=ovPickThen;this.ovCountryDecline=ovCountryDecline;this.ovDeclineBars=ovDeclineBars;this.ovLinePoints=ovLinePoints;this.ovLineSvg=ovLineSvg;this.ovStaleBanner=ovStaleBanner;', ctx);
 let pass = 0, fail = 0; const ok = (n, c) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + n); };
 ok('relative age wording', ctx.ovAgo(20e3) === 'just now' && ctx.ovAgo(300e3) === '5 min ago' && ctx.ovAgo(3 * 3600e3) === '3 h ago' && ctx.ovAgo(60 * 3600e3) === '3 days ago');
 ctx.ovStaleBanner(5 * 60e3, 't'); ok('fresh snapshot: no banner', banner === null);
@@ -40,6 +40,14 @@ ok('country change is value-weighted and funds are split by country weights (US 
 ok('worst country comes first; a holding with no earlier price is left out, not guessed', CD[0].country === 'United States' && !CD.some(x => x.country === 'Unclassified'));
 ok('holdings with no country data are shown as Unclassified, not hidden', ctx.ovCountryDecline([{ ticker: 'Z', current_price: 8, quantity: 1 }], [{ ticker: 'Z', current_price: 10, quantity: 1 }], {})[0].country === 'Unclassified');
 ok('bars show red for a decline with its percentage and green for a gain', /-5\.00%/.test(ctx.ovDeclineBars(CD)) && /\+8\.33%/.test(ctx.ovDeclineBars(CD)) && /No holdings/.test(ctx.ovDeclineBars([])));
+const acct = (d, inv, ppl) => ({ created_at: new Date(t0 - d * DAY).toISOString(), raw: { account: { invested: inv, ppl } } });
+const LS = [acct(0, 4758.85, -22.64), acct(2, 4700, 10), acct(8, 4600, 30), { created_at: new Date(t0 - 3 * DAY).toISOString(), raw: {} }, { created_at: new Date(t0 - 4 * DAY).toISOString() }];
+const L1 = ctx.ovLinePoints(LS, 7, t0), L2 = ctx.ovLinePoints(LS, 365, t0);
+ok('line uses investments value = cost basis + unrealised result (T212 figure 4,736.21)', Math.abs(L1.to.v - 4736.21) < 0.005 && Math.abs(L1.from.v - 4710) < 0.005);
+ok('snapshots without Trading 212 account data are left out, not mixed in a different definition', L1.n === 2 && L2.n === 3);
+ok('change and % are first to last point in the span', Math.abs(L1.change - 26.21) < 0.01 && Math.abs(L1.pct - 26.21 / 4710 * 100) < 0.001);
+ok('fewer than two points: no line is drawn and the count is reported', ctx.ovLinePoints([acct(0, 100, 0)], 7, t0).n === 1 && ctx.ovLineSvg(ctx.ovLinePoints([acct(0, 100, 0)], 7, t0).points) === '' && ctx.ovLinePoints([], 7, t0).n === 0);
+ok('line colour follows direction and the svg is valid markup', /stroke="#4ade80"/.test(ctx.ovLineSvg(L1.points)) && /stroke="#f87171"/.test(ctx.ovLineSvg([{ t: 1, v: 5 }, { t: 2, v: 3 }])) && /<polyline[^>]+points="[\d. ,-]+"/.test(ctx.ovLineSvg(L1.points)));
 ok('estimate path reports no reserved figure', O.reserved === null);
 ok('empty snapshot does not throw', ctx.ovHeadline(undefined).total === 0);
 console.log(`${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

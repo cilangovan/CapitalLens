@@ -100,6 +100,7 @@ async function loadOverview() {
     const el = document.getElementById('sector-map');
     if (el) el.innerHTML = `<div style="color:var(--red);font-size:12px">Sector map error: ${e.message}</div>`;
   });
+  loadInvestLine().catch(e => { const el = document.getElementById('ov-line-body'); if (el) el.innerHTML = `<div style="color:var(--red);font-size:12px">Line chart error: ${esc(e.message)}</div>`; });
   loadCountryDecline().catch(e => { const el = document.getElementById('ov-decline-body'); if (el) el.innerHTML = `<div style="color:var(--red);font-size:12px">Decline chart error: ${esc(e.message)}</div>`; });
   loadCountryMap().catch(e => {
     const el = document.getElementById('country-map');
@@ -346,6 +347,25 @@ function ovDeclineBars(rows) {
       + `<span style="width:50%">${neg ? '' : `<span style="display:block;width:${w * 2}%;height:14px;background:var(--green,#4ade80);border-radius:0 3px 3px 0"></span>`}</span></span>`
       + `<b style="width:62px;flex:none;text-align:right;color:${neg ? 'var(--red,#f87171)' : 'var(--green,#4ade80)'}">${r.pct > 0 ? '+' : ''}${r.pct.toFixed(2)}%</b></div>`; }).join('');
 }
+// ── INVESTMENTS VALUE LINE (Trading 212 definition: cost basis + unrealised result, from each snapshot's account data) ──
+// Snapshots saved before the account data was kept are left out (a different definition would bend the line); the card says how many points it has.
+function ovLinePoints(snaps, days, nowMs) {
+  const pts = (snaps || []).map(x => { const a = x && x.raw && x.raw.account, t = new Date(x && x.created_at).getTime();
+    return (a && a.invested != null && Number.isFinite(+a.invested) && Number.isFinite(t)) ? { t, v: +a.invested + (+a.ppl || 0) } : null; }).filter(Boolean).sort((a, b) => a.t - b.t);
+  if (!pts.length) return { points: [], n: 0 };
+  const end = pts[pts.length - 1].t, cut = end - days * 864e5, inRange = pts.filter(p => p.t >= cut);
+  if (inRange.length < 2) return { points: inRange, n: inRange.length, spanDays: 0, available: (end - pts[0].t) / 864e5 };
+  const a = inRange[0], b = inRange[inRange.length - 1];
+  return { points: inRange, n: inRange.length, spanDays: (b.t - a.t) / 864e5, change: b.v - a.v, pct: a.v ? (b.v - a.v) / a.v * 100 : 0, from: a, to: b, available: (end - pts[0].t) / 864e5 };
+}
+function ovLineSvg(points) {
+  if (!points || points.length < 2) return '';
+  const W = 340, H = 110, P = 6, t0 = points[0].t, t1 = points[points.length - 1].t, vs = points.map(p => p.v), lo = Math.min(...vs), hi = Math.max(...vs), pad = (hi - lo) * 0.1 || 1;
+  const x = p => P + (t1 === t0 ? 0 : (p.t - t0) / (t1 - t0)) * (W - 2 * P), y = p => H - P - (p.v - (lo - pad)) / (hi - lo + 2 * pad) * (H - 2 * P);
+  const up = points[points.length - 1].v >= points[0].v;
+  return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img" aria-label="Investments value over time"><polyline fill="none" stroke="${up ? '#4ade80' : '#f87171'}" stroke-width="2" stroke-linejoin="round" points="${points.map(p => x(p).toFixed(1) + ',' + y(p).toFixed(1)).join(' ')}"/></svg>`;
+}
+
 async function loadCountryDecline(range) {
   if (typeof IS_GUEST !== 'undefined' && IS_GUEST) return;
   let card = document.getElementById('ov-decline');
@@ -365,6 +385,24 @@ async function loadCountryDecline(range) {
   const weights = {}; try { (await api('instrument_country_weights', '?select=ticker,country,flag,pct')).forEach(r => { (weights[r.ticker] = weights[r.ticker] || []).push(r); }); } catch (e) {}
   const span = (pick.latest.t - pick.then.t) / 864e5;
   body.innerHTML = `<div class="muted" style="font-size:12px;margin-bottom:4px">Latest vs ${span.toFixed(1)} days earlier (${esc(new Date(pick.then.t).toLocaleDateString('en-GB'))})</div>` + ovDeclineBars(ovCountryDecline(posNow, posThen, weights));
+}
+
+async function loadInvestLine(range) {
+  if (typeof IS_GUEST !== 'undefined' && IS_GUEST) return;
+  let card = document.getElementById('ov-line');
+  if (!card) {
+    const anchor = document.getElementById('stats-strip'); if (!anchor) return;
+    anchor.insertAdjacentHTML('afterend', '<div class="card" id="ov-line"><h3>Investments value over time</h3><div id="ov-line-btns" style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0"></div><div id="ov-line-body"><div class="loading busy">Loading…</div></div><div class="muted" style="font-size:11px;margin-top:6px">Investments value as Trading 212 defines it (cost basis + unrealised result), from your saved snapshots. It moves when you buy or sell, so a rise is not always performance.</div></div>');
+    document.getElementById('ov-line-btns').addEventListener('click', e => { const b = e.target.closest('[data-ovl]'); if (b) loadInvestLine(b.dataset.ovl).catch(() => {}); });
+  }
+  range = range || '1W'; const days = (OV_RANGES.find(r => r[0] === range) || OV_RANGES[1])[1];
+  document.getElementById('ov-line-btns').innerHTML = OV_RANGES.map(([k]) => `<button type="button" data-ovl="${k}" style="min-height:40px;min-width:48px;border-radius:8px;border:1px solid var(--border,#2d3353);background:${k === range ? 'var(--accent,#6366f1)' : 'transparent'};color:inherit;cursor:pointer">${k}</button>`).join('');
+  const snaps = await api('portfolio_snapshots', '?select=created_at,raw&order=created_at.desc&limit=400');
+  const L = ovLinePoints(snaps, days, Date.now()), body = document.getElementById('ov-line-body');
+  if (L.n < 2) { body.innerHTML = `<div style="color:var(--muted);font-size:13px">Not enough saved points for ${esc(range)} yet (${L.n} with Trading 212 account data${L.available ? `, covering ${L.available.toFixed(1)} days` : ''}). Press Refresh on different days to build the line.</div>`; return; }
+  const g = x => '£' + Math.abs(x).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), up = L.change >= 0;
+  body.innerHTML = `<div style="font-size:20px;font-weight:700">${g(L.to.v)}</div><div style="font-size:13px;color:${up ? 'var(--green,#4ade80)' : 'var(--red,#f87171)'}">${up ? '+' : '−'}${g(L.change)} (${up ? '+' : ''}${L.pct.toFixed(2)}%) over ${L.spanDays.toFixed(1)} days · ${L.n} saved points</div>${ovLineSvg(L.points)}`
+    + `<div class="muted" style="font-size:11px">${esc(new Date(L.from.t).toLocaleString('en-GB'))} → ${esc(new Date(L.to.t).toLocaleString('en-GB'))}</div>`;
 }
 
 // ── COUNTRY MAP ───────────────────────────────────────────────
