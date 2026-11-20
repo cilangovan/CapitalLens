@@ -12,7 +12,7 @@ for page in ("docs/index.html", "docs/demo/index.html"):
     with sync_playwright() as p:
         b = p.chromium.launch(args=["--no-sandbox"])
         for w in (320, 360, 390):
-            pg = b.new_page(viewport={"width": w, "height": 800}); posts = []
+            ctx = b.new_context(viewport={"width": w, "height": 800}, has_touch=True); pg = ctx.new_page(); posts = []
             pg.on("request", lambda r: posts.append(r.url) if "watchlist/order" in r.url else None)
             pg.route("**/watchlist/order", lambda route: route.fulfill(status=200, content_type="application/json", body='{"ok":true}'))
             pg.set_content(html)
@@ -27,6 +27,35 @@ for page in ("docs/index.html", "docs/demo/index.html"):
               const small = [...document.querySelectorAll('.w-mv button, #w-summary .w-pick')].filter(e => { const r = e.getBoundingClientRect(); return r.height < 39.5 || (e.closest('.w-mv') && r.width < 39.5); }).length;
               return { sideways: document.documentElement.scrollWidth > W, out: out.slice(0, 5), small }; }"""
             r1 = pg.evaluate(check)
+            grips = pg.evaluate("[...document.querySelectorAll('#w-list .w-grip')].map(g => { const r = g.getBoundingClientRect(); return [r.width, r.height]; })")
+            grip_ok = len(grips) == 6 and all(wd >= 39.5 and ht >= 39.5 for wd, ht in grips)
+            if w == 390:                                                                   # drag with a real mouse: first card dropped between the 3rd and 4th
+                names0 = pg.evaluate("[...document.querySelectorAll('#w-list .w-card')].map(c => c.dataset.t)")
+                gb = pg.locator('#w-list .w-card:nth-child(1) .w-grip').bounding_box(); tb = pg.locator('#w-list .w-card:nth-child(4)').bounding_box()
+                pg.mouse.move(gb["x"] + 20, gb["y"] + 20); pg.mouse.down()
+                tgt = tb["y"] + tb["height"] * 0.8
+                for k in range(1, 13): pg.mouse.move(gb["x"] + 20, gb["y"] + 20 + (tgt - gb["y"] - 20) * k / 12); pg.wait_for_timeout(30)
+                during = pg.evaluate("({ sorting: document.getElementById('w-list').classList.contains('sorting'), dragging: !!document.querySelector('.w-card.dragging'), folded: [...document.querySelectorAll('#w-list .w-pad')].every(e => getComputedStyle(e).display === 'none') })")
+                pg.mouse.up(); pg.wait_for_timeout(700)
+                names1 = pg.evaluate("[...document.querySelectorAll('#w-list .w-card')].map(c => c.dataset.t)")
+                drag_ok = names1 != names0 and names1[0] == names0[1] and names1.index(names0[0]) >= 2 and sorted(names1) == sorted(names0) and len(posts) == 1 and during["sorting"] and during["dragging"] and during["folded"] \
+                    and not pg.evaluate("document.getElementById('w-list').classList.contains('sorting')") and pg.locator('.w-card.dragging').count() == 0
+                saved_order = pg.evaluate("[...document.querySelectorAll('#w-list .w-card')].map(c => c.dataset.t)") == names1
+                if not (drag_ok and saved_order): bad += 1; print(f"✗ {page} drag with mouse: before={names0} after={names1} during={during} posts={len(posts)}")
+                posts.clear()
+                # and a drag that is cancelled (pointercancel) changes nothing
+                gb = pg.locator('#w-list .w-card:nth-child(1) .w-grip').bounding_box(); pg.mouse.move(gb["x"] + 20, gb["y"] + 20); pg.mouse.down(); pg.mouse.move(gb["x"] + 20, gb["y"] + 200, steps=5)
+                pg.evaluate("document.dispatchEvent(new PointerEvent('pointercancel', { pointerId: WLD.pid, bubbles: true }))"); pg.wait_for_timeout(300); pg.mouse.up(); pg.wait_for_timeout(500)
+                if pg.evaluate("[...document.querySelectorAll('#w-list .w-card')].map(c => c.dataset.t)") != names1 or posts: bad += 1; print(f"✗ {page} cancelled drag changed the order or saved")
+                # touch: handle has touch-action none, so a finger drag reorders instead of scrolling
+                cdp = pg.context.new_cdp_session(pg); gb = pg.locator('#w-list .w-card:nth-child(2) .w-grip').bounding_box(); x, y0 = gb["x"] + 20, gb["y"] + 20
+                cdp.send("Input.dispatchTouchEvent", {"type": "touchStart", "touchPoints": [{"x": x, "y": y0}]})
+                for k in range(1, 9): cdp.send("Input.dispatchTouchEvent", {"type": "touchMove", "touchPoints": [{"x": x, "y": y0 - 8 * k * 4}]}); pg.wait_for_timeout(30)
+                cdp.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []}); pg.wait_for_timeout(700)
+                names2 = pg.evaluate("[...document.querySelectorAll('#w-list .w-card')].map(c => c.dataset.t)")
+                if names2[0] != names1[1]: bad += 1; print(f"✗ {page} touch drag did not move the card up: {names1} -> {names2}")
+                posts.clear()
+            if not grip_ok: bad += 1; print(f"✗ {page} {w}px: drag handles missing or < 40px: {grips}")
             pg.click("text=⇅ Arrange"); r2 = pg.evaluate(check)
             names = lambda: pg.evaluate("[...document.querySelectorAll('.w-card')].map(c => c.dataset.t).join(',')")
             first = names().split(",")
@@ -41,7 +70,7 @@ for page in ("docs/index.html", "docs/demo/index.html"):
                 bad += 1; print(f"✗ {page} {w}px: normal={r1} arrange={r2} moved={moved} ends_disabled={disabled} reset_button={reset} done_restores={back}")
             if w == 360 and page == "docs/index.html":
                 pg.click("text=⇅ Arrange"); pg.screenshot(path="/tmp/arrange360.png")
-            pg.close()
+            pg.close(); ctx.close()
         b.close()
 print("✓ Watchlist cards (normal + Arrange) fit 320/360/390px, buttons >= 40px, ▲▼ reorder and save" if not bad else f"{bad} layout problem(s)")
 sys.exit(1 if bad else 0)

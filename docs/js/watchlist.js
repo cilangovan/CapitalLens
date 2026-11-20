@@ -4,7 +4,7 @@
 // ENTER / ACCUMULATE / HOLD / AVOID, price points with £ per step, RSI, volume, quality.
 // ✕ removes it and stops all tracking. Writes go through the worker (/watchlist/*).
 
-const WL = { cat: 'stock', items: [], analysis: {}, open: new Set(), pending: new Set(), searchTimer: null, poll: null,
+const WL = { cat: 'stock', arrange: false, items: [], analysis: {}, open: new Set(), pending: new Set(), searchTimer: null, poll: null,
              expanded: new Set((() => { try { return JSON.parse(localStorage.getItem('wl_expanded') || '[]'); } catch (e) { return []; } })()) };
 function wlSaveExpanded() { try { localStorage.setItem('wl_expanded', JSON.stringify([...WL.expanded])); } catch (e) {} }
 
@@ -43,6 +43,47 @@ function wlMove(ev, ticker, dir) {
   renderWatchlist();
   const b = document.querySelector(`.w-card[data-t="${CSS.escape(ticker)}"] .w-mv [data-dir="${dir}"]`); if (b) { b.focus(); b.scrollIntoView({ block: 'nearest' }); }
   clearTimeout(WL.orderTimer); const cat = WL.cat; WL.orderTimer = setTimeout(() => wlSaveOrder(cat, next), 400);   // several taps in a row save once
+}
+// ── DRAG TO REORDER (⠿ handle on every card) ──
+// Press the ⠿ handle, drag the card up or down, let go. Mouse and touch both work (the handle has touch-action:none, so the page does not scroll under your finger).
+// While dragging every card folds to its headline so a long list is easy to cross, and the list scrolls itself near the screen edge. The new order is saved like ▲ ▼.
+const WLD = { el: null, grab: 0, y: 0, raf: 0, pid: null, start: '' };
+const wlDomOrder = () => [...document.querySelectorAll('#w-list .w-card[data-t]')].map(c => c.dataset.t);
+function wlDragStep() {
+  const el = WLD.el; if (!el) return; const list = el.parentElement, y = WLD.y;
+  const others = [...list.querySelectorAll('.w-card[data-t]')].filter(c => c !== el); let before = null;
+  for (const c of others) { const r = c.getBoundingClientRect(); if (y < r.top + r.height / 2) { before = c; break; } }
+  if (before !== el.nextElementSibling) list.insertBefore(el, before);
+  el.style.transform = ''; const top = el.getBoundingClientRect().top; el.style.transform = `translateY(${(y - WLD.grab - top).toFixed(1)}px)`;
+}
+function wlDragLoop() {
+  if (!WLD.el) return; const h = window.innerHeight || 800;
+  if (WLD.y < 70) window.scrollBy(0, -12); else if (WLD.y > h - 70) window.scrollBy(0, 12);
+  wlDragStep(); WLD.raf = requestAnimationFrame(wlDragLoop);
+}
+function wlDragEnd(commit) {
+  const el = WLD.el; if (!el) return; cancelAnimationFrame(WLD.raf); WLD.el = null;
+  try { el.querySelector('.w-grip').releasePointerCapture(WLD.pid); } catch (e) {}
+  el.style.transform = ''; el.classList.remove('dragging'); document.getElementById('w-list').classList.remove('sorting');
+  const order = wlDomOrder();
+  if (commit && order.join('|') !== WLD.start) {
+    const mine = WL.items.filter(i => wCat(i) === WL.cat); order.forEach((t, k) => { const it = mine.find(i => i.ticker === t); if (it) it.sort_order = k; });
+    clearTimeout(WL.orderTimer); const cat = WL.cat; WL.orderTimer = setTimeout(() => wlSaveOrder(cat, order), 400);
+  }
+  renderWatchlist();
+}
+if (typeof document !== 'undefined') {
+  document.addEventListener('pointerdown', e => {
+    const g = e.target && e.target.closest && e.target.closest('.w-grip'); if (!g || WL.arrange || (e.button !== undefined && e.button > 0)) return;
+    const el = g.closest('.w-card[data-t]'); if (!el) return; e.preventDefault();
+    WLD.el = el; WLD.pid = e.pointerId; WLD.start = wlDomOrder().join('|'); try { g.setPointerCapture(e.pointerId); } catch (x) {}
+    document.getElementById('w-list').classList.add('sorting'); el.classList.add('dragging');
+    const r = el.getBoundingClientRect(); WLD.y = e.clientY; WLD.grab = Math.min(Math.max(e.clientY - r.top, 0), r.height);
+    WLD.raf = requestAnimationFrame(wlDragLoop);
+  });
+  document.addEventListener('pointermove', e => { if (WLD.el && e.pointerId === WLD.pid) { WLD.y = e.clientY; e.preventDefault(); } });
+  document.addEventListener('pointerup', e => { if (WLD.el && e.pointerId === WLD.pid) wlDragEnd(true); });
+  document.addEventListener('pointercancel', e => { if (WLD.el && e.pointerId === WLD.pid) wlDragEnd(false); });
 }
 function wlArrange(on) { WL.arrange = !!on; renderWatchlist(); }
 function wlResetOrder() {
@@ -279,6 +320,7 @@ function wlCard(i, pos, total) {
       <button type="button" data-dir="1" onclick="wlMove(event,'${t}',1)" aria-label="Move ${nm} down"${pos === total - 1 ? ' disabled' : ''}>▼</button></div></div></div>`;
   }
   const head = `<div class="w-head" onclick="wlExpand('${t}')" role="button" aria-expanded="${exp}">
+      <span class="w-grip" title="Drag to reorder" aria-hidden="true" onclick="event.stopPropagation()">⠿</span>
       <span class="w-chev">${exp ? '▾' : '▸'}</span>
       <div class="w-title">
         <a href="#watch/${encodeURIComponent(i.ticker)}" class="w-link" onclick="wlOpenDetail(event,'${t}')">${_wesc(i.name || wSym(i.ticker))}</a>

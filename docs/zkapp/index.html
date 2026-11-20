@@ -238,6 +238,9 @@
   .w-head.w-arr { cursor:default; padding:6px 8px 6px 12px; } .w-rank { width:22px; flex:none; color:var(--muted); font-size:12px; font-variant-numeric:tabular-nums; }
   .w-mv { display:flex; gap:6px; flex:none; } .w-mv button { min-width:40px; min-height:40px; border-radius:8px; border:1px solid var(--border); background:var(--bg3); color:var(--text); font-size:16px; cursor:pointer; }
   .w-mv button:disabled { opacity:.3; cursor:default; }
+  .w-grip { flex:none; width:40px; min-height:40px; margin:-8px -4px -8px -10px; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:18px; cursor:grab; touch-action:none; user-select:none; -webkit-user-select:none; }
+  #w-list.sorting .w-card > .w-pad { display:none; } #w-list.sorting { user-select:none; -webkit-user-select:none; }
+  .w-card.dragging { position:relative; z-index:5; transition:none; box-shadow:0 8px 24px rgba(0,0,0,.5); border-color:var(--accent); } .w-card.dragging .w-grip { cursor:grabbing; color:var(--accent); }
   .w-actions-row { display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; }
   .w-actions-row a.w-more { text-decoration:none; }
   @media (max-width:600px) { .w-quick .w-pill.sm { display:none; } .w-title .w-dim { display:none; } }
@@ -412,6 +415,7 @@
   .rt-prow { display:flex; align-items:baseline; gap:10px; } .rt-pp { font-size:15px; font-weight:600; }
   .rt-chartbar { display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; margin-bottom:6px; }
   .rt-chartbar .dd-ranges { margin:0; }
+  .rt-chartbar .dd-ranges { flex-wrap:wrap; } .rt-chartbar .dd-ranges button { min-height:40px; min-width:44px; }   /* nine spans must wrap on a phone, never push the page wider than the screen */
   .rt-vc-head { margin:2px 0 6px; } .rt-vc-head .rt-mid { font-size:22px; margin:0 6px 0 0; }
   .rt-chart { position:relative; height:240px; }
   .rt-legend { display:flex; gap:14px; flex-wrap:wrap; font-size:12px; margin:-4px 0 8px; align-items:center; }
@@ -719,7 +723,7 @@
 <script src="../js/alerts.js?v=c1a925535e8e" integrity="sha384-7PUElfYc+mwl1Oqr4w1QMC2nMT/bAp4J9zS/16qW54Jje/e4gRiGKlHQAt8dqATu"></script>
 <script src="../js/tickertips.js?v=62c3f21e8fa6" integrity="sha384-uol0Rwj54jmfrLQJnoQ9rmmclnnHE5cMDN7Ci+Jn2Mo6W4tqHoZ53Ay3/BTEgS52"></script>
 <script src="../js/collapse.js?v=7edc1cf73e08" integrity="sha384-A619AiWc9t9/ZdVUpzglvO2kPNeCq9597UZcOa4ctslPfQiU48P+lXZWq9vS6k05"></script>
-<script src="../js/watchlist.js?v=1689ac711414" integrity="sha384-SvsZmIGkME5ER6vGv8EEJq1YDCCFdWr3+f4h/w5BkzLU8dtfT0jOicRUWVqQLKbk"></script>
+<script src="../js/watchlist.js?v=e584819a777b" integrity="sha384-aql9O8WCXpt3r6Ct9QVbZEiwJziPxoI6VVrcaKIMFoCfebHNTtPAylI4cKWdXMtg"></script>
 <script src="../js/ipo.js?v=f4d9348410da" integrity="sha384-LXfQHD7a8VDyk4eKFZc3Gj+ntJ1PSJJ4EgTE+/eYfUOsg85gPju1pg31KpvQOYp5"></script>
 <script src="../js/drilldown.js?v=7a7ebba5e7de" integrity="sha384-AgVSh6Vu4OhUxdQcRxEqq2qOERV/U5LoS6ZpMboOBXL5mc2qydywkmRr3pibkqty"></script>
 <script src="../js/pie_drill.js?v=a37ab7984a56" integrity="sha384-nTtENlyK2gvQfk0vKkso90ijk/ep386j1uJBdlCwkhxjh9vNHGbWQ7gOFw1wkVPf"></script>
