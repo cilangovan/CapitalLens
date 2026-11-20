@@ -366,6 +366,34 @@ function ovLineSvg(points) {
   return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img" aria-label="Investments value over time"><polyline fill="none" stroke="${up ? '#4ade80' : '#f87171'}" stroke-width="2" stroke-linejoin="round" points="${points.map(p => x(p).toFixed(1) + ',' + y(p).toFixed(1)).join(' ')}"/></svg>`;
 }
 
+// ── LONGER SPANS FROM REBUILT HISTORY ──
+// Saved snapshots only exist for days the app was refreshed. For longer spans we fall back to pie_history (holdings rebuilt from your Trading 212
+// order history, valued at daily closes). Always labelled "rebuilt"; it uses the holdings you owned on each day, so buying/selling is in the value.
+function ovHistLine(row, days, nowMs) {
+  const s = row && row.series; if (!s || !s.dates || !s.value) return { points: [], n: 0 };
+  const all = s.dates.map((d, i) => ({ t: Date.parse(d + 'T16:30:00Z'), v: s.value[i] })).filter(p => Number.isFinite(p.t) && p.v != null && p.v > 0);
+  const pts = all.filter(p => p.t >= nowMs - days * 864e5 && p.t <= nowMs);
+  if (pts.length < 2) return { points: pts, n: pts.length, available: all.length > 1 ? (all[all.length - 1].t - all[0].t) / 864e5 : 0 };
+  const a = pts[0], b = pts[pts.length - 1];
+  return { points: pts, n: pts.length, spanDays: (b.t - a.t) / 864e5, change: b.v - a.v, pct: (b.v - a.v) / a.v * 100, from: a, to: b, available: (all[all.length - 1].t - all[0].t) / 864e5 };
+}
+// rows: pie_history rows (pies + __DIRECT__ carry per-ticker qty and value). price = value / qty, in GBP.
+function ovHistPositions(rows, days, nowMs) {
+  const byT = {};
+  (rows || []).forEach(r => { if (!r || r.pie === '__ALL__' || r.pie === '__SOLD__' || !r.series || !r.series.tickers) return;
+    const d = r.series.dates || []; Object.entries(r.series.tickers).forEach(([t, x]) => { const m = byT[t] = byT[t] || {};
+      d.forEach((dt, i) => { const q = +(x.qty || [])[i], v = +(x.value || [])[i]; if (q > 0 && v > 0) { const e = m[dt] = m[dt] || { q: 0, v: 0 }; e.q += q; e.v += v; } }); }); });
+  const dates = [...new Set(Object.values(byT).flatMap(m => Object.keys(m)))].sort();
+  if (dates.length < 2) return { posNow: [], posThen: [], availableDays: 0 };
+  const tms = d => Date.parse(d + 'T16:30:00Z'), nowD = dates.filter(d => tms(d) <= nowMs).pop() || dates[dates.length - 1];
+  const availableDays = (tms(nowD) - tms(dates[0])) / 864e5, cut = tms(nowD) - days * 864e5;
+  const thenD = dates.filter(d => tms(d) <= cut).pop() || (availableDays >= days * 0.8 ? dates[0] : null);
+  if (!thenD) return { posNow: [], posThen: [], availableDays };
+  const posNow = [], posThen = [];
+  Object.entries(byT).forEach(([t, m]) => { const n = m[nowD], th = m[thenD]; if (n && th) { posNow.push({ ticker: t, current_price: n.v / n.q, quantity: n.q }); posThen.push({ ticker: t, current_price: th.v / th.q, quantity: th.q }); } });
+  return { posNow, posThen, nowD, thenD, availableDays, spanDays: (tms(nowD) - tms(thenD)) / 864e5 };
+}
+
 async function loadCountryDecline(range) {
   if (typeof IS_GUEST !== 'undefined' && IS_GUEST) return;
   let card = document.getElementById('ov-decline');
@@ -380,6 +408,10 @@ async function loadCountryDecline(range) {
   const body = document.getElementById('ov-decline-body');
   const snaps = await api('portfolio_snapshots', '?select=id,created_at&order=created_at.desc&limit=400');
   const pick = ovPickThen(snaps, days, Date.now());
+  if (!pick.then) { try { const R = ovHistPositions(await api('pie_history', '?select=pie,series'), days, Date.now());
+      if (R.posThen.length) { const w2 = {}; try { (await api('instrument_country_weights', '?select=ticker,country,flag,pct')).forEach(r => { (w2[r.ticker] = w2[r.ticker] || []).push(r); }); } catch (e) {}
+        body.innerHTML = `<div class="muted" style="font-size:12px;margin-bottom:4px">Rebuilt from your Trading 212 order history: ${R.spanDays.toFixed(0)} days to ${esc(R.nowD)} (daily closes, holdings you owned at the start)</div>` + ovDeclineBars(ovCountryDecline(R.posNow, R.posThen, w2)); return; } } catch (e) {}
+  }
   if (!pick.then) { body.innerHTML = `<div style="color:var(--muted);font-size:13px">Not enough saved history for ${esc(range)} yet: the oldest snapshot is ${pick.oldestDays.toFixed(1)} days older than the latest. Pick a shorter span.</div>`; return; }
   const [posNow, posThen] = await Promise.all([api('positions', `?snapshot_id=eq.${pick.latest.id}&select=ticker,current_price,quantity`), api('positions', `?snapshot_id=eq.${pick.then.id}&select=ticker,current_price,quantity`)]);
   const weights = {}; try { (await api('instrument_country_weights', '?select=ticker,country,flag,pct')).forEach(r => { (weights[r.ticker] = weights[r.ticker] || []).push(r); }); } catch (e) {}
@@ -398,10 +430,11 @@ async function loadInvestLine(range) {
   range = range || '1W'; const days = (OV_RANGES.find(r => r[0] === range) || OV_RANGES[1])[1];
   document.getElementById('ov-line-btns').innerHTML = OV_RANGES.map(([k]) => `<button type="button" data-ovl="${k}" style="min-height:40px;min-width:48px;border-radius:8px;border:1px solid var(--border,#2d3353);background:${k === range ? 'var(--accent,#6366f1)' : 'transparent'};color:inherit;cursor:pointer">${k}</button>`).join('');
   const snaps = await api('portfolio_snapshots', '?select=created_at,raw&order=created_at.desc&limit=400');
-  const L = ovLinePoints(snaps, days, Date.now()), body = document.getElementById('ov-line-body');
+  let L = ovLinePoints(snaps, days, Date.now()), rebuilt = false; const body = document.getElementById('ov-line-body');
+  if (L.n < 2 || L.spanDays < days * 0.8) { try { const H = ovHistLine((await api('pie_history', '?select=pie,series')).find(r => r.pie === '__ALL__'), days, Date.now()); if (H.n >= 2 && (L.n < 2 || H.spanDays > L.spanDays)) { L = H; rebuilt = true; } } catch (e) {} }
   if (L.n < 2) { body.innerHTML = `<div style="color:var(--muted);font-size:13px">Not enough saved points for ${esc(range)} yet (${L.n} with Trading 212 account data${L.available ? `, covering ${L.available.toFixed(1)} days` : ''}). Press Refresh on different days to build the line.</div>`; return; }
   const g = x => '£' + Math.abs(x).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), up = L.change >= 0;
-  body.innerHTML = `<div style="font-size:20px;font-weight:700">${g(L.to.v)}</div><div style="font-size:13px;color:${up ? 'var(--green,#4ade80)' : 'var(--red,#f87171)'}">${up ? '+' : '−'}${g(L.change)} (${up ? '+' : ''}${L.pct.toFixed(2)}%) over ${L.spanDays.toFixed(1)} days · ${L.n} saved points</div>${ovLineSvg(L.points)}`
+  body.innerHTML = `<div style="font-size:20px;font-weight:700">${g(L.to.v)}</div><div style="font-size:13px;color:${up ? 'var(--green,#4ade80)' : 'var(--red,#f87171)'}">${up ? '+' : '−'}${g(L.change)} (${up ? '+' : ''}${L.pct.toFixed(2)}%) over ${L.spanDays.toFixed(1)} days · ${L.n} ${rebuilt ? 'daily points, rebuilt from your Trading 212 order history' : 'saved points'}</div>${ovLineSvg(L.points)}`
     + `<div class="muted" style="font-size:11px">${esc(new Date(L.from.t).toLocaleString('en-GB'))} → ${esc(new Date(L.to.t).toLocaleString('en-GB'))}</div>`;
 }
 

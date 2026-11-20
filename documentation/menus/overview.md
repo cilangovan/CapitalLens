@@ -48,3 +48,7 @@ A collapsible card with 1D / 1W / 1M / 3M / 1Y buttons and one horizontal bar pe
 ## Investments value over time (card)
 
 A collapsible line chart with 1D / 1W / 1M / 3M / 1Y buttons, like the Trading 212 home screen. Each point is a saved snapshot's **investments value as Trading 212 defines it** (cost basis + unrealised result, from the snapshot's account data). Snapshots saved before that data was kept are left out so the line never mixes two definitions; the card says how many points it has and how many days they cover, and draws no line with fewer than two points. The change shown is first to last point in the span, and the card notes that buying or selling moves the value, so a rise is not always performance. Points exist only for days you pressed Refresh ("nothing runs while the app is closed"), so it is sparser than Trading 212's own chart. Source: `portfolio_snapshots`. Guarded by `tests/zk_overview_stale_test.mjs`.
+
+### Longer spans (rebuilt history)
+
+Saved snapshots only exist for days you pressed Refresh. When a span has too few snapshots, both the line chart and the decline-by-country card fall back to `pie_history` (the same data as the Positions drill-down: holdings rebuilt from your Trading 212 order history, valued at daily closes) and say so on the card ("rebuilt from your Trading 212 order history"). The decline card uses each holding's price (value ÷ quantity) at both dates, only for holdings you owned at both. Snapshots win when they cover the span. Guarded by `tests/zk_overview_stale_test.mjs`.

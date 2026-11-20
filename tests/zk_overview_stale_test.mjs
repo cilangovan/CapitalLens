@@ -5,7 +5,7 @@ const body = src.slice(src.indexOf('// "5 min ago"'), src.indexOf('async functio
 let banner = null; const parent = { insertBefore: (el) => { banner = el; el.remove = () => { banner = null; }; } };
 const strip = { parentNode: parent };
 const doc = { getElementById: id => id === 'stats-strip' ? strip : id === 'stale-banner' ? banner : null, createElement: () => ({ style: {}, set innerHTML(v) { this._h = v; }, get innerHTML() { return this._h; } }) };
-const ctx = { document: doc, zkToolsOpen: undefined, esc: s => String(s ?? '').replace(/[&<>"'`]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c])) }; vm.createContext(ctx); vm.runInContext(body + ';this.ovAgo=ovAgo;this.ovHeadline=ovHeadline;this.ovFormulaHtml=ovFormulaHtml;this.ovPickThen=ovPickThen;this.ovCountryDecline=ovCountryDecline;this.ovDeclineBars=ovDeclineBars;this.ovLinePoints=ovLinePoints;this.ovLineSvg=ovLineSvg;this.ovStaleBanner=ovStaleBanner;', ctx);
+const ctx = { document: doc, zkToolsOpen: undefined, esc: s => String(s ?? '').replace(/[&<>"'`]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c])) }; vm.createContext(ctx); vm.runInContext(body + ';this.ovAgo=ovAgo;this.ovHeadline=ovHeadline;this.ovFormulaHtml=ovFormulaHtml;this.ovPickThen=ovPickThen;this.ovCountryDecline=ovCountryDecline;this.ovDeclineBars=ovDeclineBars;this.ovLinePoints=ovLinePoints;this.ovHistLine=ovHistLine;this.ovHistPositions=ovHistPositions;this.ovLineSvg=ovLineSvg;this.ovStaleBanner=ovStaleBanner;', ctx);
 let pass = 0, fail = 0; const ok = (n, c) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + n); };
 ok('relative age wording', ctx.ovAgo(20e3) === 'just now' && ctx.ovAgo(300e3) === '5 min ago' && ctx.ovAgo(3 * 3600e3) === '3 h ago' && ctx.ovAgo(60 * 3600e3) === '3 days ago');
 ctx.ovStaleBanner(5 * 60e3, 't'); ok('fresh snapshot: no banner', banner === null);
@@ -48,6 +48,14 @@ ok('snapshots without Trading 212 account data are left out, not mixed in a diff
 ok('change and % are first to last point in the span', Math.abs(L1.change - 26.21) < 0.01 && Math.abs(L1.pct - 26.21 / 4710 * 100) < 0.001);
 ok('fewer than two points: no line is drawn and the count is reported', ctx.ovLinePoints([acct(0, 100, 0)], 7, t0).n === 1 && ctx.ovLineSvg(ctx.ovLinePoints([acct(0, 100, 0)], 7, t0).points) === '' && ctx.ovLinePoints([], 7, t0).n === 0);
 ok('line colour follows direction and the svg is valid markup', /stroke="#4ade80"/.test(ctx.ovLineSvg(L1.points)) && /stroke="#f87171"/.test(ctx.ovLineSvg([{ t: 1, v: 5 }, { t: 2, v: 3 }])) && /<polyline[^>]+points="[\d. ,-]+"/.test(ctx.ovLineSvg(L1.points)));
+const D = n => new Date(t0 - n * DAY).toISOString().slice(0, 10), ds = [D(40), D(30), D(1)];
+const row = { pie: 'P', series: { dates: ds, value: [100, 110, 90], tickers: { AAA: { qty: [1, 1, 1], value: [100, 110, 90] }, BBB: { qty: [0, 2, 2], value: [0, 20, 30] } } } };
+const HL = ctx.ovHistLine({ pie: '__ALL__', series: { dates: ds, value: [100, 110, 90] } }, 365, t0);
+ok('rebuilt line covers spans the snapshots cannot', HL.n === 3 && Math.abs(HL.change + 10) < 1e-9 && HL.spanDays > 38);
+ok('rebuilt line respects the span', ctx.ovHistLine({ series: { dates: ds, value: [100, 110, 90] } }, 7, t0).n === 1);
+const HP = ctx.ovHistPositions([row, { pie: '__ALL__', series: { dates: ds, value: [1, 1, 1] } }], 29, t0);
+ok('rebuilt positions use price = value/qty at both dates, only for holdings owned at both', HP.posNow.length === 2 && HP.posNow.find(p => p.ticker === 'AAA').current_price === 90 && HP.posThen.find(p => p.ticker === 'AAA').current_price === 110 && HP.posThen.find(p => p.ticker === 'BBB').current_price === 10);
+ok('rebuilt positions say nothing when history is too short for the span', ctx.ovHistPositions([row], 365, t0).posThen.length === 0);
 ok('estimate path reports no reserved figure', O.reserved === null);
 ok('empty snapshot does not throw', ctx.ovHeadline(undefined).total === 0);
 console.log(`${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);
