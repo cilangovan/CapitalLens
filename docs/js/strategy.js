@@ -304,6 +304,7 @@ async function loadHoldingDecisions() {
               <div style="font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Score Breakdown</div>
               ${factors}
               ${h.notes?`<div style="margin-top:7px;font-size:10px;color:var(--muted)">${h.notes}</div>`:''}
+              ${typeof FiveCheck !== 'undefined' ? FiveCheck.html(h.display, h.ticker, 'hd') : ''}
             </div>
           </div>`;
       }).join('');
@@ -488,6 +489,7 @@ async function loadStrategy() {
               </div>
               ${v.warning ? `<div style="margin-top:10px;padding:9px 12px;background:rgba(239,68,68,0.07);border-left:3px solid #ef4444;border-radius:0 6px 6px 0;font-size:11px;color:#fca5a5">⚠️ ${v.warning}</div>` : ''}
               ${v.notes   ? `<div style="margin-top:8px;font-size:11px;color:var(--muted);line-height:1.6">${v.notes}</div>` : ''}
+              ${typeof FiveCheck !== 'undefined' ? FiveCheck.html(v.display, v.ticker, 'ea') : ''}
               <div style="margin-top:8px;font-size:10px;color:#334155">Updated ${new Date(v.updated_at).toLocaleDateString('en-GB',{day:'numeric',month:'short',hour:'2-digit',minute:'2-digit'})}</div>
             </div>
           </div>`;

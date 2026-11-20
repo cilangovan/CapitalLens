@@ -51,6 +51,7 @@
 - <strong>Tap a name</strong> for the full detail page: live chart (1D · 1W · 1M · 3M · 6M · 9M · 1Y · 5Y with 50/200-day moving averages; 3M and 9M are the last 63 / 189 daily closes of the 1-year chart), day and 52-week range, key stats, analyst rating and target, trading / profitability / leverage, company profile, insights and score radar, and this week's plan. Live prices use the <code>/chart</code> route (Yahoo Finance).
 - Prices from London lines quoted in pence are shown in pence.
 - Data: <code>watchlist</code> and <code>watchlist_analysis</code> (<code>services/watchlist_service.py</code>; private app: <code>docs/zk/watchlist.js</code>, <code>watchlistops.js</code>). Weekly budgets are settings: <code>watchlist_weekly_budget</code>, <code>commodity_weekly_budget</code>, <code>crypto_weekly_budget</code>.</p>
+<p><strong>5-check review:</strong> every expanded stock card (analysed or "data unverified") ends with the same <strong>🧪 5-check review</strong> box as the Strategy tab: your prompt with the stock's name and ticker filled in, buttons <strong>Copy prompt</strong> and <strong>ChatGPT · Claude · Grok</strong> (each opens that assistant's page with the prompt in the box), and <strong>Show the prompt</strong>. It is not run by CapitalLens and is not live data; see <a href="strategy.html#5-check-review-in-every-stocks-expanded-card-here-in-holding-decisions-and-in-the-watchlist">Strategy</a>.</p>
 <h2 id="ipo-watch-card-under-the-watchlist">🚀 IPO Watch (card under the watchlist)</h2>
 <p>Works like the stock watchlist: <strong>nothing is listed until you bookmark it.</strong> The IPO calendar is only the thing you search.</p>
 <ol>
@@ -98,6 +99,7 @@
 <li>Per-user list: routes <code>POST ipo/watch</code> and <code>ipo/unwatch</code> are answered in the browser by <code>docs/zk/shim.js</code> into the encrypted store (no database migration needed; <code>enc_rows.kind = 'ipo_watch'</code>).</li>
 </ul>
 <h2 id="tests">Tests</h2>
+<p>5-check box: <code>tests/zk_fivecheck_test.mjs</code>, <code>tests/fivecheck_layout_test.py</code>.</p>
 <p><code>tests/zk_watchlist_order_test.mjs</code> and <code>tests/zk_ipo_order_test.mjs</code> (arranging, drag strip markup, saving, encrypted rows), <code>tests/ipo_watch_browser_test.py</code> (real mouse drag, cancelled drag, touch drag, reload restores the order), <code>tests/watchlist_order_layout_test.py</code> (320/360/390px, buttons and handles ≥ 40 px, real taps, mouse and touch drags, cancelled drag), <code>tests/zk_watchlist_test.mjs</code>, <code>tests/zk_watchlistops_test.mjs</code>, <code>tests/zk_ipo_test.mjs</code>, <code>tests/ipo_service_test.py</code>, <code>tests/ipo_layout_test.py</code> (320/360/390px, every filter), <code>tests/ipo_watch_browser_test.py</code> (real typing, filters, bookmark, ✕).</p></article>
 <footer class="foot"><a href="https://github.com/cilangovan/CapitalLens/blob/main/documentation/menus/watchlist.md">Edit this page on GitHub</a> · <a href="../../">Back to the dashboard</a> · <a href="../index.html">Documentation home</a></footer></main></div>
 </body></html>

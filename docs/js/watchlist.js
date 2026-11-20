@@ -338,7 +338,7 @@ function wlCard(i, pos, total) {
   if (pending) return `<div class="w-card" data-t="${t}">${head}<div class="w-dim w-pad">⏳ Analysing… (about a minute)</div></div>`;
   if (!ok) return `<div class="w-card muted" data-t="${t}">${head}
       <div class="w-pad"><span class="w-pill v-none">❔ DATA UNVERIFIED</span>
-      <div class="w-dim" style="margin-top:6px">${_wesc(a.reason || 'Analysis failed')}. No verdict without verified prices.</div></div></div>`;
+      <div class="w-dim" style="margin-top:6px">${_wesc(a.reason || 'Analysis failed')}. No verdict without verified prices.</div>${wlFiveCheck(i)}</div></div>`;
 
   const open = WL.open.has(i.ticker);
   const q = a.quality || {}, vol = a.volume || {};
@@ -381,8 +381,12 @@ function wlCard(i, pos, total) {
         </tbody></table>
         <div class="w-dim w-small">Source: Yahoo Finance daily data (${_wesc(a.symbol)}), close ${_wesc(a.as_of)} · updated ${new Date(row.updated_at).toLocaleString('en-GB', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' })} · not financial advice.</div>
       </div>` : ''}
+      ${wlFiveCheck(i)}
     </div></div>`;
 }
+
+// 5-check review box (same one as on the Strategy tab): the owner's prompt for this stock, opened in ChatGPT / Claude / Grok or copied.
+function wlFiveCheck(i) { return typeof FiveCheck !== 'undefined' ? FiveCheck.html(i.name || wSym(i.ticker), wSym(i.ticker), 'wl') : ''; }
 
 // Analyst view as a chip: Yahoo's recommendation and analyst count, or an honest "no coverage" (never an invented rating).
 function wlAnalystChip(a) {

@@ -26,6 +26,8 @@ Three sections (tabs `.w-cats`): **📈 Stocks · 🛢 Commodities · ₿ Crypto
 - Prices from London lines quoted in pence are shown in pence.
 - Data: `watchlist` and `watchlist_analysis` (`services/watchlist_service.py`; private app: `docs/zk/watchlist.js`, `watchlistops.js`). Weekly budgets are settings: `watchlist_weekly_budget`, `commodity_weekly_budget`, `crypto_weekly_budget`.
 
+**5-check review:** every expanded stock card (analysed or "data unverified") ends with the same **🧪 5-check review** box as the Strategy tab: your prompt with the stock's name and ticker filled in, buttons **Copy prompt** and **ChatGPT · Claude · Grok** (each opens that assistant's page with the prompt in the box), and **Show the prompt**. It is not run by CapitalLens and is not live data; see [Strategy](strategy.md#5-check-review-in-every-stocks-expanded-card-here-in-holding-decisions-and-in-the-watchlist).
+
 ## 🚀 IPO Watch (card under the watchlist)
 
 Works like the stock watchlist: **nothing is listed until you bookmark it.** The IPO calendar is only the thing you search.
@@ -51,5 +53,7 @@ Works like the stock watchlist: **nothing is listed until you bookmark it.** The
 - Per-user list: routes `POST ipo/watch` and `ipo/unwatch` are answered in the browser by `docs/zk/shim.js` into the encrypted store (no database migration needed; `enc_rows.kind = 'ipo_watch'`).
 
 ## Tests
+
+5-check box: `tests/zk_fivecheck_test.mjs`, `tests/fivecheck_layout_test.py`.
 
 `tests/zk_watchlist_order_test.mjs` and `tests/zk_ipo_order_test.mjs` (arranging, drag strip markup, saving, encrypted rows), `tests/ipo_watch_browser_test.py` (real mouse drag, cancelled drag, touch drag, reload restores the order), `tests/watchlist_order_layout_test.py` (320/360/390px, buttons and handles ≥ 40 px, real taps, mouse and touch drags, cancelled drag), `tests/zk_watchlist_test.mjs`, `tests/zk_watchlistops_test.mjs`, `tests/zk_ipo_test.mjs`, `tests/ipo_service_test.py`, `tests/ipo_layout_test.py` (320/360/390px, every filter), `tests/ipo_watch_browser_test.py` (real typing, filters, bookmark, ✕).

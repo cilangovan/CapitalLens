@@ -42,6 +42,8 @@ jobs:
         run: python -u tests/support_layout_test.py
       - name: Watchlist cards (arrange mode) fit phone screens
         run: python -u tests/watchlist_order_layout_test.py
+      - name: 5-check review box fits phone screens
+        run: python -u tests/fivecheck_layout_test.py
       - name: No sign-in flash on refresh (private app, real browser)
         run: python -u tests/login_flash_browser_test.py
       - name: IPO watch / remove (real clicks)

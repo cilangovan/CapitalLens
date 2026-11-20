@@ -125,6 +125,14 @@ check("Support Levels: shared table names its source and capture date; demo gets
 check("Support Levels: shown for held stocks only, loaded on every dashboard (legacy, demo, app, zkapp, zkapp-prod)",
       "held.has(l.symbol)" in _slj and all("support.js" in (ROOT / f).read_text() for f in ["docs/index.html", "docs/demo/index.html", "docs/app/index.html", "docs/zkapp/index.html", "docs/zkapp-prod/index.html"]))
 
+# 5-check review box (Strategy > Holding Decisions + Entry Analysis): the owner's prompt, copied/opened per stock, on every dashboard
+_fc = (ROOT / "docs/js/fivecheck.js").read_text(); _st = (ROOT / "docs/js/strategy.js").read_text(); _wlj0 = (ROOT / "docs/js/watchlist.js").read_text()
+check("5-check review: owner's prompt verbatim, ChatGPT/Claude/Grok buttons, no inline handlers, honest 'not live data' note, in both Strategy lists + the Watchlist and on every dashboard",
+      "If the price falls 30% tomorrow, would a long-term holder still hold it? Why, or why not?" in _fc and "Do not tell me to buy or sell. Only give me the facts, so I can decide." in _fc
+      and "general knowledge, not live data" in _fc and not re.search(r"\bon(click|change|input)=", _fc)
+      and "FiveCheck.html(h.display, h.ticker, 'hd')" in _st and "FiveCheck.html(v.display, v.ticker, 'ea')" in _st and "wlFiveCheck(i)" in _wlj0 and all(x in _fc for x in ["chatgpt.com/?q=", "claude.ai/new?q=", "grok.com/?q="])
+      and all("fivecheck.js" in (ROOT / f).read_text() and ".fc-btn" in (ROOT / f).read_text() for f in ["docs/index.html", "docs/demo/index.html", "docs/app/index.html", "docs/zkapp/index.html", "docs/zkapp-prod/index.html"]))
+
 # Watchlist card order: arrangeable, saved per user, encrypted in the private app (UI-21)
 _wlj = (ROOT / "docs/js/watchlist.js").read_text(); _wls = (ROOT / "docs/zk/shim.js").read_text(); _wlw = (ROOT / "cloudflare-worker/worker.js").read_text()
 check("Watchlist order: ▲▼ arrange mode saves per user (encrypted sort_order in the private app, worker + column on legacy), never as plaintext prefs",
