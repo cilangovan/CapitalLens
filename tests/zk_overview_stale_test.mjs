@@ -5,7 +5,7 @@ const body = src.slice(src.indexOf('// "5 min ago"'), src.indexOf('async functio
 let banner = null; const parent = { insertBefore: (el) => { banner = el; el.remove = () => { banner = null; }; } };
 const strip = { parentNode: parent };
 const doc = { getElementById: id => id === 'stats-strip' ? strip : id === 'stale-banner' ? banner : null, createElement: () => ({ style: {}, set innerHTML(v) { this._h = v; }, get innerHTML() { return this._h; } }) };
-const ctx = { document: doc, zkToolsOpen: undefined, esc: s => String(s ?? '').replace(/[&<>"'`]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c])) }; vm.createContext(ctx); vm.runInContext(body + ';this.ovAgo=ovAgo;this.ovHeadline=ovHeadline;this.ovFormulaHtml=ovFormulaHtml;this.ovPickThen=ovPickThen;this.ovCountryDecline=ovCountryDecline;this.ovDeclineBars=ovDeclineBars;this.ovLinePoints=ovLinePoints;this.ovHistLine=ovHistLine;this.ovHistPositions=ovHistPositions;this.ovLineSvg=ovLineSvg;this.ovStaleBanner=ovStaleBanner;', ctx);
+const ctx = { document: doc, zkToolsOpen: undefined, esc: s => String(s ?? '').replace(/[&<>"'`]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;', '`': '&#96;' }[c])) }; vm.createContext(ctx); vm.runInContext(body + ';this.ovAgo=ovAgo;this.ovHeadline=ovHeadline;this.ovFormulaHtml=ovFormulaHtml;this.ovPickThen=ovPickThen;this.ovCountryDecline=ovCountryDecline;this.ovDeclineBars=ovDeclineBars;this.ovLinePoints=ovLinePoints;this.ovHistLine=ovHistLine;this.ovIndexMoves=ovIndexMoves;this.ovSplitDecline=ovSplitDecline;this.ovMarketRows=ovMarketRows;this.OV_MARKETS=OV_MARKETS;this.ovHistPositions=ovHistPositions;this.ovLineSvg=ovLineSvg;this.ovStaleBanner=ovStaleBanner;', ctx);
 let pass = 0, fail = 0; const ok = (n, c) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + n); };
 ok('relative age wording', ctx.ovAgo(20e3) === 'just now' && ctx.ovAgo(300e3) === '5 min ago' && ctx.ovAgo(3 * 3600e3) === '3 h ago' && ctx.ovAgo(60 * 3600e3) === '3 days ago');
 ctx.ovStaleBanner(5 * 60e3, 't'); ok('fresh snapshot: no banner', banner === null);
@@ -56,6 +56,17 @@ ok('rebuilt line respects the span', ctx.ovHistLine({ series: { dates: ds, value
 const HP = ctx.ovHistPositions([row, { pie: '__ALL__', series: { dates: ds, value: [1, 1, 1] } }], 29, t0);
 ok('rebuilt positions use price = value/qty at both dates, only for holdings owned at both', HP.posNow.length === 2 && HP.posNow.find(p => p.ticker === 'AAA').current_price === 90 && HP.posThen.find(p => p.ticker === 'AAA').current_price === 110 && HP.posThen.find(p => p.ticker === 'BBB').current_price === 10);
 ok('rebuilt positions say nothing when history is too short for the span', ctx.ovHistPositions([row], 365, t0).posThen.length === 0);
+const secs = n => Math.floor((t0 - n * DAY) / 1000), IP = [[secs(366), 100], [secs(35), 200], [secs(8), 190], [secs(1), 180], [secs(0), 150]];
+const IM = ctx.ovIndexMoves(IP, t0);
+ok('index 1D is last close vs the one before', Math.abs(IM.d1 - (150 / 180 - 1) * 100) < 1e-9);
+ok('index 1W/1M/1Y use the close at or before that many days earlier', Math.abs(IM.w1 - (150 / 190 - 1) * 100) < 1e-9 && Math.abs(IM.m1 - (150 / 200 - 1) * 100) < 1e-9 && Math.abs(IM.y1 - 50) < 1e-9);
+ok('a span the data does not reach is null, not guessed', ctx.ovIndexMoves(IP.slice(1), t0).y1 === null && ctx.ovIndexMoves(IP.slice(1), t0).m1 !== null);
+ok('drawdown from the 1Y high', Math.abs(IM.fromHigh - (150 / 200 - 1) * 100) < 1e-9);
+ok('too little index data gives null', ctx.ovIndexMoves([[1, 2]], t0) === null && ctx.ovIndexMoves(null, t0) === null);
+const sp = ctx.ovSplitDecline([{ country: 'Silver' }, { country: 'India' }, { country: 'Unclassified' }, { country: 'Gold' }, { country: 'Other' }, { country: 'UK' }]);
+ok('decline-by-country keeps only real countries in the main list; commodities/other/unclassified go to their own list', sp.countries.map(r => r.country).join() === 'India,UK' && sp.other.length === 4);
+ok('Nifty, Sensex and FTSE 100 are always tracked', ['^NSEI', '^BSESN', '^FTSE'].every(y => ctx.OV_MARKETS.find(m => m.sym === y && m.always)));
+ok('market rows escape names and show no data honestly', /no data/.test(ctx.ovMarketRows([{ flag: 'x', name: '<b>', held: true, m: null }])) && !/<b>&lt/.test('') && /&lt;b&gt;/.test(ctx.ovMarketRows([{ flag: 'x', name: '<b>', m: null }])));
 ok('estimate path reports no reserved figure', O.reserved === null);
 ok('empty snapshot does not throw', ctx.ovHeadline(undefined).total === 0);
 console.log(`${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

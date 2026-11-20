@@ -101,6 +101,7 @@ async function loadOverview() {
     if (el) el.innerHTML = `<div style="color:var(--red);font-size:12px">Sector map error: ${e.message}</div>`;
   });
   loadInvestLine().catch(e => { const el = document.getElementById('ov-line-body'); if (el) el.innerHTML = `<div style="color:var(--red);font-size:12px">Line chart error: ${esc(e.message)}</div>`; });
+  loadMarketsHeld().catch(e => { const el = document.getElementById('ov-markets-body'); if (el) el.innerHTML = `<div style="color:var(--red);font-size:12px">Markets error: ${esc(e.message)}</div>`; });
   loadCountryDecline().catch(e => { const el = document.getElementById('ov-decline-body'); if (el) el.innerHTML = `<div style="color:var(--red);font-size:12px">Decline chart error: ${esc(e.message)}</div>`; });
   loadCountryMap().catch(e => {
     const el = document.getElementById('country-map');
@@ -338,6 +339,9 @@ function ovCountryDecline(posNow, posThen, weights) {
   });
   return Object.values(agg).filter(a => a.den > 0).map(a => ({ country: a.country, flag: a.flag, pct: a.num / a.den * 100, weight: a.den })).sort((a, b) => a.pct - b.pct);
 }
+const OV_NOT_COUNTRY = new Set(['Silver', 'Gold', 'Other', 'Unclassified']);
+function ovSplitDecline(rows) { return { countries: (rows || []).filter(r => !OV_NOT_COUNTRY.has(r.country)), other: (rows || []).filter(r => OV_NOT_COUNTRY.has(r.country)) }; }
+function ovDeclineSections(rows) { const x = ovSplitDecline(rows); return ovDeclineBars(x.countries) + (x.other.length ? '<div class="muted" style="font-size:12px;margin:10px 0 2px">Not countries (commodities, other, unclassified)</div>' + ovDeclineBars(x.other) : ''); }
 function ovDeclineBars(rows) {
   if (!rows || !rows.length) return '<div style="color:var(--muted);font-size:13px">No holdings with a price at both dates.</div>';
   const mx = Math.max(0.01, ...rows.map(r => Math.abs(r.pct)));
@@ -394,6 +398,49 @@ function ovHistPositions(rows, days, nowMs) {
   return { posNow, posThen, nowD, thenD, availableDays, spanDays: (tms(nowD) - tms(thenD)) / 864e5 };
 }
 
+// ── MARKETS I HOLD (index moves) ──
+// Public benchmark indices (Yahoo symbols), one or two per country. Which ones are marked "you hold" comes from your holdings' country weights
+// in the database; Nifty, Sensex and FTSE 100 are always shown. Moves are the index's own price change (not your holdings).
+const OV_MARKETS = [
+  { c: 'India', flag: '🇮🇳', name: 'Nifty 50', sym: '^NSEI', always: 1 }, { c: 'India', flag: '🇮🇳', name: 'Sensex', sym: '^BSESN', always: 1 },
+  { c: 'UK', flag: '🇬🇧', name: 'FTSE 100', sym: '^FTSE', always: 1 }, { c: 'USA', flag: '🇺🇸', name: 'S&P 500', sym: '^GSPC' }, { c: 'USA', flag: '🇺🇸', name: 'Nasdaq 100', sym: '^NDX' },
+  { c: 'Germany', flag: '🇩🇪', name: 'DAX', sym: '^GDAXI' }, { c: 'Japan', flag: '🇯🇵', name: 'Nikkei 225', sym: '^N225' }, { c: 'China', flag: '🇨🇳', name: 'SSE Composite', sym: '000001.SS' },
+  { c: 'Taiwan', flag: '🇹🇼', name: 'TAIEX', sym: '^TWII' }, { c: 'Italy', flag: '🇮🇹', name: 'FTSE MIB', sym: 'FTSEMIB.MI' }, { c: 'Spain', flag: '🇪🇸', name: 'IBEX 35', sym: '^IBEX' },
+  { c: 'Netherlands', flag: '🇳🇱', name: 'AEX', sym: '^AEX' }, { c: 'Poland', flag: '🇵🇱', name: 'WIG20', sym: 'WIG20.WA' }];
+// points: [[unixSeconds, close], …] daily. 1D = last close vs the one before; longer spans = last close vs the close at-or-before that many days earlier
+// (null when the data does not reach back that far); fromHigh = last vs the highest close in the data (drawdown).
+function ovIndexMoves(points, nowMs) {
+  const pts = (points || []).filter(p => p && Number.isFinite(+p[0]) && +p[1] > 0).map(p => [+p[0] * 1000, +p[1]]).filter(p => p[0] <= nowMs + 864e5).sort((a, b) => a[0] - b[0]);
+  if (pts.length < 2) return null;
+  const last = pts[pts.length - 1], at = d => { const cut = last[0] - d * 864e5; const c = pts.filter(p => p[0] <= cut).pop(); return c && (last[0] - c[0]) / 864e5 <= d + 6 ? c : null; };
+  const mv = d => { const c = at(d); return c ? (last[1] / c[1] - 1) * 100 : null; };
+  return { last: last[1], d1: (last[1] / pts[pts.length - 2][1] - 1) * 100, w1: mv(7), m1: mv(30), m3: mv(91), y1: mv(365), fromHigh: (last[1] / Math.max(...pts.map(p => p[1])) - 1) * 100, asOf: last[0] };
+}
+function ovMarketRows(rows) {
+  const f = v => v == null ? '<span style="color:var(--muted)">–</span>' : `<span style="color:${v < 0 ? 'var(--red,#f87171)' : 'var(--green,#4ade80)'}">${v > 0 ? '+' : ''}${v.toFixed(1)}%</span>`;
+  return rows.map(r => `<div style="padding:8px 0;border-top:1px solid var(--border,#2d3353)"><div style="display:flex;justify-content:space-between;gap:8px;font-size:14px"><span>${esc(r.flag)} <b>${esc(r.name)}</b>${r.held ? ' <span style="font-size:11px;color:var(--muted)">● you hold</span>' : ''}</span>`
+    + (r.m ? `<span>${Number(r.m.last).toLocaleString('en-GB', { maximumFractionDigits: 0 })}</span>` : '<span style="color:var(--muted)">no data</span>') + '</div>'
+    + (r.m ? `<div style="display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;margin-top:3px">${[['1D', r.m.d1], ['1W', r.m.w1], ['1M', r.m.m1], ['3M', r.m.m3], ['1Y', r.m.y1]].map(([k, v]) => `<span><span style="color:var(--muted)">${k}</span> ${f(v)}</span>`).join('')}<span><span style="color:var(--muted)">from 1Y high</span> ${f(r.m.fromHigh)}</span></div>` : '') + '</div>').join('');
+}
+let _ovMk = null;
+async function loadMarketsHeld() {
+  if (typeof IS_GUEST !== 'undefined' && IS_GUEST) return;
+  let card = document.getElementById('ov-markets');
+  if (!card) {
+    const anchor = document.getElementById('ov-decline') || document.getElementById('ov-formula') || document.getElementById('stats-strip'); if (!anchor) return;
+    anchor.insertAdjacentHTML('afterend', '<div class="card" id="ov-markets"><h3>Markets I hold</h3><div id="ov-markets-body"><div class="loading busy">Loading…</div></div><div class="muted" style="font-size:11px;margin-top:6px">Index moves (not your holdings), from Yahoo Finance daily closes. ● = a country in your holdings. Nifty, Sensex and FTSE 100 are always shown. "From 1Y high" is how far the index is below its highest close of the past year.</div></div>');
+  }
+  const body = document.getElementById('ov-markets-body');
+  let held = new Set(); try { (await api('instrument_country_weights', '?select=country')).forEach(r => held.add(r.country)); } catch (e) {}
+  const list = OV_MARKETS.filter(m => m.always || held.has(m.c));
+  if (!_ovMk || Date.now() - _ovMk.at > 9e5) _ovMk = { at: Date.now(), m: {} };
+  const one = async m => { if (m.sym in _ovMk.m) return;
+    try { const r = await fetch(`${PROXY}/chart`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: typeof SESSION_TOKEN !== 'undefined' ? SESSION_TOKEN : undefined, symbol: m.sym, range: '1y' }) });
+      const d = await r.json().catch(() => ({})); _ovMk.m[m.sym] = r.ok ? ovIndexMoves(d.points, Date.now()) : null; } catch (e) { _ovMk.m[m.sym] = null; } };
+  for (let i = 0; i < list.length; i += 4) await Promise.all(list.slice(i, i + 4).map(one));
+  body.innerHTML = ovMarketRows(list.map(m => ({ flag: m.flag, name: m.name, held: held.has(m.c), m: _ovMk.m[m.sym] })));
+}
+
 async function loadCountryDecline(range) {
   if (typeof IS_GUEST !== 'undefined' && IS_GUEST) return;
   let card = document.getElementById('ov-decline');
@@ -410,13 +457,13 @@ async function loadCountryDecline(range) {
   const pick = ovPickThen(snaps, days, Date.now());
   if (!pick.then) { try { const R = ovHistPositions(await api('pie_history', '?select=pie,series'), days, Date.now());
       if (R.posThen.length) { const w2 = {}; try { (await api('instrument_country_weights', '?select=ticker,country,flag,pct')).forEach(r => { (w2[r.ticker] = w2[r.ticker] || []).push(r); }); } catch (e) {}
-        body.innerHTML = `<div class="muted" style="font-size:12px;margin-bottom:4px">Rebuilt from your Trading 212 order history: ${R.spanDays.toFixed(0)} days to ${esc(R.nowD)} (daily closes, holdings you owned at the start)</div>` + ovDeclineBars(ovCountryDecline(R.posNow, R.posThen, w2)); return; } } catch (e) {}
+        body.innerHTML = `<div class="muted" style="font-size:12px;margin-bottom:4px">Rebuilt from your Trading 212 order history: ${R.spanDays.toFixed(0)} days to ${esc(R.nowD)} (daily closes, holdings you owned at the start)</div>` + ovDeclineSections(ovCountryDecline(R.posNow, R.posThen, w2)); return; } } catch (e) {}
   }
   if (!pick.then) { body.innerHTML = `<div style="color:var(--muted);font-size:13px">Not enough saved history for ${esc(range)} yet: the oldest snapshot is ${pick.oldestDays.toFixed(1)} days older than the latest. Pick a shorter span.</div>`; return; }
   const [posNow, posThen] = await Promise.all([api('positions', `?snapshot_id=eq.${pick.latest.id}&select=ticker,current_price,quantity`), api('positions', `?snapshot_id=eq.${pick.then.id}&select=ticker,current_price,quantity`)]);
   const weights = {}; try { (await api('instrument_country_weights', '?select=ticker,country,flag,pct')).forEach(r => { (weights[r.ticker] = weights[r.ticker] || []).push(r); }); } catch (e) {}
   const span = (pick.latest.t - pick.then.t) / 864e5;
-  body.innerHTML = `<div class="muted" style="font-size:12px;margin-bottom:4px">Latest vs ${span.toFixed(1)} days earlier (${esc(new Date(pick.then.t).toLocaleDateString('en-GB'))})</div>` + ovDeclineBars(ovCountryDecline(posNow, posThen, weights));
+  body.innerHTML = `<div class="muted" style="font-size:12px;margin-bottom:4px">Latest vs ${span.toFixed(1)} days earlier (${esc(new Date(pick.then.t).toLocaleDateString('en-GB'))})</div>` + ovDeclineSections(ovCountryDecline(posNow, posThen, weights));
 }
 
 async function loadInvestLine(range) {

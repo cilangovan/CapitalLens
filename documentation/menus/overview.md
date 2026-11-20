@@ -52,3 +52,11 @@ A collapsible line chart with 1D / 1W / 1M / 3M / 1Y buttons, like the Trading 2
 ### Longer spans (rebuilt history)
 
 Saved snapshots only exist for days you pressed Refresh. When a span has too few snapshots, both the line chart and the decline-by-country card fall back to `pie_history` (the same data as the Positions drill-down: holdings rebuilt from your Trading 212 order history, valued at daily closes) and say so on the card ("rebuilt from your Trading 212 order history"). The decline card uses each holding's price (value ÷ quantity) at both dates, only for holdings you owned at both. Snapshots win when they cover the span. Guarded by `tests/zk_overview_stale_test.mjs`.
+
+## Markets I hold (card)
+
+Index moves for the markets behind your holdings: 1D / 1W / 1M / 3M / 1Y change and how far each index is below its highest close of the past year ("from 1Y high"). Nifty 50, Sensex and FTSE 100 are always shown; other indices (S&P 500, Nasdaq 100, DAX, Nikkei 225, SSE Composite, TAIEX, FTSE MIB, IBEX 35, AEX, WIG20) appear when that country is in your holdings' country weights (`instrument_country_weights`), marked "you hold". Source: Yahoo Finance daily closes through the same `/chart` route as the watchlist (1y range, one call per index, cached 15 minutes). A span the data does not reach shows "–", and an index Yahoo does not return shows "no data"; nothing is guessed. These are the indices' own moves, not your holdings'.
+
+### Market decline by country: what counts as a country
+
+The decline-by-country card lists only real countries in its main list. Commodity funds (Silver, Gold), "Other" and "Unclassified" are shown under their own "Not countries" heading. Guarded by `tests/zk_overview_stale_test.mjs`.
