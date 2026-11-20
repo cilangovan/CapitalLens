@@ -7,7 +7,7 @@
   const ENCRYPTED = { portfolio_snapshots: 'portfolio_snapshots', portfolio_snapshots_all: 'portfolio_snapshots', positions: 'positions', positions_all: 'positions', alerts: 'alerts',
     analyst_ratings: 'analyst_ratings', holding_decisions: 'holding_decisions', value_buy_scores: 'value_buy_scores', strategy_recommendations: 'strategy_recommendations',
     profit_booking: 'profit_booking', profit_booking_summary: 'profit_booking_summary', returns_summary: 'returns_summary', realised_pnl: 'realised_pnl', dividends: 'dividends',
-    pie_history: 'pie_history', watchlist: 'watchlist', watchlist_analysis: 'watchlist_analysis', ipo_watch: 'ipo_watch' };
+    pie_history: 'pie_history', watchlist: 'watchlist', watchlist_analysis: 'watchlist_analysis', ipo_watch: 'ipo_watch', t212_orders: 't212_orders' };
   const SHARED = new Set(['instrument_exposure', 'instrument_country_weights', 'instrument_sector_weights', 'instruments', 'user_ui_prefs', 'market_cache', 'ipo_calendar', 'support_levels']);
   // JSON stored as text by the browser-side analysis. Parsed BEFORE defuse (which swaps every double quote), then defused as real data.
   const JSON_COLS = { value_buy_scores: ['entry_zones', 'scorecard', 'earnings', 'this_week'] };

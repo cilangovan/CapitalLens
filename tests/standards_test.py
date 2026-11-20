@@ -95,6 +95,10 @@ check("every graph range selector offers 1D 1W 1M 3M 6M 9M 1Y",
       and "['6m', '6M'], ['9m', '9M']" in src("docs/js/pie_drill.js") and "['3mo', '3M']" in src("docs/js/drilldown.js") and "['9mo', '9M']" in src("docs/js/drilldown.js")
       and "'1D', '1W', '1M', '3M', '6M', '9M'" in src("docs/js/returns.js"))
 check("CLAUDE.md records the same-time-ranges rule", "1D · 1W · 1M · 3M · 6M · 9M · 1Y" in doc)
+check("Recent purchases card (7 days, auto-expires, hidden when empty) is on every dashboard, documented, seeded in the demo and layout-tested",
+      all("recent.js" in (ROOT / f).read_text() for f in ["docs/index.html", "docs/demo/index.html", "docs/app/index.html", "docs/zkapp/index.html", "docs/zkapp-prod/index.html"])
+      and "RecentBuys.show" in (ROOT / "docs/js/positions.js").read_text() and "seed_demo_recent_buys" in (ROOT / "db/tenant/27_demo_recent_buys.sql").read_text()
+      and "Recent purchases" in (ROOT / "documentation/menus/positions.md").read_text() and (ROOT / "tests/recent_layout_test.py").exists() and (ROOT / "tests/zk_recent_test.mjs").exists())
 
 _ss = (ROOT / "services/strategy_service.py").read_text(); _zs = (ROOT / "docs/zk/strategy.js").read_text(); _js = (ROOT / "docs/js/strategy.js").read_text()
 check("strategy counts what was actually bought this week (issue #53 follow-up): browser + legacy + demo, shown on the card, parity-tested",

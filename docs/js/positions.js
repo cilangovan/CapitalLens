@@ -46,6 +46,8 @@ async function loadPositions() {
     container.appendChild(card);
   }
 
+  if (typeof RecentBuys !== 'undefined') RecentBuys.show(container, positions, { api, quote: fmtQuote, gbp: fmtGbpPlain });   // last 7 days of buys, auto-hides
+
   Object.entries(groups).forEach(([pieName, pos]) => {
     const totalPpl = pos.reduce((s,p) => s + (p.ppl||0), 0);
     const pl = pieLive(pieName);

@@ -444,6 +444,12 @@
   }
   @media(max-width:640px){ .pb-hold-head { grid-template-columns: 1fr 44px 64px 18px; } .pb-hold-head .pb-hide-sm { display:none; } }
   /* 5-check review box (Strategy: Holding Decisions + Entry Analysis) */
+  .rb-card .rb-note { font-size:11px; color:var(--muted); margin:2px 0 8px; }
+  .rb-row { display:flex; justify-content:space-between; align-items:flex-start; gap:10px; padding:8px 0; border-top:1px solid var(--border); }
+  .rb-main { min-width:0; flex:1; } .rb-name { font-weight:700; } .rb-pie { font-size:11px; color:var(--muted); }
+  .rb-sub { font-size:11px; color:var(--muted); overflow-wrap:anywhere; } .rb-sub.green { color:var(--green); } .rb-sub.red { color:var(--red); }
+  .rb-res { text-align:right; white-space:nowrap; font-weight:700; } .rb-na { font-size:12px; color:var(--muted); font-weight:400; }
+  .rb-total { padding-top:8px; border-top:1px solid var(--border); font-size:13px; text-align:right; }
   .fc-box { margin-top:10px; padding:10px 12px; background:var(--bg2); border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:8px; }
   .fc-head { font-size:12px; font-weight:700; } .fc-for { font-weight:400; color:var(--muted); margin-left:4px; word-break:break-word; }
   .fc-sub { font-size:11px; color:var(--muted); line-height:1.5; margin:4px 0 8px; }
@@ -715,6 +721,7 @@
 <script src="../js/positions.js"></script>
 <script src="../js/analyst.js"></script>
 <script src="../js/fivecheck.js"></script>
+<script src="../js/recent.js"></script>
 <script src="../js/strategy.js"></script>
 <script src="../js/support.js"></script>
 <script src="../js/profit.js"></script>

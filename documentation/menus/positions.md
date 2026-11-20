@@ -43,3 +43,7 @@ Each pie group is collapsible; state is remembered per user.
 ## Tests
 
 `tests/ui_layout_test.py`, `tests/zk_piehistory_test.mjs`.
+
+
+## Recent purchases (last 7 days)
+A card at the top of Positions tracks what you bought in the last 7 days, so a new investment can be followed without hunting for it. One row per ticker (several fills are combined at their weighted fill price) showing when it was bought, what you paid, your fill price, the latest price and the move **since purchase** (% and an estimated £). Source: your filled Trading 212 BUY orders against the latest price at your last Refresh, so it is an **estimate** (FX moves are not included) and only as fresh as the last Refresh. A purchase shows "N days left" and drops off by itself 7 days after it was filled; when nothing is left the card is not shown at all. If a holding has no latest price, or was sold, the row says "price n/a" / "not held now" instead of inventing a number. Collapsible like every card. Code: `docs/js/recent.js` (the private app reads orders through the encrypted store; the demo seeds two mock buys daily via `seed_demo_recent_buys`, `db/tenant/27_demo_recent_buys.sql`). Guarded by `tests/zk_recent_test.mjs` and `tests/recent_layout_test.py` (320/360/390px).
