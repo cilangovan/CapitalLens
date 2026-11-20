@@ -96,7 +96,13 @@ check("every graph range selector offers 1D 1W 1M 3M 6M 9M 1Y",
       and "'1D', '1W', '1M', '3M', '6M', '9M'" in src("docs/js/returns.js"))
 check("CLAUDE.md records the same-time-ranges rule", "1D · 1W · 1M · 3M · 6M · 9M · 1Y" in doc)
 
+_ss = (ROOT / "services/strategy_service.py").read_text(); _zs = (ROOT / "docs/zk/strategy.js").read_text(); _js = (ROOT / "docs/js/strategy.js").read_text()
+check("strategy counts what was actually bought this week (issue #53 follow-up): browser + legacy + demo, shown on the card, parity-tested",
+      "def contributions" in _ss and "function contributions" in _zs and "invested" in _js and "strategy_fill_invested" in (ROOT / "db/tenant/26_strategy_invested.sql").read_text()
+      and "bought this week" in (ROOT / "tests/zk_strategy_test.mjs").read_text())
+
 print("\nstandards: " + ("all good" if not bad else f"{bad} failed")); sys.exit(1 if bad else 0)
+
 
 # ── demo credentials never live in the repo (epic #32) ──
 import subprocess as _sp
@@ -169,3 +175,4 @@ _mk = (ROOT / "db/tenant/21_demo_markets.sql").read_text() if (ROOT / "db/tenant
 check("demo markets/watchlist/pie history/IPO are seeded, and only into demo-only tables (never the shared market_cache / ipo_calendar / institutional_flow_reports)",
       all(x in _mk for x in ["insert into public.demo_market_cache", "insert into public.demo_ipo_calendar", "insert into public.watchlist_analysis", "insert into public.pie_history", "public.seed_demo_markets(t)"])
       and not re.search(r"insert into public\.(market_cache|ipo_calendar|institutional_flow_reports)\b", _mk + _ins + _ret))
+

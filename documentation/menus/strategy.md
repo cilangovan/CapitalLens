@@ -69,3 +69,6 @@ The **Aggressive-mode** plan:
 ## Tests
 
 `tests/zk_strategy_test.mjs`, `tests/zk_flow_test.mjs`, `tests/zk_holding_value_test.mjs`, `tests/zk_shim_test.mjs` (Entry Analysis JSON regression), `tests/zk_support_levels_test.mjs` (Support Levels logic, stale warning, 200-week EMA, escaping, placement), `tests/zk_support_alert_test.mjs` (zone alerts), `tests/support_layout_test.py` (fits 320/360/390px, live and demo pages).
+
+## Bought so far this week (what you actually invested)
+The suggested weekly amount alone cannot know about purchases you already made, so the **This week** card and each pie recommendation also show what was bought: filled (and partly filled) Trading 212 **BUY** orders from Monday to today (week) and from the 1st (month), valued at the cash that left the account (`net_value`). The card reads "Bought £X · £Y left" or "£Z over"; each pie shows "bought £… · £… left", "done ✓" or "not bought yet". Notes add the month total against the £300 budget, buys outside your pies (not counted against a pie) and orders Trading 212 gave no value for (not counted, said so). If orders cannot be read the card says nothing rather than "nothing bought". Stored in `strategy_recommendations.invested` (legacy/demo) or inside the encrypted row (private app). Guarded by `tests/zk_strategy_test.mjs` (Python/browser parity, purchase scenarios).

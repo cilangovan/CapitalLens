@@ -22,7 +22,7 @@ import json
 import calendar
 import urllib.request
 import urllib.error
-from datetime import datetime, timezone, date
+from datetime import datetime, timezone, date, timedelta
 
 try:
     import yfinance as yf
@@ -87,6 +87,61 @@ def get_live_pies():
         return []
     pies = (rows[0].get("raw") or {}).get("pies") or []
     return [p["name"].strip() for p in pies if p.get("name")]
+
+
+def get_pie_of():
+    """ticker -> pie name, from the latest snapshot (same source as the live pie list)."""
+    rows = supabase_request("GET", "portfolio_snapshots?select=raw&order=id.desc&limit=1") or []
+    out = {}
+    for p in ((rows[0].get("raw") or {}).get("pies") or []) if rows else []:
+        for i in p.get("instruments") or []:
+            if p.get("name") and i.get("ticker"):
+                out[i["ticker"]] = p["name"].strip()
+    return out
+
+
+def week_start(d):
+    return d - timedelta(days=d.weekday())
+
+
+def contributions(orders, pie_of, today):
+    """What was actually bought: filled BUY orders (net_value = money out of the account) this week (Mon-Sun) and this month.
+    Mirrors docs/zk/strategy.js contributions(); the suggestion alone cannot know about purchases already made."""
+    ws, ms = week_start(today).isoformat(), today.replace(day=1).isoformat()
+    t = today.isoformat()
+    o = {"week": 0.0, "month": 0.0, "orders_week": 0, "orders_month": 0, "unpriced": 0, "week_start": ws, "month_start": ms,
+         "by_pie_week": {}, "outside_pies_week": 0.0, "source": "Trading 212 filled buy orders"}
+    for r in orders or []:
+        if not r or r.get("side") != "BUY" or r.get("status") not in ("FILLED", "PARTIALLY_FILLED"):
+            continue
+        day = str(r.get("filled_at") or "")[:10]
+        if not day or day < ms or day > t:
+            continue
+        try:
+            v = abs(float(r.get("net_value")))
+        except (TypeError, ValueError):
+            o["unpriced"] += 1
+            continue
+        o["month"] += v; o["orders_month"] += 1
+        if day >= ws:
+            o["week"] += v; o["orders_week"] += 1
+            pie = (pie_of or {}).get(r.get("ticker"))
+            if pie:
+                o["by_pie_week"][pie] = o["by_pie_week"].get(pie, 0.0) + v
+            else:
+                o["outside_pies_week"] += v
+    o["week"] = round(o["week"], 2); o["month"] = round(o["month"], 2); o["outside_pies_week"] = round(o["outside_pies_week"], 2)
+    o["by_pie_week"] = {k: round(v, 2) for k, v in o["by_pie_week"].items()}
+    return o
+
+
+def get_invested(today):
+    """None when Trading 212 orders cannot be read (the card then says nothing rather than claiming 'nothing bought')."""
+    ms = today.replace(day=1).isoformat()
+    rows = supabase_request("GET", f"t212_orders?select=ticker,side,status,filled_at,net_value&side=eq.BUY&filled_at=gte.{ms}T00:00:00Z&limit=2000")
+    if rows is None:
+        return None
+    return contributions(rows, get_pie_of(), today)
 
 
 def get_returns():
@@ -282,15 +337,20 @@ def run():
         print(f"  {pie:<18} w={w:.2f}  {' | '.join(why)}")
 
     alloc = allocate(weekly, weights)
+    inv = get_invested(today)
     recs = []
     for pie, amt in sorted(alloc.items(), key=lambda x: -x[1]):
         share = amt / weekly
-        recs.append({
+        r = {
             "pie": pie,
             "amount": amt,
             "reason": " · ".join(reasons[pie]),
             "priority": "HIGH" if share >= 0.25 else "MEDIUM" if share >= 0.12 else "LOW",
-        })
+        }
+        if inv is not None:
+            r["bought"] = round(inv["by_pie_week"].get(pie, 0.0), 2)
+            r["left"] = round(max(0.0, amt - r["bought"]), 2)
+        recs.append(r)
     skipped = [p for p in pies if p not in alloc]
 
     notes = [
@@ -310,6 +370,21 @@ def run():
         notes.append(f"📈 Annualised {ann_ret:.1f}% — above {TARGET_BASE:.0f}% base, chasing {TARGET_STRETCH:.0f}% stretch.")
     else:
         notes.append(f"✅ Annualised {ann_ret:.1f}% — at or above the {TARGET_STRETCH:.0f}% stretch target.")
+    if inv is not None:
+        wk = round(weekly); over = round(inv["week"] - wk)
+        if inv["orders_week"]:
+            n = inv["orders_week"]
+            notes.append(f"Bought so far this week: £{inv['week']:.2f} in {n} order{'' if n == 1 else 's'} (suggested £{wk:.0f}): "
+                         + (f"£{over:.0f} above this week's suggestion." if over > 0 else f"£{wk - inv['week']:.0f} still to place."))
+        else:
+            notes.append(f"Nothing bought yet this week (suggested £{wk:.0f}).")
+        m = inv["orders_month"]
+        notes.append(f"This month: £{inv['month']:.2f} bought of the £{MONTHLY_BUDGET_MAX} budget ({m} order{'' if m == 1 else 's'}), from {inv['source']}.")
+        if inv["outside_pies_week"] > 0:
+            notes.append(f"£{inv['outside_pies_week']:.2f} of this week's buys were outside your pies, so they are not counted against a pie below.")
+        if inv["unpriced"]:
+            u = inv["unpriced"]
+            notes.append(f"ℹ️ {u} order{'' if u == 1 else 's'} this month had no value from Trading 212 and {'is' if u == 1 else 'are'} not counted.")
     if skipped:
         notes.append("No money this week: " + ", ".join(f"{p} ({' · '.join(reasons[p][-1:])})" for p in skipped))
 
@@ -322,6 +397,7 @@ def run():
         "notes": notes,
         "weeks_in_month": weeks,
         "weekly_budget": round(weekly, 2),
+        "invested": inv,
         "market_mood": mood,
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }

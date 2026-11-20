@@ -521,17 +521,21 @@ async function loadStrategy() {
     const mood = s.market_mood || {};
     const moodIcon = ['😎','🙂','😨','😱'][mood.level ?? 1];
     const annTxt = s.annualised_return == null ? '—' : fmt(s.annualised_return)+'%';
+    // What was actually bought this week (filled Trading 212 buys). Missing = orders could not be read: say nothing rather than "nothing bought".
+    const iv = s.invested, gbp = n => '£' + (Number.isInteger(+n) ? (+n).toFixed(0) : (+n).toFixed(2));
+    const ivLeft = iv && Number.isFinite(+iv.week) ? (+s.total_suggested) - (+iv.week) : null;
+    const ivLine = ivLeft === null ? '' : `<div class="sub" style="${ivLeft < 0 ? 'color:#f59e0b' : ''}">Bought ${gbp(iv.week)} · ${ivLeft >= 0 ? gbp(ivLeft) + ' left' : gbp(-ivLeft) + ' over'}</div>`;
     stratHtml = `
       <div class="stats-strip" style="margin-bottom:16px">
         <div class="stat-card"><div class="label">Week</div><div class="value">${s.week_number} of ${s.weeks_in_month||4}</div><div class="sub">Aggressive</div></div>
-        <div class="stat-card"><div class="label">This week</div><div class="value green">£${s.total_suggested}</div><div class="sub">of £300/month</div></div>
+        <div class="stat-card"><div class="label">This week</div><div class="value green">£${s.total_suggested}</div><div class="sub">of £300/month</div>${ivLine}</div>
         <div class="stat-card"><div class="label">Market mood</div><div class="value">${moodIcon} ${mood.label||'—'}</div><div class="sub">VIX ${mood.vix ?? '—'}</div></div>
         <div class="stat-card"><div class="label">Annualised</div><div class="value ${s.annualised_return==null?'':clr(s.annualised_return)}">${annTxt}</div><div class="sub">${onTrack==null?'Building history':onTrack?'✓ Above 10% base':'✗ Below 10% base'} · stretch 15%</div></div>
       </div>
       <div class="card"><h3>Recommendations</h3>
         ${recs.map(r=>`<div class="rec-card priority-${r.priority||'LOW'}">
           <div><div class="rec-pie">${r.pie}</div><div class="rec-reason">${r.reason||''}</div></div>
-          <div class="rec-amount">£${r.amount}</div>
+          <div class="rec-amount">£${r.amount}${r.bought === undefined ? '' : `<div style="font-size:10px;font-weight:400;color:var(--muted)">${+r.bought > 0 ? 'bought ' + gbp(r.bought) + ' · ' + (+r.left > 0 ? gbp(r.left) + ' left' : 'done ✓') : 'not bought yet'}</div>`}</div>
         </div>`).join('')}
       </div>
       ${notes.length?`<div class="card"><h3>Notes</h3>${notes.map(n=>`<div style="font-size:12px;color:var(--muted);padding:3px 0">${n}</div>`).join('')}</div>`:''}`;
