@@ -422,23 +422,109 @@ function ovMarketRows(rows) {
     + (r.m ? `<span>${Number(r.m.last).toLocaleString('en-GB', { maximumFractionDigits: 0 })}</span>` : '<span style="color:var(--muted)">no data</span>') + '</div>'
     + (r.m ? `<div style="display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;margin-top:3px">${[['1D', r.m.d1], ['1W', r.m.w1], ['1M', r.m.m1], ['3M', r.m.m3], ['1Y', r.m.y1]].map(([k, v]) => `<span><span style="color:var(--muted)">${k}</span> ${f(v)}</span>`).join('')}<span><span style="color:var(--muted)">from 1Y high</span> ${f(r.m.fromHigh)}</span></div>` : '') + '</div>').join('');
 }
-let _ovMk = null;
+// Trend views for the index card. Series colours: the reference categorical palette (dark steps), one fixed slot per selected index; at most 4 lines at once.
+const OV_MK_COLORS = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#0ca30c', '#9085e9', '#e66767'];
+const OV_MK_RANGES = [['1M', 30], ['3M', 91], ['6M', 182], ['1Y', 365]];
+// % change since the start of the range for each day (start = close at or before the cut, else the first close).
+function ovRebase(points, days, nowMs) {
+  const pts = (points || []).filter(p => p && Number.isFinite(+p[0]) && +p[1] > 0).map(p => ({ t: +p[0] * 1000, v: +p[1] })).filter(p => p.t <= nowMs + 864e5).sort((a, b) => a.t - b.t);
+  if (pts.length < 2) return [];
+  const cut = pts[pts.length - 1].t - days * 864e5, k = Math.max(0, pts.findIndex(p => p.t > cut) - 1), base = pts[k].v;
+  return pts.slice(k).map(p => ({ t: p.t, pct: (p.v / base - 1) * 100 }));
+}
+// Week-by-week % change: last close of each calendar week (Mon-Sun, UTC) vs the last close of the week before; only weeks inside the range.
+function ovWeeklyChanges(points, days, nowMs) {
+  const pts = (points || []).filter(p => p && Number.isFinite(+p[0]) && +p[1] > 0).map(p => ({ t: +p[0] * 1000, v: +p[1] })).filter(p => p.t <= nowMs + 864e5).sort((a, b) => a.t - b.t);
+  const wk = t => { const d = new Date(t); return Math.floor((Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()) / 864e5 + 3) / 7); };
+  const lastOf = new Map(); pts.forEach(p => lastOf.set(wk(p.t), p));
+  const keys = [...lastOf.keys()].sort((a, b) => a - b), out = [], cut = (pts.length ? pts[pts.length - 1].t : 0) - days * 864e5;
+  for (let i = 1; i < keys.length; i++) { const a = lastOf.get(keys[i - 1]), b = lastOf.get(keys[i]); if (b.t > cut) out.push({ t: b.t, pct: (b.v / a.v - 1) * 100 }); }
+  return out;
+}
+function ovWeeklyStats(weeks) {
+  if (!weeks || !weeks.length) return null;
+  const down = weeks.filter(w => w.pct < 0).length, worst = weeks.reduce((m, w) => w.pct < m.pct ? w : m), best = weeks.reduce((m, w) => w.pct > m.pct ? w : m);
+  let run = 0, streak = 0; weeks.forEach(w => { run = w.pct < 0 ? run + 1 : 0; streak = Math.max(streak, run); });
+  return { n: weeks.length, down, worst, best, streak, avg: weeks.reduce((a, w) => a + w.pct, 0) / weeks.length };
+}
+const OV_SVG_W = 340, OV_SVG_H = 170, OV_PAD = { l: 38, r: 8, t: 8, b: 16 };
+function ovAxis(lo, hi) {
+  const y = v => OV_PAD.t + (hi - v) / (hi - lo || 1) * (OV_SVG_H - OV_PAD.t - OV_PAD.b), zero = lo < 0 && hi > 0, ticks = [lo, hi].filter(v => !zero || Math.abs(y(v) - y(0)) > 16);
+  if (zero) ticks.push(0);
+  return { y, grid: ticks.map(v => `<line x1="${OV_PAD.l}" x2="${OV_SVG_W - OV_PAD.r}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="${v === 0 ? '#6b7194' : '#2d3353'}" stroke-width="1"/><text x="${OV_PAD.l - 4}" y="${(y(v) + 3).toFixed(1)}" text-anchor="end" font-size="9" fill="#9aa0c3">${v > 0 ? '+' : ''}${v.toFixed(Math.abs(hi - lo) < 5 ? 1 : 0)}%</text>`).join('') };
+}
+function ovTrendSvg(series) {
+  const all = series.flatMap(x => x.pts); if (all.length < 2) return '';
+  const t0 = Math.min(...all.map(p => p.t)), t1 = Math.max(...all.map(p => p.t)), lo = Math.min(0, ...all.map(p => p.pct)), hi = Math.max(0, ...all.map(p => p.pct)), pad = (hi - lo) * 0.08 || 1, ax = ovAxis(lo - pad, hi + pad);
+  const x = t => OV_PAD.l + (t1 === t0 ? 0 : (t - t0) / (t1 - t0)) * (OV_SVG_W - OV_PAD.l - OV_PAD.r);
+  return { t0, t1, svg: `<svg id="ov-mk-svg" viewBox="0 0 ${OV_SVG_W} ${OV_SVG_H}" width="100%" height="${OV_SVG_H}" role="img" aria-label="Index change since the start of the range" style="touch-action:pan-y">${ax.grid}`
+    + series.map(sr => `<polyline fill="none" stroke="${sr.color}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="${sr.pts.map(p => x(p.t).toFixed(1) + ',' + ax.y(p.pct).toFixed(1)).join(' ')}"/>`).join('')
+    + series.map(sr => { const e = sr.pts[sr.pts.length - 1]; return `<circle cx="${x(e.t).toFixed(1)}" cy="${ax.y(e.pct).toFixed(1)}" r="4" fill="${sr.color}" stroke="#1a1d2e" stroke-width="2"/>`; }).join('')
+    + `<line id="ov-mk-cross" x1="0" x2="0" y1="${OV_PAD.t}" y2="${OV_SVG_H - OV_PAD.b}" stroke="#9aa0c3" stroke-width="1" visibility="hidden"/></svg>`, geom: { x0: OV_PAD.l, x1: OV_SVG_W - OV_PAD.r, W: OV_SVG_W } };
+}
+function ovBarsSvg(weeks) {
+  if (!weeks || !weeks.length) return '';
+  const lo = Math.min(0, ...weeks.map(w => w.pct)), hi = Math.max(0, ...weeks.map(w => w.pct)), pad = (hi - lo) * 0.08 || 1, ax = ovAxis(lo - pad, hi + pad), n = weeks.length, w = (OV_SVG_W - OV_PAD.l - OV_PAD.r) / n, bw = Math.max(2, w - 2);
+  return `<svg viewBox="0 0 ${OV_SVG_W} ${OV_SVG_H}" width="100%" height="${OV_SVG_H}" role="img" aria-label="Weekly % change">${ax.grid}`
+    + weeks.map((k, i) => { const y0 = ax.y(0), y1 = ax.y(k.pct), top = Math.min(y0, y1), h = Math.max(1, Math.abs(y1 - y0));
+      return `<rect data-i="${i}" x="${(OV_PAD.l + i * w + (w - bw) / 2).toFixed(1)}" y="${top.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="${Math.min(2, bw / 2)}" fill="${k.pct < 0 ? '#e66767' : '#0ca30c'}"/>`; }).join('') + '</svg>';
+}
+let _ovMk = null; const OV_MK = { view: 'trend', range: '3M', sel: null, bar: null, list: [], held: new Set(), colors: {} };
+const ovMkBtn = (attr, k, on) => `<button type="button" ${attr}="${k}" style="min-height:40px;min-width:48px;padding:0 10px;border-radius:8px;border:1px solid var(--border,#2d3353);background:${on ? 'var(--accent,#6366f1)' : 'transparent'};color:inherit;cursor:pointer">${esc(k)}</button>`;
+function ovMkColor(sym) { if (!OV_MK.colors[sym]) { const used = new Set(Object.entries(OV_MK.colors).filter(([k]) => OV_MK.sel.includes(k)).map(([, c]) => c)); OV_MK.colors[sym] = OV_MK_COLORS.find(c => !used.has(c)) || OV_MK_COLORS[0]; } return OV_MK.colors[sym]; }
+function ovMarketsRender() {
+  const body = document.getElementById('ov-markets-body'); if (!body) return;
+  const days = (OV_MK_RANGES.find(r => r[0] === OV_MK.range) || OV_MK_RANGES[1])[1], now = Date.now(), got = OV_MK.list.filter(m => _ovMk.m[m.sym]);
+  let h = `<div style="display:flex;gap:6px;flex-wrap:wrap">${[['trend', 'Trend'], ['bars', 'Weekly change'], ['table', 'Table']].map(([k, l]) => `<button type="button" data-mkv="${k}" style="min-height:40px;padding:0 12px;border-radius:8px;border:1px solid var(--border,#2d3353);background:${OV_MK.view === k ? 'var(--accent,#6366f1)' : 'transparent'};color:inherit;cursor:pointer">${l}</button>`).join('')}</div>`;
+  if (OV_MK.view === 'table') { body.innerHTML = h + ovMarketRows(OV_MK.list.map(m => ({ flag: m.flag, name: m.name, held: OV_MK.held.has(m.c), m: (_ovMk.m[m.sym] || {}).mv }))); return; }
+  h += `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${OV_MK_RANGES.map(([k]) => ovMkBtn('data-mkr', k, k === OV_MK.range)).join('')}</div>`;
+  h += `<div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0">${got.map(m => { const on = OV_MK.view === 'trend' ? OV_MK.sel.includes(m.sym) : OV_MK.bar === m.sym, c = on ? ovMkColor(m.sym) : 'transparent';
+    return `<button type="button" data-mks="${esc(m.sym)}" style="min-height:40px;padding:0 10px;border-radius:20px;border:1px solid ${on ? c : 'var(--border,#2d3353)'};background:transparent;color:inherit;cursor:pointer;font-size:12px"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${on ? c : '#4a5078'};margin-right:5px"></span>${esc(m.name)}</button>`; }).join('')}</div>`;
+  if (!got.length) { body.innerHTML = h + '<div style="color:var(--muted);font-size:13px">No index data came back from Yahoo Finance just now.</div>'; return; }
+  if (OV_MK.view === 'trend') {
+    const ser = OV_MK.sel.map(sym => got.find(m => m.sym === sym)).filter(Boolean).map(m => ({ m, color: ovMkColor(m.sym), pts: ovRebase(_ovMk.m[m.sym].pts, days, now) })).filter(x => x.pts.length > 1), T = ovTrendSvg(ser);
+    if (!T) { body.innerHTML = h + '<div style="color:var(--muted);font-size:13px">Pick up to 4 indices above to draw their trend.</div>'; return; }
+    h += `<div id="ov-mk-read" style="font-size:12px;min-height:34px;margin:4px 0">Touch the chart to read a day. Each line starts at 0% at the beginning of the range.</div><div id="ov-mk-wrap">${T.svg}</div>`
+      + `<div style="display:flex;flex-wrap:wrap;gap:4px 14px;font-size:12px;margin-top:4px">${ser.map(x => `<span><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${x.color};margin-right:4px"></span>${esc(x.m.name)} <b style="color:${x.pts[x.pts.length - 1].pct < 0 ? 'var(--red,#f87171)' : 'var(--green,#4ade80)'}">${x.pts[x.pts.length - 1].pct > 0 ? '+' : ''}${x.pts[x.pts.length - 1].pct.toFixed(1)}%</b></span>`).join('')}</div>`;
+    body.innerHTML = h;
+    const wrap = document.getElementById('ov-mk-wrap'), read = document.getElementById('ov-mk-read'), cross = document.getElementById('ov-mk-cross'), svg = document.getElementById('ov-mk-svg');
+    const move = e => { const r = svg.getBoundingClientRect(), fx = (e.clientX - r.left) / r.width * T.geom.W, f = Math.min(1, Math.max(0, (fx - T.geom.x0) / (T.geom.x1 - T.geom.x0))), t = T.t0 + f * (T.t1 - T.t0);
+      cross.setAttribute('x1', T.geom.x0 + f * (T.geom.x1 - T.geom.x0)); cross.setAttribute('x2', T.geom.x0 + f * (T.geom.x1 - T.geom.x0)); cross.setAttribute('visibility', 'visible');
+      read.innerHTML = esc(new Date(t).toLocaleDateString('en-GB')) + ' · ' + ser.map(x => { const p = x.pts.reduce((m, q) => Math.abs(q.t - t) < Math.abs(m.t - t) ? q : m); return `<span style="color:var(--muted)">${esc(x.m.name)}</span> ${p.pct > 0 ? '+' : ''}${p.pct.toFixed(1)}%`; }).join(' · '); };
+    wrap.addEventListener('pointermove', move); wrap.addEventListener('pointerdown', move);
+  } else {
+    const m = got.find(x => x.sym === OV_MK.bar) || got[0], wk = ovWeeklyChanges(_ovMk.m[m.sym].pts, days, now), st = ovWeeklyStats(wk);
+    if (!st) { body.innerHTML = h + '<div style="color:var(--muted);font-size:13px">Not enough weekly data for this span.</div>'; return; }
+    const d = t => new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }), f = v => `${v > 0 ? '+' : ''}${v.toFixed(1)}%`;
+    h += `<div id="ov-mk-read" style="font-size:12px;min-height:34px;margin:4px 0">Weekly % change of ${esc(m.name)}. Touch a bar to read its week.</div><div id="ov-mk-wrap">${ovBarsSvg(wk)}</div>`
+      + `<div style="font-size:12px;margin-top:4px;line-height:1.6">${st.down} of ${st.n} weeks down · worst week <b style="color:var(--red,#f87171)">${f(st.worst.pct)}</b> (w/e ${d(st.worst.t)}) · best <b style="color:var(--green,#4ade80)">${f(st.best.pct)}</b> (w/e ${d(st.best.t)}) · longest losing run ${st.streak} wk${st.streak === 1 ? '' : 's'} · average ${f(st.avg)}/wk</div>`;
+    body.innerHTML = h;
+    const read = document.getElementById('ov-mk-read'); document.getElementById('ov-mk-wrap').addEventListener('pointerdown', e => { const r = e.target.closest('rect[data-i]'); if (r) { const k = wk[+r.dataset.i]; read.textContent = `Week ending ${new Date(k.t).toLocaleDateString('en-GB')}: ${f(k.pct)}`; } });
+  }
+}
 async function loadMarketsHeld() {
   if (typeof IS_GUEST !== 'undefined' && IS_GUEST) return;
   let card = document.getElementById('ov-markets');
   if (!card) {
     const anchor = document.getElementById('ov-decline') || document.getElementById('ov-formula') || document.getElementById('stats-strip'); if (!anchor) return;
-    anchor.insertAdjacentHTML('afterend', '<div class="card" id="ov-markets"><h3>Markets I hold</h3><div id="ov-markets-body"><div class="loading busy">Loading…</div></div><div class="muted" style="font-size:11px;margin-top:6px">Index moves (not your holdings), from Yahoo Finance daily closes. ● = a country in your holdings. Nifty, Sensex and FTSE 100 are always shown. "From 1Y high" is how far the index is below its highest close of the past year.</div></div>');
+    anchor.insertAdjacentHTML('afterend', '<div class="card" id="ov-markets"><h3>Markets I hold</h3><div id="ov-markets-body"><div class="loading busy">Loading…</div></div><div class="muted" style="font-size:11px;margin-top:6px">Index moves (not your holdings), from Yahoo Finance daily closes. ● = a country in your holdings. Nifty, Sensex and FTSE 100 are always shown. Trend: every line starts at 0% at the start of the range. Weekly change: each bar is one week\'s % move. "From 1Y high" is how far the index is below its highest close of the past year.</div></div>');
+    document.getElementById('ov-markets').addEventListener('click', e => { const b = e.target.closest('button'); if (!b || !_ovMk) return;
+      if (b.dataset.mkv) OV_MK.view = b.dataset.mkv; else if (b.dataset.mkr) OV_MK.range = b.dataset.mkr;
+      else if (b.dataset.mks) { const y = b.dataset.mks; if (OV_MK.view === 'bars') OV_MK.bar = y; else if (OV_MK.sel.includes(y)) OV_MK.sel = OV_MK.sel.filter(z => z !== y); else OV_MK.sel = OV_MK.sel.concat(y).slice(-4); }
+      ovMarketsRender(); });
   }
   const body = document.getElementById('ov-markets-body');
-  let held = new Set(); try { (await api('instrument_country_weights', '?select=country')).forEach(r => held.add(r.country)); } catch (e) {}
+  const held = new Set(); try { (await api('instrument_country_weights', '?select=country')).forEach(r => held.add(r.country)); } catch (e) {}
   const list = OV_MARKETS.filter(m => m.always || held.has(m.c));
   if (!_ovMk || Date.now() - _ovMk.at > 9e5) _ovMk = { at: Date.now(), m: {} };
   const one = async m => { if (m.sym in _ovMk.m) return;
     try { const r = await fetch(`${PROXY}/chart`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: typeof SESSION_TOKEN !== 'undefined' ? SESSION_TOKEN : undefined, symbol: m.sym, range: '1y' }) });
-      const d = await r.json().catch(() => ({})); _ovMk.m[m.sym] = r.ok ? ovIndexMoves(d.points, Date.now()) : null; } catch (e) { _ovMk.m[m.sym] = null; } };
+      const d = await r.json().catch(() => ({})), mv = r.ok ? ovIndexMoves(d.points, Date.now()) : null; _ovMk.m[m.sym] = mv ? { mv, pts: d.points } : null; } catch (e) { _ovMk.m[m.sym] = null; } };
   for (let i = 0; i < list.length; i += 4) await Promise.all(list.slice(i, i + 4).map(one));
-  body.innerHTML = ovMarketRows(list.map(m => ({ flag: m.flag, name: m.name, held: held.has(m.c), m: _ovMk.m[m.sym] })));
+  OV_MK.list = list; OV_MK.held = held;
+  if (!OV_MK.sel) OV_MK.sel = list.filter(m => m.always && _ovMk.m[m.sym]).map(m => m.sym).slice(0, 4);
+  if (!OV_MK.bar || !_ovMk.m[OV_MK.bar]) OV_MK.bar = (list.find(m => _ovMk.m[m.sym]) || {}).sym || null;
+  ovMarketsRender();
 }
 
 async function loadCountryDecline(range) {
