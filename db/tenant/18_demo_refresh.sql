@@ -18,6 +18,7 @@ end $$;
 create or replace function public.demo_parity() returns jsonb language plpgsql security definer set search_path = '' as $$
 declare t uuid; r record; n bigint; out jsonb := '[]'::jsonb;
 begin
+  if not (public.ops_is_admin() or (auth.uid() is null and session_user in ('postgres', 'supabase_admin'))) then raise exception 'not allowed' using errcode = '42501'; end if;
   select id into t from auth.users where email = (select value #>> '{}' from public.demo_settings where key = 'template_email');
   for r in select * from (values
       ('portfolio_snapshots','Overview, Investments line', true), ('positions','Positions, P&L bubbles, decline by country', true), ('alerts','Alerts inbox', true),
