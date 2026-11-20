@@ -61,7 +61,20 @@
     });
     return sortRows(list);
   }
-  const mine = (rows, watched, today) => sortRows(phased(rows, today).filter(r => !!(watched && watched.has(r.id))));
+  // My IPO list. order = Map id -> place (your ▲ ▼ arrangement): arranged IPOs first, then the rest in the automatic order (phase, then date).
+  const mine = (rows, watched, today, order) => {
+    const m = sortRows(phased(rows, today).filter(r => !!(watched && watched.has(r.id)))); if (!order || !order.size) return m;
+    const has = r => order.has(r.id); return m.filter(has).sort((a, b) => order.get(a.id) - order.get(b.id) || (a.id < b.id ? -1 : 1)).concat(m.filter(r => !has(r)));
+  };
+  // Move one id up (-1) or down (+1): the new order, or null when it is already at that end.
+  const moved = (ids, id, dir) => { const k = ids.indexOf(id), n = k + dir; if (k < 0 || n < 0 || n >= ids.length) return null; const o = ids.slice(); o[k] = o[n]; o[n] = id; return o; };
+  // Arrange mode: a compact row with big ▲ ▼ buttons instead of the full card.
+  function arrangeCard(r, pos, total) {
+    const tone = (PHASE[r._phase] || PHASE.rumoured)[1], id = esc(r.id), nm = esc(r.name);
+    return `<div class="ipo-card ipo-${esc(tone || 'n')} ipo-arr"><span class="w-rank">${pos + 1}</span><div class="ipo-name"><b>${nm}</b>${r.ticker ? ` <span class="w-dim">${esc(r.ticker)}</span>` : ''}</div>
+      <div class="w-mv"><button type="button" data-ipo-mv="${id}" data-dir="-1" aria-label="Move ${nm} up"${pos === 0 ? ' disabled' : ''}>▲</button>
+      <button type="button" data-ipo-mv="${id}" data-dir="1" aria-label="Move ${nm} down"${pos === total - 1 ? ' disabled' : ''}>▼</button></div></div>`;
+  }
 
   // inList = the card sits in "My IPO list" (shows the ✕). Search results show a Bookmark button instead.
   function card(r, today, watched, inList) {
@@ -95,13 +108,16 @@
       <div class="ipo-filters"><div class="w-cats">${chips}</div>
         <label class="ipo-ex"><span class="w-dim">Exchange</span><select data-ipo-ex aria-label="Filter by exchange"><option value="ALL">All exchanges</option>${ex}</select></label></div>`;
   }
-  function body(rows, f, today, watched) {
-    watched = watched || null;
+  function body(rows, f, today, watched, ui) {
+    watched = watched || null; ui = ui || {};
     let out = '';
     if (watched) {
-      const m = mine(rows, watched, today);
+      const m = mine(rows, watched, today, ui.order), arr = !!ui.arrange && m.length > 1;
       out += `<div class="ipo-sec">⭐ My IPO list <span class="a-count">${m.length}</span></div>`
-        + (m.length ? m.map(r => card(r, today, watched, true)).join('') : '<div class="w-dim" style="padding:6px 4px 14px">Nothing here yet. Search above, then tap ☆ Bookmark on an IPO to add it.</div>');
+        + (m.length > 1 ? `<div class="ipo-arr-bar"><button type="button" class="w-pick${arr ? ' on' : ''}" data-ipo-arrange="${arr ? 0 : 1}" aria-pressed="${arr}">${arr ? '✓ Done' : '⇅ Arrange'}</button>`
+          + (arr && ui.order && ui.order.size ? '<button type="button" class="w-pick" data-ipo-reset="1">↺ Automatic order</button>' : '') + '</div>'
+          + (arr ? '<div class="w-dim w-small" style="margin:0 0 8px">Tap ▲ ▼ to move an IPO. Your order is saved to your login.</div>' : '') : '')
+        + (m.length ? (arr ? m.map((r, k) => arrangeCard(r, k, m.length)) : m.map(r => card(r, today, watched, true))).join('') : '<div class="w-dim" style="padding:6px 4px 14px">Nothing here yet. Search above, then tap ☆ Bookmark on an IPO to add it.</div>');
     }
     if (isActive(f)) {
       const res = search(rows, f, today);
@@ -112,23 +128,24 @@
     }
     return out;
   }
-  function html(rows, f, today, watched) {
-    return `${controls(rows, f)}<div id="ipo-body">${body(rows, f, today, watched)}</div>
+  function html(rows, f, today, watched, ui) {
+    return `${controls(rows, f)}<div id="ipo-body">${body(rows, f, today, watched, ui)}</div>
       <div class="w-dim w-small">Opens/closes = subscription window (US: roadshow launch / expected pricing). Ratings are third-party and show their source; “Not rated” means no source rates it. Information only, not advice.</div>`;
   }
 
-  const S = { f: { q: '', country: 'ALL', exchange: 'ALL' }, rows: [], loaded: false, error: null, watched: null, msg: '', busy: new Set() };
+  const S = { f: { q: '', country: 'ALL', exchange: 'ALL' }, rows: [], loaded: false, error: null, watched: null, msg: '', busy: new Set(), order: new Map(), arrange: false, timer: null };
+  const uiOf = () => ({ order: S.order, arrange: S.arrange });
   const todayIso = () => new Date().toISOString().slice(0, 10);
   const msgHtml = () => (S.msg ? `<div style="color:var(--red);padding:6px 2px;font-size:12px">${esc(S.msg)}</div>` : '');
   function paint() {          // everything (controls too): after loading and when a country chip is tapped
     const el = typeof document !== 'undefined' && document.getElementById('ipo-content');
     if (!el) return;
-    el.innerHTML = S.error ? `<div style="color:var(--red);padding:8px">Could not load the IPO calendar: ${esc(S.error)}</div>` : msgHtml() + html(S.rows, S.f, todayIso(), S.watched);
+    el.innerHTML = S.error ? `<div style="color:var(--red);padding:8px">Could not load the IPO calendar: ${esc(S.error)}</div>` : msgHtml() + html(S.rows, S.f, todayIso(), S.watched, uiOf());
   }
   function paintBody() {      // only the results, so the search box keeps focus while typing
     const b = typeof document !== 'undefined' && document.getElementById('ipo-body');
     if (!b) return paint();
-    b.innerHTML = msgHtml() + body(S.rows, S.f, todayIso(), S.watched);
+    b.innerHTML = msgHtml() + body(S.rows, S.f, todayIso(), S.watched, uiOf());
   }
   async function loadIpo() {
     const el = document.getElementById('ipo-content');
@@ -139,8 +156,9 @@
       S.rows = await r.json(); S.error = null;
     } catch (e) { S.error = e.message; }
     try {                                   // per-user list (encrypted in the private app); where it is not offered, search works but there is nothing to bookmark into
-      const w = await fetch(`${PROXY}/ipo_watch?select=id`);
-      S.watched = w.ok ? new Set((await w.json()).map(x => x.id)) : null;
+      const w = await fetch(`${PROXY}/ipo_watch?select=id,sort_order`), got = w.ok ? await w.json() : null;
+      S.watched = got ? new Set(got.map(x => x.id)) : null;
+      S.order = new Map((got || []).filter(x => Number.isFinite(x.sort_order)).map(x => [x.id, x.sort_order]));
     } catch (e) { S.watched = null; }
     S.loaded = true; paint();
   }
@@ -148,17 +166,36 @@
   async function toggleWatch(id) {
     if (!S.watched || !ID_RE.test(id) || S.busy.has(id)) return;
     const was = S.watched.has(id);
-    S.busy.add(id); S.msg = ''; was ? S.watched.delete(id) : S.watched.add(id); paintBody();
+    S.busy.add(id); S.msg = ''; was ? (S.watched.delete(id), S.order.delete(id)) : S.watched.add(id); paintBody();
     try {
       const r = await fetch(`${PROXY}/ipo/${was ? 'unwatch' : 'watch'}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
       if (!r.ok) throw new Error(`${r.status}`);
     } catch (e) { was ? S.watched.add(id) : S.watched.delete(id); S.msg = `Could not ${was ? 'remove' : 'save'} that IPO (${e.message}). Try again.`; }
     S.busy.delete(id); paintBody();
   }
+  // ▲ ▼ in Arrange mode: the change shows at once; the whole order is saved shortly after the last tap (encrypted with your list in the private app).
+  function saveOrder(ids) {
+    clearTimeout(S.timer);
+    S.timer = setTimeout(async () => {
+      try { const r = await fetch(`${PROXY}/ipo/order`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ order: ids }) }); if (!r.ok) throw new Error(`${r.status}`); }
+      catch (e) { S.msg = `Could not save the order (${e.message}). Try again.`; paintBody(); }
+    }, 400);
+  }
+  function moveIpo(id, dir) {
+    if (!S.watched || !ID_RE.test(id)) return;
+    const ids = mine(S.rows, S.watched, todayIso(), S.order).map(r => r.id), next = moved(ids, id, dir); if (!next) return;
+    S.order = new Map(next.map((x, k) => [x, k])); S.msg = ''; paintBody();
+    if (typeof document !== 'undefined') { const b = document.querySelector(`[data-ipo-mv="${id}"][data-dir="${dir}"]`); if (b) { b.focus(); b.scrollIntoView({ block: 'nearest' }); } }
+    saveOrder(next);
+  }
+  function resetOrder() { S.order = new Map(); S.msg = ''; paintBody(); saveOrder([]); }
   if (typeof document !== 'undefined') {
     const tgt = e => (e.target && e.target.closest ? e.target : null);
     document.addEventListener('click', e => {
       const t = tgt(e); if (!t) return;
+      const mv = t.closest('[data-ipo-mv]'); if (mv) { moveIpo(mv.getAttribute('data-ipo-mv'), mv.getAttribute('data-dir') === '-1' ? -1 : 1); return; }
+      const ar = t.closest('[data-ipo-arrange]'); if (ar) { S.arrange = ar.getAttribute('data-ipo-arrange') === '1'; paintBody(); return; }
+      if (t.closest('[data-ipo-reset]')) { resetOrder(); return; }
       const w = t.closest('[data-ipo-watch]'); if (w) { toggleWatch(w.getAttribute('data-ipo-watch')); return; }
       const b = t.closest('[data-ipo-co]');
       if (b && MARKETS.some(m => m[0] === b.getAttribute('data-ipo-co'))) { S.f.country = b.getAttribute('data-ipo-co'); S.msg = ''; paint(); }
@@ -167,6 +204,6 @@
     document.addEventListener('change', e => { const t = tgt(e); if (t && t.matches('[data-ipo-ex]')) { S.f.exchange = String(t.value || 'ALL'); paintBody(); } });
     root.loadIpo = loadIpo;
   }
-  root.IPO = { html, search, mine, exchanges, isActive, phaseOf, fmtDate, fmtPrice, fmtSize, toggleWatch, _state: S };
+  root.IPO = { html, search, mine, exchanges, isActive, phaseOf, fmtDate, fmtPrice, fmtSize, toggleWatch, moved, moveIpo, resetOrder, _state: S };
   if (typeof module !== 'undefined' && module.exports) module.exports = root.IPO;
 })(typeof window !== 'undefined' ? window : globalThis);

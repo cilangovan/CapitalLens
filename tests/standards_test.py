@@ -130,6 +130,7 @@ _wlj = (ROOT / "docs/js/watchlist.js").read_text(); _wls = (ROOT / "docs/zk/shim
 check("Watchlist order: ▲▼ arrange mode saves per user (encrypted sort_order in the private app, worker + column on legacy), never as plaintext prefs",
       all(x in _wlj for x in ["wlMove", "wlArrange", "/watchlist/order", "wlResetOrder"]) and "route === 'watchlist/order'" in _wls and "sort_order" in _wls
       and "/watchlist/order" in _wlw and "add column if not exists sort_order" in (ROOT / "db/tenant/24_watchlist_order.sql").read_text()
+      and "route === 'ipo/order'" in _wls and all(x in (ROOT / "docs/js/ipo.js").read_text() for x in ["data-ipo-mv", "/ipo/order", "sort_order"]) and "user_ui_prefs" not in (ROOT / "docs/js/ipo.js").read_text()
       and "user_ui_prefs" not in _wlj and "min-width:40px; min-height:40px" in (ROOT / "docs/index.html").read_text() and "min-width:40px; min-height:40px" in (ROOT / "docs/demo/index.html").read_text())
 
 _ret = (ROOT / "db/tenant/20_demo_returns.sql").read_text() if (ROOT / "db/tenant/20_demo_returns.sql").exists() else ""

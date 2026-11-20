@@ -96,7 +96,7 @@ Nothing runs while the app is closed. The browser build and the Python services 
 | `institutional_flow_reports`, `holding_decisions`, `value_buy_scores`, `strategy_recommendations`, `support_levels` (public; demo copy `demo_support_levels`) | Strategy |
 | `profit_booking`, `profit_booking_summary` | Profit Booking |
 | `returns_summary`, `realised_pnl`, `dividends` | Returns |
-| `watchlist`, `watchlist_analysis`, `ipo_calendar`, `ipo_watch` (encrypted) | Watchlist & IPO Watch (card order = `sort_order` inside the encrypted watchlist row; legacy plaintext table has `watchlist.sort_order`, migration 24) |
+| `watchlist`, `watchlist_analysis`, `ipo_calendar`, `ipo_watch` (encrypted) | Watchlist & IPO Watch (card order = `sort_order` inside the encrypted watchlist row; legacy plaintext table has `watchlist.sort_order`, migration 24; My IPO list order = `sort_order` inside each encrypted `ipo_watch` row) |
 | `alerts` | Alerts, Overview "Active Alerts" |
 | `user_ui_prefs` | Collapsed/expanded cards everywhere |
 

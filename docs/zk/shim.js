@@ -36,6 +36,16 @@
         const v = Number(body.value); if (!/^[a-z_]{3,40}$/.test(body.key || '') || !Number.isFinite(v) || v < 0 || v > 1e6) return json(400, { error: 'Bad setting' });
         await opts.store.put('app_settings', [{ key: body.key, value: String(v) }], r => r.key); return json(200, { ok: true, value: v });
       }
+      if (route === 'ipo/order') {                              // My IPO list order: sort_order inside each encrypted ipo_watch row (server never sees which IPOs or their order)
+        if (method !== 'POST') return json(405, { error: 'Method not allowed' });
+        let body = {}; try { body = JSON.parse(init.body || '{}'); } catch (e) {}
+        const order = body.order; if (!Array.isArray(order) || order.length > 300 || !order.every(t => typeof t === 'string' && /^[A-Z]{2,5}:[A-Z0-9_.\-]{1,40}$/.test(t))) return json(400, { error: 'Bad order' });
+        const rank = new Map(order.map((t, k) => [t, k])), changed = [];
+        (await opts.store.load('ipo_watch')).forEach(r => { const want = rank.has(r.id) ? rank.get(r.id) : null, had = Number.isFinite(r.sort_order) ? r.sort_order : null;
+          if (want !== had) { const o = Object.assign({}, r); if (want === null) delete o.sort_order; else o.sort_order = want; changed.push(o); } });
+        if (changed.length) await opts.store.put('ipo_watch', changed, r => r.id);
+        return json(200, { ok: true, updated: changed.length });
+      }
       if (/^ipo\/(watch|unwatch)$/.test(route)) {                // per-user IPO watch list, stored encrypted like the stock watchlist
         if (method !== 'POST') return json(405, { error: 'Method not allowed' });
         let body = {}; try { body = JSON.parse(init.body || '{}'); } catch (e) {}

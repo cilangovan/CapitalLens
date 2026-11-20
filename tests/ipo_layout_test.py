@@ -27,6 +27,16 @@ with sync_playwright() as p:
               return { sideways: document.documentElement.scrollWidth > W, out: out.slice(0, 5) }; }""")
             if over["sideways"] or over["out"]:
                 bad += 1; print(f"✗ {w}px {mk}: {over}")
+        # Arrange mode ("My IPO list" rows with ▲ ▼): fits the phone, buttons >= 40px, real taps reorder
+        pg.evaluate("([rows]) => { document.getElementById('ipo-content').innerHTML = IPO.html(rows, { q: '', country: 'ALL', exchange: 'ALL' }, '2026-11-19', new Set(rows.slice(0, 4).map(r => r.id)), { arrange: true, order: new Map([[rows[0].id, 0]]) }); }", [rows])
+        over = pg.evaluate("""() => { const W = document.documentElement.clientWidth, out = [];
+          document.querySelectorAll('#ipo-body *').forEach(e => { const r = e.getBoundingClientRect(); if (r.width && (r.right > W + 1 || r.left < -1)) out.push(e.className || e.tagName); });
+          const small = [...document.querySelectorAll('.w-mv button, .ipo-arr-bar .w-pick')].filter(e => { const r = e.getBoundingClientRect(); return r.height < 39.5 || (e.closest('.w-mv') && r.width < 39.5); }).length;
+          return { sideways: document.documentElement.scrollWidth > W, out: out.slice(0, 5), small, rows: document.querySelectorAll('.ipo-arr').length }; }""")
+        if over["sideways"] or over["out"] or over["small"] or over["rows"] != 4:
+            bad += 1; print(f"✗ {w}px arrange: {over}")
+        if w == 360:
+            pg.screenshot(path="/tmp/ipo_arrange360.png")
         pg.close()
     b.close()
 print("✓ IPO card fits 320/360/390px with every country filter, My list and search results" if not bad else f"{bad} layout problem(s)")

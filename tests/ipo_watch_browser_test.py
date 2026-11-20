@@ -8,11 +8,12 @@ ROOT = Path(__file__).resolve().parent.parent
 css = "\n".join(re.findall(r"<style>(.*?)</style>", (ROOT / "docs/index.html").read_text(), re.S))
 rows = json.loads((ROOT / "config/ipo_calendar.json").read_text())["ipos"]
 FAKE = """(() => {
-  window.PROXY = 'https://fake/rest/v1'; window.__watch = []; window.__fail = false; window.__posts = [];
+  window.PROXY = 'https://fake/rest/v1'; window.__watch = []; window.__fail = false; window.__posts = []; window.__order = []; window.__orderPosts = [];
   window.fetch = async (u, o) => {
     const ok = b => ({ ok: true, status: 200, json: async () => b });
     if (u.endsWith('/ipo_calendar?select=*&limit=500')) return ok(%s);
-    if (u.endsWith('/ipo_watch?select=id')) return ok(window.__watch.map(id => ({ id })));
+    if (u.endsWith('/ipo_watch?select=id,sort_order')) return ok(window.__watch.map(id => window.__order.includes(id) ? { id, sort_order: window.__order.indexOf(id) } : { id }));
+    if (u.endsWith('/ipo/order')) { const b = JSON.parse(o.body); window.__orderPosts.push(b.order); if (window.__fail) return { ok: false, status: 500, json: async () => ({}) }; window.__order = b.order; return ok({ ok: true }); }
     if (/\\/ipo\\/(un)?watch$/.test(u)) { const b = JSON.parse(o.body); window.__posts.push([u.split('/').pop(), b.id]); if (window.__fail) return { ok: false, status: 500, json: async () => ({}) };
       window.__watch = u.endsWith('/unwatch') ? window.__watch.filter(x => x !== b.id) : [...new Set([...window.__watch, b.id])]; return ok({ ok: true }); }
     return { ok: false, status: 404, json: async () => ({}) };
@@ -58,6 +59,31 @@ with sync_playwright() as p:
     check("the Bookmark button is a comfortable tap target (>= 40px tall, fits the 390px screen)", btn["height"] >= 40 and btn["x"] >= 0 and btn["x"] + btn["width"] <= 390)
     sel = pg.locator("[data-ipo-ex]").bounding_box()
     check("the exchange filter is a 40px tap target inside the screen", sel["height"] >= 39.5 and sel["x"] + sel["width"] <= 390)
+    # ⇅ Arrange: real taps reorder My IPO list, the order is saved, and survives a reload (logout / login)
+    pg.evaluate("window.__fail = false"); pg.fill("[data-ipo-q]", "")
+    for q, sel_ in (("anthro", "US:ANT"), ("doncast", None), ("vedant", None)):
+        pg.fill("[data-ipo-q]", q); pg.wait_for_selector("button.ipo-watch:not(.on)"); pg.locator("button.ipo-watch:not(.on)").first.click(); pg.wait_for_selector(".ipo-x")
+    pg.fill("[data-ipo-q]", "")
+    names = lambda: pg.locator("#ipo-body .ipo-name b").all_inner_texts()
+    before = names()
+    check("three bookmarked IPOs, automatic order, an ⇅ Arrange button", len(before) == 3 and pg.locator("[data-ipo-arrange]").count() == 1)
+    pg.click("[data-ipo-arrange]"); check("Arrange mode shows compact rows with ▲ ▼", pg.locator(".ipo-arr").count() == 3 and pg.locator("[data-ipo-mv]").count() == 6)
+    pg.locator('[data-ipo-mv][data-dir="-1"]:not([disabled])').first.click()     # second row up
+    pg.wait_for_function("window.__orderPosts.length === 1")
+    after = names()
+    check("▲ moves the second IPO to the top and the change is saved (POST /ipo/order with the full order)", after[0] == before[1] and after[1] == before[0] and len(pg.evaluate("window.__orderPosts[0]")) == 3)
+    pg.locator('[data-ipo-mv][data-dir="1"]:not([disabled])').last.click()      # (a ▼ somewhere) several taps in a row save once
+    pg.locator('[data-ipo-mv][data-dir="1"]:not([disabled])').first.click(); pg.wait_for_timeout(700)
+    check("several taps in a row save once, with the final order", pg.evaluate("window.__orderPosts.length") == 2 and pg.evaluate("window.__orderPosts[1]") == pg.evaluate("window.__order"))
+    saved = names()
+    pg.click("[data-ipo-arrange]"); check("✓ Done returns to the full cards in your order", pg.locator(".ipo-arr").count() == 0 and names() == saved)
+    pg.evaluate("loadIpo()"); pg.wait_for_selector("[data-ipo-q]"); pg.wait_for_selector(".ipo-x")
+    check("after a reload (log out / in) the saved order is restored", names() == saved)
+    pg.click("[data-ipo-arrange]"); pg.click("[data-ipo-reset]"); pg.wait_for_function("window.__orderPosts.length === 3")
+    check("↺ Automatic order resets it (saves an empty order) and the automatic order returns", pg.evaluate("window.__orderPosts[2].length") == 0 and names() == before)
+    pg.evaluate("window.__fail = true"); pg.locator('[data-ipo-mv][data-dir="1"]:not([disabled])').first.click(); pg.wait_for_selector("text=Could not save the order")
+    check("a failed save of the order says so", "Could not save the order" in pg.inner_text("#ipo-body"))
+    pg.evaluate("window.__fail = false"); pg.click("[data-ipo-arrange]")
     # where bookmarking is not offered (legacy page): search still works, but nothing to bookmark into and no list
     pg.evaluate("(() => { window.fetch = async (u) => u.includes('ipo_watch') ? { ok: false, status: 404, json: async () => ({}) } : { ok: true, status: 200, json: async () => %s }; })()" % json.dumps(rows))
     pg.evaluate("loadIpo()"); pg.wait_for_selector("[data-ipo-q]"); pg.fill("[data-ipo-q]", "anthro"); pg.wait_for_selector(".ipo-card")
