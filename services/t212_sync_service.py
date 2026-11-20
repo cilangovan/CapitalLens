@@ -164,6 +164,7 @@ def sync(name, path, table, key, mapper):
     full = FORCE_FULL or not state.get("last_full")
     print(f"\n[{name}] {'FULL walk' if full else 'incremental'}")
     nxt, pages, new, seen = path, 0, 0, 0
+    resume = None if full else state.get("resume")      # where an earlier catch-up was cut off (run cancelled / timed out / network)
     while nxt:
         resp = t212(nxt)
         items = resp.get("items", []) if isinstance(resp, dict) else (resp or [])
@@ -176,13 +177,22 @@ def sync(name, path, table, key, mapper):
         upsert(table, rows, key)
         pages += 1; seen += len(rows); new += len(rows) - len(known)
         print(f"  page {pages}: {len(rows)} items, {len(rows) - len(known)} new")
+        more = resp.get("nextPagePath") if isinstance(resp, dict) else None
         if not full and rows and len(known) == len(rows):
+            if resume:
+                print("  continuing an earlier catch-up that was cut off")
+                nxt, resume = resume, None
+                continue
             print("  reached already-stored history — stopping")
             break
-        nxt = resp.get("nextPagePath") if isinstance(resp, dict) else None
+        # Newer pages are stored before older ones: a run killed here would otherwise stop at "already stored" next time and never fetch the
+        # older new items. Note where to carry on (cleared when the catch-up finishes).
+        if not full and more and len(rows) > len(known):
+            upsert("t212_sync_state", [{"endpoint": name, "resume": more}], "endpoint")
+        nxt = more
     total = count_rows(table)
     upd = {"endpoint": name, "last_run": NOW(), "items_total": total, "status": "ok",
-           "detail": f"{pages} pages, {seen} items read, {new} new"}
+           "detail": f"{pages} pages, {seen} items read, {new} new", "resume": None}
     if full:
         upd["last_full"] = NOW()
     upsert("t212_sync_state", [upd], "endpoint")

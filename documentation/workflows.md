@@ -26,7 +26,9 @@ The refresh runs in the browser, so a reload, a closed tab or lost signal kills 
 - **Trading 212 history:** newest pages are stored first. A catch-up cut off after page 1 would have stopped at "already stored history" next time and never fetched the older new orders, so the walk now stores a `resume` marker in `sync_state` after each page that had new items; the next run continues from it and clears it when done. A first-ever full walk cut off part-way already resumed via the `walking` marker.
 - The sign-in key/secret for Trading 212 are never stored, so after a reload you re-enter them and press Refresh again. The page asks "Leave site?" while a refresh is running.
 - Small leftover: a run killed after alerts but before the snapshot can raise the same alert again on the next refresh (a duplicate is preferred to a lost alert).
-- Tests: `tests/zk_interrupt_test.mjs` (kills the run at each write and between order pages, reruns, checks nothing is half-shown and nothing is missed).
+- **Legacy page (GitHub Actions: `monitor.py`, `services/t212_sync_service.py`):** a reload cannot touch it (it runs on the server), but a cancelled or timed-out run can be cut off the same way, so it has the same two guarantees. `monitor.py` saves snapshot + positions + alerts through one database function, `save_snapshot()` (`db/tenant/25_refresh_safety.sql`), so they commit together or not at all (it falls back to the old three inserts only if the function is not deployed). The history sync keeps `t212_sync_state.resume` after each page with new items and continues from it next run.
+- **Demo:** the demo's data is refreshed daily inside Postgres by `demo_refresh()` (`pg_cron`): one function = one transaction, so it either completes or changes nothing, and no browser is involved, so a reload cannot interrupt it. The demo page has no refresh button.
+- Tests: `tests/legacy_interrupt_test.py` (legacy), `tests/zk_interrupt_test.mjs` (kills the run at each write and between order pages, reruns, checks nothing is half-shown and nothing is missed).
 
 ## Safety, maintenance and deployment
 

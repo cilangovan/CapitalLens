@@ -90,8 +90,7 @@ def save_snapshot_to_supabase(summary, pies, alerts, account, state):
         invested  = total - cash
         total_ppl = sum(p["ppl"] for p in summary)
 
-    # 1. Insert snapshot
-    snap = sb_insert("portfolio_snapshots", {
+    snap_row = {
         "total_value": round(total, 2),
         "cash":        round(cash, 2),
         "invested":    round(invested, 2),
@@ -103,7 +102,38 @@ def save_snapshot_to_supabase(summary, pies, alerts, account, state):
             "highs":   state.get("highs", {}),
             "instrument_meta": state.get("held_meta", {}),
         }
-    })
+    }
+    pos_fields = [{
+        "ticker":       p["ticker"],
+        "display":      p["display"],
+        "pie":          p["pie"],
+        "exchange":     p.get("exchange", "LSE"),
+        "current_price": p["current"],
+        "avg_price":    p["avg"],
+        "gain_pct":     p["gain_pct"],
+        "dip_from_high": p["dip_from_high"],
+        "ppl":          p["ppl"],
+        "quantity":     p.get("qty"),
+    } for p in summary]
+    alert_fields = [{
+        "type":   a["type"],
+        "alert_type": a["type"],
+        "ticker": a.get("ticker", ""),
+        "title":  a["title"],
+        "body":   a["body"],
+    } for a in alerts]
+
+    # Preferred: snapshot + positions + alerts in ONE database transaction (db/tenant/25_refresh_safety.sql). The dashboards read positions by the
+    # latest snapshot id, so a run killed between separate inserts must never leave a snapshot without its positions.
+    sid = sb_request("POST", "rpc/save_snapshot", {"p_snapshot": snap_row, "p_positions": pos_fields, "p_alerts": alert_fields})
+    if isinstance(sid, int) and not isinstance(sid, bool):
+        print(f"[supabase] Snapshot saved id={sid} with {len(pos_fields)} positions and {len(alert_fields)} alerts (one transaction)")
+        return
+    print("[supabase] save_snapshot() not available - falling back to separate inserts")
+
+    # Fallback (function not deployed yet): the old three-step save
+    # 1. Insert snapshot
+    snap = sb_insert("portfolio_snapshots", snap_row)
 
     if not snap:
         print("[supabase] Failed to insert snapshot"); return

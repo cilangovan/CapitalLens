@@ -130,6 +130,13 @@ _mon = (ROOT / "docs/js/../zk/monitor.js").read_text(); _t2 = (ROOT / "docs/zk/t
 check("interrupted refresh is safe: snapshot written after its positions, history catch-up resumes, 'leave site?' guard, regression test exists",
       _mon.index("store.put('positions'") < _mon.index("store.put('portfolio_snapshots'") and "resume" in _t2 and "walking" in _t2
       and "beforeunload" in (ROOT / "docs/zkapp/zkapp-tools.js").read_text() and (ROOT / "tests/zk_interrupt_test.mjs").exists())
+_mp = (ROOT / "monitor.py").read_text(); _sy = (ROOT / "services/t212_sync_service.py").read_text(); _m25 = (ROOT / "db/tenant/25_refresh_safety.sql").read_text()
+check("legacy pipeline: snapshot + positions + alerts saved in one transaction (rpc save_snapshot), history catch-up resumable, regression test exists",
+      "rpc/save_snapshot" in _mp and "function public.save_snapshot" in _m25 and "security invoker" in _m25 and "add column if not exists resume" in _m25
+      and "resume" in _sy and (ROOT / "tests/legacy_interrupt_test.py").exists())
+_dr = (ROOT / "db/tenant/18_demo_refresh.sql").read_text()
+check("demo: daily refresh is one database function (atomic) run by pg_cron, never by a browser, so a page reload cannot cut it off",
+      "function public.demo_refresh()" in _dr and "cron.schedule('demo-daily-refresh'" in _dr and "demo_refresh" not in (ROOT / "docs/demo/index.html").read_text())
 
 # 5-check review box (Strategy > Holding Decisions + Entry Analysis): the owner's prompt, copied/opened per stock, on every dashboard
 _fc = (ROOT / "docs/js/fivecheck.js").read_text(); _st = (ROOT / "docs/js/strategy.js").read_text(); _wlj0 = (ROOT / "docs/js/watchlist.js").read_text()

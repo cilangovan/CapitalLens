@@ -43,6 +43,8 @@ jobs:
           git diff --exit-code -- docs/zkapp docs/zkapp-prod docs/zk-prod || (echo "generated pages are stale: run python3 scripts/build_zkapp.py and commit" && exit 1)
       - name: Owner's standing requirements (CLAUDE.md)
         run: python3 tests/standards_test.py
+      - name: Legacy pipeline survives a cut-off run (atomic snapshot save, resumable history catch-up)
+        run: python3 tests/legacy_interrupt_test.py
       - name: Documentation portal is up to date
         run: python3 scripts/build_docs.py --check
       - name: Relay syntax
