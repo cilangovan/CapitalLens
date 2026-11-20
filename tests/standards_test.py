@@ -119,7 +119,8 @@ _sl = (ROOT / "db/tenant/23_support_levels.sql").read_text() if (ROOT / "db/tena
 _slj = (ROOT / "docs/js/support.js").read_text() if (ROOT / "docs/js/support.js").exists() else ""
 check("Support Levels: shared table names its source and capture date; demo gets a demo-only copy refreshed daily (never invented rows in the shared table)",
       all(x in _sl for x in ["source_name text not null", "as_of", "create table if not exists public.demo_support_levels", "seed_demo_support_levels", "perform public.seed_demo_support_levels(t)"])
-      and "including constraints including indexes" in _sl   # regression: without the primary key the demo refresh failed on ON CONFLICT (symbol)
+      and "including constraints including indexes" in _sl
+      and "_US_EQ$' loop" in _sl   # regression: demo ETFs such as CS1l_EQ broke the symbol check and failed the whole daily refresh   # regression: without the primary key the demo refresh failed on ON CONFLICT (symbol)
       and not re.search(r"insert into public\.support_levels[^;]*Demo data", _sl) and "'/support_levels': '/demo_support_levels'" in (ROOT / "docs/demo/demo-shim.js").read_text())
 check("Support Levels: shown for held stocks only, loaded on every dashboard (legacy, demo, app, zkapp, zkapp-prod)",
       "held.has(l.symbol)" in _slj and all("support.js" in (ROOT / f).read_text() for f in ["docs/index.html", "docs/demo/index.html", "docs/app/index.html", "docs/zkapp/index.html", "docs/zkapp-prod/index.html"]))
