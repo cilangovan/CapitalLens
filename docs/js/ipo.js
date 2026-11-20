@@ -77,14 +77,15 @@
   }
 
   // inList = the card sits in "My IPO list" (shows the ✕). Search results show a Bookmark button instead.
-  function card(r, today, watched, inList) {
+  function card(r, today, watched, inList, grip) {
     const [label, tone] = PHASE[r._phase] || PHASE.rumoured, rate = RATING[r.rating] !== undefined ? r.rating : 'Not rated';
     const size = fmtSize(r.deal_size_usd), url = /^https?:\/\//.test(r.source_url || '') ? r.source_url : null;
     const on = !!(watched && watched.has(r.id)), okId = ID_RE.test(r.id || '');
     const btn = !inList && watched && okId ? `<button class="ipo-watch${on ? ' on' : ''}" data-ipo-watch="${esc(r.id)}" aria-pressed="${on}">${on ? '★ In my list · tap to remove' : '☆ Bookmark'}</button>` : '';
     const x = inList && watched && okId ? `<button class="w-x ipo-x" data-ipo-watch="${esc(r.id)}" title="Remove from my list" aria-label="Remove ${esc(r.name)} from my list">✕</button>` : '';
     const ticker = r.ticker ? ` <span class="w-dim">${esc(r.ticker)}</span>` : '';
-    return `<div class="ipo-card ipo-${esc(tone || 'n')}">
+    const mineAttr = inList && okId ? ` ipo-mine${grip ? ' ipo-has-grip' : ''}" data-ipo-id="${esc(r.id)}` : '';
+    return `<div class="ipo-card ipo-${esc(tone || 'n')}${mineAttr}">${inList && okId && grip ? '<span class="ipo-grip" data-ipo-grip title="Drag to reorder" aria-hidden="true">⠿</span>' : ''}
       <div class="ipo-top"><div class="ipo-name"><b>${esc(r.name)}</b>${ticker}</div>
         <span class="ipo-pill ${esc(tone)}">${esc(label)}</span>${x}</div>
       <div class="ipo-chips"><span class="w-chip">${FLAG[r.market] || '🌍'} ${esc(r.exchange || 'Exchange TBC')}</span>${r.sector ? `<span class="w-chip">${esc(r.sector)}</span>` : ''}
@@ -117,7 +118,7 @@
         + (m.length > 1 ? `<div class="ipo-arr-bar"><button type="button" class="w-pick${arr ? ' on' : ''}" data-ipo-arrange="${arr ? 0 : 1}" aria-pressed="${arr}">${arr ? '✓ Done' : '⇅ Arrange'}</button>`
           + (arr && ui.order && ui.order.size ? '<button type="button" class="w-pick" data-ipo-reset="1">↺ Automatic order</button>' : '') + '</div>'
           + (arr ? '<div class="w-dim w-small" style="margin:0 0 8px">Tap ▲ ▼ to move an IPO. Your order is saved to your login.</div>' : '') : '')
-        + (m.length ? (arr ? m.map((r, k) => arrangeCard(r, k, m.length)) : m.map(r => card(r, today, watched, true))).join('') : '<div class="w-dim" style="padding:6px 4px 14px">Nothing here yet. Search above, then tap ☆ Bookmark on an IPO to add it.</div>');
+        + (m.length ? (arr ? m.map((r, k) => arrangeCard(r, k, m.length)) : m.map(r => card(r, today, watched, true, m.length > 1))).join('') : '<div class="w-dim" style="padding:6px 4px 14px">Nothing here yet. Search above, then tap ☆ Bookmark on an IPO to add it.</div>');
     }
     if (isActive(f)) {
       const res = search(rows, f, today);
@@ -188,8 +189,38 @@
     if (typeof document !== 'undefined') { const b = document.querySelector(`[data-ipo-mv="${id}"][data-dir="${dir}"]`); if (b) { b.focus(); b.scrollIntoView({ block: 'nearest' }); } }
     saveOrder(next);
   }
+  // Drag the ⠿ strip on a My IPO list card (mouse or touch; the strip has touch-action:none). Other cards fold to their headline while dragging; the list scrolls itself near the screen edge.
+  const D = { el: null, grab: 0, y: 0, raf: 0, pid: null, start: '' };
+  const mineEls = () => [...document.querySelectorAll('#ipo-body .ipo-card.ipo-mine[data-ipo-id]')];
+  function dragStep() {
+    const el = D.el; if (!el) return; const others = mineEls().filter(c => c !== el); if (others.length) {
+      let before = null; for (const c of others) { const r = c.getBoundingClientRect(); if (D.y < r.top + r.height / 2) { before = c; break; } }
+      const target = before || others[others.length - 1].nextElementSibling;
+      if (target !== el && target !== el.nextElementSibling) el.parentElement.insertBefore(el, target);
+    }
+    el.style.transform = ''; const top = el.getBoundingClientRect().top; el.style.transform = `translateY(${(D.y - D.grab - top).toFixed(1)}px)`;
+  }
+  function dragLoop() { if (!D.el) return; const h = window.innerHeight || 800; if (D.y < 70) window.scrollBy(0, -12); else if (D.y > h - 70) window.scrollBy(0, 12); dragStep(); D.raf = requestAnimationFrame(dragLoop); }
+  function dragEnd(commit) {
+    const el = D.el; if (!el) return; cancelAnimationFrame(D.raf); D.el = null;
+    try { el.querySelector('[data-ipo-grip]').releasePointerCapture(D.pid); } catch (e) {}
+    el.style.transform = ''; el.classList.remove('dragging'); const b = document.getElementById('ipo-body'); if (b) b.classList.remove('sorting');
+    const ids = mineEls().map(c => c.getAttribute('data-ipo-id'));
+    if (commit && ids.join('|') !== D.start) { S.order = new Map(ids.map((x, k) => [x, k])); S.msg = ''; saveOrder(ids); }
+    paintBody();
+  }
+  function dragStart(e, g) {
+    const el = g.closest('.ipo-card.ipo-mine'); if (!el || S.arrange) return; e.preventDefault();
+    D.el = el; D.pid = e.pointerId; D.start = mineEls().map(c => c.getAttribute('data-ipo-id')).join('|'); try { g.setPointerCapture(e.pointerId); } catch (x) {}
+    document.getElementById('ipo-body').classList.add('sorting'); el.classList.add('dragging');
+    const r = el.getBoundingClientRect(); D.y = e.clientY; D.grab = Math.min(Math.max(e.clientY - r.top, 0), r.height); D.raf = requestAnimationFrame(dragLoop);
+  }
   function resetOrder() { S.order = new Map(); S.msg = ''; paintBody(); saveOrder([]); }
   if (typeof document !== 'undefined') {
+    document.addEventListener('pointerdown', e => { const g = e.target && e.target.closest && e.target.closest('[data-ipo-grip]'); if (g && !(e.button > 0)) dragStart(e, g); });
+    document.addEventListener('pointermove', e => { if (D.el && e.pointerId === D.pid) { D.y = e.clientY; e.preventDefault(); } });
+    document.addEventListener('pointerup', e => { if (D.el && e.pointerId === D.pid) dragEnd(true); });
+    document.addEventListener('pointercancel', e => { if (D.el && e.pointerId === D.pid) dragEnd(false); });
     const tgt = e => (e.target && e.target.closest ? e.target : null);
     document.addEventListener('click', e => {
       const t = tgt(e); if (!t) return;

@@ -72,5 +72,21 @@ for page in ("docs/index.html", "docs/demo/index.html"):
                 pg.click("text=⇅ Arrange"); pg.screenshot(path="/tmp/arrange360.png")
             pg.close(); ctx.close()
         b.close()
+# Demo: the worker routes answer 501 (no writable store), so the order must be kept in this browser and come back after a reload
+css = "\n".join(re.findall(r"<style>(.*?)</style>", (ROOT / "docs/demo/index.html").read_text(), re.S))
+with sync_playwright() as p:
+    b = p.chromium.launch(args=["--no-sandbox"]); pg = b.new_page(viewport={"width": 390, "height": 800}); errs = []
+    pg.route("**/watchlist/order", lambda route: route.fulfill(status=501, content_type="application/json", body='{"error":"This feature is not available in the demo"}'))
+    page_html = "<style>" + css + "</style><div class='tab active'><div id='w-cats'></div><div id='w-summary'></div><div id='w-list'></div><div id='alerts-toast'></div></div>"
+    pg.route("https://demo.test/", lambda route: route.fulfill(status=200, content_type="text/html", body=page_html)); pg.goto("https://demo.test/")      # a real origin, so localStorage works like in the demo
+    pg.evaluate("window.IS_GUEST=false; window.PROXY='https://w.example'; window.SESSION_TOKEN='T'; window.ddPx=null;"); pg.add_script_tag(path=str(ROOT / "docs/js/watchlist.js"))
+    seed = """() => { WL.items = ['AAA','BBB','CCC'].map(t => ({ ticker: t, category: 'stock', name: t + ' Inc' })); WL.analysis = {}; wlApplyLocalOrder(); renderWatchlist(); }"""
+    pg.evaluate(seed); names = lambda: pg.evaluate("[...document.querySelectorAll('#w-list .w-card')].map(c => c.dataset.t).join()")
+    pg.click("text=⇅ Arrange"); pg.click(".w-card:nth-child(3) .w-mv [data-dir='-1']"); pg.wait_for_timeout(800)       # BBB up
+    moved_ok = names() == "BBB,AAA,CCC"
+    pg.evaluate(seed)                                                                                                  # a reload: fresh items, order restored from this browser
+    restored = names() == "BBB,AAA,CCC" and "Couldn't save" not in pg.inner_text("#alerts-toast")
+    if not (moved_ok and restored): bad += 1; print(f"✗ demo: browser-only order moved={moved_ok} restored={restored} now={names()}")
+    b.close()
 print("✓ Watchlist cards (normal + Arrange) fit 320/360/390px, buttons >= 40px, ▲▼ reorder and save" if not bad else f"{bad} layout problem(s)")
 sys.exit(1 if bad else 0)

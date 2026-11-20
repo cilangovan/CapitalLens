@@ -20,6 +20,11 @@ const normal = IPO.html(rows, {}, T, w, { arrange: false, order: new Map() });
 ok('normal mode keeps the full cards, ✕ buttons and an ⇅ Arrange button', /ipo-dates/.test(normal) && /data-ipo-arrange="1"[^>]*>⇅ Arrange/.test(normal) && !/data-ipo-mv/.test(normal));
 ok('one IPO: nothing to arrange; an old caller without the ui argument gets the normal view', !/data-ipo-arrange/.test(IPO.html(rows.slice(0, 1), {}, T, new Set(['US:A']))) && !/data-ipo-mv/.test(IPO.html(rows, {}, T, w)) && /ipo-dates/.test(IPO.html(rows, {}, T, w)));
 
+const grips = h => (h.match(/data-ipo-grip/g) || []).length;
+ok('drag handle on every My IPO list card (two or more) with the id the drag saves', grips(normal) === 4 && (normal.match(/data-ipo-id="/g) || []).length === 4);
+ok('no handle for a single IPO, in Arrange mode (▲ ▼ rows), or on search results', grips(IPO.html(rows.slice(0, 1), {}, T, new Set(['US:A']))) === 0 && grips(html) === 0 && grips(IPO.html(rows, { q: 'alpha' }, T, new Set(['UK:D']), {})) === 0);
+ok('the handle is decoration for assistive tech (▲ ▼ is the accessible way)', /data-ipo-grip title="Drag to reorder" aria-hidden="true"/.test(normal));
+
 // ── shim: stored inside the encrypted rows ──
 const tables = { ipo_watch: [{ id: 'US:A', added_at: '2026-11-01' }, { id: 'US:B', added_at: '2026-11-02' }, { id: 'UK:D', added_at: '2026-11-03' }] };
 let puts = 0; const st = { load: async k => tables[k] || [], get: async () => null, put: async (k, r, ko) => { puts++; r.forEach(x => { tables[k] = (tables[k] || []).filter(y => ko(y) !== ko(x)).concat([x]); }); }, remove: async (k, key) => { tables[k] = tables[k].filter(r => r.id !== key); } };

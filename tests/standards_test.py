@@ -131,6 +131,9 @@ check("Watchlist order: ▲▼ arrange mode saves per user (encrypted sort_order
       all(x in _wlj for x in ["wlMove", "wlArrange", "/watchlist/order", "wlResetOrder"]) and "route === 'watchlist/order'" in _wls and "sort_order" in _wls
       and "/watchlist/order" in _wlw and "add column if not exists sort_order" in (ROOT / "db/tenant/24_watchlist_order.sql").read_text()
       and "route === 'ipo/order'" in _wls and all(x in (ROOT / "docs/js/ipo.js").read_text() for x in ["data-ipo-mv", "/ipo/order", "sort_order"]) and "user_ui_prefs" not in (ROOT / "docs/js/ipo.js").read_text()
+      and all(("js/watchlist.js" in (ROOT / f).read_text() or "../js/watchlist.js" in (ROOT / f).read_text()) and ("ipo.js" in (ROOT / f).read_text()) for f in ["docs/index.html", "docs/demo/index.html", "docs/app/index.html", "docs/zkapp/index.html", "docs/zkapp-prod/index.html"])   # rule 5: every dashboard loads the watchlist and IPO code
+      and all(".ipo-grip" in (ROOT / f).read_text() and ".w-grip" in (ROOT / f).read_text() and "touch-action:none" in (ROOT / f).read_text() for f in ["docs/index.html", "docs/demo/index.html", "docs/app/index.html", "docs/zkapp/index.html", "docs/zkapp-prod/index.html"])   # ... and the drag handle styles
+      and "data-ipo-grip" in (ROOT / "docs/js/ipo.js").read_text()
       and "w-grip" in _wlj and "touch-action:none" in (ROOT / "docs/index.html").read_text() and "touch-action:none" in (ROOT / "docs/demo/index.html").read_text()
       and "user_ui_prefs" not in _wlj and "min-width:40px; min-height:40px" in (ROOT / "docs/index.html").read_text() and "min-width:40px; min-height:40px" in (ROOT / "docs/demo/index.html").read_text())
 

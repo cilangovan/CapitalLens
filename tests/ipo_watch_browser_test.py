@@ -26,7 +26,7 @@ def check(name, cond):
 def mylist(pg): return pg.locator('#ipo-body .ipo-sec:first-child ~ .ipo-card').count()
 
 with sync_playwright() as p:
-    b = p.chromium.launch(args=["--no-sandbox"]); pg = b.new_page(viewport={"width": 390, "height": 900})
+    b = p.chromium.launch(args=["--no-sandbox"]); pg = b.new_context(viewport={"width": 390, "height": 900}, has_touch=True).new_page()
     pg.set_content(f"<style>{css}</style><div class='card'><h3>IPO</h3><div id='ipo-content'></div></div>")
     pg.evaluate(FAKE); pg.add_script_tag(path=str(ROOT / "docs/js/ipo.js")); pg.evaluate("loadIpo()")
     pg.wait_for_selector("[data-ipo-q]")
@@ -84,6 +84,27 @@ with sync_playwright() as p:
     pg.evaluate("window.__fail = true"); pg.locator('[data-ipo-mv][data-dir="1"]:not([disabled])').first.click(); pg.wait_for_selector("text=Could not save the order")
     check("a failed save of the order says so", "Could not save the order" in pg.inner_text("#ipo-body"))
     pg.evaluate("window.__fail = false"); pg.click("[data-ipo-arrange]")
+    # drag the ⠿ strip (mouse, cancelled, touch)
+    pg.wait_for_function("document.querySelectorAll('[data-ipo-grip]').length === 3")
+    gs = pg.evaluate("[...document.querySelectorAll('[data-ipo-grip]')].map(g => { const r = g.getBoundingClientRect(); return [r.width, r.height]; })")
+    check("every My IPO list card has a drag strip >= 40px wide", len(gs) == 3 and all(w_ >= 39.5 and h_ >= 39.5 for w_, h_ in gs))
+    n0 = names(); posts0 = pg.evaluate("window.__orderPosts.length")
+    g = pg.locator('.ipo-mine:nth-of-type(1) [data-ipo-grip]').first.bounding_box() if False else pg.locator('[data-ipo-grip]').nth(0).bounding_box(); last = pg.locator('.ipo-mine').nth(2).bounding_box()
+    pg.mouse.move(g["x"] + 20, g["y"] + 20); pg.mouse.down()
+    for k in range(1, 13): pg.mouse.move(g["x"] + 20, g["y"] + 20 + (last["y"] + last["height"] * 0.8 - g["y"] - 20) * k / 12); pg.wait_for_timeout(30)
+    during = pg.evaluate("({ s: document.getElementById('ipo-body').classList.contains('sorting'), d: !!document.querySelector('.ipo-card.dragging'), folded: [...document.querySelectorAll('.ipo-mine .ipo-dates')].every(e => getComputedStyle(e).display === 'none') })")
+    pg.mouse.up(); pg.wait_for_function("window.__orderPosts.length === %d" % (posts0 + 1)); n1 = names()
+    check("mouse drag moves the first IPO to the bottom, others fold while dragging, and the order is saved", n1 == n0[1:] + n0[:1] and during["s"] and during["d"] and during["folded"] and not pg.evaluate("document.getElementById('ipo-body').classList.contains('sorting')") and pg.evaluate("window.__orderPosts.at(-1).length") == 3)
+    g = pg.locator('[data-ipo-grip]').nth(0).bounding_box(); pg.mouse.move(g["x"] + 20, g["y"] + 20); pg.mouse.down(); pg.mouse.move(g["x"] + 20, g["y"] + 250, steps=5)
+    pg.evaluate("document.dispatchEvent(new PointerEvent('pointercancel', { pointerId: 1, bubbles: true }))"); pg.wait_for_timeout(300); pg.mouse.up(); pg.wait_for_timeout(600)
+    check("a cancelled drag changes nothing and saves nothing", names() == n1 and pg.evaluate("window.__orderPosts.length") == posts0 + 1)
+    cdp = pg.context.new_cdp_session(pg); pg.locator('[data-ipo-grip]').nth(2).scroll_into_view_if_needed(); g = pg.locator('[data-ipo-grip]').nth(2).bounding_box(); x, y0 = g["x"] + 20, g["y"] + 20
+    cdp.send("Input.dispatchTouchEvent", {"type": "touchStart", "touchPoints": [{"x": x, "y": y0}]})
+    for k in range(1, 13): cdp.send("Input.dispatchTouchEvent", {"type": "touchMove", "touchPoints": [{"x": x, "y": max(40, y0 - 60 * k)}]}); pg.wait_for_timeout(30)   # cards fold when the drag starts, so go all the way up
+    cdp.send("Input.dispatchTouchEvent", {"type": "touchEnd", "touchPoints": []})
+    try: pg.wait_for_function("window.__orderPosts.length === %d" % (posts0 + 2), timeout=4000)
+    except Exception: print("   debug: grip", g, "posts", pg.evaluate("window.__orderPosts.length"), "want", posts0 + 2, "names", names(), "sorting", pg.evaluate("document.getElementById('ipo-body').className"), "dragging", pg.locator('.ipo-card.dragging').count())
+    check("touch drag of the last IPO to the top reorders and saves", names()[0] == n1[2] and sorted(names()) == sorted(n1))
     # where bookmarking is not offered (legacy page): search still works, but nothing to bookmark into and no list
     pg.evaluate("(() => { window.fetch = async (u) => u.includes('ipo_watch') ? { ok: false, status: 404, json: async () => ({}) } : { ok: true, status: 200, json: async () => %s }; })()" % json.dumps(rows))
     pg.evaluate("loadIpo()"); pg.wait_for_selector("[data-ipo-q]"); pg.fill("[data-ipo-q]", "anthro"); pg.wait_for_selector(".ipo-card")

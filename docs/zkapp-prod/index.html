@@ -224,6 +224,9 @@
   .ipo-x { flex:none; min-width:40px; min-height:40px; font-size:14px; }
   .ipo-arr-bar { display:flex; flex-wrap:wrap; gap:6px; margin:0 0 8px; } .ipo-arr-bar .w-pick { min-height:40px; padding:0 14px; }
   .ipo-card.ipo-arr { display:flex; align-items:center; gap:8px; padding:6px 8px 6px 12px; } .ipo-arr .ipo-name { flex:1; }
+  .ipo-card.ipo-has-grip { position:relative; padding-left:46px; } .ipo-grip { position:absolute; left:0; top:0; bottom:0; width:40px; display:flex; align-items:center; justify-content:center; color:var(--muted); font-size:18px; cursor:grab; touch-action:none; user-select:none; -webkit-user-select:none; }
+  .ipo-card.dragging { position:relative; z-index:5; transition:none; box-shadow:0 8px 24px rgba(0,0,0,.5); border-color:var(--accent); } .ipo-card.dragging .ipo-grip { cursor:grabbing; color:var(--accent); }
+  #ipo-body.sorting { user-select:none; -webkit-user-select:none; } #ipo-body.sorting .ipo-mine .ipo-chips, #ipo-body.sorting .ipo-mine .ipo-dates, #ipo-body.sorting .ipo-mine .ipo-meta, #ipo-body.sorting .ipo-mine .ipo-note, #ipo-body.sorting .ipo-mine .ipo-src { display:none; }
   .ipo-watch { margin-top:8px; min-height:40px; padding:8px 14px; border-radius:8px; border:1px solid var(--border); background:var(--bg3); color:var(--text); font-size:13px; font-weight:600; cursor:pointer; width:100%; }
   .ipo-watch.on { border-color:var(--yellow); color:var(--yellow); background:rgba(245,158,11,.12); }
   .ipo-src { font-size:11px; margin-top:6px; overflow-wrap:anywhere; } .ipo-src a { color:var(--accent); }
@@ -724,7 +727,7 @@
 <script src="../js/tickertips.js?v=62c3f21e8fa6" integrity="sha384-uol0Rwj54jmfrLQJnoQ9rmmclnnHE5cMDN7Ci+Jn2Mo6W4tqHoZ53Ay3/BTEgS52"></script>
 <script src="../js/collapse.js?v=7edc1cf73e08" integrity="sha384-A619AiWc9t9/ZdVUpzglvO2kPNeCq9597UZcOa4ctslPfQiU48P+lXZWq9vS6k05"></script>
 <script src="../js/watchlist.js?v=e584819a777b" integrity="sha384-aql9O8WCXpt3r6Ct9QVbZEiwJziPxoI6VVrcaKIMFoCfebHNTtPAylI4cKWdXMtg"></script>
-<script src="../js/ipo.js?v=f4d9348410da" integrity="sha384-LXfQHD7a8VDyk4eKFZc3Gj+ntJ1PSJJ4EgTE+/eYfUOsg85gPju1pg31KpvQOYp5"></script>
+<script src="../js/ipo.js?v=2e91d0fbacd1" integrity="sha384-vSOFViHapLyzVPeoQBI02qtgIb4PaXtqxbTCRFrSbQqR3X/pro4LJqC8refFMPZR"></script>
 <script src="../js/drilldown.js?v=7a7ebba5e7de" integrity="sha384-AgVSh6Vu4OhUxdQcRxEqq2qOERV/U5LoS6ZpMboOBXL5mc2qydywkmRr3pibkqty"></script>
 <script src="../js/pie_drill.js?v=a37ab7984a56" integrity="sha384-nTtENlyK2gvQfk0vKkso90ijk/ep386j1uJBdlCwkhxjh9vNHGbWQ7gOFw1wkVPf"></script>
 <script src="../js/router.js?v=bcfc4888d172" integrity="sha384-Eve7gCPZkMSdV7g3eB/b+Srsyi0BdSRPLX+5uHye7GLIArTrN9Y/BBhlg6JqNz7b"></script>
