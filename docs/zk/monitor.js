@@ -113,10 +113,19 @@
   function create(opts) {
     const { store, client } = opts, log = opts.log || (() => {});
     const newId = opts.newId || (() => crypto.randomUUID());
-    const soft = async (path, after) => { try { return await client.get(path, { after }); } catch (e) { log(`  skipped ${path.split('?')[0]}: ${e.message}`); return null; } };
+    let problems = [];                       // what Trading 212 refused or could not give this run (never swallowed silently: it ends up in the refresh result)
+    const soft = async (path, after) => { try { return await client.get(path, { after }); } catch (e) { problems.push({ path: path.split('?')[0], message: String(e.message || e) }); log(`  skipped ${path.split('?')[0]}: ${e.message}`); return null; } };
+    // Plain-words reason for a failed call, naming what the owner can do about it
+    const WHAT = { '/api/v0/equity/portfolio': 'your open positions', '/api/v0/equity/account/cash': 'your account balance', '/api/v0/equity/pies': 'your pies' };
+    const explain = path => {
+      const pr = problems.find(x => x.path === path); if (!pr) return null; const code = (/-> (\d{3})/.exec(pr.message) || [])[1], what = WHAT[path] || path;
+      if (code === '401' || code === '403') return `Trading 212 refused the key for ${what} (HTTP ${code}). Check the key is live (not Practice) and has the Portfolio and Account data permissions, then refresh again`;
+      if (code === '429') return `Trading 212 is rate-limiting requests, so ${what} could not be read. Wait a minute and refresh again`;
+      return `Could not read ${what} from Trading 212 (${pr.message.slice(0, 120)})`;
+    };
 
     async function run(apiKey, apiSecret) {
-      client.setCreds(apiKey, apiSecret);
+      client.setCreds(apiKey, apiSecret); problems = [];
       try {
         const nowDate = opts.nowDate ? opts.nowDate() : new Date();
         const state = (await store.get('monitor_state', 'main')) || { highs: {}, last_alerts: {}, run_count: 0 };
@@ -135,7 +144,15 @@
           for (const i of s.instruments) if (i.ticker) pieMap[i.ticker] = s.name;
           pies.push(s.pie);
         }
-        if (!positions.length) { log('No positions returned, nothing saved'); return { saved: false, reason: 'no positions' }; }
+        if (!positions.length) {
+          const why = explain('/api/v0/equity/portfolio') || 'Trading 212 returned no open positions'; log('No positions returned, nothing saved: ' + why);
+          return { saved: false, reason: why + '. Nothing was saved, so the dashboards still show the previous snapshot' };
+        }
+        // Without the account figures the snapshot would carry a total of 0: refuse rather than store a wrong number (a missing figure is better than a made-up one)
+        if (!account) {
+          const why = explain('/api/v0/equity/account/cash') || 'Trading 212 returned no account balance'; log('No account balance returned, nothing saved: ' + why);
+          return { saved: false, reason: why + '. Nothing was saved, so the dashboards still show the previous snapshot' };
+        }
 
         for (const pos of positions) { const c = num(pos.currentPrice); if (pos.ticker && c > 0) state.highs[pos.ticker] = Math.max(state.highs[pos.ticker] || 0, c); }
         // instrument names/currency for held tickers, cached 7 days
@@ -171,7 +188,9 @@
         await store.put('portfolio_snapshots', [snap], r => r.id);
         await store.put('monitor_state', [Object.assign({ key: 'main' }, state)], r => r.key);
         log(`${summary.length} positions, ${pies.length} pies, ${alerts.length} alerts saved (encrypted)`);
-        return { saved: true, snapshotId: snapId, positions: summary.length, pies: pies.length, alerts };
+        const piePb = problems.some(x => x.path === '/api/v0/equity/pies' || x.path.startsWith('/api/v0/equity/pies/'));
+        const warnings = piePb ? [explain('/api/v0/equity/pies') || 'Some pie details could not be read from Trading 212, so pie grouping in this snapshot may be incomplete'] : [];
+        return { saved: true, snapshotId: snapId, positions: summary.length, pies: pies.length, alerts, warnings };
       } finally { client.clear(); }
     }
     return { run };

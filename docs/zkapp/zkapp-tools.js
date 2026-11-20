@@ -29,7 +29,7 @@ async function zkToolsSaveTopic() {
   const v = document.getElementById('zk-topic').value.trim(), msg = document.getElementById('zk-topic-msg');
   try { await ZKNotify.saveTopic(ZKCTX.store, v); msg.textContent = 'Saved (encrypted). Phone alerts on.'; document.getElementById('zk-topic').value = ''; } catch (e) { msg.textContent = e.message; }
 }
-const ZK_ANALYSIS_VERSION = 'lynch-5';      // bump when a release changes what the analysis produces: every browser then re-analyses once on its next login
+const ZK_ANALYSIS_VERSION = 'lynch-6';      // bump when a release changes what the analysis produces: every browser then re-analyses once on its next login
 const ZK_AUTO_MAX_HOURS = 6;
 async function zkAutoRefresh() {            // re-analyse stored data (no Trading 212 call, no credentials) after login when stale or after an app update
   if (!ZKCTX || ZK_RUN.running || window.__zkAutoDone) return; window.__zkAutoDone = true;
@@ -42,7 +42,7 @@ async function zkToolsRun(auto) {
   if (!ZKCTX) return;
   const key = document.getElementById('zk-key').value.trim(), sec = document.getElementById('zk-sec').value.trim(), full = document.getElementById('zk-full').checked;
   const logEl = document.getElementById('zk-log'), btn = document.getElementById('zk-run'), status = document.getElementById('zk-status');
-  logEl.textContent = ''; btn.disabled = true; status.textContent = 'Working…';
+  logEl.textContent = ''; btn.disabled = true; status.textContent = 'Working…'; { const ch = document.getElementById('zk-changes'); if (ch) { ch.textContent = ''; ch.style.display = 'none'; } }
   document.getElementById('zk-key').value = ''; document.getElementById('zk-sec').value = '';      // credentials leave the page the moment they are read
   ZK_RUN.running = true; ZK_RUN.started = Date.now(); ZK_RUN.last = '';
   document.getElementById('zk-run').textContent = 'Running…';
@@ -55,6 +55,7 @@ async function zkToolsRun(auto) {
     const r = await p.run(key, sec, { full });
     if (r.ok) { try { await ZKCTX.store.put('settings', [{ key: 'last_analysis', at: new Date().toISOString(), version: ZK_ANALYSIS_VERSION }], x => x.key); } catch (e) {} }
     status.textContent = r.ok ? (auto === true ? 'Data re-analysed automatically.' : 'Done — everything refreshed.') : 'Finished with problems: ' + r.results.filter(x => !x.ok).map(x => x.name).join(', ');
+    zkShowChanges(r);
   } catch (e) { status.textContent = 'Failed: ' + (e.message || e); }
   ZK_RUN.running = false; clearInterval(ZK_RUN.timer); window.removeEventListener('beforeunload', beforeUnload);
   document.getElementById('zk-key').value = ''; document.getElementById('zk-sec').value = ''; btn.disabled = false; btn.textContent = 'Refresh now';
@@ -62,6 +63,18 @@ async function zkToolsRun(auto) {
   try { _cache = {}; } catch (e) {}
   const active = document.querySelector('.tab.active'); if (active && typeof loadTab === 'function') loadTab(active.id);
   if (typeof loadTab === 'function') loadTab('alerts');
+}
+
+// What this refresh changed (new positions, quantities, orders) plus every problem in plain words, so a missed purchase or a refused key is never silent.
+// Text only (textContent), nothing from Trading 212 is put in as HTML.
+function zkShowChanges(r) {
+  const el = document.getElementById('zk-changes'); if (!el) return;
+  const out = [];
+  for (const x of (r.results || [])) if (!x.ok) out.push('⚠ ' + x.name + (x.note ? ': ' + x.note : ''));
+  for (const w of (r.warnings || [])) out.push('⚠ ' + w);
+  if (r.changes && r.changes.lines) out.push(...r.changes.lines.map(l => '• ' + l));
+  el.textContent = out.join('\n'); el.style.display = out.length ? 'block' : 'none';
+  el.style.borderLeftColor = (r.results || []).some(x => !x.ok) ? '#f87171' : 'var(--accent)';
 }
 
 // ── recovery-key check + weekly reminder ──

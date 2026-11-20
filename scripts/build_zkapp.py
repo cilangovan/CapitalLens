@@ -85,6 +85,7 @@ panel = """
     <input id="zk-sec" type="password" placeholder="Trading 212 API secret" autocomplete="off" style="width:100%;margin-bottom:6px">
     <label style="font-size:12px"><input id="zk-full" type="checkbox"> Full history re-sync</label>
     <div style="margin:10px 0"><button id="zk-run" onclick="zkToolsRun()">Refresh now</button> <span id="zk-status" style="font-size:12px;margin-left:8px"></span></div>
+    <div id="zk-changes" style="display:none;margin:0 0 10px;padding:10px 12px;border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:8px;background:var(--bg2);font-size:12px;line-height:1.55;white-space:pre-line;word-break:break-word"></div>
     <pre id="zk-log" style="font-size:11px;max-height:200px;overflow:auto;background:#0004;padding:8px;border-radius:6px;white-space:pre-wrap"></pre>
     <hr style="border-color:var(--border)">
     <p style="font-size:12px;color:var(--muted);margin:6px 0">Phone alerts (ntfy topic, kept encrypted; treat it like a password):</p>

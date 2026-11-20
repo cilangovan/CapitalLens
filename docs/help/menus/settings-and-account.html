@@ -52,12 +52,21 @@
 <li>Open ⚙ Settings → <strong>Refresh your data</strong> (or the account page's sync box).</li>
 <li>Paste the key and secret; press <strong>Refresh now</strong>.</li>
 <li>Keep the tab open until it shows ✅. The first sync is slow because of Trading 212's rate limit.</li>
+<li>The key needs at least these <strong>read-only</strong> permissions: <strong>Account data</strong>, <strong>Portfolio</strong>, <strong>Orders history</strong> (and <strong>Dividends/Transactions history</strong> for Returns). A key without <em>Portfolio</em> is refused by Trading 212 and no positions can be saved.</li>
 </ol>
+<h3 id="what-the-refresh-tells-you-issue-53">What the refresh tells you (issue #53)</h3>
+<p>After every refresh a box under the button lists, in plain words:</p>
+<ul>
+<li><strong>What changed</strong>: "Portfolio snapshot saved: 33 positions", "New positions: …", "Quantity changed: AAAl 10 → 12", "No longer held: …", "New orders from Trading 212: 2 (2 buys, 0 sells): …", or "No new orders since the previous refresh" / "No change in holdings". A pie purchase shows up as new orders plus new or larger positions.</li>
+<li><strong>Every problem and its fix</strong>: a key Trading 212 refuses (HTTP 401/403: check live key and Portfolio / Account data permissions), a rate limit (wait a minute, refresh again), an unreadable balance or pie list. A failed call is <strong>never silent</strong>: the refresh is marked "Finished with problems", <strong>nothing wrong is saved</strong> (no zero-value snapshot; no snapshot without positions), and the box says the analyses (ratings, strategy, entry, holdings, alerts) used the previous snapshot from <date> so they do not include anything bought since.</li>
+<li>If only the pie list could not be read, positions are still saved and you are warned that pie grouping may be incomplete.</li>
+</ul>
+<p>On the legacy page (server pipeline) the same failures make the GitHub Action fail and send a push "CapitalLens refresh failed" with the reason, instead of finishing green on old data. The demo has no live refresh.</p>
 <h2 id="legacy-dashboard">Legacy dashboard</h2>
 <p>Master users can <strong>🔑 Password</strong> (change), and reset by email through the <code>send_reset_email</code> workflow.</p>
 <h2 id="source">Source</h2>
 <p><code>docs/zkapp/zkapp-auth.js</code>, <code>docs/zk/zk.js</code>, <code>docs/zk/t212sync.js</code>, <code>docs/zk/migrate.js</code>, <code>docs/zk/dedupe.js</code>, <code>docs/zk/notify.js</code>, panel markup in <code>scripts/build_zkapp.py</code>.</p>
 <h2 id="tests">Tests</h2>
-<p><code>tests/zk_zkapp_page_test.mjs</code>, <code>tests/zk_prod_pages_test.mjs</code>, <code>tests/zk_crypto_test.mjs</code>, <code>tests/zk_autorefresh_test.mjs</code>, <code>tests/zk_notify_test.mjs</code>.</p></article>
+<p><code>tests/zk_zkapp_page_test.mjs</code>, <code>tests/zk_prod_pages_test.mjs</code>, <code>tests/zk_crypto_test.mjs</code>, <code>tests/zk_autorefresh_test.mjs</code>, <code>tests/zk_notify_test.mjs</code>, <code>tests/zk_purchase_e2e_test.mjs</code> (buy between two refreshes with the real modules: positions, orders, analyst, value-buy, holding decisions, strategy, "what changed", refused key / rate limit / balance / pies), <code>tests/legacy_interrupt_test.py</code> (legacy failure paths).</p></article>
 <footer class="foot"><a href="https://github.com/cilangovan/CapitalLens/blob/main/documentation/menus/settings-and-account.md">Edit this page on GitHub</a> · <a href="../../">Back to the dashboard</a> · <a href="../index.html">Documentation home</a></footer></main></div>
 </body></html>

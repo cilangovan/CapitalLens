@@ -66,4 +66,30 @@ go()
 ok("next run fetches the missed page: all 180 orders stored", len(STORE["t212_orders"]) == 180)
 ok("  …and the resume marker is cleared", not STATE["orders"].get("resume"))
 go(); ok("a further run changes nothing (idempotent)", len(STORE["t212_orders"]) == 180)
+
+# ── 3. Issue #53: a refused key / missing data must fail the run loudly (and never save a zero-value snapshot) ──
+import io, contextlib
+pushes, saved = [], []
+monitor.send_ntfy = lambda t, b, p="default": pushes.append((t, b))
+monitor.save_snapshot_to_supabase = lambda *a, **k: saved.append(1)
+monitor.load_state = lambda: {}
+monitor.fetch_pies_with_instruments = lambda: ([], {})
+monitor.rl = lambda secs=5: None
+def run_main(account, positions, errors):
+    pushes.clear(); saved.clear(); monitor.T212_ERRORS.clear(); monitor.T212_ERRORS.update(errors)
+    monitor.fetch_account = lambda: account; monitor.fetch_positions = lambda: positions
+    buf = io.StringIO()
+    try:
+        with contextlib.redirect_stdout(buf): monitor.main()
+        return None, buf.getvalue()
+    except SystemExit as e: return e.code, buf.getvalue()
+code, out = run_main({"total": 1, "free": 1}, [], {"/api/v0/equity/portfolio": "HTTP 403"})
+ok("positions refused (HTTP 403): run exits non-zero, nothing saved", code == 1 and not saved)
+ok("  …the reason names the key permissions and a push is sent", "refused the key for your open positions" in out and "Portfolio and Account data permissions" in out and pushes and pushes[0][0] == "CapitalLens refresh failed")
+code, out = run_main(None, [{"ticker": "A"}], {"/api/v0/equity/account/cash": "HTTP 500"})
+ok("account balance missing: run exits non-zero and does NOT save a zero-value snapshot", code == 1 and not saved and "account balance" in out)
+code, out = run_main({"total": 1, "free": 1}, [], {"/api/v0/equity/portfolio": "HTTP 429 rate limit, gave up after retries"})
+ok("rate limited: tells the owner to wait and run again", code == 1 and "rate-limiting" in out)
+code, out = run_main({"total": 1, "free": 1}, [], {})
+ok("no positions and no error: says Trading 212 returned nothing (not a silent success)", code == 1 and "returned nothing for your open positions" in out)
 print(f"\n{sum(res)} passed, {len(res) - sum(res)} failed"); sys.exit(0 if all(res) else 1)

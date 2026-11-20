@@ -7,7 +7,7 @@ Trading 212 Portfolio Monitor v6
 - GitHub Actions: uses secrets
 """
 
-import os, json, time, smtplib, urllib.request, urllib.error, base64
+import os, sys, json, time, smtplib, urllib.request, urllib.error, base64
 from datetime import datetime, timezone
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
@@ -204,7 +204,20 @@ def fetch_history(limit=30):
 
 # ── T212 API ──────────────────────────────────────────────────────────────────
 
+T212_ERRORS = {}      # path -> why the last call failed (so a refused key / rate limit is reported, not silently treated as "no data")
+
+def explain_t212(path, what):
+    """Plain-words reason for a failed Trading 212 call, with what the owner can do about it."""
+    err = str(T212_ERRORS.get(path) or "")
+    if "401" in err or "403" in err:
+        return (f"Trading 212 refused the key for {what} ({err}). Check the key is live (not Practice) and has the "
+                "Portfolio and Account data permissions, then run again")
+    if "429" in err or "rate" in err.lower():
+        return f"Trading 212 is rate-limiting requests, so {what} could not be read. Wait a minute and run again"
+    return f"Could not read {what} from Trading 212 ({err or 'no data returned'})"
+
 def t212_get(path, retries=4, base_wait=12):
+    T212_ERRORS.pop(path, None)
     creds = base64.b64encode(f"{T212_API_KEY}:{T212_API_SECRET}".encode()).decode()
     for attempt in range(retries):
         req = urllib.request.Request(
@@ -222,11 +235,14 @@ def t212_get(path, retries=4, base_wait=12):
                 time.sleep(wait)
             else:
                 print(f"[T212] HTTP {e.code} on {path}: {body}")
+                T212_ERRORS[path] = f"HTTP {e.code}"
                 return None
         except Exception as ex:
             print(f"[T212] Error on {path}: {ex}")
+            T212_ERRORS[path] = str(ex)[:120]
             return None
     print(f"[T212] Gave up on {path} after {retries} retries")
+    T212_ERRORS[path] = "HTTP 429 rate limit, gave up after retries"
     return None
 
 def rl(secs=5): time.sleep(secs)
@@ -534,8 +550,14 @@ def main():
     positions = fetch_positions()
     pies, pie_map = fetch_pies_with_instruments()
 
-    if not positions:
-        print("[warn] No positions returned"); return
+    # Never save a wrong picture: without the account balance the snapshot would carry a total of 0, and without positions there is nothing to save.
+    # Fail the run LOUDLY (the Action turns red and a push is sent) instead of finishing "successfully" on the previous snapshot.
+    for what, path, have in (("your account balance", "/api/v0/equity/account/cash", account), ("your open positions", "/api/v0/equity/portfolio", positions)):
+        if not have:
+            why = explain_t212(path, what) if path in T212_ERRORS else f"Trading 212 returned nothing for {what}"
+            print(f"[error] {why}. Nothing was saved, so the dashboards still show the previous snapshot")
+            send_ntfy("CapitalLens refresh failed", f"{why}. Nothing was saved.", "high")
+            sys.exit(1)
 
     state = update_highs(state, positions)
     fetch_instrument_meta(state, [p.get("ticker") for p in positions if p.get("ticker")])
