@@ -28,7 +28,21 @@
         body: JSON.stringify(make(new Date().toISOString())),
       });
     }
-    if (/^\/(chart|search|settings\/|watchlist\/)/.test(path)) return json(501, { error: 'This feature is not available in the demo' });
+    // Demo-only data: charts come from stored mock price paths, IPO and flow reports from demo-only tables (nothing invented goes into tables the private app reads).
+    if (path === '/chart') {
+      let body = {};
+      try { body = JSON.parse(init.body || '{}'); } catch (e) {}
+      const N = { '5d': 5, '1mo': 22, '3mo': 63, '6mo': 126, '9mo': 189, '1y': 252, '2y': 252, '5y': 252, max: 252 }[body.range];
+      if (!N) return json(501, { error: 'Intraday charts are not available in the demo' });
+      const r = await inner(`${PROXY}/demo_market_cache?select=payload&key=eq.${encodeURIComponent('chart:' + body.symbol + ':1y')}&limit=1`, { headers: { apikey: SUPABASE_KEY, Authorization: 'Bearer ' + SESSION_TOKEN } });
+      const rows = r.ok ? await r.json().catch(() => []) : [];
+      const p = rows[0] && rows[0].payload;
+      if (!p || !p.points) return json(404, { error: 'No demo chart for this symbol' });
+      return json(200, { points: p.points.slice(-N), meta: p.meta || {} });
+    }
+    if (/^\/(search|settings\/|watchlist\/|ipo\/)/.test(path)) return json(501, { error: 'This feature is not available in the demo' });
+    const DEMO_ONLY = { '/ipo_calendar': '/demo_ipo_calendar', '/institutional_flow_reports': '/demo_institutional_flow_reports' };
+    for (const k in DEMO_ONLY) if (path === k || path.startsWith(k + '?')) input = PROXY + DEMO_ONLY[k] + path.slice(k.length);
 
     const h = new Headers(init.headers || {});
     h.set('apikey', SUPABASE_KEY);

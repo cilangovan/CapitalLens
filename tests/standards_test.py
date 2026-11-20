@@ -116,3 +116,8 @@ check("demo refresh seeds Analyst, Profit Booking and Strategy data", all(t in _
 
 _ret = (ROOT / "db/tenant/20_demo_returns.sql").read_text() if (ROOT / "db/tenant/20_demo_returns.sql").exists() else ""
 check("demo refresh seeds the Returns dashboard (returns_summary + realised_pnl)", all(x in _ret for x in ["insert into public.returns_summary", "insert into public.realised_pnl", "public.seed_demo_returns(t)"]))
+
+_mk = (ROOT / "db/tenant/21_demo_markets.sql").read_text() if (ROOT / "db/tenant/21_demo_markets.sql").exists() else ""
+check("demo markets/watchlist/pie history/IPO are seeded, and only into demo-only tables (never the shared market_cache / ipo_calendar / institutional_flow_reports)",
+      all(x in _mk for x in ["insert into public.demo_market_cache", "insert into public.demo_ipo_calendar", "insert into public.watchlist_analysis", "insert into public.pie_history", "public.seed_demo_markets(t)"])
+      and not re.search(r"insert into public\.(market_cache|ipo_calendar|institutional_flow_reports)\b", _mk + _ins + _ret))

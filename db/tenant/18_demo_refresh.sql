@@ -26,7 +26,7 @@ begin
       ('holding_decisions','Holding decisions (Analyst)', true), ('profit_booking','Profit Booking Strategy', true), ('profit_booking_summary','Profit Booking summary', true),
       ('realised_pnl','Returns: realised P&L', true), ('returns_summary','Returns summary', true), ('strategy_recommendations','Strategy recommendations', true),
       ('value_buy_scores','Value-buy scores', true), ('watchlist_analysis','Watchlist analysis', true), ('pie_history','Pie history chart', true),
-      ('market_cache','Markets I hold (shared)', false), ('ipo_calendar','IPO Watch (shared)', false), ('analyst_ratings','Analyst ratings (shared)', false)) as v(tbl, feature, per_user) loop
+      ('demo_market_cache','Markets I hold (demo-only table)', false), ('demo_ipo_calendar','IPO Watch (demo-only table)', false), ('demo_institutional_flow_reports','Institutional flow report (demo-only table)', false), ('analyst_ratings','Analyst ratings (shared)', false)) as v(tbl, feature, per_user) loop
     begin
       if r.per_user then execute format('select count(*) from public.%I where user_id = %L', r.tbl, t) into n;
       else execute format('select count(*) from public.%I', r.tbl) into n; end if;
