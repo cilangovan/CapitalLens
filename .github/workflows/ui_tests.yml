@@ -48,3 +48,8 @@ jobs:
         run: python -u tests/ops_layout_test.py
       - name: Demo sign-in, temporary login card and countdown fit phone screens
         run: python -u tests/demo_layout_test.py
+      - name: Demo parity guard (every dashboard feature has demo data)
+        env:
+          DEMO_SUPABASE_URL: ${{ secrets.DEMO_SUPABASE_URL }}
+          DEMO_SERVICE_KEY: ${{ secrets.DEMO_SERVICE_KEY }}
+        run: python -u tests/demo_parity_test.py
