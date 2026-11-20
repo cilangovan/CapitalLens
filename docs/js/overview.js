@@ -357,19 +357,43 @@ function ovDeclineBars(rows) {
 // Snapshots saved before the account data was kept are left out (a different definition would bend the line); the card says how many points it has.
 function ovLinePoints(snaps, days, nowMs) {
   const pts = (snaps || []).map(x => { const a = x && x.raw && x.raw.account, t = new Date(x && x.created_at).getTime();
-    return (a && a.invested != null && Number.isFinite(+a.invested) && Number.isFinite(t)) ? { t, v: +a.invested + (+a.ppl || 0) } : null; }).filter(Boolean).sort((a, b) => a.t - b.t);
+    return (a && a.invested != null && Number.isFinite(+a.invested) && Number.isFinite(t)) ? { t, v: +a.invested + (+a.ppl || 0), inv: +a.invested } : null; }).filter(Boolean).sort((a, b) => a.t - b.t);
   if (!pts.length) return { points: [], n: 0 };
   const end = pts[pts.length - 1].t, cut = end - days * 864e5, inRange = pts.filter(p => p.t >= cut);
   if (inRange.length < 2) return { points: inRange, n: inRange.length, spanDays: 0, available: (end - pts[0].t) / 864e5 };
   const a = inRange[0], b = inRange[inRange.length - 1];
-  return { points: inRange, n: inRange.length, spanDays: (b.t - a.t) / 864e5, change: b.v - a.v, pct: a.v ? (b.v - a.v) / a.v * 100 : 0, from: a, to: b, available: (end - pts[0].t) / 864e5 };
+  return { points: inRange, n: inRange.length, spanDays: (b.t - a.t) / 864e5, change: b.v - a.v, pct: a.v ? (b.v - a.v) / a.v * 100 : 0, from: a, to: b, available: (end - pts[0].t) / 864e5,
+    flow: a.inv != null && b.inv != null ? b.inv - a.inv : null }; // flow = change in cost basis (money added by buys / removed by sells); change - flow = change in the unrealised result
 }
-function ovLineSvg(points) {
-  if (!points || points.length < 2) return '';
-  const W = 340, H = 110, P = 6, t0 = points[0].t, t1 = points[points.length - 1].t, vs = points.map(p => p.v), lo = Math.min(...vs), hi = Math.max(...vs), pad = (hi - lo) * 0.1 || 1;
-  const x = p => P + (t1 === t0 ? 0 : (p.t - t0) / (t1 - t0)) * (W - 2 * P), y = p => H - P - (p.v - (lo - pad)) / (hi - lo + 2 * pad) * (H - 2 * P);
-  const up = points[points.length - 1].v >= points[0].v;
-  return `<svg viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img" aria-label="Investments value over time"><polyline fill="none" stroke="${up ? '#4ade80' : '#f87171'}" stroke-width="2" stroke-linejoin="round" points="${points.map(p => x(p).toFixed(1) + ',' + y(p).toFixed(1)).join(' ')}"/></svg>`;
+// Geometry for the line (pure, tested). Rules that keep a small move from looking like a crash:
+//  - the vertical range is never tighter than 2% of the value (a £45 wobble on £4,800 stays a wobble) and has labelled min / mid / max lines;
+//  - a gap with no snapshots (overnight, app closed) is drawn dashed, never as a steep solid slope;
+//  - a jump in cost basis (a buy or sell) is marked, because it moves the line without being performance.
+const OV_LN = { W: 340, H: 150, L: 52, R: 8, T: 10, B: 20 };
+function ovLineLayout(points) {
+  if (!points || points.length < 2) return null;
+  const { W, H, L, R, T, B } = OV_LN, t0 = points[0].t, t1 = points[points.length - 1].t, vs = points.map(p => p.v);
+  let lo = Math.min(...vs), hi = Math.max(...vs); const minSpan = Math.max(1, Math.abs(hi) * 0.02);
+  if (hi - lo < minSpan) { const m = (hi + lo) / 2; lo = m - minSpan / 2; hi = m + minSpan / 2; }
+  const pad = (hi - lo) * 0.08; lo -= pad; hi += pad;
+  const x = t => L + (t1 === t0 ? 0 : (t - t0) / (t1 - t0)) * (W - L - R), y = v => T + (hi - v) / (hi - lo) * (H - T - B);
+  const dts = points.slice(1).map((p, i) => p.t - points[i].t).sort((a, b) => a - b), med = dts[Math.floor(dts.length / 2)] || 0, gapMs = Math.max(2 * 36e5, 4 * med);
+  const segs = [[]], gaps = []; points.forEach((p, i) => { if (i && p.t - points[i - 1].t > gapMs) { gaps.push([i - 1, i]); segs.push([]); } segs[segs.length - 1].push(i); });
+  const marks = []; points.forEach((p, i) => { if (!i || p.inv == null || points[i - 1].inv == null) return; const d = p.inv - points[i - 1].inv; if (Math.abs(d) >= Math.max(5, Math.abs(points[i - 1].inv) * 0.002)) marks.push({ i, d }); });
+  return { W, H, L, R, T, B, t0, t1, lo, hi, x, y, xs: points.map(p => x(p.t)), segs, gaps, marks, gapMs };
+}
+function ovLineSvg(points, lay) {
+  lay = lay || ovLineLayout(points); if (!lay) return '';
+  const { W, H, L, R, T, B, x, y, lo, hi } = lay, up = points[points.length - 1].v >= points[0].v, col = up ? '#4ade80' : '#f87171', P = i => x(points[i].t).toFixed(1) + ',' + y(points[i].v).toFixed(1);
+  const money = v => '£' + Math.round(v).toLocaleString('en-GB'), span = lay.t1 - lay.t0, dayFmt = t => span <= 1.2 * 864e5 ? new Date(t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : span <= 4 * 864e5 ? new Date(t).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  const grid = [hi, (hi + lo) / 2, lo].map(v => `<line x1="${L}" x2="${W - R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="#2d3353" stroke-width="1"/><text x="${L - 4}" y="${(y(v) + 3).toFixed(1)}" text-anchor="end" font-size="10" fill="#9aa0c3">${money(v)}</text>`).join('');
+  const xl = `<text x="${L}" y="${H - 5}" font-size="10" fill="#9aa0c3">${esc(dayFmt(lay.t0))}</text><text x="${W - R}" y="${H - 5}" text-anchor="end" font-size="10" fill="#9aa0c3">${esc(dayFmt(lay.t1))}</text>`;
+  const lines = lay.segs.map(s => s.length > 1 ? `<polyline fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="${s.map(P).join(' ')}"/>` : '').join('');
+  const dashed = lay.gaps.map(([a, b]) => `<line x1="${x(points[a].t).toFixed(1)}" y1="${y(points[a].v).toFixed(1)}" x2="${x(points[b].t).toFixed(1)}" y2="${y(points[b].v).toFixed(1)}" stroke="${col}" stroke-width="1.5" stroke-dasharray="3 4" opacity="0.55"/>`).join('');
+  const dots = points.map((p, i) => points.length <= 80 || i === points.length - 1 || lay.segs.some(s => s.length === 1 && s[0] === i) ? `<circle cx="${x(p.t).toFixed(1)}" cy="${y(p.v).toFixed(1)}" r="${i === points.length - 1 ? 3.5 : 2}" fill="${col}"/>` : '').join('');
+  const marks = lay.marks.map(m => { const px = x(points[m.i].t).toFixed(1), by = H - B; return `<line x1="${px}" x2="${px}" y1="${T}" y2="${by}" stroke="#c98500" stroke-width="1" stroke-dasharray="1 3" opacity="0.8"/><polygon points="${m.d > 0 ? `${px},${by - 7} ${(+px - 4).toFixed(1)},${by} ${(+px + 4).toFixed(1)},${by}` : `${px},${by} ${(+px - 4).toFixed(1)},${by - 7} ${(+px + 4).toFixed(1)},${by - 7}`}" fill="#c98500"/>`; }).join('');
+  return `<svg id="ov-ln-svg" viewBox="0 0 ${W} ${H}" width="100%" height="${H}" role="img" aria-label="Investments value over time" style="touch-action:pan-y">${grid}${xl}${marks}${dashed}${lines}${dots}`
+    + `<line id="ov-ln-cross" x1="0" x2="0" y1="${T}" y2="${H - B}" stroke="#9aa0c3" stroke-width="1" visibility="hidden"/><circle id="ov-ln-pick" r="5" fill="${col}" stroke="#1a1d2e" stroke-width="2" visibility="hidden"/></svg>`;
 }
 
 // ── LONGER SPANS FROM REBUILT HISTORY ──
@@ -582,9 +606,18 @@ async function loadInvestLine(range) {
   let L = ovLinePoints(snaps, days, Date.now()), rebuilt = false; const body = document.getElementById('ov-line-body');
   if (L.n < 2 || L.spanDays < days * 0.8) { try { const H = ovHistLine((await api('pie_history', '?select=pie,series')).find(r => r.pie === '__ALL__'), days, Date.now()); if (H.n >= 2 && (L.n < 2 || H.spanDays > L.spanDays)) { L = H; rebuilt = true; } } catch (e) {} }
   if (L.n < 2) { body.innerHTML = `<div style="color:var(--muted);font-size:13px">Not enough saved points for ${esc(range)} yet (${L.n} with Trading 212 account data${L.available ? `, covering ${L.available.toFixed(1)} days` : ''}). Press Refresh on different days to build the line.</div>`; return; }
-  const g = x => '£' + Math.abs(x).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), up = L.change >= 0;
-  body.innerHTML = `<div style="font-size:20px;font-weight:700">${g(L.to.v)}</div><div style="font-size:13px;color:${up ? 'var(--green,#4ade80)' : 'var(--red,#f87171)'}">${up ? '+' : '−'}${g(L.change)} (${up ? '+' : ''}${L.pct.toFixed(2)}%) over ${L.spanDays.toFixed(1)} days · ${L.n} ${rebuilt ? 'daily points, rebuilt from your Trading 212 order history' : 'saved points'}</div>${ovLineSvg(L.points)}`
+  const g = x => '£' + Math.abs(x).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 }), up = L.change >= 0, lay = ovLineLayout(L.points);
+  body.innerHTML = `<div style="font-size:20px;font-weight:700">${g(L.to.v)}</div><div style="font-size:13px;color:${up ? 'var(--green,#4ade80)' : 'var(--red,#f87171)'}">${up ? '+' : '−'}${g(L.change)} (${up ? '+' : ''}${L.pct.toFixed(2)}%) over ${L.spanDays.toFixed(1)} days · ${L.n} ${rebuilt ? 'daily points, rebuilt from your Trading 212 order history' : 'saved points'}</div>`
+    + (L.flow != null && Math.abs(L.flow) >= 5 ? `<div style="font-size:12px;margin-top:2px">Cost basis ${L.flow > 0 ? '+' : '−'}${g(L.flow)} (buys/sells) · unrealised result ${L.change - L.flow >= 0 ? '+' : '−'}${g(L.change - L.flow)}</div>` : '')
+    + '<div id="ov-ln-read" style="font-size:12px;min-height:34px;margin:4px 0">Touch the chart to read a point.</div><div id="ov-ln-wrap">' + ovLineSvg(L.points, lay) + '</div>'
+    + (lay.gaps.length || lay.marks.length ? `<div class="muted" style="font-size:11px;margin-top:2px">${lay.gaps.length ? 'Dashed = no snapshots in between (app was not refreshed). ' : ''}${lay.marks.length ? '▲/▼ = cost basis rose/fell (a buy or sell moved the line, not the market).' : ''}</div>` : '')
     + `<div class="muted" style="font-size:11px">${esc(new Date(L.from.t).toLocaleString('en-GB'))} → ${esc(new Date(L.to.t).toLocaleString('en-GB'))}</div>`;
+  const read = document.getElementById('ov-ln-read'), cross = document.getElementById('ov-ln-cross'), pick = document.getElementById('ov-ln-pick'), svg = document.getElementById('ov-ln-svg'), wrap = document.getElementById('ov-ln-wrap');
+  const move = e => { const r = svg.getBoundingClientRect(), fx = (e.clientX - r.left) / r.width * lay.W; let k = 0; lay.xs.forEach((px, i) => { if (Math.abs(px - fx) < Math.abs(lay.xs[k] - fx)) k = i; });
+    const p = L.points[k], px = lay.xs[k], py = lay.y(p.v), m = lay.marks.find(q => q.i === k);
+    cross.setAttribute('x1', px); cross.setAttribute('x2', px); cross.setAttribute('visibility', 'visible'); pick.setAttribute('cx', px); pick.setAttribute('cy', py); pick.setAttribute('visibility', 'visible');
+    read.textContent = new Date(p.t).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) + ' · ' + g(p.v) + (p.inv != null ? ` · cost ${g(p.inv)} · unrealised ${p.v - p.inv < 0 ? '−' : '+'}${g(p.v - p.inv)}` : '') + (m ? ` · ${m.d > 0 ? '▲ cost basis +' : '▼ cost basis −'}${g(m.d)} (${m.d > 0 ? 'buy' : 'sell'})` : ''); };
+  wrap.addEventListener('pointermove', move); wrap.addEventListener('pointerdown', move);
 }
 
 // ── COUNTRY MAP ───────────────────────────────────────────────

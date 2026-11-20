@@ -47,7 +47,13 @@ A collapsible card with 1D / 1W / 1M / 3M / 6M / 9M / 1Y buttons and one horizon
 
 ## Investments value over time (card)
 
-A collapsible line chart with 1D / 1W / 1M / 3M / 6M / 9M / 1Y buttons, like the Trading 212 home screen. Each point is a saved snapshot's **investments value as Trading 212 defines it** (cost basis + unrealised result, from the snapshot's account data). Snapshots saved before that data was kept are left out so the line never mixes two definitions; the card says how many points it has and how many days they cover, and draws no line with fewer than two points. The change shown is first to last point in the span, and the card notes that buying or selling moves the value, so a rise is not always performance. Points exist only for days you pressed Refresh ("nothing runs while the app is closed"), so it is sparser than Trading 212's own chart. Source: `portfolio_snapshots`. Guarded by `tests/zk_overview_stale_test.mjs`.
+A collapsible line chart with 1D / 1W / 1M / 3M / 6M / 9M / 1Y buttons, like the Trading 212 home screen. Each point is a saved snapshot's **investments value as Trading 212 defines it** (cost basis + unrealised result, from the snapshot's account data). Snapshots saved before that data was kept are left out so the line never mixes two definitions; the card says how many points it has and how many days they cover, and draws no line with fewer than two points. The change shown is first to last point in the span, and the card notes that buying or selling moves the value, so a rise is not always performance. Points exist only for days you pressed Refresh ("nothing runs while the app is closed"), so it is sparser than Trading 212's own chart. Source: `portfolio_snapshots`. Guarded by `tests/zk_overview_stale_test.mjs` and `tests/zk_invest_line_test.mjs`.
+
+**How the line is drawn (so a small move never looks like a crash):**
+- The vertical axis has labelled min / mid / max lines in pounds and is **never tighter than 2% of the value**: a £45 move on £4,800 stays a wobble, not a cliff. The start and end of the span are labelled underneath (times for a day, dates for longer).
+- Every snapshot is a dot (the latest is larger). A gap with no snapshots (overnight, or the app was not refreshed) is drawn **dashed**, never as a steep solid slope.
+- A change in cost basis of £5 or more (and 0.2%) is marked **▲ buy / ▼ sell** with a dotted line, because buying or selling moves the line without being performance. Under the figure the card splits the change into **cost basis (buys/sells)** and **unrealised result**; both are Trading 212's own figures. Rebuilt history (below) has no cost basis, so it shows no markers.
+- Touch or hover the chart to read a point: time, investments value, cost basis, unrealised result and, on a marker, the buy/sell amount.
 
 ### Longer spans (rebuilt history)
 

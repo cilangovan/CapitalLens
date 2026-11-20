@@ -24,7 +24,7 @@ Every chart in the product, what question it answers, where its data comes from,
 
 | ID | Chart | Menu | Question | Data | Spans | Specific rules |
 |---|---|---|---|---|---|---|
-| CH-20 | **Investments value over time** (line) | Overview | How has my invested value moved? | `portfolio_snapshots` (investments = cost basis + unrealised), fallback `pie_history` | 1D 1W 1M 3M 6M 9M 1Y | One point per saved snapshot; 1D uses intraday snapshots; label the fallback |
+| CH-20 | **Investments value over time** (line) | Overview | How has my invested value moved? | `portfolio_snapshots` (investments = cost basis + unrealised), fallback `pie_history` | 1D 1W 1M 3M 6M 9M 1Y | One point per saved snapshot; 1D uses intraday snapshots; label the fallback; axis labelled and ≥ 2% of the value tall; gaps dashed; buys/sells marked; tap to read a point |
 | CH-21 | **Gain % by position** (bars) | Overview | Which holdings gained or lost over a period? | `positions` of latest snapshot compared with earlier snapshots | 1D 1W 1M 3M 6M 9M 1Y All | A holding with no data for the period shows "No data yet for this period", not a zero bar; All uses the broker's own profit figure |
 | CH-22 | **Portfolio by pie** (doughnut) | Overview | How is value split across pies? | `positions.pie` | none | Pie colours derived from the pie name, no names in code |
 | CH-23 | **Market decline by country** (horizontal bars) | Overview | Where are my holdings falling? | Holdings' price change between snapshots, grouped by country from `instrument_country_weights` | 1D 1W 1M 3M 6M 9M 1Y | Worst first; red decline, green gain; non-countries (gold, silver, other, unclassified) are not shown as countries |
