@@ -78,9 +78,9 @@ function logout() {
     document.removeEventListener(evt, resetInactivityTimer)
   );
   try {
-    const keep = ['t212_timeout', 't212_expired'].filter(k => sessionStorage.getItem(k));   // sign-in screen messages
+    const keep = ['t212_timeout', 't212_expired', 'demo_msg'].filter(k => sessionStorage.getItem(k)).map(k => [k, sessionStorage.getItem(k)]);   // sign-in screen messages
     sessionStorage.clear();
-    keep.forEach(k => sessionStorage.setItem(k, '1'));
+    keep.forEach(([k, v]) => sessionStorage.setItem(k, v));
   } catch(e){}
   location.reload();
 }
@@ -100,6 +100,7 @@ function startApp() {
     } catch(e){}
   }
   if (!IS_GUEST) startInactivityTimer();
+  if (!IS_GUEST && typeof demoInit === 'function') demoInit();   // temporary demo logins: countdown, heartbeat, end on close
   loadTab('overview');
   if (!IS_GUEST) loadTab('alerts');   // preload so the 🔔 unread badge shows
 }

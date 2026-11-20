@@ -35,7 +35,9 @@ NAV = [
     ("Data", [("database.md", "Database & data flows"), ("reference/database-tables.md", "Table reference (generated)")]),
     ("Operations", [("workflows.md", "Workflows & schedules"), ("reference/workflows.md", "Workflow reference (generated)"),
                     ("architecture-and-security.md", "Architecture & security"),
-                    ("ops-dashboard.md", "Internal ops dashboard (planned)")]),
+                    ("ops-dashboard.md", "Internal ops dashboard (planned)"),
+                    ("demo.md", "Demo user (pre-sales)"),
+                    ("demo-requirements.md", "Demo user: requirements and wireframes")]),
     ("Engineering", [("engineering-guide.md", "Engineering guide"), ("reference/menu-map.md", "Menu map (generated)")]),
 ]
 PAGES = [p for _, items in NAV for p, _ in items]

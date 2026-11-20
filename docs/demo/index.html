@@ -78,6 +78,19 @@
     font-size: 11px; padding: 2px 8px; border-radius: 999px; margin-left: 8px;
   }
 
+  /* Temporary demo login (epic #32) */
+  .demo-msg { font-size: 12px; color: var(--muted); margin: 8px 0 4px; min-height: 16px; text-align: center; }
+  .demo-msg.err { color: var(--red); }
+  .demo-note { font-size: 13px; color: var(--muted); margin-bottom: 12px; line-height: 1.4; }
+  .demo-cred { display: flex; align-items: center; gap: 8px; background: var(--bg); border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; margin-bottom: 8px; min-width: 0; }
+  .demo-k { font-size: 11px; color: var(--muted); width: 58px; flex: none; }
+  .demo-cred code { flex: 1; min-width: 0; overflow-wrap: anywhere; font-size: 13px; user-select: all; }
+  .demo-copy, .demo-banner button { min-height: 40px; min-width: 56px; background: none; border: 1px solid var(--border); color: var(--accent); border-radius: 6px; font-size: 12px; cursor: pointer; padding: 0 10px; }
+  .demo-badge.warn { background: rgba(239,68,68,.18); color: var(--red); }
+  .demo-banner { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; padding: 6px 12px; background: rgba(245,158,11,.12); color: var(--yellow); font-size: 12px; }
+  .demo-banner code { flex-basis: 100%; overflow-wrap: anywhere; color: var(--text); }
+  .demo-warn { padding: 8px 12px; background: rgba(245,158,11,.2); color: var(--yellow); font-size: 12px; }
+
   /* ── MAIN APP ── */
   #app { display: none; }
   #app.visible { display: block; }
@@ -427,10 +440,23 @@
     <h2>🌐 CapitalLens Demo</h2>
     <p id="login-subtitle">Demo portfolio — synthetic data</p>
 
+    <!-- Temporary demo login (epic #32) -->
+    <div id="demo-start">
+      <button class="login-btn btn-master" id="demo-try-btn" onclick="demoStart()">▶ Try the demo</button>
+      <div class="demo-msg" id="demo-try-msg">Free one-hour access with a temporary login. No sign-up.</div>
+      <div class="login-divider">— or sign in —</div>
+    </div>
+    <div id="demo-creds" style="display:none">
+      <div class="demo-note">Your temporary login. It works for <b id="demo-cred-mins">60</b> minutes, or until you close the demo or leave it idle for <b id="demo-cred-idle">45</b> minutes.</div>
+      <div class="demo-cred"><span class="demo-k">Email</span><code id="demo-cred-email"></code><button class="demo-copy" type="button" onclick="demoCopy('email',this)">Copy</button></div>
+      <div class="demo-cred"><span class="demo-k">Password</span><code id="demo-cred-pw"></code><button class="demo-copy" type="button" onclick="demoCopy('pw',this)">Copy</button></div>
+      <button class="login-btn btn-master" onclick="demoOpen()">Open the demo</button>
+    </div>
+
     <!-- Main login form -->
     <div id="login-form">
       <div class="login-field">
-        <input type="text" id="login-user" placeholder="Email" value="demo@capitallens.test" autocomplete="username">
+        <input type="text" id="login-user" placeholder="Email" autocomplete="username">
       </div>
       <div class="login-field">
         <input type="password" id="login-pw" placeholder="Password" autocomplete="current-password"
@@ -494,10 +520,13 @@
   <h1>🌐 CapitalLens</h1>
   <span class="pill" style="background:#f59e0b;color:#111">DEMO</span>
   <span id="guest-badge" class="guest-badge" style="display:none">👁 Guest</span>
+  <span id="demo-badge" class="guest-badge demo-badge" style="display:none" title="Time left in your demo">⏱ 60:00</span>
   <span id="last-updated"></span>
   <button id="change-pw-btn" onclick="openChangePw()" style="display:none;background:none;border:1px solid var(--border);color:var(--muted);font-size:11px;padding:3px 10px;border-radius:6px;cursor:pointer;margin-left:4px">🔑 Password</button>
   <button id="logout-btn" onclick="logout()">Sign out</button>
 </header>
+<div id="demo-banner" class="demo-banner" style="display:none"><span>Demo data: realistic but not real holdings.</span><button type="button" onclick="demoShowLogin()">Show login</button><code id="demo-banner-login" style="display:none"></code></div>
+<div id="demo-warn" class="demo-warn" style="display:none">⏳ Your demo ends in about <b id="demo-warn-min">5</b> min. Any activity keeps it open until then, the hour is a hard limit.</div>
 
 <nav>
   <button class="active" onclick="showTab('overview',this)">📊 Overview</button>
@@ -577,6 +606,7 @@
 <script src="../js/api.js"></script>
 <script src="demo-shim.js"></script>
 <script src="demo-auth.js"></script>
+<script src="demo-session.js"></script>
 <script src="../js/overview.js"></script>
 <script src="../js/heatmap.js"></script>
 <script src="../js/positions.js"></script>

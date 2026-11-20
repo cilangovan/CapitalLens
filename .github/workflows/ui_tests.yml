@@ -46,3 +46,5 @@ jobs:
         run: python -u tests/docs_layout_test.py
       - name: Ops page layout and signed-out view
         run: python -u tests/ops_layout_test.py
+      - name: Demo sign-in, temporary login card and countdown fit phone screens
+        run: python -u tests/demo_layout_test.py

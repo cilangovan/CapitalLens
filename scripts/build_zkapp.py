@@ -13,6 +13,14 @@ assert "script-src 'self';" in s
 s = s.replace("connect-src 'self' https://ggprfdetivzekjxlpvyq.supabase.co;", "connect-src 'self' https://ggprfdetivzekjxlpvyq.supabase.co https://capitallens-relay.itsme-daf.workers.dev https://ntfy.sh;")
 s = s.replace("<h2>🌐 CapitalLens Demo</h2>", "<h2>🔒 CapitalLens</h2>").replace("Demo portfolio — synthetic data", "Private portfolio dashboard — end-to-end encrypted")
 s = s.replace('value="demo@capitallens.test" ', "")
+# The temporary demo login (epic #32) exists only on the demo page: strip every piece of it from the private app.
+s = re.sub(r"\s*<!-- Temporary demo login \(epic #32\) -->.*?<!-- Main login form -->", "\n\n    <!-- Main login form -->", s, flags=re.S)
+s = re.sub(r'\s*<span id="demo-badge".*?</span>', "", s, flags=re.S)
+s = re.sub(r'\s*<div id="demo-banner".*?</div>', "", s, flags=re.S)
+s = re.sub(r'\s*<div id="demo-warn".*?</div>', "", s, flags=re.S)
+s = re.sub(r"\s*/\* Temporary demo login \(epic #32\) \*/.*?(?=\s*/\* ── MAIN APP ── \*/)", "", s, flags=re.S)
+s = s.replace('<script src="demo-session.js"></script>', "")
+assert "demo-session" not in s and "demo-try-btn" not in s and "demo-banner" not in s
 s = s.replace('<span class="pill" style="background:#f59e0b;color:#111">DEMO</span>', '<span class="pill" style="background:#0f766e;color:#fff">PRIVATE</span>')
 s = s.replace('<button id="logout-btn" onclick="logout()">Sign out</button>',
   '<button onclick="zkToolsOpen()" style="background:none;border:1px solid var(--border);color:var(--text);font-size:11px;padding:3px 10px;border-radius:6px;cursor:pointer;margin-right:8px">⚙ Settings</button>\n  <button id="logout-btn" onclick="logout()">Sign out</button>')

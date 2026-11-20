@@ -25,7 +25,7 @@ check("signature check self-test: flags a real signature, allows the CLAUDE.md f
 check("no Claude / Anthropic / Co-Authored-By signature in any commit message", not hits, f"commits: {hits[:5]}")
 
 def scripts(f): return {s.split("/")[-1] for s in re.findall(r'<script src="([^"?]+)', (ROOT / f).read_text())}
-variant = {"auth.js", "demo-auth.js", "demo-shim.js"}
+variant = {"auth.js", "demo-auth.js", "demo-shim.js", "demo-session.js"}
 a, b = scripts("docs/index.html") - variant, scripts("docs/demo/index.html") - variant
 check("legacy page and demo page load the same modules (features reach every dashboard)", a == b, f"only legacy: {sorted(a - b)} · only demo: {sorted(b - a)}")
 
@@ -97,3 +97,15 @@ check("every graph range selector offers 1D 1W 1M 3M 6M 9M 1Y",
 check("CLAUDE.md records the same-time-ranges rule", "1D · 1W · 1M · 3M · 6M · 9M · 1Y" in doc)
 
 print("\nstandards: " + ("all good" if not bad else f"{bad} failed")); sys.exit(1 if bad else 0)
+
+# ── demo credentials never live in the repo (epic #32) ──
+import subprocess as _sp
+_files = _sp.run(["git", "ls-files"], cwd=ROOT, capture_output=True, text=True).stdout.split()
+_bad = []
+for _f in _files:
+    if _f.endswith((".png", ".ico", ".woff2")) or _f == "tests/standards_test.py": continue
+    try: _t = (ROOT / _f).read_text()
+    except Exception: continue
+    if re.search(r"demo@capitallens\.test[\"'`]?\s*[,:=]\s*[\"'`][^\"'`\s]{8,}", _t) or re.search(r"DEMO_(MASTER_)?PASSWORD\s*[=:]\s*[\"'][^\"']{6,}", _t): _bad.append(_f)
+check("no demo account password committed to the repo", not _bad, f"files: {_bad[:3]}")
+check("demo sign-in does not pre-fill the master demo email", 'value="demo@capitallens.test"' not in (ROOT / "docs/demo/index.html").read_text())
