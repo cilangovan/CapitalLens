@@ -109,3 +109,7 @@ for _f in _files:
     if re.search(r"demo@capitallens\.test[\"'`]?\s*[,:=]\s*[\"'`][^\"'`\s]{8,}", _t) or re.search(r"DEMO_(MASTER_)?PASSWORD\s*[=:]\s*[\"'][^\"']{6,}", _t): _bad.append(_f)
 check("no demo account password committed to the repo", not _bad, f"files: {_bad[:3]}")
 check("demo sign-in does not pre-fill the master demo email", 'value="demo@capitallens.test"' not in (ROOT / "docs/demo/index.html").read_text())
+
+# demo must show Analyst / Profit Booking / Strategy data: the daily refresh has to seed them (pre-sales mock-up)
+_ins = (ROOT / "db/tenant/19_demo_insights.sql").read_text() if (ROOT / "db/tenant/19_demo_insights.sql").exists() else ""
+check("demo refresh seeds Analyst, Profit Booking and Strategy data", all(t in _ins for t in ["seed_demo_insights", "insert into public.profit_booking ", "insert into public.profit_booking_summary", "insert into public.value_buy_scores", "insert into public.strategy_recommendations", "insert into public.holding_decisions", "analyst_ratings", "institutional_flow_reports"]) and "public.seed_demo_insights(t)" in _ins)
