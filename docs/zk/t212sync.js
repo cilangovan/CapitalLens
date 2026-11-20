@@ -91,7 +91,7 @@
       const full = force || (!state.last_full && (have.size === 0 || !!state.walking));
       log(`[${ep.name}] ${full ? 'full walk' : 'incremental' + (have.size && !state.last_full ? ' (history already stored)' : '')}`);
       if (full) await store.put('sync_state', [{ ...state, endpoint: ep.name, walking: now() }], s => s.endpoint);
-      let nxt = ep.path, pages = 0, fresh = 0, seen = 0;
+      let nxt = ep.path, pages = 0, fresh = 0, seen = 0, resume = full ? null : state.resume || null;     // resume: where an earlier catch-up was cut off (page reloaded / signal lost)
       while (nxt) {
         const resp = await t212(nxt);
         const items = Array.isArray(resp) ? resp : (resp && resp.items) || [];
@@ -105,8 +105,14 @@
         rows.forEach(r => have.set(r[ep.key], r));
         pages++; seen += rows.length; fresh += rows.length - known;
         log(`  page ${pages}: ${rows.length} items, ${rows.length - known} new`);
-        if (!full && rows.length && known === rows.length) { log('  reached already-stored history, stopping'); break; }
-        nxt = resp && !Array.isArray(resp) ? resp.nextPagePath : null;
+        const more = resp && !Array.isArray(resp) ? resp.nextPagePath : null;
+        if (!full && rows.length && known === rows.length) {
+          if (resume) { log('  continuing an earlier catch-up that was cut off'); nxt = resume; resume = null; continue; }
+          log('  reached already-stored history, stopping'); break;
+        }
+        // newer pages are stored before older ones, so a reload here would leave the older new items unseen: note where to carry on
+        if (!full && more && fresh) await store.put('sync_state', [{ ...state, endpoint: ep.name, resume: more }], s => s.endpoint);
+        nxt = more;
       }
       const st = { endpoint: ep.name, last_run: now(), items_total: have.size, status: 'ok', detail: `${pages} pages, ${seen} items read, ${fresh} new`, last_full: full ? now() : (state.last_full || (have.size ? now() : undefined)) };
       await store.put('sync_state', [st], s => s.endpoint);
@@ -142,7 +148,7 @@
           try { prev = (await store.get('sync_state', ep.name)) || prev; } catch (x) {}
           results.push({ name: ep.name, ok: false, error: String(e.message || e) });
           log(`  failed ${ep.name}: ${e.message}`);
-          try { await store.put('sync_state', [{ endpoint: ep.name, last_run: now(), status: 'error', detail: String(e.message).slice(0, 300), last_full: prev.last_full, walking: prev.walking }], s => s.endpoint); } catch (x) {}
+          try { await store.put('sync_state', [{ endpoint: ep.name, last_run: now(), status: 'error', detail: String(e.message).slice(0, 300), last_full: prev.last_full, walking: prev.walking, resume: prev.resume }], s => s.endpoint); } catch (x) {}
         }
       }
       const derived = await rebuildDerived();

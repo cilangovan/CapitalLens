@@ -163,10 +163,12 @@
         const snap = { id: snapId, created_at: createdAt, total_value: rnd(total, 2), cash: rnd(cash, 2), invested: rnd(investedVal, 2),
           total_ppl: rnd(totalPpl, 2), run_count: state.run_count,
           raw: { pies, account: acc, highs: state.highs, instrument_meta: state.held_meta } };
-        await store.put('portfolio_snapshots', [snap], r => r.id);
+        // Order matters: the dashboards read positions by the LATEST snapshot id, so the snapshot is written LAST, after everything it points at.
+        // If the page is reloaded part-way, the unreferenced positions are harmless leftovers and the previous snapshot stays the latest, complete one.
         await store.put('positions', summary.map(p => ({ id: newId(), snapshot_id: snapId, created_at: createdAt, ticker: p.ticker, display: p.display, pie: p.pie, exchange: p.exchange,
           current_price: p.current, avg_price: p.avg, gain_pct: p.gain_pct, dip_from_high: p.dip_from_high, ppl: p.ppl, quantity: p.qty })), r => r.id);
         if (alerts.length) await store.put('alerts', alerts.map(a => ({ id: newId(), created_at: createdAt, type: a.type, alert_type: a.type, ticker: a.ticker, title: a.title, body: a.body })), r => r.id);
+        await store.put('portfolio_snapshots', [snap], r => r.id);
         await store.put('monitor_state', [Object.assign({ key: 'main' }, state)], r => r.key);
         log(`${summary.length} positions, ${pies.length} pies, ${alerts.length} alerts saved (encrypted)`);
         return { saved: true, snapshotId: snapId, positions: summary.length, pies: pies.length, alerts };

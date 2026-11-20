@@ -17,6 +17,17 @@ The exact triggers and commands of every GitHub Actions workflow are in the gene
 | **Public market cache** (`public_market.yml`) | Central cache of public market data for a popular subset (scheduled trigger currently disabled; the private app uses it plus the relay fallback) | `market_cache` |
 | **Send Password Reset Email** (`send_reset_email.yml`) | Legacy reset flow, triggered by the worker | — |
 
+## If the page is reloaded or closed while a refresh is running (private app)
+
+The refresh runs in the browser, so a reload, a closed tab or lost signal kills it part-way. Nothing is left corrupt, and the next **Refresh now** finishes the job:
+
+- Every write is an encrypted **upsert by a fixed row id** in batches, so an interrupted run leaves only complete rows (old or new, never half a row) and re-running is idempotent (no duplicates).
+- **Portfolio snapshot:** the dashboards read positions by the *latest snapshot id*, so the snapshot row is the **commit record**: positions and alerts are written first, the snapshot last, then monitor state. A run killed before the snapshot leaves unreferenced leftovers and the previous complete snapshot stays the latest (it used to be the other way round, which could show a new snapshot with missing positions).
+- **Trading 212 history:** newest pages are stored first. A catch-up cut off after page 1 would have stopped at "already stored history" next time and never fetched the older new orders, so the walk now stores a `resume` marker in `sync_state` after each page that had new items; the next run continues from it and clears it when done. A first-ever full walk cut off part-way already resumed via the `walking` marker.
+- The sign-in key/secret for Trading 212 are never stored, so after a reload you re-enter them and press Refresh again. The page asks "Leave site?" while a refresh is running.
+- Small leftover: a run killed after alerts but before the snapshot can raise the same alert again on the next refresh (a duplicate is preferred to a lost alert).
+- Tests: `tests/zk_interrupt_test.mjs` (kills the run at each write and between order pages, reruns, checks nothing is half-shown and nothing is missed).
+
 ## Safety, maintenance and deployment
 
 | Workflow | Purpose |

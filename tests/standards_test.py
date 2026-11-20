@@ -125,6 +125,12 @@ check("Support Levels: shared table names its source and capture date; demo gets
 check("Support Levels: shown for held stocks only, loaded on every dashboard (legacy, demo, app, zkapp, zkapp-prod)",
       "held.has(l.symbol)" in _slj and all("support.js" in (ROOT / f).read_text() for f in ["docs/index.html", "docs/demo/index.html", "docs/app/index.html", "docs/zkapp/index.html", "docs/zkapp-prod/index.html"]))
 
+# A refresh killed part-way (reload / closed tab) must not corrupt or hide data: snapshot written last, resume marker for the history catch-up, guard against leaving
+_mon = (ROOT / "docs/js/../zk/monitor.js").read_text(); _t2 = (ROOT / "docs/zk/t212sync.js").read_text()
+check("interrupted refresh is safe: snapshot written after its positions, history catch-up resumes, 'leave site?' guard, regression test exists",
+      _mon.index("store.put('positions'") < _mon.index("store.put('portfolio_snapshots'") and "resume" in _t2 and "walking" in _t2
+      and "beforeunload" in (ROOT / "docs/zkapp/zkapp-tools.js").read_text() and (ROOT / "tests/zk_interrupt_test.mjs").exists())
+
 # 5-check review box (Strategy > Holding Decisions + Entry Analysis): the owner's prompt, copied/opened per stock, on every dashboard
 _fc = (ROOT / "docs/js/fivecheck.js").read_text(); _st = (ROOT / "docs/js/strategy.js").read_text(); _wlj0 = (ROOT / "docs/js/watchlist.js").read_text()
 check("5-check review: owner's prompt verbatim, ChatGPT/Claude/Grok buttons, no inline handlers, honest 'not live data' note, in both Strategy lists + the Watchlist and on every dashboard",
