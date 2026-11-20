@@ -101,7 +101,6 @@ check("strategy counts what was actually bought this week (issue #53 follow-up):
       "def contributions" in _ss and "function contributions" in _zs and "invested" in _js and "strategy_fill_invested" in (ROOT / "db/tenant/26_strategy_invested.sql").read_text()
       and "bought this week" in (ROOT / "tests/zk_strategy_test.mjs").read_text())
 
-print("\nstandards: " + ("all good" if not bad else f"{bad} failed")); sys.exit(1 if bad else 0)
 
 
 # ── demo credentials never live in the repo (epic #32) ──
@@ -124,7 +123,7 @@ check("demo refresh seeds Analyst, Profit Booking and Strategy data", all(t in _
 _sl = (ROOT / "db/tenant/23_support_levels.sql").read_text() if (ROOT / "db/tenant/23_support_levels.sql").exists() else ""
 _slj = (ROOT / "docs/js/support.js").read_text() if (ROOT / "docs/js/support.js").exists() else ""
 check("Support Levels: shared table names its source and capture date; demo gets a demo-only copy refreshed daily (never invented rows in the shared table)",
-      all(x in _sl for x in ["source_name text not null", "as_of", "create table if not exists public.demo_support_levels", "seed_demo_support_levels", "perform public.seed_demo_support_levels(t)"])
+      re.search(r"source_name\s+text not null", _sl) and all(x in _sl for x in ["as_of", "create table if not exists public.demo_support_levels", "seed_demo_support_levels", "perform public.seed_demo_support_levels(t)"])
       and "including constraints including indexes" in _sl
       and "if sy is null then continue" in _sl and "|| '.L'" in _sl   # regression: demo ETFs such as CS1l_EQ broke the symbol check and failed the whole daily refresh; they now map to Yahoo keys (CS1.L)   # regression: without the primary key the demo refresh failed on ON CONFLICT (symbol)
       and not re.search(r"insert into public\.support_levels[^;]*Demo data", _sl) and "'/support_levels': '/demo_support_levels'" in (ROOT / "docs/demo/demo-shim.js").read_text())
@@ -174,5 +173,8 @@ check("demo refresh seeds the Returns dashboard (returns_summary + realised_pnl)
 _mk = (ROOT / "db/tenant/21_demo_markets.sql").read_text() if (ROOT / "db/tenant/21_demo_markets.sql").exists() else ""
 check("demo markets/watchlist/pie history/IPO are seeded, and only into demo-only tables (never the shared market_cache / ipo_calendar / institutional_flow_reports)",
       all(x in _mk for x in ["insert into public.demo_market_cache", "insert into public.demo_ipo_calendar", "insert into public.watchlist_analysis", "insert into public.pie_history", "public.seed_demo_markets(t)"])
-      and not re.search(r"insert into public\.(market_cache|ipo_calendar|institutional_flow_reports)\b", _mk + _ins + _ret))
+      and not re.search(r"insert into public\.(market_cache|ipo_calendar|institutional_flow_reports)\b", _mk + _ret)
+      and not re.search(r"insert into public\.(market_cache|ipo_calendar)\b", _ins)
+      and "replace(d, 'public.institutional_flow_reports', 'public.demo_institutional_flow_reports')" in _mk)   # 19_demo_insights inserts the weekly flow report; 21 rewrites that function to the demo-only copy when applied
 
+print("\nstandards: " + ("all good" if not bad else f"{bad} failed")); sys.exit(1 if bad else 0)
