@@ -12,6 +12,8 @@ create schema if not exists extensions;
 set local search_path = public, extensions;
 
 -- ── Extensions ────────────────────────────────────────────────────────────
+create extension if not exists "pg_cron" with schema pg_catalog;
+create extension if not exists "pg_net" with schema extensions;
 -- (Supabase platform) create extension if not exists "pg_stat_statements" with schema extensions;
 create extension if not exists "pg_trgm" with schema extensions;
 -- (Supabase platform) create extension if not exists "pgcrypto" with schema extensions;
@@ -55,6 +57,7 @@ create table if not exists public.alerts (
   read_at timestamp with time zone,
   archived_at timestamp with time zone,
   dismissed_at timestamp with time zone,
+  user_id uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null,
   constraint alerts_pkey PRIMARY KEY (id)
 );
 
@@ -72,6 +75,12 @@ create table if not exists public.analyst_ratings (
   analyst_count integer,
   updated_at timestamp with time zone default now(),
   source text,
+  lynch_bucket integer,
+  lynch_name text,
+  lynch_reason text,
+  lynch_growth double precision,
+  lynch_basis text,
+  lynch_confidence text,
   constraint analyst_ratings_ticker_key UNIQUE (ticker),
   constraint analyst_ratings_pkey PRIMARY KEY (id)
 );
@@ -81,6 +90,45 @@ create table if not exists public.app_settings (
   value jsonb,
   updated_at timestamp with time zone default now(),
   constraint app_settings_pkey PRIMARY KEY (key)
+);
+
+create table if not exists public.audit_log (
+  id bigint generated always as identity not null,
+  at timestamp with time zone default now() not null,
+  actor text not null,
+  subject_user uuid,
+  table_name text not null,
+  op text not null,
+  row_id text,
+  detail jsonb default '{}'::jsonb not null,
+  constraint audit_log_pkey PRIMARY KEY (id)
+);
+
+create table if not exists public.broker_connections (
+  id uuid default gen_random_uuid() not null,
+  user_id uuid default auth.uid() not null,
+  broker text not null,
+  label text not null,
+  native_currency text default 'GBP'::text not null,
+  status text default 'pending'::text not null,
+  last_ok_at timestamp with time zone,
+  last_error text,
+  created_at timestamp with time zone default now() not null,
+  environment text default 'live'::text not null,
+  sync_state jsonb default '{}'::jsonb not null,
+  constraint broker_connections_pkey PRIMARY KEY (id),
+  constraint broker_connections_broker_check CHECK ((broker = ANY (ARRAY['trading212'::text, 'zerodha'::text, 'mock'::text]))),
+  constraint broker_connections_environment_check CHECK ((environment = ANY (ARRAY['live'::text, 'demo'::text]))),
+  constraint broker_connections_status_check CHECK ((status = ANY (ARRAY['pending'::text, 'active'::text, 'error'::text, 'needs_login'::text, 'disabled'::text])))
+);
+
+create table if not exists public.broker_secrets (
+  connection_id uuid not null,
+  ciphertext bytea,
+  key_hint text,
+  created_at timestamp with time zone default now() not null,
+  vault_secret_id uuid,
+  constraint broker_secrets_pkey PRIMARY KEY (connection_id)
 );
 
 create table if not exists public.dashboard_auth (
@@ -106,8 +154,22 @@ create table if not exists public.dividends (
   paid_date date,
   amount numeric,
   created_at timestamp with time zone default now(),
+  user_id uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null,
   constraint dividends_reference_key UNIQUE (reference),
   constraint dividends_pkey PRIMARY KEY (id)
+);
+
+create table if not exists public.enc_rows (
+  user_id uuid default auth.uid() not null,
+  kind text not null,
+  id uuid not null,
+  nonce text not null,
+  ct text not null,
+  key_version integer default 1 not null,
+  updated_at timestamp with time zone default now() not null,
+  constraint enc_rows_pkey PRIMARY KEY (user_id, kind, id),
+  constraint enc_rows_ct_check CHECK ((length(ct) < 200000)),
+  constraint enc_rows_kind_check CHECK ((kind ~ '^[a-z0-9_]{1,40}$'::text))
 );
 
 create table if not exists public.holding_decisions (
@@ -136,6 +198,7 @@ create table if not exists public.holding_decisions (
   vol_ratio numeric,
   notes text,
   created_at timestamp with time zone default now(),
+  user_id uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null,
   constraint holding_decisions_report_date_ticker_key UNIQUE (report_date, ticker),
   constraint holding_decisions_pkey PRIMARY KEY (id)
 );
@@ -154,6 +217,33 @@ create table if not exists public.institutional_flow_reports (
   constraint institutional_flow_reports_pkey PRIMARY KEY (id)
 );
 
+create table if not exists public.instrument_country_weights (
+  ticker text not null,
+  country text not null,
+  flag text default ''::text not null,
+  pct numeric not null,
+  note text default ''::text not null,
+  constraint instrument_country_weights_pkey PRIMARY KEY (ticker, country)
+);
+
+create table if not exists public.instrument_exposure (
+  ticker text not null,
+  display_name text not null,
+  flag text default ''::text not null,
+  exposure text default ''::text not null,
+  updated_at timestamp with time zone default now() not null,
+  sector text default ''::text not null,
+  constraint instrument_exposure_pkey PRIMARY KEY (ticker)
+);
+
+create table if not exists public.instrument_sector_weights (
+  ticker text not null,
+  sector text not null,
+  pct numeric,
+  note text default ''::text not null,
+  constraint instrument_sector_weights_pkey PRIMARY KEY (ticker, sector)
+);
+
 create table if not exists public.instruments (
   ticker text not null,
   name text,
@@ -166,10 +256,47 @@ create table if not exists public.instruments (
   constraint instruments_pkey PRIMARY KEY (ticker)
 );
 
+create table if not exists public.ipo_calendar (
+  id text not null,
+  market text not null,
+  exchange text,
+  name text not null,
+  ticker text,
+  sector text,
+  status text default 'upcoming'::text not null,
+  start_date date,
+  end_date date,
+  listing_date date,
+  currency text,
+  price_low numeric,
+  price_high numeric,
+  deal_size_usd numeric,
+  rating text default 'Not rated'::text not null,
+  rating_source text,
+  note text,
+  source_name text,
+  source_url text,
+  as_of date default CURRENT_DATE not null,
+  updated_at timestamp with time zone default now() not null,
+  constraint ipo_calendar_pkey PRIMARY KEY (id),
+  constraint ipo_calendar_market_check CHECK ((market = ANY (ARRAY['US'::text, 'UK'::text, 'IN'::text, 'HK'::text, 'EU'::text, 'JP'::text, 'CN'::text, 'SG'::text, 'AU'::text, 'OTHER'::text]))),
+  constraint ipo_calendar_rating_check CHECK ((rating = ANY (ARRAY['Subscribe'::text, 'Neutral'::text, 'Avoid'::text, 'Not rated'::text]))),
+  constraint ipo_calendar_source_url_check CHECK (((source_url IS NULL) OR (source_url ~ '^https?://'::text))),
+  constraint ipo_calendar_status_check CHECK ((status = ANY (ARRAY['rumoured'::text, 'filed'::text, 'upcoming'::text, 'open'::text, 'priced'::text, 'listed'::text, 'postponed'::text, 'withdrawn'::text])))
+);
+
+create table if not exists public.market_cache (
+  key text not null,
+  payload jsonb not null,
+  fetched_at timestamp with time zone default now() not null,
+  constraint market_cache_pkey PRIMARY KEY (key)
+);
+
 create table if not exists public.pie_history (
   pie text not null,
   updated_at timestamp with time zone default now(),
   series jsonb not null,
+  user_id uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null,
   constraint pie_history_pkey PRIMARY KEY (pie)
 );
 
@@ -182,6 +309,8 @@ create table if not exists public.portfolio_snapshots (
   total_ppl numeric,
   run_count integer,
   raw jsonb,
+  user_id uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null,
+  connection_id uuid,
   constraint portfolio_snapshots_pkey PRIMARY KEY (id)
 );
 
@@ -194,6 +323,8 @@ create table if not exists public.portfolio_snapshots_archive (
   total_ppl numeric,
   run_count integer,
   raw jsonb,
+  user_id uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null,
+  connection_id uuid,
   constraint portfolio_snapshots_archive_pkey PRIMARY KEY (id)
 );
 
@@ -211,6 +342,9 @@ create table if not exists public.positions (
   ppl numeric,
   exchange text default 'LSE'::text,
   quantity numeric,
+  user_id uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null,
+  broker text default 'trading212'::text not null,
+  native_currency text default 'GBP'::text not null,
   constraint positions_pkey PRIMARY KEY (id)
 );
 
@@ -228,7 +362,22 @@ create table if not exists public.positions_archive (
   ppl numeric,
   exchange text default 'LSE'::text,
   quantity numeric,
+  user_id uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null,
+  broker text default 'trading212'::text not null,
+  native_currency text default 'GBP'::text not null,
   constraint positions_archive_pkey PRIMARY KEY (id)
+);
+
+create table if not exists public.profiles (
+  user_id uuid not null,
+  display_name text,
+  base_currency text default 'GBP'::text not null,
+  timezone text default 'Europe/London'::text not null,
+  ntfy_topic text,
+  email_alerts boolean default true not null,
+  is_demo boolean default false not null,
+  created_at timestamp with time zone default now() not null,
+  constraint profiles_pkey PRIMARY KEY (user_id)
 );
 
 create table if not exists public.profit_booking (
@@ -254,6 +403,7 @@ create table if not exists public.profit_booking (
   signals jsonb,
   notes jsonb,
   updated_at timestamp with time zone default now(),
+  user_id uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null,
   constraint profit_booking_ticker_key UNIQUE (ticker),
   constraint profit_booking_pkey PRIMARY KEY (id)
 );
@@ -267,6 +417,7 @@ create table if not exists public.profit_booking_summary (
   totals jsonb,
   notes jsonb,
   updated_at timestamp with time zone default now(),
+  user_id uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null,
   constraint profit_booking_summary_pkey PRIMARY KEY (id)
 );
 
@@ -283,6 +434,7 @@ create table if not exists public.realised_pnl (
   realised_pnl_pct numeric,
   side text,
   created_at timestamp with time zone default now(),
+  user_id uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null,
   constraint realised_pnl_order_id_key UNIQUE (order_id),
   constraint realised_pnl_pkey PRIMARY KEY (id)
 );
@@ -296,6 +448,7 @@ create table if not exists public.returns_summary (
   monthly_breakdown jsonb,
   updated_at timestamp with time zone default now(),
   details jsonb,
+  user_id uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null,
   constraint returns_summary_pkey PRIMARY KEY (id)
 );
 
@@ -311,7 +464,46 @@ create table if not exists public.strategy_recommendations (
   weeks_in_month integer,
   weekly_budget numeric,
   market_mood jsonb,
+  user_id uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null,
+  invested jsonb,
   constraint strategy_recommendations_pkey PRIMARY KEY (id)
+);
+
+create table if not exists public.support_levels (
+  symbol text not null,
+  name text not null,
+  level_label text default 'Support zone'::text not null,
+  zone_low numeric not null,
+  zone_high numeric not null,
+  approx boolean default false not null,
+  currency text default 'USD'::text not null,
+  tags jsonb default '[]'::jsonb not null,
+  snap_price numeric,
+  snap_pct_from_high numeric,
+  note text,
+  source_name text not null,
+  source_url text,
+  as_of date default CURRENT_DATE not null,
+  updated_at timestamp with time zone default now() not null,
+  constraint support_levels_pkey PRIMARY KEY (symbol),
+  constraint support_levels_check CHECK ((zone_high >= zone_low)),
+  constraint support_levels_level_label_check CHECK ((level_label = ANY (ARRAY['Support zone'::text, 'Support level'::text, 'My level'::text, 'Wait for'::text]))),
+  constraint support_levels_source_url_check CHECK (((source_url IS NULL) OR (source_url ~ '^https?://'::text))),
+  constraint support_levels_symbol_check CHECK ((symbol ~ '^[A-Z0-9.\-]{1,12}$'::text)),
+  constraint support_levels_zone_low_check CHECK ((zone_low > (0)::numeric))
+);
+
+create table if not exists public.sync_jobs (
+  id bigint generated always as identity not null,
+  connection_id uuid not null,
+  kind text not null,
+  next_run_at timestamp with time zone default now() not null,
+  state text default 'queued'::text not null,
+  attempts integer default 0 not null,
+  last_error text,
+  started_at timestamp with time zone,
+  constraint sync_jobs_pkey PRIMARY KEY (id),
+  constraint sync_jobs_state_check CHECK ((state = ANY (ARRAY['queued'::text, 'running'::text, 'done'::text, 'failed'::text])))
 );
 
 create table if not exists public.t212_dividends (
@@ -324,6 +516,8 @@ create table if not exists public.t212_dividends (
   raw jsonb not null,
   first_seen timestamp with time zone default now(),
   last_seen timestamp with time zone default now(),
+  user_id uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null,
+  connection_id uuid,
   constraint t212_dividends_pkey PRIMARY KEY (reference)
 );
 
@@ -342,6 +536,8 @@ create table if not exists public.t212_orders (
   raw jsonb not null,
   first_seen timestamp with time zone default now(),
   last_seen timestamp with time zone default now(),
+  user_id uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null,
+  connection_id uuid,
   constraint t212_orders_pkey PRIMARY KEY (id)
 );
 
@@ -352,6 +548,8 @@ create table if not exists public.t212_sync_state (
   items_total integer,
   status text,
   detail text,
+  user_id uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null,
+  resume text,
   constraint t212_sync_state_pkey PRIMARY KEY (endpoint)
 );
 
@@ -363,7 +561,30 @@ create table if not exists public.t212_transactions (
   raw jsonb not null,
   first_seen timestamp with time zone default now(),
   last_seen timestamp with time zone default now(),
+  user_id uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null,
+  connection_id uuid,
   constraint t212_transactions_pkey PRIMARY KEY (reference)
+);
+
+create table if not exists public.user_keys (
+  user_id uuid default auth.uid() not null,
+  kdf jsonb not null,
+  pw_salt text not null,
+  rec_salt text not null,
+  wrapped_dk_pw jsonb not null,
+  wrapped_dk_rec jsonb not null,
+  key_version integer default 1 not null,
+  updated_at timestamp with time zone default now() not null,
+  constraint user_keys_pkey PRIMARY KEY (user_id),
+  constraint user_keys_size CHECK (((pg_column_size(wrapped_dk_pw) < 1000) AND (pg_column_size(wrapped_dk_rec) < 1000)))
+);
+
+create table if not exists public.user_ui_prefs (
+  user_id uuid default auth.uid() not null,
+  prefs jsonb default '{}'::jsonb not null,
+  updated_at timestamp with time zone default now() not null,
+  constraint user_ui_prefs_pkey PRIMARY KEY (user_id),
+  constraint user_ui_prefs_size CHECK ((pg_column_size(prefs) < 20000))
 );
 
 create table if not exists public.value_buy_scores (
@@ -382,6 +603,7 @@ create table if not exists public.value_buy_scores (
   notes text,
   updated_at timestamp with time zone default now(),
   this_week jsonb default '{}'::jsonb,
+  user_id uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null,
   constraint value_buy_scores_pkey PRIMARY KEY (id)
 );
 
@@ -396,9 +618,12 @@ create table if not exists public.watchlist (
   type text,
   category text default 'stock'::text not null,
   alternatives jsonb,
+  user_id uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null,
+  sort_order integer,
   constraint watchlist_ticker_key UNIQUE (ticker),
   constraint watchlist_pkey PRIMARY KEY (id),
-  constraint watchlist_category_check CHECK ((category = ANY (ARRAY['stock'::text, 'commodity'::text, 'crypto'::text])))
+  constraint watchlist_category_check CHECK ((category = ANY (ARRAY['stock'::text, 'commodity'::text, 'crypto'::text]))),
+  constraint watchlist_sort_order_check CHECK (((sort_order IS NULL) OR ((sort_order >= 0) AND (sort_order < 500))))
 );
 
 create table if not exists public.watchlist_analysis (
@@ -407,6 +632,7 @@ create table if not exists public.watchlist_analysis (
   status text,
   verdict text,
   data jsonb,
+  user_id uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null,
   constraint watchlist_analysis_pkey PRIMARY KEY (ticker)
 );
 
@@ -427,58 +653,269 @@ alter sequence public.strategy_recommendations_id_seq owned by public.strategy_r
 alter sequence public.value_buy_scores_id_seq owned by public.value_buy_scores.id;
 
 -- ── Foreign keys ──────────────────────────────────────────────────────────
+alter table public.alerts drop constraint if exists alerts_user_fk;
+alter table public.alerts add constraint alerts_user_fk FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+alter table public.broker_connections drop constraint if exists broker_connections_user_id_fkey;
+alter table public.broker_connections add constraint broker_connections_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+alter table public.broker_secrets drop constraint if exists broker_secrets_connection_id_fkey;
+alter table public.broker_secrets add constraint broker_secrets_connection_id_fkey FOREIGN KEY (connection_id) REFERENCES broker_connections(id) ON DELETE CASCADE;
+alter table public.dividends drop constraint if exists dividends_user_fk;
+alter table public.dividends add constraint dividends_user_fk FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+alter table public.enc_rows drop constraint if exists enc_rows_user_id_fkey;
+alter table public.enc_rows add constraint enc_rows_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+alter table public.holding_decisions drop constraint if exists holding_decisions_user_fk;
+alter table public.holding_decisions add constraint holding_decisions_user_fk FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+alter table public.pie_history drop constraint if exists pie_history_user_fk;
+alter table public.pie_history add constraint pie_history_user_fk FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+alter table public.portfolio_snapshots drop constraint if exists portfolio_snapshots_connection_id_fkey;
+alter table public.portfolio_snapshots add constraint portfolio_snapshots_connection_id_fkey FOREIGN KEY (connection_id) REFERENCES broker_connections(id) ON DELETE CASCADE;
+alter table public.portfolio_snapshots drop constraint if exists portfolio_snapshots_user_fk;
+alter table public.portfolio_snapshots add constraint portfolio_snapshots_user_fk FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+alter table public.portfolio_snapshots_archive drop constraint if exists portfolio_snapshots_archive_connection_id_fkey;
+alter table public.portfolio_snapshots_archive add constraint portfolio_snapshots_archive_connection_id_fkey FOREIGN KEY (connection_id) REFERENCES broker_connections(id) ON DELETE CASCADE;
+alter table public.portfolio_snapshots_archive drop constraint if exists portfolio_snapshots_archive_user_fk;
+alter table public.portfolio_snapshots_archive add constraint portfolio_snapshots_archive_user_fk FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 alter table public.positions drop constraint if exists positions_snapshot_id_fkey;
 alter table public.positions add constraint positions_snapshot_id_fkey FOREIGN KEY (snapshot_id) REFERENCES portfolio_snapshots(id);
+alter table public.positions drop constraint if exists positions_user_fk;
+alter table public.positions add constraint positions_user_fk FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+alter table public.positions_archive drop constraint if exists positions_archive_user_fk;
+alter table public.positions_archive add constraint positions_archive_user_fk FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+alter table public.profiles drop constraint if exists profiles_user_id_fkey;
+alter table public.profiles add constraint profiles_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+alter table public.profit_booking drop constraint if exists profit_booking_user_fk;
+alter table public.profit_booking add constraint profit_booking_user_fk FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+alter table public.profit_booking_summary drop constraint if exists profit_booking_summary_user_fk;
+alter table public.profit_booking_summary add constraint profit_booking_summary_user_fk FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+alter table public.realised_pnl drop constraint if exists realised_pnl_user_fk;
+alter table public.realised_pnl add constraint realised_pnl_user_fk FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+alter table public.returns_summary drop constraint if exists returns_summary_user_fk;
+alter table public.returns_summary add constraint returns_summary_user_fk FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+alter table public.strategy_recommendations drop constraint if exists strategy_recommendations_user_fk;
+alter table public.strategy_recommendations add constraint strategy_recommendations_user_fk FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+alter table public.sync_jobs drop constraint if exists sync_jobs_connection_id_fkey;
+alter table public.sync_jobs add constraint sync_jobs_connection_id_fkey FOREIGN KEY (connection_id) REFERENCES broker_connections(id) ON DELETE CASCADE;
+alter table public.t212_dividends drop constraint if exists t212_dividends_connection_id_fkey;
+alter table public.t212_dividends add constraint t212_dividends_connection_id_fkey FOREIGN KEY (connection_id) REFERENCES broker_connections(id) ON DELETE CASCADE;
+alter table public.t212_dividends drop constraint if exists t212_dividends_user_fk;
+alter table public.t212_dividends add constraint t212_dividends_user_fk FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+alter table public.t212_orders drop constraint if exists t212_orders_connection_id_fkey;
+alter table public.t212_orders add constraint t212_orders_connection_id_fkey FOREIGN KEY (connection_id) REFERENCES broker_connections(id) ON DELETE CASCADE;
+alter table public.t212_orders drop constraint if exists t212_orders_user_fk;
+alter table public.t212_orders add constraint t212_orders_user_fk FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+alter table public.t212_sync_state drop constraint if exists t212_sync_state_user_fk;
+alter table public.t212_sync_state add constraint t212_sync_state_user_fk FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+alter table public.t212_transactions drop constraint if exists t212_transactions_connection_id_fkey;
+alter table public.t212_transactions add constraint t212_transactions_connection_id_fkey FOREIGN KEY (connection_id) REFERENCES broker_connections(id) ON DELETE CASCADE;
+alter table public.t212_transactions drop constraint if exists t212_transactions_user_fk;
+alter table public.t212_transactions add constraint t212_transactions_user_fk FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+alter table public.user_keys drop constraint if exists user_keys_user_id_fkey;
+alter table public.user_keys add constraint user_keys_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+alter table public.user_ui_prefs drop constraint if exists user_ui_prefs_user_id_fkey;
+alter table public.user_ui_prefs add constraint user_ui_prefs_user_id_fkey FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+alter table public.value_buy_scores drop constraint if exists value_buy_scores_user_fk;
+alter table public.value_buy_scores add constraint value_buy_scores_user_fk FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
+alter table public.watchlist drop constraint if exists watchlist_user_fk;
+alter table public.watchlist add constraint watchlist_user_fk FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 alter table public.watchlist_analysis drop constraint if exists watchlist_analysis_ticker_fkey;
 alter table public.watchlist_analysis add constraint watchlist_analysis_ticker_fkey FOREIGN KEY (ticker) REFERENCES watchlist(ticker) ON DELETE CASCADE;
+alter table public.watchlist_analysis drop constraint if exists watchlist_analysis_user_fk;
+alter table public.watchlist_analysis add constraint watchlist_analysis_user_fk FOREIGN KEY (user_id) REFERENCES auth.users(id) ON DELETE CASCADE;
 
 -- ── Indexes ───────────────────────────────────────────────────────────────
 CREATE INDEX IF NOT EXISTS alerts_created_at_idx ON public.alerts USING btree (created_at DESC);
 CREATE UNIQUE INDEX IF NOT EXISTS alerts_dedup_key_idx ON public.alerts USING btree (dedup_key);
 CREATE INDEX IF NOT EXISTS alerts_type_created_idx ON public.alerts USING btree (alert_type, created_at DESC);
+CREATE INDEX IF NOT EXISTS alerts_user_idx ON public.alerts USING btree (user_id);
+CREATE INDEX IF NOT EXISTS audit_log_actor_at ON public.audit_log USING btree (actor, at DESC);
+CREATE INDEX IF NOT EXISTS audit_log_subject_at ON public.audit_log USING btree (subject_user, at DESC);
+CREATE INDEX IF NOT EXISTS broker_connections_user ON public.broker_connections USING btree (user_id);
+CREATE INDEX IF NOT EXISTS dividends_user_idx ON public.dividends USING btree (user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS dividends_user_ref_key ON public.dividends USING btree (user_id, reference);
+CREATE INDEX IF NOT EXISTS holding_decisions_user_idx ON public.holding_decisions USING btree (user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS holding_decisions_user_key ON public.holding_decisions USING btree (user_id, report_date, ticker);
 CREATE UNIQUE INDEX IF NOT EXISTS inst_flow_report_date_idx ON public.institutional_flow_reports USING btree (report_date);
 CREATE INDEX IF NOT EXISTS instruments_name_trgm ON public.instruments USING gin (name gin_trgm_ops);
 CREATE INDEX IF NOT EXISTS instruments_short_trgm ON public.instruments USING gin (short_name gin_trgm_ops);
+CREATE INDEX IF NOT EXISTS ipo_calendar_market_start ON public.ipo_calendar USING btree (market, start_date);
+CREATE INDEX IF NOT EXISTS pie_history_user_idx ON public.pie_history USING btree (user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS pie_history_user_pie_key ON public.pie_history USING btree (user_id, pie);
 CREATE INDEX IF NOT EXISTS portfolio_snapshots_created_at_idx ON public.portfolio_snapshots USING btree (created_at DESC);
+CREATE INDEX IF NOT EXISTS portfolio_snapshots_user_idx ON public.portfolio_snapshots USING btree (user_id);
 CREATE INDEX IF NOT EXISTS portfolio_snapshots_archive_created_at_idx ON public.portfolio_snapshots_archive USING btree (created_at DESC);
+CREATE INDEX IF NOT EXISTS portfolio_snapshots_archive_user_idx ON public.portfolio_snapshots_archive USING btree (user_id);
 CREATE INDEX IF NOT EXISTS positions_snapshot_id_idx ON public.positions USING btree (snapshot_id);
+CREATE INDEX IF NOT EXISTS positions_user_idx ON public.positions USING btree (user_id);
 CREATE INDEX IF NOT EXISTS positions_archive_snapshot_id_idx ON public.positions_archive USING btree (snapshot_id);
+CREATE INDEX IF NOT EXISTS positions_archive_user_idx ON public.positions_archive USING btree (user_id);
+CREATE INDEX IF NOT EXISTS profit_booking_user_idx ON public.profit_booking USING btree (user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS profit_booking_user_ticker_key ON public.profit_booking USING btree (user_id, ticker);
+CREATE INDEX IF NOT EXISTS profit_booking_summary_user_idx ON public.profit_booking_summary USING btree (user_id);
+CREATE INDEX IF NOT EXISTS realised_pnl_user_idx ON public.realised_pnl USING btree (user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS realised_pnl_user_order_key ON public.realised_pnl USING btree (user_id, order_id);
+CREATE INDEX IF NOT EXISTS returns_summary_user_idx ON public.returns_summary USING btree (user_id);
+CREATE INDEX IF NOT EXISTS strategy_recommendations_user_idx ON public.strategy_recommendations USING btree (user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS sync_jobs_one_open ON public.sync_jobs USING btree (connection_id, kind) WHERE (state = ANY (ARRAY['queued'::text, 'running'::text]));
+CREATE INDEX IF NOT EXISTS sync_jobs_state_idx ON public.sync_jobs USING btree (state, next_run_at);
 CREATE INDEX IF NOT EXISTS t212_dividends_paid_idx ON public.t212_dividends USING btree (paid_on);
+CREATE INDEX IF NOT EXISTS t212_dividends_user_idx ON public.t212_dividends USING btree (user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS t212_dividends_user_ref_key ON public.t212_dividends USING btree (user_id, reference);
 CREATE INDEX IF NOT EXISTS t212_orders_filled_idx ON public.t212_orders USING btree (filled_at);
 CREATE INDEX IF NOT EXISTS t212_orders_ticker_filled_idx ON public.t212_orders USING btree (ticker, filled_at);
+CREATE UNIQUE INDEX IF NOT EXISTS t212_orders_user_id_key ON public.t212_orders USING btree (user_id, id);
+CREATE INDEX IF NOT EXISTS t212_orders_user_idx ON public.t212_orders USING btree (user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS t212_sync_state_user_ep_key ON public.t212_sync_state USING btree (user_id, endpoint);
+CREATE INDEX IF NOT EXISTS t212_sync_state_user_idx ON public.t212_sync_state USING btree (user_id);
 CREATE INDEX IF NOT EXISTS t212_transactions_dt_idx ON public.t212_transactions USING btree (date_time);
+CREATE INDEX IF NOT EXISTS t212_transactions_user_idx ON public.t212_transactions USING btree (user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS t212_transactions_user_ref_key ON public.t212_transactions USING btree (user_id, reference);
 CREATE UNIQUE INDEX IF NOT EXISTS value_buy_scores_ticker_idx ON public.value_buy_scores USING btree (ticker);
+CREATE INDEX IF NOT EXISTS value_buy_scores_user_idx ON public.value_buy_scores USING btree (user_id);
+CREATE INDEX IF NOT EXISTS watchlist_user_idx ON public.watchlist USING btree (user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS watchlist_user_ticker_key ON public.watchlist USING btree (user_id, ticker);
+CREATE INDEX IF NOT EXISTS watchlist_analysis_user_idx ON public.watchlist_analysis USING btree (user_id);
+CREATE UNIQUE INDEX IF NOT EXISTS watchlist_analysis_user_ticker_key ON public.watchlist_analysis USING btree (user_id, ticker);
 
 -- ── Row level security ────────────────────────────────────────────────────
 alter table public.alerts enable row level security;
 alter table public.analyst_ratings enable row level security;
 alter table public.app_settings enable row level security;
+alter table public.audit_log enable row level security;
+alter table public.broker_connections enable row level security;
+alter table public.broker_secrets enable row level security;
 alter table public.dashboard_auth enable row level security;
 alter table public.dividends enable row level security;
+alter table public.enc_rows enable row level security;
 alter table public.holding_decisions enable row level security;
 alter table public.institutional_flow_reports enable row level security;
+alter table public.instrument_country_weights enable row level security;
+alter table public.instrument_exposure enable row level security;
+alter table public.instrument_sector_weights enable row level security;
 alter table public.instruments enable row level security;
+alter table public.ipo_calendar enable row level security;
+alter table public.market_cache enable row level security;
 alter table public.pie_history enable row level security;
 alter table public.portfolio_snapshots enable row level security;
 alter table public.portfolio_snapshots_archive enable row level security;
 alter table public.positions enable row level security;
 alter table public.positions_archive enable row level security;
+alter table public.profiles enable row level security;
 alter table public.profit_booking enable row level security;
 alter table public.profit_booking_summary enable row level security;
 alter table public.realised_pnl enable row level security;
 alter table public.returns_summary enable row level security;
 alter table public.strategy_recommendations enable row level security;
+alter table public.support_levels enable row level security;
+alter table public.sync_jobs enable row level security;
 alter table public.t212_dividends enable row level security;
 alter table public.t212_orders enable row level security;
 alter table public.t212_sync_state enable row level security;
 alter table public.t212_transactions enable row level security;
+alter table public.user_keys enable row level security;
+alter table public.user_ui_prefs enable row level security;
 alter table public.value_buy_scores enable row level security;
 alter table public.watchlist enable row level security;
 alter table public.watchlist_analysis enable row level security;
 
 -- ── Policies (anon = dashboard reads; writes only via service role) ───────
+drop policy if exists "own alerts update" on public.alerts;
+create policy "own alerts update" on public.alerts as permissive for update to authenticated using ((user_id = ( SELECT auth.uid() AS uid))) with check ((user_id = ( SELECT auth.uid() AS uid)));
+drop policy if exists "own rows read" on public.alerts;
+create policy "own rows read" on public.alerts as permissive for select to authenticated using ((user_id = ( SELECT auth.uid() AS uid)));
+drop policy if exists "signed-in read" on public.analyst_ratings;
+create policy "signed-in read" on public.analyst_ratings as permissive for select to authenticated using (true);
+drop policy if exists "own audit read" on public.audit_log;
+create policy "own audit read" on public.audit_log as permissive for select to authenticated using ((subject_user = ( SELECT auth.uid() AS uid)));
+drop policy if exists "own connections delete" on public.broker_connections;
+create policy "own connections delete" on public.broker_connections as permissive for delete to authenticated using ((user_id = ( SELECT auth.uid() AS uid)));
+drop policy if exists "own rows read" on public.broker_connections;
+create policy "own rows read" on public.broker_connections as permissive for select to authenticated using ((user_id = ( SELECT auth.uid() AS uid)));
 drop policy if exists "no public access" on public.dashboard_auth;
 create policy "no public access" on public.dashboard_auth as permissive for all to public using (false);
+drop policy if exists "own rows read" on public.dividends;
+create policy "own rows read" on public.dividends as permissive for select to authenticated using ((user_id = ( SELECT auth.uid() AS uid)));
+drop policy if exists "own enc rows" on public.enc_rows;
+create policy "own enc rows" on public.enc_rows as permissive for all to authenticated using ((user_id = ( SELECT auth.uid() AS uid))) with check ((user_id = ( SELECT auth.uid() AS uid)));
+drop policy if exists "own rows read" on public.holding_decisions;
+create policy "own rows read" on public.holding_decisions as permissive for select to authenticated using ((user_id = ( SELECT auth.uid() AS uid)));
+drop policy if exists "signed-in read" on public.institutional_flow_reports;
+create policy "signed-in read" on public.institutional_flow_reports as permissive for select to authenticated using (true);
+drop policy if exists "read held instruments" on public.instrument_country_weights;
+create policy "read held instruments" on public.instrument_country_weights as permissive for select to authenticated using (((EXISTS ( SELECT 1
+   FROM positions p
+  WHERE (p.ticker = instrument_country_weights.ticker))) OR (EXISTS ( SELECT 1
+   FROM watchlist w
+  WHERE (w.t212_ticker = instrument_country_weights.ticker)))));
+drop policy if exists "read held instruments" on public.instrument_exposure;
+create policy "read held instruments" on public.instrument_exposure as permissive for select to authenticated using (((EXISTS ( SELECT 1
+   FROM positions p
+  WHERE (p.ticker = instrument_exposure.ticker))) OR (EXISTS ( SELECT 1
+   FROM watchlist w
+  WHERE (w.t212_ticker = instrument_exposure.ticker)))));
+drop policy if exists "read held instruments" on public.instrument_sector_weights;
+create policy "read held instruments" on public.instrument_sector_weights as permissive for select to authenticated using (((EXISTS ( SELECT 1
+   FROM positions p
+  WHERE (p.ticker = instrument_sector_weights.ticker))) OR (EXISTS ( SELECT 1
+   FROM watchlist w
+  WHERE (w.t212_ticker = instrument_sector_weights.ticker)))));
+drop policy if exists "signed-in read" on public.instruments;
+create policy "signed-in read" on public.instruments as permissive for select to authenticated using (true);
+drop policy if exists "signed-in read" on public.ipo_calendar;
+create policy "signed-in read" on public.ipo_calendar as permissive for select to authenticated using (true);
+drop policy if exists "signed-in read" on public.market_cache;
+create policy "signed-in read" on public.market_cache as permissive for select to authenticated using (true);
+drop policy if exists "own rows read" on public.pie_history;
+create policy "own rows read" on public.pie_history as permissive for select to authenticated using ((user_id = ( SELECT auth.uid() AS uid)));
+drop policy if exists "own rows read" on public.portfolio_snapshots;
+create policy "own rows read" on public.portfolio_snapshots as permissive for select to authenticated using ((user_id = ( SELECT auth.uid() AS uid)));
+drop policy if exists "own rows read" on public.portfolio_snapshots_archive;
+create policy "own rows read" on public.portfolio_snapshots_archive as permissive for select to authenticated using ((user_id = ( SELECT auth.uid() AS uid)));
+drop policy if exists "own rows read" on public.positions;
+create policy "own rows read" on public.positions as permissive for select to authenticated using ((user_id = ( SELECT auth.uid() AS uid)));
+drop policy if exists "own rows read" on public.positions_archive;
+create policy "own rows read" on public.positions_archive as permissive for select to authenticated using ((user_id = ( SELECT auth.uid() AS uid)));
+drop policy if exists "own profile read" on public.profiles;
+create policy "own profile read" on public.profiles as permissive for select to authenticated using ((user_id = ( SELECT auth.uid() AS uid)));
+drop policy if exists "own profile update" on public.profiles;
+create policy "own profile update" on public.profiles as permissive for update to authenticated using ((user_id = ( SELECT auth.uid() AS uid))) with check ((user_id = ( SELECT auth.uid() AS uid)));
+drop policy if exists "own rows read" on public.profit_booking;
+create policy "own rows read" on public.profit_booking as permissive for select to authenticated using ((user_id = ( SELECT auth.uid() AS uid)));
+drop policy if exists "own rows read" on public.profit_booking_summary;
+create policy "own rows read" on public.profit_booking_summary as permissive for select to authenticated using ((user_id = ( SELECT auth.uid() AS uid)));
+drop policy if exists "own rows read" on public.realised_pnl;
+create policy "own rows read" on public.realised_pnl as permissive for select to authenticated using ((user_id = ( SELECT auth.uid() AS uid)));
+drop policy if exists "own rows read" on public.returns_summary;
+create policy "own rows read" on public.returns_summary as permissive for select to authenticated using ((user_id = ( SELECT auth.uid() AS uid)));
+drop policy if exists "own rows read" on public.strategy_recommendations;
+create policy "own rows read" on public.strategy_recommendations as permissive for select to authenticated using ((user_id = ( SELECT auth.uid() AS uid)));
+drop policy if exists "signed-in read" on public.support_levels;
+create policy "signed-in read" on public.support_levels as permissive for select to authenticated using (true);
+drop policy if exists "own rows read" on public.t212_dividends;
+create policy "own rows read" on public.t212_dividends as permissive for select to authenticated using ((user_id = ( SELECT auth.uid() AS uid)));
+drop policy if exists "own rows read" on public.t212_orders;
+create policy "own rows read" on public.t212_orders as permissive for select to authenticated using ((user_id = ( SELECT auth.uid() AS uid)));
+drop policy if exists "own rows read" on public.t212_sync_state;
+create policy "own rows read" on public.t212_sync_state as permissive for select to authenticated using ((user_id = ( SELECT auth.uid() AS uid)));
+drop policy if exists "own rows read" on public.t212_transactions;
+create policy "own rows read" on public.t212_transactions as permissive for select to authenticated using ((user_id = ( SELECT auth.uid() AS uid)));
+drop policy if exists "own keys insert" on public.user_keys;
+create policy "own keys insert" on public.user_keys as permissive for insert to authenticated with check ((user_id = ( SELECT auth.uid() AS uid)));
+drop policy if exists "own keys read" on public.user_keys;
+create policy "own keys read" on public.user_keys as permissive for select to authenticated using ((user_id = ( SELECT auth.uid() AS uid)));
+drop policy if exists "own keys update" on public.user_keys;
+create policy "own keys update" on public.user_keys as permissive for update to authenticated using ((user_id = ( SELECT auth.uid() AS uid))) with check ((user_id = ( SELECT auth.uid() AS uid)));
+drop policy if exists "own prefs insert" on public.user_ui_prefs;
+create policy "own prefs insert" on public.user_ui_prefs as permissive for insert to authenticated with check ((user_id = ( SELECT auth.uid() AS uid)));
+drop policy if exists "own prefs read" on public.user_ui_prefs;
+create policy "own prefs read" on public.user_ui_prefs as permissive for select to authenticated using ((user_id = ( SELECT auth.uid() AS uid)));
+drop policy if exists "own prefs update" on public.user_ui_prefs;
+create policy "own prefs update" on public.user_ui_prefs as permissive for update to authenticated using ((user_id = ( SELECT auth.uid() AS uid))) with check ((user_id = ( SELECT auth.uid() AS uid)));
+drop policy if exists "own rows read" on public.value_buy_scores;
+create policy "own rows read" on public.value_buy_scores as permissive for select to authenticated using ((user_id = ( SELECT auth.uid() AS uid)));
+drop policy if exists "own rows read" on public.watchlist;
+create policy "own rows read" on public.watchlist as permissive for select to authenticated using ((user_id = ( SELECT auth.uid() AS uid)));
+drop policy if exists "own rows read" on public.watchlist_analysis;
+create policy "own rows read" on public.watchlist_analysis as permissive for select to authenticated using ((user_id = ( SELECT auth.uid() AS uid)));
 
 -- ── Grants (Supabase default: API roles can reach public tables; RLS decides rows) ────
 grant usage on schema public to anon, authenticated, service_role;
@@ -492,6 +929,7 @@ comment on column public.returns_summary.details is 'Returns rebuilt from Tradin
 comment on column public.watchlist.alternatives is 'Trading 212 products giving the same exposure (crypto ETPs / commodity ETCs)';
 comment on column public.watchlist.t212_ticker is 'Matching Trading 212 instrument, if tradable there';
 comment on column public.watchlist.ticker is 'Yahoo Finance symbol (global)';
+comment on table public.instrument_exposure is 'Reference data: full name, country/market flag and one-line description per Trading 212 ticker. Read-only for users; maintained by migrations/service role.';
 comment on table public.pie_history is 'Per-pie daily series for the positions drill-down. Rebuilt daily by services/pie_history_service.py.';
 comment on table public.portfolio_snapshots_archive is 'Snapshots older than 45 days, moved by archive_portfolio_history(). Same columns as portfolio_snapshots.';
 comment on table public.positions_archive is 'Positions of archived snapshots. Same columns as positions.';
@@ -505,14 +943,12 @@ CREATE OR REPLACE FUNCTION public.archive_portfolio_history(keep_days integer DE
  LANGUAGE plpgsql
  SET search_path TO 'public'
 AS $function$
-declare
-  ids bigint[];
-  n_pos int;
+declare ids bigint[]; n_pos int;
 begin
   if keep_days < 7 then raise exception 'keep_days must be >= 7'; end if;
   select coalesce(array_agg(id), '{}') into ids from portfolio_snapshots
    where created_at < now() - make_interval(days => keep_days)
-     and id <> (select max(id) from portfolio_snapshots);
+     and id not in (select max(id) from portfolio_snapshots group by user_id, connection_id);
   if cardinality(ids) = 0 then return json_build_object('snapshots', 0, 'positions', 0); end if;
   insert into portfolio_snapshots_archive select * from portfolio_snapshots where id = any(ids) on conflict (id) do nothing;
   insert into positions_archive select * from positions where snapshot_id = any(ids) on conflict (id) do nothing;
@@ -520,6 +956,75 @@ begin
   delete from positions where snapshot_id = any(ids);
   delete from portfolio_snapshots where id = any(ids);
   return json_build_object('snapshots', cardinality(ids), 'positions', n_pos, 'cutoff', now() - make_interval(days => keep_days));
+end $function$
+;
+CREATE OR REPLACE FUNCTION public.audit_log_immutable()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SET search_path TO ''
+AS $function$
+begin raise exception 'audit_log is append-only'; end $function$
+;
+CREATE OR REPLACE FUNCTION public.audit_privileged()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO 'public', 'pg_temp'
+AS $function$
+declare
+  v_row jsonb := to_jsonb(coalesce(new, old));
+  v_owner uuid := coalesce((v_row->>'user_id')::uuid, null);
+  v_actor text := coalesce(nullif(auth.role(), ''), session_user);
+  v_id text := coalesce(v_row->>'id', v_row->>'user_id', v_row->>'connection_id');
+begin
+  if v_actor = 'authenticated' and v_owner is not null and auth.uid() = v_owner then
+    return coalesce(new, old);
+  end if;
+  insert into public.audit_log (actor, subject_user, table_name, op, row_id, detail)
+  values (v_actor, v_owner, tg_table_name, tg_op, v_id,
+          jsonb_build_object('caller_uid', auth.uid(), 'db_user', session_user, 'kind', v_row->>'kind'));
+  return coalesce(new, old);
+end $function$
+;
+CREATE OR REPLACE FUNCTION public.check_cron_secret(p text)
+ RETURNS boolean
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+  select coalesce(p = (select decrypted_secret from vault.decrypted_secrets where name = 'broker_cron_secret'), false) $function$
+;
+CREATE OR REPLACE FUNCTION public.claim_sync_job()
+ RETURNS SETOF sync_jobs
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+begin
+  update public.sync_jobs set state = 'queued', next_run_at = now() where state = 'running' and started_at < now() - interval '6 minutes';
+  return query
+  update public.sync_jobs j set state = 'running', attempts = j.attempts + 1, started_at = now()
+  where j.id = (select id from public.sync_jobs where state = 'queued' and next_run_at <= now() order by next_run_at limit 1 for update skip locked)
+  returning j.*;
+end $function$
+;
+CREATE OR REPLACE FUNCTION public.drop_vault_secret()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+begin if old.vault_secret_id is not null then delete from vault.secrets where id = old.vault_secret_id; end if; return old; end $function$
+;
+CREATE OR REPLACE FUNCTION public.handle_new_user()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+begin
+  insert into public.profiles (user_id, display_name) values (new.id, coalesce(new.raw_user_meta_data->>'display_name', split_part(new.email, '@', 1)));
+  return new;
 end $function$
 ;
 CREATE OR REPLACE FUNCTION public.purge_cleared_alerts(days integer DEFAULT 30)
@@ -535,6 +1040,107 @@ begin
   return n;
 end $function$
 ;
+CREATE OR REPLACE FUNCTION public.purge_connection_archive()
+ RETURNS trigger
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+begin
+  delete from public.positions_archive where snapshot_id in (select id from public.portfolio_snapshots_archive where connection_id = old.id);
+  delete from public.portfolio_snapshots_archive where connection_id = old.id;
+  return old;
+end $function$
+;
+CREATE OR REPLACE FUNCTION public.read_broker_secret(p_connection uuid)
+ RETURNS text
+ LANGUAGE sql
+ STABLE SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+  select ds.decrypted_secret from public.broker_secrets bs join vault.decrypted_secrets ds on ds.id = bs.vault_secret_id
+  where bs.connection_id = p_connection $function$
+;
+CREATE OR REPLACE FUNCTION public.save_snapshot(p_snapshot jsonb, p_positions jsonb DEFAULT '[]'::jsonb, p_alerts jsonb DEFAULT '[]'::jsonb)
+ RETURNS bigint
+ LANGUAGE plpgsql
+ SET search_path TO 'public'
+AS $function$
+declare sid bigint;
+begin
+  insert into portfolio_snapshots (total_value, cash, invested, total_ppl, run_count, raw)
+  values ((p_snapshot->>'total_value')::numeric, (p_snapshot->>'cash')::numeric, (p_snapshot->>'invested')::numeric,
+          (p_snapshot->>'total_ppl')::numeric, (p_snapshot->>'run_count')::int, p_snapshot->'raw')
+  returning id into sid;
+  insert into positions (snapshot_id, ticker, display, pie, exchange, current_price, avg_price, gain_pct, dip_from_high, ppl, quantity)
+  select sid, x->>'ticker', x->>'display', x->>'pie', coalesce(x->>'exchange', 'LSE'), (x->>'current_price')::numeric, (x->>'avg_price')::numeric,
+         (x->>'gain_pct')::numeric, (x->>'dip_from_high')::numeric, (x->>'ppl')::numeric, (x->>'quantity')::numeric
+  from jsonb_array_elements(coalesce(p_positions, '[]'::jsonb)) x;
+  insert into alerts (type, alert_type, ticker, title, body)
+  select x->>'type', coalesce(x->>'alert_type', x->>'type'), coalesce(x->>'ticker', ''), x->>'title', x->>'body'
+  from jsonb_array_elements(coalesce(p_alerts, '[]'::jsonb)) x;
+  return sid;
+end $function$
+;
+CREATE OR REPLACE FUNCTION public.store_broker_secret(p_connection uuid, p_payload text)
+ RETURNS void
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare v_id uuid; v_old uuid;
+begin
+  select vault_secret_id into v_old from public.broker_secrets where connection_id = p_connection;
+  v_id := vault.create_secret(p_payload, 'broker:' || p_connection::text || ':' || extract(epoch from clock_timestamp())::bigint::text);
+  insert into public.broker_secrets(connection_id, vault_secret_id, key_hint) values (p_connection, v_id, 'vault')
+    on conflict (connection_id) do update set vault_secret_id = excluded.vault_secret_id;
+  if v_old is not null then delete from vault.secrets where id = v_old; end if;
+end $function$
+;
+CREATE OR REPLACE FUNCTION public.strategy_fill_invested()
+ RETURNS trigger
+ LANGUAGE plpgsql
+AS $function$
+declare ws date := date_trunc('week', current_date)::date; ms date := date_trunc('month', current_date)::date; w numeric; m numeric; ow int; om int;
+begin
+  if new.invested is not null or not exists (select 1 from public.profiles where user_id = new.user_id and is_demo) then return new; end if;
+  select coalesce(sum(abs(net_value)) filter (where filled_at::date >= ws), 0), coalesce(sum(abs(net_value)), 0),
+         count(*) filter (where filled_at::date >= ws), count(*)
+    into w, m, ow, om
+    from public.t212_orders where user_id = new.user_id and side = 'BUY' and status in ('FILLED','PARTIALLY_FILLED')
+      and filled_at::date >= ms and filled_at::date <= current_date and net_value is not null;
+  new.invested := jsonb_build_object('week', round(w, 2), 'month', round(m, 2), 'orders_week', ow, 'orders_month', om, 'unpriced', 0,
+    'week_start', ws, 'month_start', ms, 'by_pie_week', '{}'::jsonb, 'outside_pies_week', round(w, 2), 'source', 'Trading 212 filled buy orders (demo data)');
+  return new;
+end $function$
+;
+CREATE OR REPLACE FUNCTION public.zk_login_params(p_email text)
+ RETURNS jsonb
+ LANGUAGE plpgsql
+ SECURITY DEFINER
+ SET search_path TO ''
+AS $function$
+declare v_salt text; v_kdf jsonb; v_pepper text;
+begin
+  select decrypted_secret into v_pepper from vault.decrypted_secrets where name = 'zk_salt_pepper';
+  select k.pw_salt, k.kdf into v_salt, v_kdf from public.user_keys k join auth.users u on u.id = k.user_id
+    where lower(u.email) = lower(p_email);
+  if v_salt is null then
+    v_salt := encode(substring(extensions.hmac(lower(p_email), v_pepper, 'sha256') from 1 for 16), 'base64');
+    v_kdf := '{"name":"PBKDF2-SHA256","iterations":600000}'::jsonb;
+  end if;
+  return jsonb_build_object('pw_salt', v_salt, 'kdf', v_kdf);
+end $function$
+;
+
+-- ── Triggers ──────────────────────────────────────────────────────────────
+CREATE TRIGGER audit_broker_secrets AFTER INSERT OR DELETE OR UPDATE ON public.broker_secrets FOR EACH ROW EXECUTE FUNCTION audit_privileged();
+CREATE TRIGGER audit_enc_rows AFTER INSERT OR DELETE OR UPDATE ON public.enc_rows FOR EACH ROW EXECUTE FUNCTION audit_privileged();
+CREATE TRIGGER audit_log_no_update BEFORE DELETE OR UPDATE OR TRUNCATE ON public.audit_log FOR EACH STATEMENT EXECUTE FUNCTION audit_log_immutable();
+CREATE TRIGGER audit_user_keys AFTER INSERT OR DELETE OR UPDATE ON public.user_keys FOR EACH ROW EXECUTE FUNCTION audit_privileged();
+CREATE TRIGGER broker_connections_purge_archive BEFORE DELETE ON public.broker_connections FOR EACH ROW EXECUTE FUNCTION purge_connection_archive();
+CREATE TRIGGER broker_secrets_drop_vault AFTER DELETE ON public.broker_secrets FOR EACH ROW EXECUTE FUNCTION drop_vault_secret();
+CREATE TRIGGER strategy_fill_invested BEFORE INSERT ON public.strategy_recommendations FOR EACH ROW EXECUTE FUNCTION strategy_fill_invested();
 
 -- ── Views ─────────────────────────────────────────────────────────────────
 create or replace view public.portfolio_snapshots_all with (security_invoker=true) as
@@ -545,7 +1151,9 @@ create or replace view public.portfolio_snapshots_all with (security_invoker=tru
     portfolio_snapshots.invested,
     portfolio_snapshots.total_ppl,
     portfolio_snapshots.run_count,
-    portfolio_snapshots.raw
+    portfolio_snapshots.raw,
+    portfolio_snapshots.user_id,
+    portfolio_snapshots.connection_id
    FROM portfolio_snapshots
 UNION ALL
  SELECT portfolio_snapshots_archive.id,
@@ -555,7 +1163,9 @@ UNION ALL
     portfolio_snapshots_archive.invested,
     portfolio_snapshots_archive.total_ppl,
     portfolio_snapshots_archive.run_count,
-    portfolio_snapshots_archive.raw
+    portfolio_snapshots_archive.raw,
+    portfolio_snapshots_archive.user_id,
+    portfolio_snapshots_archive.connection_id
    FROM portfolio_snapshots_archive;
 create or replace view public.positions_all with (security_invoker=true) as
  SELECT positions.id,
@@ -570,7 +1180,10 @@ create or replace view public.positions_all with (security_invoker=true) as
     positions.dip_from_high,
     positions.ppl,
     positions.exchange,
-    positions.quantity
+    positions.quantity,
+    positions.user_id,
+    positions.broker,
+    positions.native_currency
    FROM positions
 UNION ALL
  SELECT positions_archive.id,
@@ -585,13 +1198,48 @@ UNION ALL
     positions_archive.dip_from_high,
     positions_archive.ppl,
     positions_archive.exchange,
-    positions_archive.quantity
+    positions_archive.quantity,
+    positions_archive.user_id,
+    positions_archive.broker,
+    positions_archive.native_currency
    FROM positions_archive;
 
 -- ── Function privileges ───────────────────────────────────────────────────
 revoke all on function public.archive_portfolio_history(integer) from public, anon, authenticated;
 grant execute on function public.archive_portfolio_history(integer) to service_role;
+revoke all on function public.audit_log_immutable() from public, anon, authenticated;
+grant execute on function public.audit_log_immutable() to anon;
+grant execute on function public.audit_log_immutable() to authenticated;
+grant execute on function public.audit_log_immutable() to service_role;
+revoke all on function public.audit_privileged() from public, anon, authenticated;
+grant execute on function public.audit_privileged() to service_role;
+revoke all on function public.check_cron_secret(text) from public, anon, authenticated;
+grant execute on function public.check_cron_secret(text) to service_role;
+revoke all on function public.claim_sync_job() from public, anon, authenticated;
+grant execute on function public.claim_sync_job() to service_role;
+revoke all on function public.drop_vault_secret() from public, anon, authenticated;
+grant execute on function public.drop_vault_secret() to service_role;
+revoke all on function public.handle_new_user() from public, anon, authenticated;
+grant execute on function public.handle_new_user() to service_role;
 revoke all on function public.purge_cleared_alerts(integer) from public, anon, authenticated;
 grant execute on function public.purge_cleared_alerts(integer) to service_role;
+revoke all on function public.purge_connection_archive() from public, anon, authenticated;
+grant execute on function public.purge_connection_archive() to service_role;
+revoke all on function public.read_broker_secret(uuid) from public, anon, authenticated;
+grant execute on function public.read_broker_secret(uuid) to service_role;
+revoke all on function public.save_snapshot(jsonb,jsonb,jsonb) from public, anon, authenticated;
+grant execute on function public.save_snapshot(jsonb,jsonb,jsonb) to anon;
+grant execute on function public.save_snapshot(jsonb,jsonb,jsonb) to authenticated;
+grant execute on function public.save_snapshot(jsonb,jsonb,jsonb) to service_role;
+revoke all on function public.store_broker_secret(uuid,text) from public, anon, authenticated;
+grant execute on function public.store_broker_secret(uuid,text) to service_role;
+revoke all on function public.strategy_fill_invested() from public, anon, authenticated;
+grant execute on function public.strategy_fill_invested() to anon;
+grant execute on function public.strategy_fill_invested() to authenticated;
+grant execute on function public.strategy_fill_invested() to service_role;
+revoke all on function public.zk_login_params(text) from public, anon, authenticated;
+grant execute on function public.zk_login_params(text) to anon;
+grant execute on function public.zk_login_params(text) to authenticated;
+grant execute on function public.zk_login_params(text) to service_role;
 
 commit;
