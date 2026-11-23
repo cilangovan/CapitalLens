@@ -1,22 +1,24 @@
 name: Security checks
 
-# Third-party scripts, CSP, XSS defences, worker hardening, and live probes of the worker and database
-# as an outsider (no session). Runs on every change to the dashboard / worker / tests and daily.
-# xss-scan also runs as part of every push and on a weekly cadence, auto-fixing unescaped DB fields
-# and committing the fix back to main when any are found.
+# Runs on every change, daily, and weekly for the full XSS auto-fix cycle.
+# Daily: static code scan + live probes + GitHub issue sync + email digest.
+# Push:  fast XSS gate (no auto-fix, blocks CI on new medium+ findings).
+# Weekly (Mon 03:00 UTC): XSS scan + auto-fix + commit + issue sync.
 on:
   push:
     paths: ['docs/**', 'cloudflare-worker/**', 'tests/**', '.github/workflows/security.yml']
   pull_request:
   schedule:
-    - cron: '17 6 * * *'   # daily static + live checks
-    - cron: '0 3 * * 1'    # weekly full XSS re-scan (Monday 03:00 UTC)
+    - cron: '17 6 * * *'   # daily: static + live checks + issue sync + email
+    - cron: '0 3 * * 1'    # weekly Mon 03:00 UTC: XSS auto-fix cycle
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write   # for auto-fix commits
+  issues: write     # for auto-opening/closing security issues
 
 jobs:
+  # ── Static code checks + live probes ──────────────────────────────────────
   security:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -34,33 +36,29 @@ jobs:
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_KEY }}
         run: python -u tests/security_check.py
 
-  # ── XSS scanner ─────────────────────────────────────────────────────────────
-  # Scans all JS for unescaped DB-field → DOM-sink paths (OWASP A03).
-  # On push: scan only (lint gate).
-  # On schedule / workflow_dispatch: scan + auto-fix + commit any fixes back.
+  # ── XSS scanner — push gate + weekly auto-fix ─────────────────────────────
   xss-scan:
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
         with:
-          # Need write access for auto-fix commits; token available via permissions below
           fetch-depth: 0
 
       - uses: actions/setup-python@v5
         with:
           python-version: '3.12'
 
-      # ── Scan only on push (fast gate, no auto-fix) ──────────────────────────
-      - name: XSS scan (push gate)
+      # ── On push: scan only (fast lint gate) ────────────────────────────────
+      - name: XSS scan (push gate — no auto-fix)
         if: github.event_name == 'push' || github.event_name == 'pull_request'
-        run: python -u tests/security_scan.py --report
-        # Non-zero exit = medium+ findings → job fails
+        run: python -u tests/security_scan.py --report --json
+        # exits 1 on medium+ findings → blocks the push
 
-      # ── Scan + auto-fix + commit on schedule / manual trigger ───────────────
+      # ── On schedule/dispatch: scan + auto-fix + commit ─────────────────────
       - name: XSS scan + auto-fix
         if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
-        run: python -u tests/security_scan.py --fix --report
+        run: python -u tests/security_scan.py --fix --report --json
 
       - name: Commit auto-fixes (if any)
         if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
@@ -69,22 +67,21 @@ jobs:
         run: |
           git config user.name  "cilangovan"
           git config user.email "7702527+cilangolan@users.noreply.github.com"
-          # Stage only JS and the scan report — never stage secrets or generated files
-          git add docs/js/*.js documentation/security-scan-report.md || true
+          git add docs/js/*.js documentation/security-scan-report.md documentation/security-findings.json || true
           if git diff --cached --quiet; then
             echo "No auto-fixes to commit."
           else
             git status --short
             TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M UTC')
-            git commit -m "security: auto-fix XSS findings detected by security_scan.py [${TIMESTAMP}]
+            git commit -m "security: auto-fix XSS findings [${TIMESTAMP}]
 
-auto-fixed: unescaped DB-sourced string fields in innerHTML/title/onclick contexts
-scanner: tests/security_scan.py --fix
-report:  documentation/security-scan-report.md"
+auto-fixed by tests/security_scan.py --fix
+report:  documentation/security-scan-report.md
+findings: documentation/security-findings.json"
             git push origin main
           fi
 
-      # ── Post scan report to GitHub Step Summary ─────────────────────────────
+      # ── Publish to GitHub Step Summary ─────────────────────────────────────
       - name: Publish scan report to Step Summary
         if: always()
         run: |
@@ -92,6 +89,64 @@ report:  documentation/security-scan-report.md"
             cat documentation/security-scan-report.md >> $GITHUB_STEP_SUMMARY
           fi
 
+  # ── GitHub issue sync (daily + weekly) ────────────────────────────────────
+  # Opens issues for new findings, closes issues for resolved ones.
+  issue-sync:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: xss-scan
+    if: always() && (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch')
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Re-run scan to get fresh findings JSON
+        run: python -u tests/security_scan.py --json || true
+        # || true: even if scan fails (findings exist) we still want the JSON for issue sync
+
+      - name: Sync security findings → GitHub Issues
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if [ -f documentation/security-findings.json ]; then
+            python tests/security_issue_sync.py \
+              --findings documentation/security-findings.json \
+              --repo cilangovan/CapitalLens
+          else
+            echo "No findings JSON found — skipping issue sync."
+          fi
+
+  # ── Daily security email digest ────────────────────────────────────────────
+  # Sends a categorised email: Frontend / Worker / CSP / Database,
+  # open issues vs closed, and a PASS/FAIL summary.
+  email-digest:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [xss-scan, issue-sync]
+    if: always() && github.event_name == 'schedule'
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: Re-run scan for email data
+        run: python -u tests/security_scan.py --json --report || true
+
+      - name: Build and send security email digest
+        env:
+          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
+          DIGEST_TO_EMAIL:  ${{ secrets.DIGEST_TO_EMAIL }}
+          GH_TOKEN:         ${{ secrets.GITHUB_TOKEN }}
+        run: python -u tests/security_email.py
+
+  # ── Browser smoke test ─────────────────────────────────────────────────────
   live-smoke:
     runs-on: ubuntu-latest
     timeout-minutes: 10

@@ -32,6 +32,7 @@ Usage:
 
 import argparse
 import difflib
+import json
 import os
 import re
 import shutil
@@ -476,7 +477,7 @@ def write_report(findings: list[Finding], fixed: int):
 
 # ── Main ──────────────────────────────────────────────────────────────────────
 
-def run(fix=False, report=False) -> int:
+def run(fix=False, report=False, json_out=False) -> int:
     all_findings: list[Finding] = []
     total_fixed = 0
 
@@ -534,6 +535,9 @@ def run(fix=False, report=False) -> int:
     if report:
         write_report(all_findings, total_fixed)
 
+    if json_out:
+        write_json(all_findings, total_fixed)
+
     # Classify: low/info are warnings, medium+ are failures
     failures = [f for f in all_findings if Finding.SEVERITIES.get(f.severity, 0) >= 2]
     warnings = [f for f in all_findings if Finding.SEVERITIES.get(f.severity, 0) < 2]
@@ -548,9 +552,32 @@ def run(fix=False, report=False) -> int:
     return 1 if failures else 0
 
 
+def write_json(findings: list[Finding], fixed: int):
+    """Write machine-readable findings for security_issue_sync.py."""
+    import datetime as _dt
+    now = _dt.datetime.now(_dt.timezone.utc).strftime("%Y-%m-%dT%H:%M:%SZ")
+    data = [
+        {
+            "file":        f.file,
+            "line":        f.line,
+            "severity":    f.severity,
+            "category":    f.category,
+            "description": f.description,
+            "snippet":     f.snippet,
+            "fixable":     f.fixable,
+            "detected_at": now,
+        }
+        for f in findings
+    ]
+    out_path = ROOT / "documentation" / "security-findings.json"
+    out_path.write_text(json.dumps(data, indent=2) + "\n")
+    print(f"  📋 JSON findings written to {out_path.relative_to(ROOT)}")
+
+
 if __name__ == "__main__":
     p = argparse.ArgumentParser(description="CapitalLens OWASP security scanner")
     p.add_argument("--fix",    action="store_true", help="auto-fix unescaped DB fields")
     p.add_argument("--report", action="store_true", help="write documentation/security-scan-report.md")
+    p.add_argument("--json",   action="store_true", dest="json_out", help="write documentation/security-findings.json for issue sync")
     args = p.parse_args()
-    sys.exit(run(fix=args.fix, report=args.report))
+    sys.exit(run(fix=args.fix, report=args.report, json_out=args.json_out))

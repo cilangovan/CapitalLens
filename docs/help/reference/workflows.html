@@ -83,7 +83,7 @@ What each pipeline is for, and the order data moves, is in <a href="../workflows
 <td>Security checks</td>
 <td><code>security.yml</code></td>
 <td>push, pull request, manual</td>
-<td><code>17 6 * * *</code> daily static + live checks<br><code>0 3 * * 1</code> weekly full XSS re-scan (Monday 03:00 UTC)</td>
+<td><code>17 6 * * *</code> daily: static + live checks + issue sync + email<br><code>0 3 * * 1</code> weekly Mon 03:00 UTC: XSS auto-fix cycle</td>
 </tr>
 <tr>
 <td>Send Password Reset Email</td>
@@ -158,8 +158,9 @@ python -m services.institutional_flow_service
 <h2 id="security-checks">Security checks</h2>
 <p><code>.github/workflows/security.yml</code></p>
 <div class="code"><pre><code>python -u tests/security_check.py
-python -u tests/security_scan.py --report
-python -u tests/security_scan.py --fix --report
+python -u tests/security_scan.py --report --json
+python -u tests/security_scan.py --fix --report --json
+python tests/security_issue_sync.py \
 </code></pre></div>
 <h2 id="send-password-reset-email">Send Password Reset Email</h2>
 <p><code>.github/workflows/send_reset_email.yml</code></p>
