@@ -69,7 +69,7 @@ Data: `value_buy_scores.this_week` (now also carries `pe`, `fwd_pe`, `vol_ratio`
 ## 4. Market mood and pace (`#strategy-content`)
 
 - Stats: **Market mood** (😎 🙂 😨 😱 with VIX) and **Annualised** return versus the 10% base case / 15% optimistic case.
-- The old weekly allocation tiles (week number, "This week £ of the monthly maximum"), the per-pie £ recommendation list and the allocator notes were removed from this tab (the fixed monthly budget is gone). The allocator still runs behind the scenes (`services/strategy_service.py`, browser `docs/zk/strategy.js`): its market mood feeds the Dip Planner and its weekly figure still sizes the [Watchlist](watchlist.md) pool.
+- No fixed budget anywhere: the allocator (`services/strategy_service.py`, browser `docs/zk/strategy.js`) only ranks pies, giving each a **share in %** of whatever amount you decide to invest (it feeds market mood to the Dip Planner). Nothing in the app assumes £300 a month or any other amount.
 - If there is no row yet the Dip Planner still works from the Entry Analysis rows and says there is no market reading yet.
 
 ## Behaviour

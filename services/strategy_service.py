@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 """
-Strategy Service — AGGRESSIVE weekly allocator.
+Strategy Service — pie priorities. There is NO fixed budget.
 
-Each week it splits (monthly max budget ÷ Mondays in the month) across the live pies,
-weighted by:
+It ranks the live pies and gives each a share (%) of whatever amount you decide to invest
+(you enter that amount on the dashboard: Dip Planner / Watchlist). Weighted by:
   1. Pie quality      — average star rating from analyst_ratings (analysts for stocks,
                         aggressive trend rating for ETFs)
   2. Dip size         — average drawdown from the 52-week high (buy quality dips)
@@ -33,13 +33,13 @@ SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ["SUPABASE_KEY"]
 
 # ── Settings ──────────────────────────────────────────────────────────────────
-MONTHLY_BUDGET_MAX = 300          # £ deployed per month, split evenly across Mondays
+PLAN_TOTAL         = 100          # the plan is split into 100 parts = percent of whatever you decide to invest (no fixed £ budget)
 TARGET_BASE        = 10.0         # % a year — the realistic baseline
 TARGET_STRETCH     = 15.0         # % a year — optimistic goal
-MIN_ALLOC          = 5            # £ — skip anything smaller and redistribute
-MAX_PIE_SHARE      = 0.35         # no pie gets more than 35% of a week
+MIN_ALLOC          = 7            # % — skip anything smaller and redistribute
+MAX_PIE_SHARE      = 0.35         # no pie gets more than 35% of the plan
 TIER_1             = ["Magnificent 7", "Wider ETF", "Global ETF"]   # always-on core
-TIER_1_FLOOR       = 8            # £ minimum each core pie gets every week
+TIER_1_FLOOR       = 12           # % minimum each core pie gets
 GROWTH_PIES        = ["Magnificent 7", "Semiconductor"]             # tilted up when behind pace
 
 STAR_WEIGHT = {1: 0.0, 2: 0.5, 3: 1.5, 4: 2.5, 5: 3.5}
@@ -147,15 +147,6 @@ def get_invested(today):
 def get_returns():
     rows = supabase_request("GET", "returns_summary?select=*&limit=1") or []
     return rows[0] if rows else {}
-
-
-# ── Calendar ──────────────────────────────────────────────────────────────────
-def mondays_in_month(d):
-    return sum(1 for wk in calendar.monthcalendar(d.year, d.month) if wk[calendar.MONDAY])
-
-
-def week_of_month(d):
-    return sum(1 for day in range(1, d.day + 1) if date(d.year, d.month, day).weekday() == 0) or 1
 
 
 # ── Market data ───────────────────────────────────────────────────────────────
@@ -313,12 +304,9 @@ def allocate(weekly, weights):
 
 
 def run():
-    print(f"[strategy_service] Aggressive allocator — {datetime.now(timezone.utc).isoformat()}")
+    print(f"[strategy_service] Pie priorities (no fixed budget) — {datetime.now(timezone.utc).isoformat()}")
     today = date.today()
-    weeks = mondays_in_month(today)
-    week = week_of_month(today)
-    weekly = MONTHLY_BUDGET_MAX / weeks
-    print(f"  Budget £{MONTHLY_BUDGET_MAX}/month ÷ {weeks} Mondays = £{weekly:.2f} this week (week {week})")
+    weekly = PLAN_TOTAL
 
     ratings = get_analyst_ratings()
     pies = get_live_pies() or list(ratings.keys())
@@ -341,20 +329,16 @@ def run():
     recs = []
     for pie, amt in sorted(alloc.items(), key=lambda x: -x[1]):
         share = amt / weekly
-        r = {
+        recs.append({
             "pie": pie,
-            "amount": amt,
+            "share": amt,
             "reason": " · ".join(reasons[pie]),
             "priority": "HIGH" if share >= 0.25 else "MEDIUM" if share >= 0.12 else "LOW",
-        }
-        if inv is not None:
-            r["bought"] = round(inv["by_pie_week"].get(pie, 0.0), 2)
-            r["left"] = round(max(0.0, amt - r["bought"]), 2)
-        recs.append(r)
+        })
     skipped = [p for p in pies if p not in alloc]
 
     notes = [
-        f"Aggressive mode · £{MONTHLY_BUDGET_MAX}/month → £{weekly:.0f} this week (week {week} of {weeks})",
+        "Pie priorities: each pie's share (%) of whatever amount you decide to invest; there is no fixed budget",
         f"Market mood: {mood['label']} — VIX {mood['vix']}, S&P {mood['spx_drawdown']}% off high, "
         f"news {mood['news_net']:+d} across {mood['news_count']} headlines",
     ]
@@ -370,40 +354,21 @@ def run():
         notes.append(f"📈 Annualised {ann_ret:.1f}% — above {TARGET_BASE:.0f}% base, chasing {TARGET_STRETCH:.0f}% stretch.")
     else:
         notes.append(f"✅ Annualised {ann_ret:.1f}% — at or above the {TARGET_STRETCH:.0f}% stretch target.")
-    if inv is not None:
-        wk = round(weekly); over = round(inv["week"] - wk)
-        if inv["orders_week"]:
-            n = inv["orders_week"]
-            notes.append(f"Bought so far this week: £{inv['week']:.2f} in {n} order{'' if n == 1 else 's'} (suggested £{wk:.0f}): "
-                         + (f"£{over:.0f} above this week's suggestion." if over > 0 else f"£{wk - inv['week']:.0f} still to place."))
-        else:
-            notes.append(f"Nothing bought yet this week (suggested £{wk:.0f}).")
-        m = inv["orders_month"]
-        notes.append(f"This month: £{inv['month']:.2f} bought of the £{MONTHLY_BUDGET_MAX} budget ({m} order{'' if m == 1 else 's'}), from {inv['source']}.")
-        if inv["outside_pies_week"] > 0:
-            notes.append(f"£{inv['outside_pies_week']:.2f} of this week's buys were outside your pies, so they are not counted against a pie below.")
-        if inv["unpriced"]:
-            u = inv["unpriced"]
-            notes.append(f"ℹ️ {u} order{'' if u == 1 else 's'} this month had no value from Trading 212 and {'is' if u == 1 else 'are'} not counted.")
     if skipped:
-        notes.append("No money this week: " + ", ".join(f"{p} ({' · '.join(reasons[p][-1:])})" for p in skipped))
+        notes.append("No share for now: " + ", ".join(f"{p} ({' · '.join(reasons[p][-1:])})" for p in skipped))
 
     row = {
-        "week_number": week,
-        "total_suggested": sum(alloc.values()),
         "on_track": (ann_ret >= TARGET_BASE) if ann_ret is not None else None,
         "annualised_return": ann_ret,
         "recommendations": recs,
         "notes": notes,
-        "weeks_in_month": weeks,
-        "weekly_budget": round(weekly, 2),
         "invested": inv,
         "market_mood": mood,
         "updated_at": datetime.now(timezone.utc).isoformat(),
     }
     supabase_request("DELETE", "strategy_recommendations?id=gt.0")
     if supabase_request("POST", "strategy_recommendations", row) is not None:
-        print(f"  ✓ saved — £{row['total_suggested']} across {len(recs)} pies")
+        print(f"  ✓ saved — {len(recs)} pies share the plan")
     else:
         print("  ✗ failed to save strategy_recommendations")
     print("[strategy_service] Done.")

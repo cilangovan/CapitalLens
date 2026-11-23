@@ -4,8 +4,7 @@
   'use strict';
   const rnd = (x, d) => root.ZKReturns.pyRound(x, d);
   const VB = () => root.ZKValueBuy, mean = a => a.reduce((x, y) => x + y, 0) / a.length;
-  const DEFAULT_SHARE = { stock: 0.35, commodity: 0.15, crypto: 0.10 }, BUDGET_KEY = { stock: 'watchlist_weekly_budget', commodity: 'commodity_weekly_budget', crypto: 'crypto_weekly_budget' };
-  const FALLBACK_WEEKLY = 300 / 4.33, TRANCHES = [0.40, 0.30, 0.30], MIN_SESSIONS = 60, SUBUNITS = { GBp: 'GBP', GBX: 'GBP', ZAc: 'ZAR', ILA: 'ILS' }, MAX_STALE_DAYS = 4;
+  const TRANCHES = [0.40, 0.30, 0.30], MIN_SESSIONS = 60, SUBUNITS = { GBp: 'GBP', GBX: 'GBP', ZAc: 'ZAR', ILA: 'ILS' }, MAX_STALE_DAYS = 4;
   const MON = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
   const truthy = v => v !== null && v !== undefined && v !== 0 && v !== '' && !Number.isNaN(v) && v !== false;
   const has = (o, k) => o && Object.prototype.hasOwnProperty.call(o, k) && o[k] !== null && o[k] !== undefined;
@@ -215,21 +214,21 @@
     return ['ok', verdict, out];
   }
 
-  function sizePositions(results, weekly, pool, category) {
-    const poolSet = pool !== null && pool !== undefined; pool = poolSet ? pool : weekly * (DEFAULT_SHARE[category] === undefined ? 0.1 : DEFAULT_SHARE[category]);
+  // Relative sizing only; there is no fixed budget. Each actionable name gets its share of whatever you decide to invest in the section (shares add up to 1)
+  // and a split across its price points. The £ are worked out on the dashboard from the amount you enter.
+  function sizePositions(results) {
     const w = { ENTER: 2, ACCUMULATE: 1 }, rawW = results.reduce((a, [st, v]) => a + (st === 'ok' ? (w[v] || 0) : 0), 0), totalW = rawW || 1, nHold = results.filter(([st, v]) => st === 'ok' && v === 'HOLD').length;
     for (const [status, verdict, data] of results) {
-      if (status !== 'ok') continue; let amt, basis;
-      if (verdict in w) { amt = pool * w[verdict] / totalW; basis = 'this week'; } else if (verdict === 'HOLD') { amt = pool / Math.max(rawW + nHold, 1); basis = 'only if the price points are hit'; } else { amt = 0; basis = 'no buys'; }
+      if (status !== 'ok') continue; let share, basis;
+      if (verdict in w) { share = w[verdict] / totalW; basis = 'this week'; } else if (verdict === 'HOLD') { share = 1 / Math.max(rawW + nHold, 1); basis = 'only if the price points are hit'; } else { share = 0; basis = 'no buys'; }
       const steps = [], raw = data.entries_raw; delete data.entries_raw;
-      raw.forEach(([label, px], i) => { if (i >= TRANCHES.length) return; const gbp = rnd(amt * TRANCHES[i], 0), pct = truthy(data.price) ? rnd((px / data.price - 1) * 100, 1) : 0;
-        steps.push({ label, price: px, pct_from_now: pct, amount_gbp: gbp, shares: truthy(px) ? rnd(gbp * (data.per_gbp || 1) / px, 6) : null }); });
+      raw.forEach(([label, px], i) => { if (i >= TRANCHES.length) return; const pct = truthy(data.price) ? rnd((px / data.price - 1) * 100, 1) : 0; steps.push({ label, price: px, pct_from_now: pct, share: TRANCHES[i] }); });
       data.entries = steps;
-      data.budget = { weekly_budget: rnd(weekly, 2), watchlist_pool: rnd(pool, 2), pool_source: poolSet ? 'your setting' : `${Math.trunc((DEFAULT_SHARE[category] === undefined ? 0.1 : DEFAULT_SHARE[category]) * 100)}% of the weekly budget`, this_stock: rnd(steps.reduce((a, s) => a + s.amount_gbp, 0), 0), basis };
+      data.weight = { share: rnd(share, 4), basis };
     }
   }
 
-  // inp: { items, data:{sym:{chart,det}}, fx:{ccy:rate|null}, weekly, settings:{key:value}, now:Date } -> [{ticker,status,verdict,data}]
+  // inp: { items, data:{sym:{chart,det}}, fx:{ccy:rate|null}, now:Date } -> [{ticker,status,verdict,data}]
   function compute(inp) {
     const results = inp.items.map(item => {
       const dd = inp.data[item.ticker] || {};
@@ -237,10 +236,9 @@
         return analyse(item, dd.chart, dd.det, ccy ? (ccy === 'GBP' ? 1.0 : (inp.fx[ccy] === undefined ? null : inp.fx[ccy])) : null, inp.now); }
       catch (e) { return ['error', null, { reason: `${e.name}: ${e.message}`.slice(0, 200) }]; }
     });
-    const weekly = Number(inp.weekly) || FALLBACK_WEEKLY;
     for (const cat of ['stock', 'commodity', 'crypto']) {
       const group = results.filter((r, i) => (inp.items[i].category || 'stock') === cat); if (!group.length) continue;
-      const v = (inp.settings || {})[BUDGET_KEY[cat]]; sizePositions(group, weekly, v !== undefined && v !== null ? Number(v) : null, cat);
+      sizePositions(group);
     }
     return inp.items.map((item, i) => ({ ticker: item.ticker, status: results[i][0], verdict: results[i][1], data: results[i][2] }));
   }
@@ -249,13 +247,11 @@
   async function run(opts, nowDate) {
     const { store, market } = opts, now = nowDate || new Date(), items = await store.load('watchlist');
     if (!items.length) return { rows: [], empty: true };
-    const strat = await store.get('strategy_recommendations', 'main'), settings = {};
-    for (const r of await store.load('app_settings')) settings[r.key] = r.value;
     const data = {}, fx = {};
     await Promise.all(items.map(async it => { const [chart, det] = await Promise.all([market.chart(it.ticker, '1y'), market.detail(it.ticker)]); data[it.ticker] = { chart, det }; }));
     const ccys = new Set(); for (const it of items) { const c = data[it.ticker].chart; if (c && c.currency) { const q = c.currency.trim(); ccys.add(q in SUBUNITS ? SUBUNITS[q] : q.toUpperCase()); } }
     await Promise.all([...ccys].filter(c => c !== 'GBP').map(async c => { const ch = await market.chart(`GBP${c}=X`, '5d'); const v = ch ? ch.close.filter(x => x !== null && x !== undefined && !Number.isNaN(x)) : []; fx[c] = v.length ? v[v.length - 1] : null; }));
-    const rows = compute({ items, data, fx, weekly: strat && strat.weekly_budget, settings, now });
+    const rows = compute({ items, data, fx, now });
     await store.put('watchlist_analysis', rows.map(r => Object.assign({ updated_at: now.toISOString() }, r)), r => r.ticker);
     return { rows };
   }

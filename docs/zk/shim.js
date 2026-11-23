@@ -31,11 +31,6 @@
         await opts.store.put('alerts', rows.map(a => Object.assign({}, a, make(stamp))), r => r.id);
         return json(200, { ok: true, updated: rows.length });
       }
-      if (route === 'settings/set' && method === 'POST') {
-        let body = {}; try { body = JSON.parse(init.body || '{}'); } catch (e) {}
-        const v = Number(body.value); if (!/^[a-z_]{3,40}$/.test(body.key || '') || !Number.isFinite(v) || v < 0 || v > 1e6) return json(400, { error: 'Bad setting' });
-        await opts.store.put('app_settings', [{ key: body.key, value: String(v) }], r => r.key); return json(200, { ok: true, value: v });
-      }
       if (route === 'ipo/order') {                              // My IPO list order: sort_order inside each encrypted ipo_watch row (server never sees which IPOs or their order)
         if (method !== 'POST') return json(405, { error: 'Method not allowed' });
         let body = {}; try { body = JSON.parse(init.body || '{}'); } catch (e) {}

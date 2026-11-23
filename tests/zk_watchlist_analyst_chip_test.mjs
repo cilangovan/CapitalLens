@@ -1,7 +1,7 @@
 // Run: node tests/zk_watchlist_analyst_chip_test.mjs — every watchlist card shows the analyst view, or says there is no coverage.
 import { readFileSync } from 'node:fs'; import vm from 'node:vm';
 const src = readFileSync(new URL('../docs/js/watchlist.js', import.meta.url), 'utf8');
-const i = src.indexOf('function wlAnalystChip'), j = src.indexOf('async function wlSaveBudget');
+const i = src.indexOf('function wlAnalystChip'), j = src.indexOf('function wlAmount');
 const ctx = {}; vm.createContext(ctx);
 vm.runInContext("const _wesc = s => String(s ?? '').replace(/[&<>\"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]));" + src.slice(i, j) + ';this.chip=wlAnalystChip;', ctx);
 let pass = 0, fail = 0; const ok = (n, c) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + n); };

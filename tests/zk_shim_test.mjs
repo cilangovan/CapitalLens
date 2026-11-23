@@ -42,7 +42,7 @@ const flow = await get('/institutional_flow_reports?select=*&order=report_date.d
 ok('flow report: shared table read with the user token, per-customer actions built locally from encrypted positions', flow[0].portfolio_actions[0].pie === 'Stocks' && flow[0].portfolio_actions[0].region === 'USA' && calls2.some(c => c[1] === 'JWT'));
 const ex = await get('/instrument_exposure?select=ticker,sector');
 ok('shared reference tables forwarded with the user token and sanitised', ex[0].sector === 'Tech‹b›'.replace('›', '') || ex[0].sector.startsWith('Tech‹'));
-ok('settings/set stores the budget encrypted; bad keys/values refused', (await (await sh.handle('/settings/set', { method: 'POST', body: JSON.stringify({ key: 'watchlist_weekly_budget', value: '120' }) })).json()).value === 120 && (await sh.handle('/settings/set', { method: 'POST', body: JSON.stringify({ key: 'x;drop', value: '1' }) })).status === 400 && (await sh.handle('/settings/set', { method: 'POST', body: JSON.stringify({ key: 'ok_key', value: '-5' }) })).status === 400);
+ok('no fixed budget: the settings/set route is gone (a budget cannot be stored)', (await sh.handle('/settings/set', { method: 'POST', body: JSON.stringify({ key: 'watchlist_weekly_budget', value: '120' }) })).status !== 200);
 ok('writes to encrypted tables via REST refused; unknown tables 404; not-yet-moved features say so (501)', (await sh.handle('/positions', { method: 'POST', body: '{}' })).status === 405 && (await sh.handle('/secrets')).status === 404 && (await sh.handle('/chart', { method: 'POST' })).status === 501);
 // install(): only PROXY urls are intercepted
 const seen = []; globalThis.fetch = async u => { seen.push(String(u)); return new Response('"net"'); };

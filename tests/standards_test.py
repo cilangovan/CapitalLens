@@ -194,3 +194,13 @@ check("Dip Planner is tested (logic + phone layout, wired into CI) and documente
 check("Dip Planner handlers are only whitelisted calls (no inline code the CSP interpreter would refuse)", not re.search(r'on(?:click|change|input|keydown)="[^"]*(?:=>|===|function|\bif\b)', _dp))
 
 print("\nstandards: " + ("all good" if not bad else f"{bad} failed")); sys.exit(1 if bad else 0)
+
+# No fixed budget anywhere (owner decides the amount at decision time): engines, worker, shim, watchlist UI and demo seeds
+_wl = (ROOT / "docs/js/watchlist.js").read_text(); _wk = (ROOT / "cloudflare-worker/worker.js").read_text(); _wlp = (ROOT / "services/watchlist_service.py").read_text(); _wlj = (ROOT / "docs/zk/watchlist.js").read_text()
+check("no fixed budget: no £ budget in the strategy / watchlist engines (Python + browser), worker, shim or Watchlist UI; the user types the amount",
+      "MONTHLY_BUDGET_MAX" not in _ss + _zs and "weekly_budget" not in _ss + _zs + _wlp + _wlj and "_weekly_budget" not in _wl + _wk + (ROOT / "docs/zk/shim.js").read_text()
+      and "amount_gbp" not in _wlp + _wlj + _wl and "wlSetAmount" in _wl and 'id="w-amount"' in _wl and "/settings/set" not in _wk)
+check("no fixed budget: demo seeds carry shares only (no £ amounts / budget objects)",
+      "amount_gbp" not in (ROOT / "db/tenant/21_demo_markets.sql").read_text() and "'budget'" not in (ROOT / "db/tenant/21_demo_markets.sql").read_text() and "weekly_budget" not in (ROOT / "db/tenant/19_demo_insights.sql").read_text())
+check("Watchlist amount box and Plan button are phone-sized (>=40px tap targets) on the live and demo pages",
+      all(re.search(r"\.w-budget input \{[^}]*min-height:40px", (ROOT / f).read_text()) and re.search(r"\.w-budget button \{[^}]*min-height:40px", (ROOT / f).read_text()) for f in ("docs/index.html", "docs/demo/index.html")))

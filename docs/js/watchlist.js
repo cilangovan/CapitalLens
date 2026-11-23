@@ -4,7 +4,7 @@
 // ENTER / ACCUMULATE / HOLD / AVOID, price points with £ per step, RSI, volume, quality.
 // ✕ removes it and stops all tracking. Writes go through the worker (/watchlist/*).
 
-const WL = { cat: 'stock', arrange: false, items: [], analysis: {}, open: new Set(), pending: new Set(), searchTimer: null, poll: null,
+const WL = { cat: 'stock', arrange: false, amount: { stock: '', commodity: '', crypto: '' }, items: [], analysis: {}, open: new Set(), pending: new Set(), searchTimer: null, poll: null,
              expanded: new Set((() => { try { return JSON.parse(localStorage.getItem('wl_expanded') || '[]'); } catch (e) { return []; } })()) };
 function wlSaveExpanded() { try { localStorage.setItem('wl_expanded', JSON.stringify([...WL.expanded])); } catch (e) {} }
 
@@ -93,12 +93,12 @@ function wlResetOrder() {
   wlNote('Back to the automatic order (this week\'s call first).');
 }
 const WCATS = {
-  stock:     { icon: '📈', label: 'Stocks',      key: 'watchlist_weekly_budget',
+  stock:     { icon: '📈', label: 'Stocks',      
                ph: '🔍 Search any stock or ETF worldwide — name or symbol (e.g. Toyota, Rolls-Royce, 0700.HK)', picks: [] },
-  commodity: { icon: '🛢', label: 'Commodities', key: 'commodity_weekly_budget',
+  commodity: { icon: '🛢', label: 'Commodities', 
                ph: '🔍 Search commodities — gold, silver, oil, gas, copper…',
                picks: ['Gold', 'Silver', 'Brent', 'WTI', 'Natural gas', 'Copper', 'Platinum', 'Wheat'] },
-  crypto:    { icon: '₿',  label: 'Crypto',      key: 'crypto_weekly_budget',
+  crypto:    { icon: '₿',  label: 'Crypto',
                ph: '🔍 Search crypto — Bitcoin, Ethereum, Solana…',
                picks: ['Bitcoin', 'Ethereum', 'Solana', 'XRP', 'Cardano'] },
 };
@@ -281,11 +281,11 @@ function renderWatchlist() {
     return;
   }
   const counts = {};
-  let spend = 0, budget = null;
+  let spend = 0;
   mine.forEach(i => {
     const a = WL.analysis[i.ticker];
     if (a?.verdict) counts[a.verdict] = (counts[a.verdict] || 0) + 1;
-    if (a?.data?.budget) { budget = a.data.budget; if (['ENTER','ACCUMULATE'].includes(a.verdict)) spend += a.data.budget.this_stock || 0; }
+    if (['ENTER','ACCUMULATE'].includes(a?.verdict)) spend += wlStockGbp(i, a.data) || 0;
   });
   const allOpen = mine.every(i => WL.expanded.has(i.ticker));
   sum.innerHTML = `<div class="w-summary">
@@ -295,10 +295,10 @@ function renderWatchlist() {
     ${Object.keys(VERDICT).map(v => `<span class="w-pill ${VERDICT[v].cls}">${VERDICT[v].label.split(' ')[1]} ${counts[v] || 0}</span>`).join('')}
   </div>
   <div class="w-budget">
-    <label>💷 ${C.label} budget per week £<input id="w-budget" type="number" min="0" step="5" inputmode="decimal"
-      value="${budget ? Math.round(budget.watchlist_pool) : ''}" placeholder="e.g. 100"></label>
-    <button onclick="wlSaveBudget()">Save</button>
-    ${budget ? `<span class="w-dim">${budget.pool_source === 'your setting' ? 'your setting' : 'default: ' + _wesc(budget.pool_source || '')} · suggested buys this week £${spend}</span>` : ''}
+    <label>💷 Amount you want to invest in ${C.label} £<input id="w-amount" type="number" min="0" step="1" inputmode="decimal"
+      value="${WL.amount[WL.cat] || ''}" placeholder="e.g. 100" onchange="wlSetAmount(this.value)"></label>
+    <button onclick="wlApplyAmount()">Plan</button>
+    <span class="w-dim">${wlAmount(WL.cat) ? `no fixed budget · this week's buys from your £${wlAmount(WL.cat)}: £${spend}` : 'No fixed budget: enter what you want to invest and each name shows how much goes where.'}</span>
   </div>`;
   const items = wlSorted(mine, WL.analysis);
   list.innerHTML = (WL.arrange ? '<div class="w-dim w-small" style="margin:0 0 8px">Tap ▲ ▼ to move a card. Your order is saved to your login.</div>' : '') + items.map((i, k) => wlCard(i, k, items.length)).join('');
@@ -346,7 +346,7 @@ function wlCard(i, pos, total) {
   const volCls = vol.label === 'High' ? (a.daily_pct < 0 ? 'r' : 'g') : vol.label === 'Low' ? 'y' : '';
   const qCls = q.label === 'Good' ? 'g' : q.label === 'Weak' ? 'r' : 'y';
   const entries = (a.entries || []).map(e => `<tr><td>${_wesc(e.label)}</td><td>${wMoney(e.price, a.ccy)}${wGbp(e.price, a)}</td>
-      <td class="${e.pct_from_now < 0 ? 'red' : ''}">${e.pct_from_now ? wPct(e.pct_from_now) : 'now'}</td><td><b>£${e.amount_gbp}</b></td></tr>`).join('');
+      <td class="${e.pct_from_now < 0 ? 'red' : ''}">${e.pct_from_now ? wPct(e.pct_from_now) : 'now'}</td><td><b>${wlStepTxt(i, a, e)}</b></td></tr>`).join('');
   return `<div class="w-card ${v.cls}" data-t="${_wesc(i.ticker)}">${head}
     <div class="w-pad">
       <div class="w-top">
@@ -364,7 +364,7 @@ function wlCard(i, pos, total) {
           `<span class="w-chip t212" title="${_wesc(x.name)}">${_wesc((x.symbol || '').replace(/\.L$/, ''))} · ${_wesc(x.currency || '')}</span>`).join('')}
           <span class="w-dim">— the price points above are for the underlying; the ETP/ETC moves with it.</span></div>` : ''}
       ${entries ? `<table class="w-table"><thead><tr><th>Price point</th><th>Price</th><th>vs now</th><th>Buy</th></tr></thead><tbody>${entries}</tbody></table>
-        <div class="w-dim w-small">How much: £${a.budget?.this_stock ?? 0} ${_wesc(a.budget?.basis || '')} — from your £${Math.round(a.budget?.watchlist_pool || 0)}/week ${_wesc(C_label(i))} budget, shared across the ones worth buying.</div>`
+        <div class="w-dim w-small">${wlHowMuch(i, a)}</div>`
         : `<div class="w-dim w-small">No buy levels this week.</div>`}
       <div class="w-actions-row"><span class="w-more" onclick="wlToggle('${_wesc(i.ticker)}')">${open ? '▲ Less' : '▼ Details: volume, quality, levels'}</span>
         <a class="w-more" href="#watch/${encodeURIComponent(i.ticker)}" onclick="wlOpenDetail(event,'${_wesc(i.ticker)}')">📈 Chart, profile & insights →</a></div>
@@ -397,18 +397,19 @@ function wlAnalystChip(a) {
   return `<span class="w-tag ${cls}" title="Source: Yahoo Finance analyst data">Analysts: ${_wesc(label)} (${n})</span>`;
 }
 
-async function wlSaveBudget() {
-  const v = document.getElementById('w-budget').value;
-  try {
-    const r = await fetch(`${PROXY}/settings/set`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ token: SESSION_TOKEN, key: WCATS[WL.cat].key, value: v }) });
-    const d = await r.json().catch(() => ({}));
-    if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
-    WL.items.filter(i => wCat(i) === WL.cat).forEach(i => { WL.pending.add(i.ticker); i.added_at = new Date().toISOString(); });
-    renderWatchlist(); wlSchedulePoll();
-    wlNote(`${WCATS[WL.cat].label} budget £${d.value}/week saved — re-sizing your plans (about a minute).`);
-  } catch (e) { wlNote(`Couldn't save: ${e.message}`, true); }
+// No fixed budget: £ = the amount you enter for the section x this name's share x the price point's share. Nothing is stored; it is worked out here.
+function wlAmount(cat) { const n = Number(WL.amount[cat]); return Number.isFinite(n) && n > 0 ? n : 0; }
+function wlStepGbp(i, a, e) { const amt = wlAmount(wCat(i)), s = a && a.weight ? Number(a.weight.share) : NaN; if (!amt || !Number.isFinite(s) || !e || !Number.isFinite(Number(e.share))) return null; return Math.round(amt * s * e.share); }
+function wlStepTxt(i, a, e) { const g = wlStepGbp(i, a, e); return g === null ? '—' : '£' + g; }
+function wlStockGbp(i, a) { const st = (a && a.entries || []).map(e => wlStepGbp(i, a, e)); return st.length && st.every(x => x !== null) ? st.reduce((p, q) => p + q, 0) : null; }
+function wlHowMuch(i, a) {
+  if (!a || !a.weight) return 'Press Refresh to size this plan.';
+  if (!wlAmount(wCat(i))) return 'Enter the amount you want to invest above to see how much to buy here.';
+  const g = wlStockGbp(i, a);
+  return `How much: £${g ?? 0} ${_wesc(a.weight.basis || '')} — your share of the £${wlAmount(wCat(i))} you entered for ${_wesc(C_label(i))}, shared across the ones worth buying.`;
 }
+function wlSetAmount(v) { const n = Number(v); WL.amount[WL.cat] = Number.isFinite(n) && n > 0 ? String(Math.round(n * 100) / 100) : ''; renderWatchlist(); }
+function wlApplyAmount() { const el = document.getElementById('w-amount'); wlSetAmount(el ? el.value : ''); }
 
 function C_label(i) { return WCATS[wCat(i)].label.toLowerCase(); }
 

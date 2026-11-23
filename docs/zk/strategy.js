@@ -1,8 +1,8 @@
-// Port of services/strategy_service.py: weekly allocator (pie quality, dip size, market mood, growth pace).
+// Port of services/strategy_service.py: pie priorities (pie quality, dip size, market mood, growth pace). No fixed budget: each pie gets a share (%) of whatever you decide to invest.
 // compute() is pure; run() gathers prices/news through the relay and ratings/returns from the encrypted store.
 (function (root) {
   'use strict';
-  const MONTHLY_BUDGET_MAX = 300, TARGET_BASE = 10.0, TARGET_STRETCH = 15.0, MIN_ALLOC = 5, MAX_PIE_SHARE = 0.35, TIER_1 = ['Magnificent 7', 'Wider ETF', 'Global ETF'], TIER_1_FLOOR = 8, GROWTH_PIES = ['Magnificent 7', 'Semiconductor'];
+  const PLAN_TOTAL = 100, TARGET_BASE = 10.0, TARGET_STRETCH = 15.0, MIN_ALLOC = 7, MAX_PIE_SHARE = 0.35, TIER_1 = ['Magnificent 7', 'Wider ETF', 'Global ETF'], TIER_1_FLOOR = 12, GROWTH_PIES = ['Magnificent 7', 'Semiconductor'];
   const STAR_WEIGHT = { 1: 0.0, 2: 0.5, 3: 1.5, 4: 2.5, 5: 3.5 };
   const NEG_WORDS = ['crash', 'selloff', 'sell-off', 'plunge', 'tumble', 'slump', 'rout', 'fear', 'recession', 'war', 'tariff', 'downgrade', 'panic', 'sinks', 'slides', 'losses', 'bear', 'volatility', 'crisis', 'default', 'layoffs', 'inflation surge'];
   const POS_WORDS = ['rally', 'record high', 'surge', 'soar', 'gains', 'rebound', 'beat', 'jumps', 'bull', 'optimism', 'upgrade', 'rate cut', 'climbs', 'strong earnings'];
@@ -11,8 +11,6 @@
   const pyFloat = x => Number.isInteger(x) ? x.toFixed(1) : String(x), pyOpt = x => x === null || x === undefined ? 'None' : pyFloat(x);
   const sum = a => a.reduce((x, y) => x + y, 0), ymd = s => s.split('-').map(Number);
 
-  function mondaysInMonth(y, m) { let n = 0; const days = new Date(Date.UTC(y, m, 0)).getUTCDate(); for (let d = 1; d <= days; d++) if (new Date(Date.UTC(y, m - 1, d)).getUTCDay() === 1) n++; return n; }
-  function weekOfMonth(y, m, dd) { let n = 0; for (let d = 1; d <= dd; d++) if (new Date(Date.UTC(y, m - 1, d)).getUTCDay() === 1) n++; return n || 1; }
   function tickerStats(c) {
     if (!c || c.length < 60) return null;
     const mx = Math.max(...c), dd = (mx - c[c.length - 1]) / mx * 100, base = c.length >= 126 ? c[c.length - 126] : c[0], ret6 = (c[c.length - 1] / base - 1) * 100;
@@ -83,7 +81,7 @@
 
   // inp: { today:'YYYY-MM-DD', ratings: Map pie->rows, livePies:[], annRaw, closes:{sym:[...]}, vix1m:[...], titles:[...], nowIso }
   function compute(inp) {
-    const [y, m, d] = ymd(inp.today), weeks = mondaysInMonth(y, m), week = weekOfMonth(y, m, d), weekly = MONTHLY_BUDGET_MAX / weeks;
+    const weekly = PLAN_TOTAL;
     const pies = inp.livePies.length ? inp.livePies : [...inp.ratings.keys()];
     const annRet = [null, undefined, '', 0, '0', '0.0'].includes(inp.annRaw) ? null : Number(inp.annRaw);
     const md = mood(inp.vix1m, inp.closes['^GSPC'], inp.titles);
@@ -91,25 +89,17 @@
     for (const pie of pies) { const prof = pieProfile(pie, inp.ratings, s => inp.closes[s]), [w, why] = weigh(pie, prof, md, annRet); weights.set(pie, w); reasons[pie] = why; }
     const alloc = allocate(weekly, weights);
     const inv = inp.invested || null;
-    const recs = [...alloc].sort((a, b) => b[1] - a[1]).map(([pie, amt]) => { const share = amt / weekly, r = { pie, amount: amt, reason: reasons[pie].join(' · '), priority: share >= 0.25 ? 'HIGH' : share >= 0.12 ? 'MEDIUM' : 'LOW' };
-      if (inv) { r.bought = rnd(inv.by_pie_week[pie] || 0, 2); r.left = rnd(Math.max(0, amt - r.bought), 2); } return r; });
+    const recs = [...alloc].sort((a, b) => b[1] - a[1]).map(([pie, amt]) => { const share = amt / weekly; return { pie, share: amt, reason: reasons[pie].join(' · '), priority: share >= 0.25 ? 'HIGH' : share >= 0.12 ? 'MEDIUM' : 'LOW' }; });
     const skipped = pies.filter(p => !alloc.has(p));
-    const notes = [`Aggressive mode · £${MONTHLY_BUDGET_MAX}/month → £${fmt(weekly, 0)} this week (week ${week} of ${weeks})`,
+    const notes = ["Pie priorities: each pie's share (%) of whatever amount you decide to invest; there is no fixed budget",
       `Market mood: ${md.label} — VIX ${pyOpt(md.vix)}, S&P ${pyOpt(md.spx_drawdown)}% off high, news ${md.news_net >= 0 ? '+' : '-'}${Math.abs(md.news_net)} across ${md.news_count} headlines`];
     if (md.level >= 2) notes.push('😨 Fear in the market — leaning into quality dips and core pies.'); else if (md.level === 0) notes.push('😎 Calm/greedy market — favouring pies off their highs over stretched ones.');
     if (annRet === null) notes.push(`ℹ️ Not enough history for an annualised return yet — pace tilt off until it builds up (targets ${fmt(TARGET_BASE, 0)}% base / ${fmt(TARGET_STRETCH, 0)}% stretch).`);
     else if (annRet < TARGET_BASE) notes.push(`⚠️ Annualised ${fmt(annRet, 1)}% is below the ${fmt(TARGET_BASE, 0)}% base — tilting to growth pies.`);
     else if (annRet < TARGET_STRETCH) notes.push(`📈 Annualised ${fmt(annRet, 1)}% — above ${fmt(TARGET_BASE, 0)}% base, chasing ${fmt(TARGET_STRETCH, 0)}% stretch.`);
     else notes.push(`✅ Annualised ${fmt(annRet, 1)}% — at or above the ${fmt(TARGET_STRETCH, 0)}% stretch target.`);
-    if (inv) {
-      const wk = rnd(weekly, 0), over = rnd(inv.week - wk, 0);
-      notes.push(inv.orders_week ? `Bought so far this week: £${fmt(inv.week, 2)} in ${inv.orders_week} order${inv.orders_week === 1 ? '' : 's'} (suggested £${fmt(wk, 0)}): ` + (over > 0 ? `£${fmt(over, 0)} above this week's suggestion.` : `£${fmt(wk - inv.week, 0)} still to place.`) : `Nothing bought yet this week (suggested £${fmt(wk, 0)}).`);
-      notes.push(`This month: £${fmt(inv.month, 2)} bought of the £${MONTHLY_BUDGET_MAX} budget (${inv.orders_month} order${inv.orders_month === 1 ? '' : 's'}), from ${inv.source}.`);
-      if (inv.outside_pies_week > 0) notes.push(`£${fmt(inv.outside_pies_week, 2)} of this week's buys were outside your pies, so they are not counted against a pie below.`);
-      if (inv.unpriced) notes.push(`ℹ️ ${inv.unpriced} order${inv.unpriced === 1 ? '' : 's'} this month had no value from Trading 212 and ${inv.unpriced === 1 ? 'is' : 'are'} not counted.`);
-    }
-    if (skipped.length) notes.push('No money this week: ' + skipped.map(p => `${p} (${reasons[p].slice(-1).join(' · ')})`).join(', '));
-    return { row: { week_number: week, total_suggested: sum([...alloc.values()]), on_track: annRet !== null ? annRet >= TARGET_BASE : null, annualised_return: annRet, recommendations: recs, notes, weeks_in_month: weeks, weekly_budget: rnd(weekly, 2), invested: inv, market_mood: md, updated_at: inp.nowIso } };
+    if (skipped.length) notes.push('No share for now: ' + skipped.map(p => `${p} (${reasons[p].slice(-1).join(' · ')})`).join(', '));
+    return { row: { on_track: annRet !== null ? annRet >= TARGET_BASE : null, annualised_return: annRet, recommendations: recs, notes, invested: inv, market_mood: md, updated_at: inp.nowIso } };
   }
 
   // opts: { store, market, ratings: [analyst_ratings rows] }  (pie membership comes from the customer's own snapshot)
@@ -130,6 +120,6 @@
     await store.put('strategy_recommendations', [out.row], () => 'main');
     return out;
   }
-  root.ZKStrategy = { contributions, weekStart, compute, run, allocate, weigh, mondaysInMonth, weekOfMonth };
+  root.ZKStrategy = { contributions, weekStart, compute, run, allocate, weigh };
   if (typeof module !== 'undefined') module.exports = root.ZKStrategy;
 })(typeof window !== 'undefined' ? window : globalThis);

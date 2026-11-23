@@ -11,7 +11,7 @@ declare
   h record; r1 numeric; r2 numeric; kind text; sc int; wt numeric; lvl text; act text; sdp numeric; stop_px numeric; maxpos numeric; sect text; yt text;
   bd jsonb; tp jsonb; sig jsonb; nts jsonb; trims numeric := 0; c_re int := 0; c_tr int := 0; c_rb int := 0; c_run int := 0; c_hold int := 0;
   vs int; zones jsonb; card jsonb; earn jsonb; tw jsonb; twact text; warn text; entry_px numeric; w int; dsc int; sl int; bsig text; ssig text; dtxt text;
-  reg jsonb; secs jsonb; pies jsonb; lim jsonb; tot jsonb; rec jsonb := '[]'::jsonb; pr record; remaining numeric := 75; wsum numeric; amt numeric; i int := 0; npies int;
+  reg jsonb; secs jsonb; pies jsonb; lim jsonb; tot jsonb; rec jsonb := '[]'::jsonb; pr record; remaining numeric := 100; wsum numeric; amt numeric; i int := 0; npies int;
   etf_val numeric; tech_val numeric; gold_val numeric; cons_val numeric; tech_pct numeric; notes_pb jsonb; n_hd int := 0; n_vb int := 0; n_ar int := 0;
   mk jsonb; pa jsonb; lb int; lname text; lg numeric; stars int; recm text;
 begin
@@ -164,19 +164,19 @@ begin
     'Demo figures are illustrative and not a recommendation'], null));
   insert into public.profit_booking_summary (user_id, regime, sectors, pies, limits, totals, notes, updated_at) values (p_user, reg, secs, coalesce(pies, '[]'::jsonb), lim, tot, notes_pb, now());
 
-  -- weekly allocation: split £75 across pies by their average entry score
+  -- pie priorities: split 100% (of whatever the user decides to invest; no fixed budget) across pies by their average entry score
   select count(*), sum(power(a, 2)) into npies, wsum from (select avg(score) a from public.value_buy_scores where user_id = p_user group by pie) z;
   for pr in select pie, avg(score) a from public.value_buy_scores where user_id = p_user group by pie order by avg(score) desc loop
     i := i + 1;
-    amt := case when i = npies then remaining else round(75 * power(pr.a, 2) / wsum / 5) * 5 end;
+    amt := case when i = npies then remaining else round(100 * power(pr.a, 2) / wsum / 5) * 5 end;
     remaining := remaining - amt;
-    rec := rec || jsonb_build_object('pie', pr.pie, 'amount', amt, 'priority', case when i <= 2 then 'HIGH' when i <= 4 then 'MEDIUM' else 'LOW' end,
+    rec := rec || jsonb_build_object('pie', pr.pie, 'share', amt, 'priority', case when i <= 2 then 'HIGH' when i <= 4 then 'MEDIUM' else 'LOW' end,
       'reason', 'Average entry score ' || round(pr.a) || '/100' || case when i <= 2 then ': strongest setups this week' else '' end);
   end loop;
-  insert into public.strategy_recommendations (user_id, week_number, total_suggested, on_track, annualised_return, recommendations, notes, updated_at, weeks_in_month, weekly_budget, market_mood)
-    values (p_user, least(4, ((extract(day from current_date)::int - 1) / 7) + 1), 75, true, 11.8, rec,
-      jsonb_build_array('Aggressive mode: the monthly budget is paid in weekly across pies, weighted by entry score and market mood', 'Demo figures are illustrative and not advice'),
-      now(), 4, 75, jsonb_build_object('level', 1, 'label', 'Calm', 'vix', 17.8));
+  insert into public.strategy_recommendations (user_id, on_track, annualised_return, recommendations, notes, updated_at, market_mood)
+    values (p_user, true, 11.8, rec,
+      jsonb_build_array('Pie priorities: each pie''s share (%) of whatever you decide to invest; there is no fixed budget', 'Demo figures are illustrative and not advice'),
+      now(), jsonb_build_object('level', 1, 'label', 'Calm', 'vix', 17.8));
 
   -- institutional flow report (shared table; one per week)
   if not exists (select 1 from public.institutional_flow_reports where report_date = wk) then
@@ -210,7 +210,7 @@ begin
         jsonb_build_array(jsonb_build_object('type', 'Sector', 'name', 'Technology', 'score', 78, 'reason', 'Inflows and rising relative strength', 'action', 'Add gradually through the weekly plan'),
                           jsonb_build_object('type', 'Region', 'name', 'Europe', 'score', 61, 'reason', 'Flows improving from a low base', 'action', 'Keep adding in small steps')),
         jsonb_build_array(jsonb_build_object('type', 'Sector', 'name', 'Energy', 'score', 34, 'reason', 'Outflows and weakening trend', 'action', 'Avoid adding; review existing exposure')),
-        'Keep about 10% of the monthly budget in cash while the UK signal is neutral.', coalesce(pa, '[]'::jsonb),
+        'Keep about 10% of what you invest in cash while the UK signal is neutral.', coalesce(pa, '[]'::jsonb),
         'Illustrative weekly report for the demo: flows lean positive in the US and Europe, neutral in the UK.', now());
   end if;
   return jsonb_build_object('holdings', n_vb, 'profit_booking', n_vb, 'holding_decisions', n_hd, 'value_buy_scores', n_vb, 'analyst_ratings', n_ar, 'strategy', 1);

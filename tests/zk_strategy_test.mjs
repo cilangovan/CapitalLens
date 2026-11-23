@@ -87,9 +87,8 @@ print("@@" + json.dumps(cap["row"]))
   const by = new Map(); for (const r of rows) { const k = r.pie.trim(); if (!by.has(k)) by.set(k, []); by.get(k).push(r); }
   const pieOf = {}; for (const [pie, ts] of Object.entries(sc.members || {})) for (const t of ts) pieOf[t] = pie;
   const js = ST.compute({ today: sc.today, invested: ST.contributions(sc.orders || [], pieOf, sc.today), ratings: by, livePies: sc.live, annRaw: sc.ann, closes: cl, vix1m, titles: sc.titles, nowIso: 'X' }).row;
-  const d = diff(js, py); ok(`${sc.name}: £${js.total_suggested} across ${js.recommendations.length} pies, mood "${js.market_mood.label}" identical to Python (amounts, reasons, priorities, notes)`, d === null); if (d) console.log('    first difference:', d);
+  const d = diff(js, py); ok(`${sc.name}: ${js.recommendations.length} pies sharing 100%, mood "${js.market_mood.label}" identical to Python (amounts, reasons, priorities, notes)`, d === null); if (d) console.log('    first difference:', d);
 }
-ok('calendar helpers: Mondays in Mar 2026 = 5, Nov 2026 = 5; week of month for 2026-11-18 = 3', ST.mondaysInMonth(2026, 3) === 5 && ST.mondaysInMonth(2026, 11) === 5 && ST.weekOfMonth(2026, 11, 18) === 3);
 // run(): ratings regrouped by the customer's OWN pies, prices/news via the market client, result saved encrypted
 const tables = { portfolio_snapshots: [{ created_at: '2026-11-18T08:00:00Z', raw: { pies: [{ name: 'Magnificent 7 ', instruments: [{ ticker: 'AAPL_US_EQ' }, { ticker: 'MSFT_US_EQ' }, { ticker: 'NVDA_US_EQ' }] }, { name: 'Wider ETF', instruments: [{ ticker: 'VUSAa_EQ' }, { ticker: 'VWCEd_EQ' }] }] } }], returns_summary: [{ annualised_pct: 9.5 }] };
 const saved = {}; const store = { load: async k => tables[k] || [], put: async (k, r) => { saved[k] = r; } };
@@ -105,9 +104,7 @@ ok('bought this week = filled buys Mon-today only (£97.84 incl. £9.99 outside 
 ok('bought this month = £147.84 in 5 orders; the order with no value is counted as unpriced, not as zero', inv.month === 147.84 && inv.orders_month === 5 && inv.unpriced === 1);
 ok('per pie: Semiconductor £75.75, Global ETF £12.1', inv.by_pie_week['Semiconductor'] === 75.75 && inv.by_pie_week['Global ETF'] === 12.1);
 const cr = ST.compute({ today: sc.today, invested: inv, ratings: new Map([['Semiconductor', rows.filter(r => r.pie === 'Semiconductor')]]), livePies: ['Semiconductor'], annRaw: '5.7', closes: { ...closes, '^GSPC': walk(252, 5800, 5200) }, vix1m: [31], titles: [], nowIso: 'X' }).row;
-ok('the card says it plainly: over the suggestion by £38, and the recommendation shows bought / left', cr.notes.some(n => /Bought so far this week: £97\.84 in 4 orders \(suggested £60\): £38 above this week's suggestion\./.test(n)) && cr.recommendations.every(r => r.bought !== undefined && r.left >= 0));
-const nothing = ST.compute({ today: '2026-11-17', invested: ST.contributions([], {}, '2026-11-17'), ratings: new Map([['Semiconductor', rows.filter(r => r.pie === 'Semiconductor')]]), livePies: ['Semiconductor'], annRaw: '5.7', closes: { ...closes, '^GSPC': walk(252, 5800, 5200) }, vix1m: [20], titles: [], nowIso: 'X' }).row;
-ok('nothing bought yet: says so', nothing.notes.some(n => /Nothing bought yet this week \(suggested £60\)\./.test(n)));
+ok('regression (no fixed budget): recommendations carry a % share that adds to 100, never £ amounts / bought / left; no weekly_budget, total_suggested or "of £" note', cr.recommendations.reduce((a, r) => a + r.share, 0) === 100 && cr.recommendations.every(r => r.amount === undefined && r.bought === undefined && r.left === undefined) && cr.weekly_budget === undefined && cr.total_suggested === undefined && !cr.notes.some(n => /£/.test(n)));
 const unread = { load: async k => { if (k === 't212_orders') throw new Error('x'); return k === 'portfolio_snapshots' ? [{ id: 's', created_at: '2026-11-20', raw: { pies: [] } }] : []; }, put: async () => 1 };
 ok('orders unreadable: no claim is made (invested stays empty, no "nothing bought")', (await ST.run({ store: unread, market, ratings: new Map() }, new Date('2026-11-18T12:00:00Z'))).row.invested === null);
 console.log(`\n${pass} passed · ${fail} failed`); process.exit(fail ? 1 : 0);

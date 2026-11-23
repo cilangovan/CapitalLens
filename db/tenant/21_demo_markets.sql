@@ -62,15 +62,15 @@ begin
   -- watchlist analysis for the five seeded watchlist items
   delete from public.watchlist_analysis where user_id = p_user;
   for w in select * from (values
-      ('TSM', 285::numeric, 'USD', 'ENTER', 'strong_buy', 38, 14.2, 1.2, 44, 'Good', 40),
-      ('ASML', 905, 'USD', 'ACCUMULATE', 'buy', 31, 9.4, -0.6, 52, 'Good', 25),
-      ('RR.L', 11.4, 'GBP', 'HOLD', 'hold', 14, 3.1, 0.4, 63, 'Mixed', 0),
-      ('GC=F', 2655, 'USD', 'HOLD', 'none', 0, null, 0.3, 58, 'Mixed', 0),
-      ('BTC-USD', 94500, 'USD', 'ACCUMULATE', 'none', 0, null, -1.4, 47, 'Mixed', 25)) v(sym, base, ccy, verdict, rec, cnt, upside, daily, rsi, qual, amt) loop
-    entries := case when w.amt > 0 then jsonb_build_array(
-        jsonb_build_object('label', 'Now', 'price', round(w.base, 2), 'pct_from_now', 0, 'amount_gbp', round(w.amt * 0.4)),
-        jsonb_build_object('label', 'Pullback to 20-day average', 'price', round(w.base * 0.97, 2), 'pct_from_now', -3, 'amount_gbp', round(w.amt * 0.35)),
-        jsonb_build_object('label', 'Deeper dip', 'price', round(w.base * 0.92, 2), 'pct_from_now', -8, 'amount_gbp', round(w.amt * 0.25))) else '[]'::jsonb end;
+      ('TSM', 285::numeric, 'USD', 'ENTER', 'strong_buy', 38, 14.2, 1.2, 44, 'Good', 0.6667),
+      ('ASML', 905, 'USD', 'ACCUMULATE', 'buy', 31, 9.4, -0.6, 52, 'Good', 0.3333),
+      ('RR.L', 11.4, 'GBP', 'HOLD', 'hold', 14, 3.1, 0.4, 63, 'Mixed', 0.25),
+      ('GC=F', 2655, 'USD', 'HOLD', 'none', 0, null, 0.3, 58, 'Mixed', 1),
+      ('BTC-USD', 94500, 'USD', 'ACCUMULATE', 'none', 0, null, -1.4, 47, 'Mixed', 1)) v(sym, base, ccy, verdict, rec, cnt, upside, daily, rsi, qual, wshare) loop
+    entries := jsonb_build_array(
+        jsonb_build_object('label', 'Now', 'price', round(w.base, 2), 'pct_from_now', 0, 'share', 0.4),
+        jsonb_build_object('label', 'Pullback to 20-day average', 'price', round(w.base * 0.97, 2), 'pct_from_now', -3, 'share', 0.3),
+        jsonb_build_object('label', 'Deeper dip', 'price', round(w.base * 0.92, 2), 'pct_from_now', -8, 'share', 0.3));
     d := jsonb_build_object('symbol', w.sym || ' (demo data)', 'price', w.base, 'ccy', w.ccy, 'daily_pct', w.daily, 'rsi', w.rsi,
       'rsi_label', case when w.rsi < 40 then 'Oversold' when w.rsi > 70 then 'Overbought' else 'Neutral' end,
       'volume', jsonb_build_object('label', case when w.daily > 1 then 'High' else 'Normal' end, 'ratio', round(0.8 + (abs(hashtext(w.sym)) % 70) / 100.0, 2), 'note', 'Illustrative volume reading for the demo'),
@@ -78,7 +78,7 @@ begin
       'analyst', jsonb_build_object('rec', w.rec, 'count', w.cnt, 'target', case when w.upside is not null then round(w.base * (1 + w.upside / 100), 2) end, 'upside', w.upside),
       'why', jsonb_build_array(case w.verdict when 'ENTER' then 'Trend is up and price is near support: a good week to start a position' when 'ACCUMULATE' then 'Constructive trend: build the position in steps' else 'No clear edge this week: wait for the price points' end,
                                'Demo analysis: invented for illustration, not advice'),
-      'entries', entries, 'budget', jsonb_build_object('this_stock', w.amt, 'watchlist_pool', 100, 'pool_source', 'default', 'basis', 'by score'),
+      'entries', entries, 'weight', jsonb_build_object('share', w.wshare, 'basis', case w.verdict when 'HOLD' then 'only if the price points are hit' else 'this week' end),
       'ma20', round(w.base * 0.99, 2), 'ma50', round(w.base * 0.96, 2), 'ma200', round(w.base * 0.88, 2), 'low52', round(w.base * 0.7, 2), 'high52', round(w.base * 1.1, 2), 'range_pos', 68,
       'drawdown20', -2.4, 'take_profit', round(w.base * 1.2, 2), 'invalidation', round(w.base * 0.9, 2), 'as_of', wd::text);
     insert into public.watchlist_analysis (user_id, ticker, updated_at, status, verdict, data) values (p_user, w.sym, now(), 'ok', w.verdict, d);

@@ -9,7 +9,7 @@ For each watchlist symbol (Yahoo Finance — any exchange worldwide):
   • Quality: analyst consensus + fundamentals (stocks) or trend/volatility (ETFs) → Good / Mixed / Weak
   • Verdict for this week: ENTER · ACCUMULATE · HOLD (wait) · AVOID
   • Entry price points from real support levels, with £ amounts per step
-  • How much: a share of the strategy engine's weekly budget, split across actionable names
+  • How much: your share of whatever amount you enter on the dashboard, split across actionable names
 
 Price data must be verified (≥60 sessions, close within the last 4 days, known currency,
 no unit jumps); otherwise the stock is marked "unverified" and gets no verdict.
@@ -36,11 +36,6 @@ from services.value_buy_service import calc_rsi
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_KEY") or os.environ["SUPABASE_KEY"]
 
-# Default share of the strategy engine's weekly budget per section, until you set your own on the dashboard
-DEFAULT_SHARE     = {"stock": 0.35, "commodity": 0.15, "crypto": 0.10}
-BUDGET_KEY        = {"stock": "watchlist_weekly_budget", "commodity": "commodity_weekly_budget",
-                     "crypto": "crypto_weekly_budget"}
-FALLBACK_WEEKLY   = 300 / 4.33    # if no strategy row yet
 TRANCHES          = (0.40, 0.30, 0.30)
 MIN_SESSIONS      = 60
 SUBUNITS          = {"GBp": "GBP", "GBX": "GBP", "ZAc": "ZAR", "ILA": "ILS"}
@@ -488,10 +483,9 @@ def insights(st, fu, an, perf, price, is_etf, category):
     return {"items": items, "scores": score}
 
 
-def size_positions(results, weekly, pool=None, category="stock"):
-    """Split one section's pool across its actionable names; attach £ per entry step."""
-    pool_set = pool is not None
-    pool = weekly * DEFAULT_SHARE.get(category, 0.1) if pool is None else pool
+def size_positions(results):
+    """Relative sizing only; there is no fixed budget. Gives each actionable name its share of whatever you decide to invest in this section
+    (shares of the actionable names add up to 1) and splits it across the price points. The £ are worked out on the dashboard from the amount you enter."""
     w = {"ENTER": 2, "ACCUMULATE": 1}
     raw_w = sum(w.get(v, 0) for st, v, _ in results if st == "ok")
     total_w = raw_w or 1
@@ -499,23 +493,19 @@ def size_positions(results, weekly, pool=None, category="stock"):
     for status, verdict, data in results:
         if status != "ok": continue
         if verdict in w:
-            amt = pool * w[verdict] / total_w
+            share = w[verdict] / total_w
             basis = "this week"
         elif verdict == "HOLD":
-            amt = pool / max(raw_w + n_hold, 1)   # what you'd put in if it reaches the price points
+            share = 1 / max(raw_w + n_hold, 1)   # its slice if it reaches the price points
             basis = "only if the price points are hit"
         else:
-            amt, basis = 0, "no buys"
+            share, basis = 0, "no buys"
         steps = []
-        for (label, px), share in zip(data.pop("entries_raw"), TRANCHES):
-            gbp = round(amt * share)
+        for (label, px), tranche in zip(data.pop("entries_raw"), TRANCHES):
             pct = round((px / data["price"] - 1) * 100, 1) if data["price"] else 0
-            steps.append({"label": label, "price": px, "pct_from_now": pct, "amount_gbp": gbp,
-                          "shares": round(gbp * (data["per_gbp"] or 1) / px, 6) if px else None})
+            steps.append({"label": label, "price": px, "pct_from_now": pct, "share": tranche})
         data["entries"] = steps
-        data["budget"] = {"weekly_budget": round(weekly, 2), "watchlist_pool": round(pool, 2),
-                          "pool_source": "your setting" if pool_set else f"{int(DEFAULT_SHARE.get(category, .1)*100)}% of the weekly budget",
-                          "this_stock": round(sum(s["amount_gbp"] for s in steps)), "basis": basis}
+        data["weight"] = {"share": round(share, 4), "basis": basis}
 
 
 def run(only=None):
@@ -524,8 +514,6 @@ def run(only=None):
     wl = sb("GET", "watchlist?select=*") or []
     if not wl:
         print("  Watchlist empty."); return
-    strat = sb("GET", "strategy_recommendations?select=weekly_budget&order=updated_at.desc&limit=1") or []
-    weekly = float((strat[0] if strat else {}).get("weekly_budget") or FALLBACK_WEEKLY)
 
     # sizing needs every name's verdict, so analyse all; `only` just logs which one triggered
     results = []
@@ -536,18 +524,16 @@ def run(only=None):
             status, verdict, data = "error", None, {"reason": f"{type(e).__name__}: {e}"[:200]}
         results.append((status, verdict, data))
         print(f"  {item['ticker']:<14} {status:<10} {verdict or '-':<11} {data.get('reason','')}")
-    settings = {r["key"]: r.get("value") for r in (sb("GET", "app_settings?select=key,value") or [])}
     for cat in ("stock", "commodity", "crypto"):
         group = [r for item, r in zip(wl, results) if (item.get("category") or "stock") == cat]
         if not group: continue
-        v = settings.get(BUDGET_KEY[cat])
-        size_positions(group, weekly, float(v) if v is not None else None, cat)
+        size_positions(group)
     for item, (status, verdict, data) in zip(wl, results):
         sb("POST", "watchlist_analysis?on_conflict=ticker",
            {"ticker": item["ticker"], "updated_at": now.isoformat(), "status": status,
             "verdict": verdict, "data": data},
            prefer="resolution=merge-duplicates,return=minimal")
-    print(f"[watchlist] done — {len(results)} analysed, weekly budget £{weekly:.0f}")
+    print(f"[watchlist] done — {len(results)} analysed")
 
 
 if __name__ == "__main__":

@@ -75,8 +75,6 @@ wl.datetime = DT
 out = []
 def sb(method, path, data=None, prefer=None):
     if method == "GET" and path.startswith("watchlist"): return F["items"]
-    if method == "GET" and path.startswith("strategy"): return [{"weekly_budget": 85.5}]
-    if method == "GET" and path.startswith("app_settings"): return [{"key": "watchlist_weekly_budget", "value": "120"}, {"key": "other", "value": 1}]
     if method == "POST": out.append(data); return True
 wl.sb = sb
 wl.run()
@@ -85,7 +83,7 @@ print("@@" + json.dumps(out, default=float))
 const charts = {}, det = {}; for (const [it, ch, d] of items) { charts[it.ticker] = ch; det[it.ticker] = d; }
 const py = JSON.parse(execFileSync('python3', ['-I', '-c', PY], { input: JSON.stringify({ charts, det, items: items.map(x => x[0]), fx, now: NOW }), encoding: 'utf8', cwd: new URL('..', import.meta.url).pathname, stdio: ['pipe', 'pipe', 'pipe'] }).split('@@').pop().replace(/\bNaN\b/g, 'null'));
 const data = {}; for (const [it, ch, d] of items) data[it.ticker] = { chart: ch, det: d };
-const js = WL.compute({ items: items.map(x => x[0]), data, fx: { USD: fx.USD[2] }, weekly: 85.5, settings: { watchlist_weekly_budget: '120' }, now: new Date(NOW) });
+const js = WL.compute({ items: items.map(x => x[0]), data, fx: { USD: fx.USD[2] }, now: new Date(NOW) });
 const diff = (a, b, p = '') => {
   if (a === b) return null;
   if (typeof a === 'number' && typeof b === 'number') return Math.abs(a - b) <= 1e-9 * Math.max(1, Math.abs(b)) ? null : `${p}: js ${a} vs py ${b}`;
@@ -96,11 +94,14 @@ ok(`same ${items.length} names in the same order`, js.map(r => r.ticker).join() 
 for (const r of js) { const p = py.find(x => x.ticker === r.ticker), d = diff(JSON.parse(JSON.stringify(r)), (({ updated_at, ...o }) => o)(p)); ok(`  ${r.ticker.padEnd(10)} ${r.status.padEnd(10)} ${(r.verdict || '-').padEnd(11)} ${(r.data.reason || '').slice(0, 44).padEnd(44)} identical to Python`, d === null); if (d) console.log('    first difference:', d); }
 const verdicts = new Set(js.map(r => r.verdict)), reasons = js.map(r => r.data.reason || '').join('|');
 ok('covers ENTER/ACCUMULATE/HOLD/AVOID and the unverified reasons (no history, short, stale, units, currency)', ['ENTER', 'ACCUMULATE', 'HOLD', 'AVOID'].every(v => verdicts.has(v)) && ['no price history', 'only 40 sessions', 'is stale', 'inconsistent price units', 'listing currency unknown'].every(w => reasons.includes(w)));
-ok('covers stocks, ETFs, commodity, crypto, sub-unit quotes (GBp, ZAc) and sizing pools (setting vs default share)', ['stock', 'commodity', 'crypto'].every(c => js.some(r => r.status === 'ok' && r.data.category === c)) && js.some(r => r.data.budget && r.data.budget.pool_source === 'your setting') && js.some(r => r.data.budget && r.data.budget.pool_source.includes('% of the weekly budget')));
+ok('covers stocks, ETFs, commodity, crypto and sub-unit quotes (GBp, ZAc)', ['stock', 'commodity', 'crypto'].every(c => js.some(r => r.status === 'ok' && r.data.category === c)));
+{ const okRows = js.filter(r => r.status === 'ok'), act = okRows.filter(r => ['ENTER', 'ACCUMULATE'].includes(r.verdict));
+  ok('regression (no fixed budget): no £ amounts or budget object anywhere; every name has a relative weight and each price point a share', okRows.every(r => r.data.budget === undefined && r.data.weight && r.data.entries.every(e => e.amount_gbp === undefined && e.shares === undefined && e.share > 0)));
+  for (const cat of ['stock', 'commodity', 'crypto']) { const g = act.filter(r => r.data.category === cat); if (g.length) ok(`  ${cat}: the buys this week share 100% of what you invest`, Math.abs(g.reduce((a, r) => a + r.data.weight.share, 0) - 1) < 1e-3); } }
 // run(): through store + market
-const tables = { watchlist: items.map(x => x[0]), app_settings: [{ key: 'watchlist_weekly_budget', value: '120' }], strategy_recommendations: [{ key: 'main', weekly_budget: 85.5 }] }, saved = [];
+const tables = { watchlist: items.map(x => x[0]), }, saved = [];
 const store = { load: async k => tables[k] || [], get: async (k, key) => (tables[k] || []).find(r => r.key === key) || null, put: async (k, r) => saved.push(...r) };
 const market = { chart: async (s) => s === 'GBPUSD=X' ? { close: fx.USD } : (charts[s] || null), detail: async s => det[s] || { info: {}, rec_counts: null } };
 const out = await WL.run({ store, market }, new Date(NOW));
-ok('run(): reads encrypted watchlist/budget settings, fetches market data and FX, saves one analysis per name', saved.length === items.length && JSON.stringify(out.rows.map(r => r.verdict)) === JSON.stringify(js.map(r => r.verdict)));
+ok('run(): fetches market data and FX, saves one analysis per name', saved.length === items.length && JSON.stringify(out.rows.map(r => r.verdict)) === JSON.stringify(js.map(r => r.verdict)));
 console.log(`\n${pass} passed · ${fail} failed`); process.exit(fail ? 1 : 0);

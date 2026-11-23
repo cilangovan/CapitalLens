@@ -10,7 +10,6 @@
  *   /watchlist/remove      POST {token, symbol} → {ok}  (stops tracking, deletes analysis)
  *   /watchlist/order       POST {token, category, order:[tickers]} → {ok}  (card order; [] = back to automatic)
  *   /chart                 POST {token, symbol, range} → {meta, points}  live Yahoo chart (1d|5d|1mo|6mo|1y|5y)
- *   /settings/set          POST {token, key, value} → {ok}  (whitelisted keys only)
  *   /alerts/action         POST {token, ids:[..], action} → {ok, updated}  (read|unread|archive|dismiss|restore)
  *   /[table]               → proxy to Supabase (existing behaviour)
  *
@@ -499,29 +498,6 @@ async function handleChart(req, env) {
   });
 }
 
-// ── Settings (authenticated, whitelisted) ────────────────────────────────────
-function budgetCheck(v) { const n = Number(v); return Number.isFinite(n) && n >= 0 && n <= 100000 ? Math.round(n * 100) / 100 : undefined; }
-const SETTINGS = {
-  watchlist_weekly_budget: budgetCheck,
-  commodity_weekly_budget: budgetCheck,
-  crypto_weekly_budget:    budgetCheck,
-};
-async function handleSetting(req, env) {
-  const { token, key, value } = await req.json().catch(() => ({}));
-  if (!(await verifySession(env, token))) return json({ error: 'Invalid or expired session' }, 401);
-  const check = SETTINGS[key];
-  if (!check) return json({ error: 'Unknown setting' }, 400);
-  const v = check(value);
-  if (v === undefined) return json({ error: 'Invalid value' }, 400);
-  const k = env.SUPABASE_SERVICE_KEY;
-  const r = await fetch(`${env.SUPABASE_URL}/rest/v1/app_settings?on_conflict=key`, { method: 'POST',
-    headers: { apikey: k, Authorization: `Bearer ${k}`, 'Content-Type': 'application/json', Prefer: 'resolution=merge-duplicates,return=minimal' },
-    body: JSON.stringify({ key, value: v, updated_at: new Date().toISOString() }) });
-  if (!r.ok) throw new Error(`settings ${r.status}: ${await r.text()}`);
-  if (key.endsWith('_weekly_budget')) await triggerWatchlistRun(env, '');
-  return json({ ok: true, key, value: v });
-}
-
 // ── Main handler ──────────────────────────────────────────────────────────────
 export default {
   async fetch(request, env) {
@@ -548,7 +524,6 @@ async function route(request, env) {
     if (path === '/watchlist/remove' && request.method === 'POST') return handleWatchlist(request, env, 'remove').catch(e => { console.error(e); return json({ error: 'Server error' }, 500); });
     if (path === '/watchlist/order' && request.method === 'POST')  return handleWatchlistOrder(request, env).catch(e => { console.error(e); return json({ error: 'Server error' }, 500); });
     if (path === '/chart' && request.method === 'POST')            return handleChart(request, env).catch(e => { console.error(e); return json({ error: 'Server error' }, 500); });
-    if (path === '/settings/set' && request.method === 'POST')     return handleSetting(request, env).catch(e => { console.error(e); return json({ error: 'Server error' }, 500); });
     if (path === '/alerts/action' && request.method === 'POST') return handleAlertAction(request, env).catch(e => { console.error(e); return json({ error: 'Server error' }, 500); });
 
     // ── Read-only Supabase proxy (signed-in only, allowlisted tables) ─────────
