@@ -151,6 +151,7 @@ async function loadPositions() {
       </div>`;
     container.appendChild(div);
   }
+  if (typeof Lots !== 'undefined') Lots.show(container, untagged, { api, quote: fmtQuote, gbp: fmtGbpPlain, guest: IS_GUEST });   // every buy outside pies, only while still held
 }
 
 function togglePie(header) {

@@ -446,6 +446,15 @@
   .rb-main { min-width:0; flex:1; } .rb-name { font-weight:700; } .rb-pie { font-size:11px; color:var(--muted); }
   .rb-sub { font-size:11px; color:var(--muted); overflow-wrap:anywhere; } .rb-sub.green { color:var(--green); } .rb-sub.red { color:var(--red); }
   .rb-res { text-align:right; white-space:nowrap; font-weight:700; } .rb-na { font-size:12px; color:var(--muted); font-weight:400; }
+  .lt-card .lt-note { font-size:11px; color:var(--muted); margin:2px 0 8px; line-height:1.4; }
+  .lt-stock { border-top:1px solid var(--border); padding:4px 0; } .lt-stock summary { display:flex; justify-content:space-between; align-items:center; gap:10px; min-height:44px; cursor:pointer; list-style:none; }
+  .lt-stock summary::-webkit-details-marker { display:none; } .lt-name { font-weight:700; min-width:0; overflow-wrap:anywhere; }
+  .lt-res { text-align:right; font-weight:700; } .lt-sub { font-size:11px; color:var(--muted); font-weight:400; overflow-wrap:anywhere; } .lt-na { font-size:12px; color:var(--muted); font-weight:400; }
+  .lt-body { padding:2px 0 8px; } .lt-lot { margin-top:8px; padding:8px 10px; background:var(--bg3); border-radius:8px; }
+  .lt-top { display:flex; justify-content:space-between; gap:10px; align-items:baseline; font-size:13px; } .lt-lv { font-size:12px; margin-top:5px; display:flex; flex-wrap:wrap; gap:4px 6px; align-items:center; } .lt-lv b { font-size:11px; color:var(--muted); font-weight:600; margin-right:2px; }
+  .lt-chip { border:1px solid var(--border); border-radius:12px; padding:2px 8px; font-size:11px; white-space:nowrap; } .lt-chip.red { color:var(--red); border-color:var(--red); } .lt-chip.green { color:var(--green); border-color:var(--green); }
+  .lt-order { font-size:11px; background:var(--bg); border:1px solid var(--border); border-radius:6px; padding:3px 6px; user-select:all; overflow-wrap:anywhere; }
+  .lt-warn { font-size:11px; color:var(--yellow); margin-top:8px; line-height:1.4; } .lt-total { border-top:1px solid var(--border); padding-top:8px; margin-top:4px; font-weight:700; }
   .rb-total { padding-top:8px; border-top:1px solid var(--border); font-size:13px; text-align:right; }
   .fc-box { margin-top:10px; padding:10px 12px; background:var(--bg2); border:1px solid var(--border); border-left:3px solid var(--accent); border-radius:8px; }
   .fc-head { font-size:12px; font-weight:700; } .fc-for { font-weight:400; color:var(--muted); margin-left:4px; word-break:break-word; }
@@ -735,10 +744,11 @@
 
 <script src="../js/overview.js?v=3b34c0dc62a4" integrity="sha384-xvlkoaO+ifoHYqAv8hZPsNY2OEWT0bxvnhKMak+FsWVWr4nZYgl7kEQxjxc1rRhJ"></script>
 <script src="../js/heatmap.js?v=18153c2b6032" integrity="sha384-+RtUrwd6IpQKa+m/4o+mOKS8Hqsx2NWgxhI7X56tG+LU9IWMEQJjhaZRfDf483rU"></script>
-<script src="../js/positions.js?v=c99e1f9a0ca7" integrity="sha384-py6Tn7XMqhY0oVPpkTK4BbuJRSI7NpftC3QLOxhajvWpmRDu6/iCFAipGVI/anxE"></script>
+<script src="../js/positions.js?v=e0ce72e8a571" integrity="sha384-Qj+ZVqT40obfpOOXS3u8HCdBdauC97+MIU2Zn8iXjGflofve/SVW9jG1oqqi2v+p"></script>
 <script src="../js/analyst.js?v=d3956718ff6c" integrity="sha384-wkzFAN/FCqTsIqGGtdgOsQ4GtkoTs27E9/pea76RFkC7qf0E4lIfDMznjgfwfIzM"></script>
 <script src="../js/fivecheck.js?v=9e8c32e23219" integrity="sha384-kJnrdLujqbaO5I87LDEQjUzuwK0UIaTkCqYExxt2ENBv1eky5+zrO16ceDVlcVaz"></script>
 <script src="../js/recent.js?v=9959f96a02c4" integrity="sha384-iJKMgDG3TQCY0wlTA+iEHmY4KRMaX0Y5fVCg9iItd4IbuljsCzVsURGxw30qB6eY"></script>
+<script src="../js/lots.js?v=17a297e3c1f8" integrity="sha384-/C2P1tGKPf1LVicpCYXgTzbV9ouwn9O8dL/jbpK4CbFaEDdBU2IMnE9G3A/h6MSo"></script>
 <script src="../js/strategy.js?v=51acadca5417" integrity="sha384-MpBndmwBKkXukOQmbMyLcPbzYB9Wc0nGyp2iFs9Pyq5EU2laiw/+vg4+jCCb39Uq"></script>
 <script src="../js/dipplan.js?v=610eeda761c5" integrity="sha384-qmLDu+yo2sZYeO4XFpb3NU3DFTB67hnhdMPk8OXBR7KhS5hK7SSJ0bn8jwhqbFe0"></script>
 <script src="../js/support.js?v=95358640d9cb" integrity="sha384-TZX3AuXhXFtQGZXwjfmtBtTSXLsAQlCUl/9bpTTT3+UgNvn+bxigU7KHZE4GpWnh"></script>
