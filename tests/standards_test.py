@@ -101,8 +101,8 @@ check("Recent purchases card (7 days, auto-expires, hidden when empty) is on eve
       and "Recent purchases" in (ROOT / "documentation/menus/positions.md").read_text() and (ROOT / "tests/recent_layout_test.py").exists() and (ROOT / "tests/zk_recent_test.mjs").exists())
 
 _ss = (ROOT / "services/strategy_service.py").read_text(); _zs = (ROOT / "docs/zk/strategy.js").read_text(); _js = (ROOT / "docs/js/strategy.js").read_text()
-check("strategy counts what was actually bought this week (issue #53 follow-up): browser + legacy + demo, shown on the card, parity-tested",
-      "def contributions" in _ss and "function contributions" in _zs and "invested" in _js and "strategy_fill_invested" in (ROOT / "db/tenant/26_strategy_invested.sql").read_text()
+check("strategy still counts what was actually bought this week (issue #53): browser + legacy + demo, parity-tested (no longer shown against a budget on the Strategy tab)",
+      "def contributions" in _ss and "function contributions" in _zs and "strategy_fill_invested" in (ROOT / "db/tenant/26_strategy_invested.sql").read_text()
       and "bought this week" in (ROOT / "tests/zk_strategy_test.mjs").read_text())
 
 
@@ -180,5 +180,17 @@ check("demo markets/watchlist/pie history/IPO are seeded, and only into demo-onl
       and not re.search(r"insert into public\.(market_cache|ipo_calendar|institutional_flow_reports)\b", _mk + _ret)
       and not re.search(r"insert into public\.(market_cache|ipo_calendar)\b", _ins)
       and "replace(d, 'public.institutional_flow_reports', 'public.demo_institutional_flow_reports')" in _mk)   # 19_demo_insights inserts the weekly flow report; 21 rewrites that function to the demo-only copy when applied
+
+# Dip Planner (Strategy tab): no fixed budget, amount entered by the owner, every dashboard, signals saved by both engines, tested, documented
+_dp = (ROOT / "docs/js/dipplan.js").read_text(); _vbj = (ROOT / "docs/zk/valuebuy.js").read_text(); _vbp = (ROOT / "services/value_buy_service.py").read_text()
+check("Dip Planner: loaded by the live and demo pages (so by app, zkapp and zkapp-prod), mounted on the Strategy tab, no fixed budget on that tab",
+      all("dipplan.js" in (ROOT / p).read_text() for p in ("docs/index.html", "docs/demo/index.html", "docs/app/index.html", "docs/zkapp/index.html", "docs/zkapp-prod/index.html"))
+      and "dip-planner-content" in _js and "loadDipPlanner" in _js and "300/month" not in re.sub(r"//[^\n]*", "", _js) and "MONTHLY_BUDGET" not in _dp and "£300" not in _dp)
+check("Dip Planner signals (PE, volume ratio, 4w/1w momentum, T212 ticker) are saved by both the browser and the legacy value-buy engines and the demo seed",
+      all(k in _vbj and k in _vbp for k in ("vol_ratio", "mom_4w", "mom_1w", "t212")) and "'fwd_pe'" in (ROOT / "db/tenant/19_demo_insights.sql").read_text() and "'mom_4w'" in (ROOT / "db/tenant/19_demo_insights.sql").read_text())
+check("Dip Planner is tested (logic + phone layout, wired into CI) and documented on the Strategy menu page and in CLAUDE.md",
+      (ROOT / "tests/zk_dipplan_test.mjs").exists() and (ROOT / "tests/dipplan_layout_test.py").exists() and "dipplan_layout_test.py" in (ROOT / ".github/workflows/ui_tests.yml").read_text()
+      and "Dip Planner" in (ROOT / "documentation/menus/strategy.md").read_text() and "Dip Planner" in doc and "no fixed budget" in doc.lower())
+check("Dip Planner handlers are only whitelisted calls (no inline code the CSP interpreter would refuse)", not re.search(r'on(?:click|change|input|keydown)="[^"]*(?:=>|===|function|\bif\b)', _dp))
 
 print("\nstandards: " + ("all good" if not bad else f"{bad} failed")); sys.exit(1 if bad else 0)

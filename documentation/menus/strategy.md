@@ -1,10 +1,10 @@
 # 🎯 Strategy
 
-**Question it answers:** where is institutional money moving, what should I do with each holding, where is a good entry, and how should this week's budget be split?
+**Question it answers:** where is institutional money moving, what should I do with each holding, where is a good entry, and — when the market dips — where should the amount I choose go?
 
 Tab id `strategy` · loader `loadStrategy()` · `docs/js/strategy.js`
 
-The tab stacks five sections (each a collapsible card):
+The tab stacks six sections (each a collapsible card). The **💧 Dip Planner** sits at the top; there is no fixed budget anywhere on this tab.
 
 ## 1. 🌍 Global Institutional Capital (`#inst-flow-content`)
 
@@ -51,24 +51,35 @@ Each stock's card ends with a **5-check review** box: your own prompt (how the c
 - Demo: `demo_support_levels`, rebuilt by the daily demo refresh from the demo holdings' mock prices and labelled "Illustrative demo level / Demo data" (see [Demo](../demo.md)).
 - Module `docs/js/support.js` (`loadSupportLevels`), rolled out to every dashboard. Requirements and rollout: [Epic: Support Levels](../requirements/epic-support-levels.md).
 
-## 4. Weekly allocation (`#strategy-content`)
+## 0. 💧 Dip Planner (`#dip-planner-content`, top of the tab)
 
-The **Aggressive-mode** plan:
+**No fixed budget.** You type what you want to invest (or tap £50 / £100 / £200 / £500) and press **Plan it**. The plan is worked out in the browser from the Entry Analysis rows, your pies and the market mood saved by the last Refresh; nothing is sent anywhere. Module `docs/js/dipplan.js` (`loadDipPlanner`, `dipPlanRun`, pure `dpPlanCompute`), rolled out to every dashboard.
 
-- Stats: **Week** (n of 4–5), **This week** (£ suggested, of the monthly maximum), **Market mood** (😎 🙂 😨 😱 with VIX) and **Annualised** return versus the 10% base case / 15% optimistic case.
-- **Recommendations:** one card per pie with an amount and the reason; priority colours HIGH / MEDIUM / LOW.
-- **Notes** from the allocator.
-- Data: `strategy_recommendations` (`services/strategy_service.py`, browser: `docs/zk/strategy.js`). Weightings are calibrated to a recurring £30 contribution on the Trading 212 pies.
-- If there is no row yet: "No strategy data yet. Run the daily_services workflow." (legacy) or press Refresh (private).
+1. **Is it a dip?** *Strong* (full amount used): market mood is Fear or Extreme fear (VIX 20+) or the S&P 500 is 8%+ below its high. *Moderate* (half used, half kept back): S&P 4–8% down, or 40%+ of your holdings 8%+ below their own highs. Otherwise **no dip: the cash is held** and the card says so. Tick **Plan it even if there is no market dip** to see where it would go anyway (labelled as not a dip signal).
+2. **Score every stock 0–100** from seven signals: RSI 18, Momentum 12, Volume 10, Entry point 20, Dip depth 10, PE ratio 12, Quality score (Entry Analysis) 18. A signal with no data (for example no PE on an ETF) is left out and the rest re-weighted; the stock's chips show "n/a".
+3. **Decide per stock:** 80+ strong buy, 72+ buy, 58+ accumulate, otherwise hold. **Overbought** (RSI 70+, or RSI 65+ at the 52-week high, or Entry Analysis "hold / avoid") is always hold: no new money.
+4. **Decide per pie:** a pie is **INVEST** if at least one stock passes and its average score is 50+, otherwise **HOLD** with the reason. The money is split by buy strength; no pie gets more than 50% (65% when only two pies qualify). Holdings outside any pie are listed as "Not in a pie" and bought directly.
+5. **Whole pie or custom balance:** if the signal-based split is within 15 points of the pie's own target weights, the card says *invest in the whole pie*; otherwise *custom balance* and names the stocks to favour and to skip. Each stock shows its target and current weight in the pie and both amounts (whole-pie £ and custom £). Amounts add up to the penny.
+6. Each pie opens to its stocks with signal chips (green / amber / red), the score and the reason.
+
+**Honesty:** prices, RSI, volume, momentum and PE are Yahoo daily data from the last Refresh (the card shows when, and warns after 3 days). **Fear & Greed is CapitalLens' own reading** (VIX, S&P drawdown and news headlines), not CNN's index. Pie weights come from your Trading 212 pies; if they cannot be found, equal weights are assumed and the card says so. It is a rule-based screen, not advice.
+
+Data: `value_buy_scores.this_week` (now also carries `pe`, `fwd_pe`, `vol_ratio`, `mom_4w`, `mom_1w`, `t212`; written by `services/value_buy_service.py` and `docs/zk/valuebuy.js`, parity-tested), `portfolio_snapshots.raw.pies` (target and current weights), `strategy_recommendations.market_mood`.
+
+## 4. Market mood and pace (`#strategy-content`)
+
+- Stats: **Market mood** (😎 🙂 😨 😱 with VIX) and **Annualised** return versus the 10% base case / 15% optimistic case.
+- The old weekly allocation tiles (week number, "This week £ of the monthly maximum"), the per-pie £ recommendation list and the allocator notes were removed from this tab (the fixed monthly budget is gone). The allocator still runs behind the scenes (`services/strategy_service.py`, browser `docs/zk/strategy.js`): its market mood feeds the Dip Planner and its weekly figure still sizes the [Watchlist](watchlist.md) pool.
+- If there is no row yet the Dip Planner still works from the Entry Analysis rows and says there is no market reading yet.
 
 ## Behaviour
 
-- Guest mode hides all five sections and shows "🔒 Sign in to view strategy recommendations".
+- Guest mode hides all the sections and shows "🔒 Sign in to view strategy recommendations".
 - Nothing here is advice; each section states its basis.
 
 ## Tests
 
-`tests/zk_strategy_test.mjs`, `tests/zk_flow_test.mjs`, `tests/zk_holding_value_test.mjs`, `tests/zk_shim_test.mjs` (Entry Analysis JSON regression), `tests/zk_support_levels_test.mjs` (Support Levels logic, stale warning, 200-week EMA, escaping, placement), `tests/zk_support_alert_test.mjs` (zone alerts), `tests/support_layout_test.py` (fits 320/360/390px, live and demo pages).
+`tests/zk_strategy_test.mjs`, `tests/zk_flow_test.mjs`, `tests/zk_holding_value_test.mjs`, `tests/zk_shim_test.mjs` (Entry Analysis JSON regression), `tests/zk_support_levels_test.mjs` (Support Levels logic, stale warning, 200-week EMA, escaping, placement), `tests/zk_support_alert_test.mjs` (zone alerts), `tests/support_layout_test.py` (fits 320/360/390px, live and demo pages), `tests/zk_dipplan_test.mjs` (Dip Planner: signals, dip rules, pie/stock split to the penny, whole vs custom, escaping), `tests/dipplan_layout_test.py` (Dip Planner fits 320/360/390px, tap targets ≥ 40px).
 
-## Bought so far this week (what you actually invested)
-The suggested weekly amount alone cannot know about purchases you already made, so the **This week** card and each pie recommendation also show what was bought: filled (and partly filled) Trading 212 **BUY** orders from Monday to today (week) and from the 1st (month), valued at the cash that left the account (`net_value`). The card reads "Bought £X · £Y left" or "£Z over"; each pie shows "bought £… · £… left", "done ✓" or "not bought yet". Notes add the month total against the £300 budget, buys outside your pies (not counted against a pie) and orders Trading 212 gave no value for (not counted, said so). If orders cannot be read the card says nothing rather than "nothing bought". Stored in `strategy_recommendations.invested` (legacy/demo) or inside the encrypted row (private app). Guarded by `tests/zk_strategy_test.mjs` (Python/browser parity, purchase scenarios).
+## Bought so far this week (stored, no longer shown here)
+The allocator still counts filled (and partly filled) Trading 212 **BUY** orders from Monday to today and from the 1st (`net_value`, the cash that left the account) into `strategy_recommendations.invested` (legacy/demo) or the encrypted row (private app), guarded by `tests/zk_strategy_test.mjs`. With the fixed budget gone the Strategy tab no longer compares it with a suggested amount; the purchases themselves are on the Positions tab under Recent purchases.

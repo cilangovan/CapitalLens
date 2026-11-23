@@ -40,6 +40,8 @@ jobs:
         run: python -u tests/ipo_layout_test.py
       - name: Support Levels section fits phone screens
         run: python -u tests/support_layout_test.py
+      - name: Dip Planner fits phone screens
+        run: python -u tests/dipplan_layout_test.py
       - name: Watchlist cards (arrange mode) fit phone screens
         run: python -u tests/watchlist_order_layout_test.py
       - name: 5-check review box fits phone screens

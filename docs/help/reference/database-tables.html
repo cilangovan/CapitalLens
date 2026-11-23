@@ -14,7 +14,7 @@
 <p><strong>Generated</strong> by <code>scripts/build_docs.py</code> from <code>db/schema.sql</code> and <code>db/tenant/*.sql</code>. Do not edit by hand; change the SQL and rebuild.
 Concepts, data flows and who writes each table are in <a href="../database.html">Database &amp; data flows</a>.</p>
 </blockquote>
-<p>39 tables in the <code>public</code> schema.</p>
+<p>42 tables in the <code>public</code> schema.</p>
 <div class="tbl"><table>
 <thead>
 <tr>
@@ -31,7 +31,7 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 </tr>
 <tr>
 <td><a href="#analyst_ratings"><code>analyst_ratings</code></a></td>
-<td>13</td>
+<td>19</td>
 <td><code>db/schema.sql</code>, <code>db/tenant/01_schema.sql</code></td>
 </tr>
 <tr>
@@ -42,17 +42,17 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 <tr>
 <td><a href="#audit_log"><code>audit_log</code></a></td>
 <td>8</td>
-<td><code>db/tenant/13_audit_log.sql</code></td>
+<td><code>db/schema.sql</code>, <code>db/tenant/13_audit_log.sql</code></td>
 </tr>
 <tr>
 <td><a href="#broker_connections"><code>broker_connections</code></a></td>
-<td>9</td>
-<td><code>db/tenant/01_schema.sql</code>, <code>db/tenant/06_convert_legacy.sql</code></td>
+<td>11</td>
+<td><code>db/schema.sql</code>, <code>db/tenant/01_schema.sql</code>, <code>db/tenant/06_convert_legacy.sql</code></td>
 </tr>
 <tr>
 <td><a href="#broker_secrets"><code>broker_secrets</code></a></td>
-<td>4</td>
-<td><code>db/tenant/01_schema.sql</code>, <code>db/tenant/06_convert_legacy.sql</code></td>
+<td>5</td>
+<td><code>db/schema.sql</code>, <code>db/tenant/01_schema.sql</code>, <code>db/tenant/06_convert_legacy.sql</code></td>
 </tr>
 <tr>
 <td><a href="#dashboard_auth"><code>dashboard_auth</code></a></td>
@@ -67,7 +67,7 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 <tr>
 <td><a href="#enc_rows"><code>enc_rows</code></a></td>
 <td>7</td>
-<td><code>db/tenant/11_zk_enc_rows.sql</code></td>
+<td><code>db/schema.sql</code>, <code>db/tenant/11_zk_enc_rows.sql</code></td>
 </tr>
 <tr>
 <td><a href="#holding_decisions"><code>holding_decisions</code></a></td>
@@ -80,19 +80,34 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 <td><code>db/schema.sql</code>, <code>db/tenant/01_schema.sql</code></td>
 </tr>
 <tr>
+<td><a href="#instrument_country_weights"><code>instrument_country_weights</code></a></td>
+<td>5</td>
+<td><code>db/schema.sql</code></td>
+</tr>
+<tr>
+<td><a href="#instrument_exposure"><code>instrument_exposure</code></a></td>
+<td>6</td>
+<td><code>db/schema.sql</code></td>
+</tr>
+<tr>
+<td><a href="#instrument_sector_weights"><code>instrument_sector_weights</code></a></td>
+<td>4</td>
+<td><code>db/schema.sql</code></td>
+</tr>
+<tr>
 <td><a href="#instruments"><code>instruments</code></a></td>
 <td>8</td>
 <td><code>db/schema.sql</code>, <code>db/tenant/01_schema.sql</code></td>
 </tr>
 <tr>
 <td><a href="#ipo_calendar"><code>ipo_calendar</code></a></td>
-<td>22</td>
-<td><code>db/tenant/15_ipo_calendar.sql</code></td>
+<td>24</td>
+<td><code>db/schema.sql</code>, <code>db/tenant/15_ipo_calendar.sql</code></td>
 </tr>
 <tr>
 <td><a href="#market_cache"><code>market_cache</code></a></td>
 <td>3</td>
-<td><code>db/tenant/12_market_cache.sql</code></td>
+<td><code>db/schema.sql</code>, <code>db/tenant/12_market_cache.sql</code></td>
 </tr>
 <tr>
 <td><a href="#ops_daily"><code>ops_daily</code></a></td>
@@ -116,7 +131,7 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 </tr>
 <tr>
 <td><a href="#portfolio_snapshots_archive"><code>portfolio_snapshots_archive</code></a></td>
-<td>8</td>
+<td>10</td>
 <td><code>db/schema.sql</code></td>
 </tr>
 <tr>
@@ -126,13 +141,13 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 </tr>
 <tr>
 <td><a href="#positions_archive"><code>positions_archive</code></a></td>
-<td>13</td>
+<td>16</td>
 <td><code>db/schema.sql</code></td>
 </tr>
 <tr>
 <td><a href="#profiles"><code>profiles</code></a></td>
 <td>8</td>
-<td><code>db/tenant/01_schema.sql</code>, <code>db/tenant/06_convert_legacy.sql</code></td>
+<td><code>db/schema.sql</code>, <code>db/tenant/01_schema.sql</code>, <code>db/tenant/06_convert_legacy.sql</code></td>
 </tr>
 <tr>
 <td><a href="#profit_booking"><code>profit_booking</code></a></td>
@@ -156,18 +171,18 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 </tr>
 <tr>
 <td><a href="#strategy_recommendations"><code>strategy_recommendations</code></a></td>
-<td>12</td>
+<td>13</td>
 <td><code>db/schema.sql</code>, <code>db/tenant/01_schema.sql</code></td>
 </tr>
 <tr>
 <td><a href="#support_levels"><code>support_levels</code></a></td>
-<td>15</td>
-<td><code>db/tenant/23_support_levels.sql</code></td>
+<td>18</td>
+<td><code>db/schema.sql</code>, <code>db/tenant/23_support_levels.sql</code></td>
 </tr>
 <tr>
 <td><a href="#sync_jobs"><code>sync_jobs</code></a></td>
-<td>7</td>
-<td><code>db/tenant/01_schema.sql</code>, <code>db/tenant/06_convert_legacy.sql</code></td>
+<td>8</td>
+<td><code>db/schema.sql</code>, <code>db/tenant/01_schema.sql</code>, <code>db/tenant/06_convert_legacy.sql</code></td>
 </tr>
 <tr>
 <td><a href="#t212_dividends"><code>t212_dividends</code></a></td>
@@ -181,7 +196,7 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 </tr>
 <tr>
 <td><a href="#t212_sync_state"><code>t212_sync_state</code></a></td>
-<td>8</td>
+<td>9</td>
 <td><code>db/schema.sql</code>, <code>db/tenant/01_schema.sql</code></td>
 </tr>
 <tr>
@@ -192,12 +207,12 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 <tr>
 <td><a href="#user_keys"><code>user_keys</code></a></td>
 <td>8</td>
-<td><code>db/tenant/10_zk_keys.sql</code></td>
+<td><code>db/schema.sql</code>, <code>db/tenant/10_zk_keys.sql</code></td>
 </tr>
 <tr>
 <td><a href="#user_ui_prefs"><code>user_ui_prefs</code></a></td>
 <td>3</td>
-<td><code>db/tenant/09_user_ui_prefs.sql</code></td>
+<td><code>db/schema.sql</code>, <code>db/tenant/09_user_ui_prefs.sql</code></td>
 </tr>
 <tr>
 <td><a href="#value_buy_scores"><code>value_buy_scores</code></a></td>
@@ -206,7 +221,7 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 </tr>
 <tr>
 <td><a href="#watchlist"><code>watchlist</code></a></td>
-<td>11</td>
+<td>12</td>
 <td><code>db/schema.sql</code>, <code>db/tenant/01_schema.sql</code></td>
 </tr>
 <tr>
@@ -280,7 +295,7 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 </tr>
 <tr>
 <td><code>user_id</code></td>
-<td><code>uuid not null default auth.uid() references auth.users(id) on delete cascade</code></td>
+<td><code>uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -345,6 +360,30 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 <td><code>source</code></td>
 <td><code>text</code></td>
 </tr>
+<tr>
+<td><code>lynch_bucket</code></td>
+<td><code>integer</code></td>
+</tr>
+<tr>
+<td><code>lynch_name</code></td>
+<td><code>text</code></td>
+</tr>
+<tr>
+<td><code>lynch_reason</code></td>
+<td><code>text</code></td>
+</tr>
+<tr>
+<td><code>lynch_growth</code></td>
+<td><code>double precision</code></td>
+</tr>
+<tr>
+<td><code>lynch_basis</code></td>
+<td><code>text</code></td>
+</tr>
+<tr>
+<td><code>lynch_confidence</code></td>
+<td><code>text</code></td>
+</tr>
 </tbody>
 </table></div>
 <h2 id="app_settings">app_settings</h2>
@@ -381,11 +420,11 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 <tbody>
 <tr>
 <td><code>id</code></td>
-<td><code>bigint generated always as identity primary key</code></td>
+<td><code>bigint generated always as identity not null</code></td>
 </tr>
 <tr>
 <td><code>at</code></td>
-<td><code>timestamptz not null default now()</code></td>
+<td><code>timestamp with time zone default now() not null</code></td>
 </tr>
 <tr>
 <td><code>actor</code></td>
@@ -409,7 +448,7 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 </tr>
 <tr>
 <td><code>detail</code></td>
-<td><code>jsonb not null default '{}'::jsonb</code></td>
+<td><code>jsonb default '{}'::jsonb not null</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -424,15 +463,15 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 <tbody>
 <tr>
 <td><code>id</code></td>
-<td><code>uuid primary key default gen_random_uuid()</code></td>
+<td><code>uuid default gen_random_uuid() not null</code></td>
 </tr>
 <tr>
 <td><code>user_id</code></td>
-<td><code>uuid not null default auth.uid() references auth.users(id) on delete cascade</code></td>
+<td><code>uuid default auth.uid() not null</code></td>
 </tr>
 <tr>
 <td><code>broker</code></td>
-<td><code>text not null check (broker in ('trading212','zerodha','mock'))</code></td>
+<td><code>text not null</code></td>
 </tr>
 <tr>
 <td><code>label</code></td>
@@ -440,15 +479,15 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 </tr>
 <tr>
 <td><code>native_currency</code></td>
-<td><code>text not null default 'GBP'</code></td>
+<td><code>text default 'GBP'::text not null</code></td>
 </tr>
 <tr>
 <td><code>status</code></td>
-<td><code>text not null default 'pending' check (status in ('pending','active','error','needs_login','disabled'))</code></td>
+<td><code>text default 'pending'::text not null</code></td>
 </tr>
 <tr>
 <td><code>last_ok_at</code></td>
-<td><code>timestamptz</code></td>
+<td><code>timestamp with time zone</code></td>
 </tr>
 <tr>
 <td><code>last_error</code></td>
@@ -456,7 +495,15 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 </tr>
 <tr>
 <td><code>created_at</code></td>
-<td><code>timestamptz not null default now()</code></td>
+<td><code>timestamp with time zone default now() not null</code></td>
+</tr>
+<tr>
+<td><code>environment</code></td>
+<td><code>text default 'live'::text not null</code></td>
+</tr>
+<tr>
+<td><code>sync_state</code></td>
+<td><code>jsonb default '{}'::jsonb not null</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -471,11 +518,11 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 <tbody>
 <tr>
 <td><code>connection_id</code></td>
-<td><code>uuid primary key references public.broker_connections(id) on delete cascade</code></td>
+<td><code>uuid not null</code></td>
 </tr>
 <tr>
 <td><code>ciphertext</code></td>
-<td><code>bytea not null</code></td>
+<td><code>bytea</code></td>
 </tr>
 <tr>
 <td><code>key_hint</code></td>
@@ -483,7 +530,11 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 </tr>
 <tr>
 <td><code>created_at</code></td>
-<td><code>timestamptz not null default now()</code></td>
+<td><code>timestamp with time zone default now() not null</code></td>
+</tr>
+<tr>
+<td><code>vault_secret_id</code></td>
+<td><code>uuid</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -577,7 +628,7 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 </tr>
 <tr>
 <td><code>user_id</code></td>
-<td><code>uuid not null default auth.uid() references auth.users(id) on delete cascade</code></td>
+<td><code>uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -592,11 +643,11 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 <tbody>
 <tr>
 <td><code>user_id</code></td>
-<td><code>uuid not null default auth.uid() references auth.users(id) on delete cascade</code></td>
+<td><code>uuid default auth.uid() not null</code></td>
 </tr>
 <tr>
 <td><code>kind</code></td>
-<td><code>text not null check (kind ~ '^[a-z0-9_]{1,40}$')</code></td>
+<td><code>text not null</code></td>
 </tr>
 <tr>
 <td><code>id</code></td>
@@ -608,15 +659,15 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 </tr>
 <tr>
 <td><code>ct</code></td>
-<td><code>text not null check (length(ct) &lt; 200000)</code></td>
+<td><code>text not null</code></td>
 </tr>
 <tr>
 <td><code>key_version</code></td>
-<td><code>int not null default 1</code></td>
+<td><code>integer default 1 not null</code></td>
 </tr>
 <tr>
 <td><code>updated_at</code></td>
-<td><code>timestamptz not null default now()</code></td>
+<td><code>timestamp with time zone default now() not null</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -731,7 +782,7 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 </tr>
 <tr>
 <td><code>user_id</code></td>
-<td><code>uuid not null default auth.uid() references auth.users(id) on delete cascade</code></td>
+<td><code>uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -783,6 +834,100 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 <tr>
 <td><code>created_at</code></td>
 <td><code>timestamp with time zone default now()</code></td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="instrument_country_weights">instrument_country_weights</h2>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Definition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ticker</code></td>
+<td><code>text not null</code></td>
+</tr>
+<tr>
+<td><code>country</code></td>
+<td><code>text not null</code></td>
+</tr>
+<tr>
+<td><code>flag</code></td>
+<td><code>text default ''::text not null</code></td>
+</tr>
+<tr>
+<td><code>pct</code></td>
+<td><code>numeric not null</code></td>
+</tr>
+<tr>
+<td><code>note</code></td>
+<td><code>text default ''::text not null</code></td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="instrument_exposure">instrument_exposure</h2>
+<p>Reference data: full name, country/market flag and one-line description per Trading 212 ticker. Read-only for users; maintained by migrations/service role.</p>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Definition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ticker</code></td>
+<td><code>text not null</code></td>
+</tr>
+<tr>
+<td><code>display_name</code></td>
+<td><code>text not null</code></td>
+</tr>
+<tr>
+<td><code>flag</code></td>
+<td><code>text default ''::text not null</code></td>
+</tr>
+<tr>
+<td><code>exposure</code></td>
+<td><code>text default ''::text not null</code></td>
+</tr>
+<tr>
+<td><code>updated_at</code></td>
+<td><code>timestamp with time zone default now() not null</code></td>
+</tr>
+<tr>
+<td><code>sector</code></td>
+<td><code>text default ''::text not null</code></td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="instrument_sector_weights">instrument_sector_weights</h2>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Definition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>ticker</code></td>
+<td><code>text not null</code></td>
+</tr>
+<tr>
+<td><code>sector</code></td>
+<td><code>text not null</code></td>
+</tr>
+<tr>
+<td><code>pct</code></td>
+<td><code>numeric</code></td>
+</tr>
+<tr>
+<td><code>note</code></td>
+<td><code>text default ''::text not null</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -840,23 +985,19 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 <tbody>
 <tr>
 <td><code>id</code></td>
-<td><code>text primary key</code></td>
+<td><code>text not null</code></td>
 </tr>
 <tr>
-<td><code>e.g.</code></td>
-<td><code>US:ANT market text not null check (market in ('US','UK','IN','HK','EU','JP','CN','SG','AU','OTHER'))</code></td>
+<td><code>market</code></td>
+<td><code>text not null</code></td>
 </tr>
 <tr>
 <td><code>exchange</code></td>
 <td><code>text</code></td>
 </tr>
 <tr>
-<td><code>LSE</code></td>
-<td>``</td>
-</tr>
-<tr>
-<td><code>NSE</code></td>
-<td><code>SME name text not null</code></td>
+<td><code>name</code></td>
+<td><code>text not null</code></td>
 </tr>
 <tr>
 <td><code>ticker</code></td>
@@ -868,7 +1009,7 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 </tr>
 <tr>
 <td><code>status</code></td>
-<td><code>text not null default 'upcoming' check (status in ('rumoured','filed','upcoming','open','priced','listed','postponed','withdrawn'))</code></td>
+<td><code>text default 'upcoming'::text not null</code></td>
 </tr>
 <tr>
 <td><code>start_date</code></td>
@@ -900,7 +1041,7 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 </tr>
 <tr>
 <td><code>rating</code></td>
-<td><code>text not null default 'Not rated' check (rating in ('Subscribe','Neutral','Avoid','Not rated'))</code></td>
+<td><code>text default 'Not rated'::text not null</code></td>
 </tr>
 <tr>
 <td><code>rating_source</code></td>
@@ -916,15 +1057,27 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 </tr>
 <tr>
 <td><code>source_url</code></td>
-<td><code>text check (source_url is null or source_url ~ '^https?://')</code></td>
+<td><code>text</code></td>
 </tr>
 <tr>
 <td><code>as_of</code></td>
-<td><code>date not null default current_date</code></td>
+<td><code>date default CURRENT_DATE not null</code></td>
 </tr>
 <tr>
 <td><code>updated_at</code></td>
-<td><code>timestamptz not null default now()</code></td>
+<td><code>timestamp with time zone default now() not null</code></td>
+</tr>
+<tr>
+<td><code>e.g.</code></td>
+<td><code>US:ANT market text not null check (market in ('US','UK','IN','HK','EU','JP','CN','SG','AU','OTHER'))</code></td>
+</tr>
+<tr>
+<td><code>LSE</code></td>
+<td>``</td>
+</tr>
+<tr>
+<td><code>NSE</code></td>
+<td><code>SME name text not null</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -939,7 +1092,7 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 <tbody>
 <tr>
 <td><code>key</code></td>
-<td><code>text primary key</code></td>
+<td><code>text not null</code></td>
 </tr>
 <tr>
 <td><code>payload</code></td>
@@ -947,7 +1100,7 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 </tr>
 <tr>
 <td><code>fetched_at</code></td>
-<td><code>timestamptz not null default now()</code></td>
+<td><code>timestamp with time zone default now() not null</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -1014,7 +1167,7 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 </tr>
 <tr>
 <td><code>user_id</code></td>
-<td><code>uuid not null default auth.uid() references auth.users(id) on delete cascade</code></td>
+<td><code>uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -1080,11 +1233,11 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 </tr>
 <tr>
 <td><code>user_id</code></td>
-<td><code>uuid not null default auth.uid() references auth.users(id) on delete cascade</code></td>
+<td><code>uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null</code></td>
 </tr>
 <tr>
 <td><code>connection_id</code></td>
-<td><code>uuid references public.broker_connections(id) on delete cascade</code></td>
+<td><code>uuid</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -1129,6 +1282,14 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 <tr>
 <td><code>raw</code></td>
 <td><code>jsonb</code></td>
+</tr>
+<tr>
+<td><code>user_id</code></td>
+<td><code>uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null</code></td>
+</tr>
+<tr>
+<td><code>connection_id</code></td>
+<td><code>uuid</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -1195,15 +1356,15 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 </tr>
 <tr>
 <td><code>user_id</code></td>
-<td><code>uuid not null default auth.uid() references auth.users(id) on delete cascade</code></td>
+<td><code>uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null</code></td>
 </tr>
 <tr>
 <td><code>broker</code></td>
-<td><code>text not null default 'trading212'</code></td>
+<td><code>text default 'trading212'::text not null</code></td>
 </tr>
 <tr>
 <td><code>native_currency</code></td>
-<td><code>text not null default 'GBP'</code></td>
+<td><code>text default 'GBP'::text not null</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -1269,6 +1430,18 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 <td><code>quantity</code></td>
 <td><code>numeric</code></td>
 </tr>
+<tr>
+<td><code>user_id</code></td>
+<td><code>uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null</code></td>
+</tr>
+<tr>
+<td><code>broker</code></td>
+<td><code>text default 'trading212'::text not null</code></td>
+</tr>
+<tr>
+<td><code>native_currency</code></td>
+<td><code>text default 'GBP'::text not null</code></td>
+</tr>
 </tbody>
 </table></div>
 <h2 id="profiles">profiles</h2>
@@ -1282,7 +1455,7 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 <tbody>
 <tr>
 <td><code>user_id</code></td>
-<td><code>uuid primary key references auth.users(id) on delete cascade</code></td>
+<td><code>uuid not null</code></td>
 </tr>
 <tr>
 <td><code>display_name</code></td>
@@ -1290,11 +1463,11 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 </tr>
 <tr>
 <td><code>base_currency</code></td>
-<td><code>text not null default 'GBP'</code></td>
+<td><code>text default 'GBP'::text not null</code></td>
 </tr>
 <tr>
 <td><code>timezone</code></td>
-<td><code>text not null default 'Europe/London'</code></td>
+<td><code>text default 'Europe/London'::text not null</code></td>
 </tr>
 <tr>
 <td><code>ntfy_topic</code></td>
@@ -1302,15 +1475,15 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 </tr>
 <tr>
 <td><code>email_alerts</code></td>
-<td><code>boolean not null default true</code></td>
+<td><code>boolean default true not null</code></td>
 </tr>
 <tr>
 <td><code>is_demo</code></td>
-<td><code>boolean not null default false</code></td>
+<td><code>boolean default false not null</code></td>
 </tr>
 <tr>
 <td><code>created_at</code></td>
-<td><code>timestamptz not null default now()</code></td>
+<td><code>timestamp with time zone default now() not null</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -1413,7 +1586,7 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 </tr>
 <tr>
 <td><code>user_id</code></td>
-<td><code>uuid not null default auth.uid() references auth.users(id) on delete cascade</code></td>
+<td><code>uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -1460,7 +1633,7 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 </tr>
 <tr>
 <td><code>user_id</code></td>
-<td><code>uuid not null default auth.uid() references auth.users(id) on delete cascade</code></td>
+<td><code>uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -1523,7 +1696,7 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 </tr>
 <tr>
 <td><code>user_id</code></td>
-<td><code>uuid not null default auth.uid() references auth.users(id) on delete cascade</code></td>
+<td><code>uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -1570,7 +1743,7 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 </tr>
 <tr>
 <td><code>user_id</code></td>
-<td><code>uuid not null default auth.uid() references auth.users(id) on delete cascade</code></td>
+<td><code>uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -1629,7 +1802,11 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 </tr>
 <tr>
 <td><code>user_id</code></td>
-<td><code>uuid not null default auth.uid() references auth.users(id) on delete cascade</code></td>
+<td><code>uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null</code></td>
+</tr>
+<tr>
+<td><code>invested</code></td>
+<td><code>jsonb</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -1644,35 +1821,67 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 <tbody>
 <tr>
 <td><code>symbol</code></td>
-<td><code>text primary key check (symbol ~ '^[A-Z0-9.\-]{1,12}$')</code></td>
+<td><code>text not null</code></td>
+</tr>
+<tr>
+<td><code>name</code></td>
+<td><code>text not null</code></td>
+</tr>
+<tr>
+<td><code>level_label</code></td>
+<td><code>text default 'Support zone'::text not null</code></td>
+</tr>
+<tr>
+<td><code>zone_low</code></td>
+<td><code>numeric not null</code></td>
+</tr>
+<tr>
+<td><code>zone_high</code></td>
+<td><code>numeric not null</code></td>
+</tr>
+<tr>
+<td><code>approx</code></td>
+<td><code>boolean default false not null</code></td>
+</tr>
+<tr>
+<td><code>currency</code></td>
+<td><code>text default 'USD'::text not null</code></td>
+</tr>
+<tr>
+<td><code>tags</code></td>
+<td><code>jsonb default '[]'::jsonb not null</code></td>
+</tr>
+<tr>
+<td><code>snap_price</code></td>
+<td><code>numeric</code></td>
+</tr>
+<tr>
+<td><code>snap_pct_from_high</code></td>
+<td><code>numeric</code></td>
+</tr>
+<tr>
+<td><code>note</code></td>
+<td><code>text</code></td>
+</tr>
+<tr>
+<td><code>source_name</code></td>
+<td><code>text not null</code></td>
+</tr>
+<tr>
+<td><code>source_url</code></td>
+<td><code>text</code></td>
+</tr>
+<tr>
+<td><code>as_of</code></td>
+<td><code>date default CURRENT_DATE not null</code></td>
+</tr>
+<tr>
+<td><code>updated_at</code></td>
+<td><code>timestamp with time zone default now() not null</code></td>
 </tr>
 <tr>
 <td><code>e.g.</code></td>
 <td><code>META (T212 META_US_EQ / FB_US_EQ both map here) name text not null</code></td>
-</tr>
-<tr>
-<td><code>level_label</code></td>
-<td><code>text not null default 'Support zone' check (level_label in ('Support zone','Support level','My level','Wait for'))</code></td>
-</tr>
-<tr>
-<td><code>zone_low</code></td>
-<td><code>numeric not null check (zone_low &gt; 0)</code></td>
-</tr>
-<tr>
-<td><code>zone_high</code></td>
-<td><code>numeric not null check (zone_high &gt;= zone_low)</code></td>
-</tr>
-<tr>
-<td><code>approx</code></td>
-<td><code>boolean not null default false</code></td>
-</tr>
-<tr>
-<td><code>currency</code></td>
-<td><code>text not null default 'USD'</code></td>
-</tr>
-<tr>
-<td><code>tags</code></td>
-<td><code>jsonb not null default '[]'::jsonb</code></td>
 </tr>
 <tr>
 <td>`tone":"neutral</td>
@@ -1683,28 +1892,8 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 <td></td>
 </tr>
 <tr>
-<td><code>snap_pct_from_high</code></td>
-<td><code>numeric</code></td>
-</tr>
-<tr>
 <td><code>as</code></td>
 <td><code>shown by the source note text</code></td>
-</tr>
-<tr>
-<td><code>source_name</code></td>
-<td><code>text not null</code></td>
-</tr>
-<tr>
-<td><code>source_url</code></td>
-<td><code>text check (source_url is null or source_url ~ '^https?://')</code></td>
-</tr>
-<tr>
-<td><code>as_of</code></td>
-<td><code>date not null default current_date</code></td>
-</tr>
-<tr>
-<td><code>updated_at</code></td>
-<td><code>timestamptz not null default now()</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -1719,11 +1908,11 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 <tbody>
 <tr>
 <td><code>id</code></td>
-<td><code>bigint generated always as identity primary key</code></td>
+<td><code>bigint generated always as identity not null</code></td>
 </tr>
 <tr>
 <td><code>connection_id</code></td>
-<td><code>uuid not null references public.broker_connections(id) on delete cascade</code></td>
+<td><code>uuid not null</code></td>
 </tr>
 <tr>
 <td><code>kind</code></td>
@@ -1731,19 +1920,23 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 </tr>
 <tr>
 <td><code>next_run_at</code></td>
-<td><code>timestamptz not null default now()</code></td>
+<td><code>timestamp with time zone default now() not null</code></td>
 </tr>
 <tr>
 <td><code>state</code></td>
-<td><code>text not null default 'queued' check (state in ('queued','running','done','failed'))</code></td>
+<td><code>text default 'queued'::text not null</code></td>
 </tr>
 <tr>
 <td><code>attempts</code></td>
-<td><code>integer not null default 0</code></td>
+<td><code>integer default 0 not null</code></td>
 </tr>
 <tr>
 <td><code>last_error</code></td>
 <td><code>text</code></td>
+</tr>
+<tr>
+<td><code>started_at</code></td>
+<td><code>timestamp with time zone</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -1795,11 +1988,11 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 </tr>
 <tr>
 <td><code>user_id</code></td>
-<td><code>uuid not null default auth.uid() references auth.users(id) on delete cascade</code></td>
+<td><code>uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null</code></td>
 </tr>
 <tr>
 <td><code>connection_id</code></td>
-<td><code>uuid references public.broker_connections(id) on delete cascade</code></td>
+<td><code>uuid</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -1871,11 +2064,11 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 </tr>
 <tr>
 <td><code>user_id</code></td>
-<td><code>uuid not null default auth.uid() references auth.users(id) on delete cascade</code></td>
+<td><code>uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null</code></td>
 </tr>
 <tr>
 <td><code>connection_id</code></td>
-<td><code>uuid references public.broker_connections(id) on delete cascade</code></td>
+<td><code>uuid</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -1914,7 +2107,11 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 </tr>
 <tr>
 <td><code>user_id</code></td>
-<td><code>uuid not null default auth.uid() references auth.users(id) on delete cascade</code></td>
+<td><code>uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null</code></td>
+</tr>
+<tr>
+<td><code>resume</code></td>
+<td><code>text</code></td>
 </tr>
 <tr>
 <td><code>connection_id</code></td>
@@ -1962,11 +2159,11 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 </tr>
 <tr>
 <td><code>user_id</code></td>
-<td><code>uuid not null default auth.uid() references auth.users(id) on delete cascade</code></td>
+<td><code>uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null</code></td>
 </tr>
 <tr>
 <td><code>connection_id</code></td>
-<td><code>uuid references public.broker_connections(id) on delete cascade</code></td>
+<td><code>uuid</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -1981,7 +2178,7 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 <tbody>
 <tr>
 <td><code>user_id</code></td>
-<td><code>uuid primary key default auth.uid() references auth.users(id) on delete cascade</code></td>
+<td><code>uuid default auth.uid() not null</code></td>
 </tr>
 <tr>
 <td><code>kdf</code></td>
@@ -2005,11 +2202,11 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 </tr>
 <tr>
 <td><code>key_version</code></td>
-<td><code>int not null default 1</code></td>
+<td><code>integer default 1 not null</code></td>
 </tr>
 <tr>
 <td><code>updated_at</code></td>
-<td><code>timestamptz not null default now()</code></td>
+<td><code>timestamp with time zone default now() not null</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -2024,15 +2221,15 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 <tbody>
 <tr>
 <td><code>user_id</code></td>
-<td><code>uuid primary key default auth.uid() references auth.users(id) on delete cascade</code></td>
+<td><code>uuid default auth.uid() not null</code></td>
 </tr>
 <tr>
 <td><code>prefs</code></td>
-<td><code>jsonb not null default '{}'::jsonb</code></td>
+<td><code>jsonb default '{}'::jsonb not null</code></td>
 </tr>
 <tr>
 <td><code>updated_at</code></td>
-<td><code>timestamptz not null default now()</code></td>
+<td><code>timestamp with time zone default now() not null</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -2107,7 +2304,7 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 </tr>
 <tr>
 <td><code>user_id</code></td>
-<td><code>uuid not null default auth.uid() references auth.users(id) on delete cascade</code></td>
+<td><code>uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -2162,7 +2359,11 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 </tr>
 <tr>
 <td><code>user_id</code></td>
-<td><code>uuid not null default auth.uid() references auth.users(id) on delete cascade</code></td>
+<td><code>uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null</code></td>
+</tr>
+<tr>
+<td><code>sort_order</code></td>
+<td><code>integer</code></td>
 </tr>
 </tbody>
 </table></div>
@@ -2197,7 +2398,7 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 </tr>
 <tr>
 <td><code>user_id</code></td>
-<td><code>uuid not null default auth.uid() references auth.users(id) on delete cascade</code></td>
+<td><code>uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null</code></td>
 </tr>
 </tbody>
 </table></div>

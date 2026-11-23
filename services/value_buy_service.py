@@ -183,6 +183,13 @@ def fetch_yahoo_data(yahoo_ticker):
         vol_daily = float(np.std(returns))
         vol_annual = round(vol_daily * (252 ** 0.5) * 100, 1)  # %
 
+        # Dip Planner signals: 5-day vs prior 15-day average volume, 4-week and 1-week momentum
+        vols = [float(x) if x == x else 0.0 for x in hist["Volume"].fillna(0).tolist()]
+        prior = float(np.mean(vols[-20:-5])) if len(vols) >= 20 else 0.0
+        vol_ratio = round(float(np.mean(vols[-5:])) / prior, 2) if prior > 0 else None
+        mom_4w = round((closes[-1] / closes[-20] - 1) * 100, 1) if len(closes) >= 20 else None
+        mom_1w = round((closes[-1] / closes[-5] - 1) * 100, 1) if len(closes) >= 5 else None
+
         # Basic fundamentals
         info = {}
         try:
@@ -200,6 +207,9 @@ def fetch_yahoo_data(yahoo_ticker):
             "ma50":           ma50,
             "rsi":            rsi,
             "vol_annual_pct": vol_annual,
+            "vol_ratio":      vol_ratio,
+            "mom_4w":         mom_4w,
+            "mom_1w":         mom_1w,
             "pe_ratio":       info.get("trailingPE"),
             "forward_pe":     info.get("forwardPE"),
             "target_mean":    info.get("targetMeanPrice"),
@@ -483,6 +493,12 @@ def analyse_ticker(t212_ticker, yahoo, pie, cur, pos):
             "low_52w":    d["low_52w"],
             "week_high":  d["week_high"],
             "week_low":   d["week_low"],
+            "pe":         d.get("pe_ratio"),
+            "fwd_pe":     d.get("forward_pe"),
+            "vol_ratio":  d.get("vol_ratio"),
+            "mom_4w":     d.get("mom_4w"),
+            "mom_1w":     d.get("mom_1w"),
+            "t212":       t212_ticker,
         }),
         "warning":    warning,
         "notes":      None,

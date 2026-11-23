@@ -103,6 +103,8 @@ begin
     warn := case when h.gain >= 35 then 'Up sharply since purchase: avoid chasing, wait for a pullback' when h.gain <= -15 then 'Down more than 15%: check the reason you own it' end;
     tw := jsonb_build_object('action', twact, 'price', entry_px, 'current', round(h.px, 2), 'avg_cost', round(h.avg, 2), 'rsi', round(32 + r1 * 38, 1), 'ma20', round(h.px * (1 + (r2 - 0.5) * 0.04), 2),
       'ma50', round(h.px * (1 - (r1 - 0.4) * 0.05), 2), 'low_52w', round(h.px * 0.72, 2), 'high_52w', round(h.px * 1.12, 2), 'vol_pct', round(14 + r1 * 40, 0),
+      'pe', case when kind = 'stock' then round(12 + r1 * 28, 1) end, 'fwd_pe', case when kind = 'stock' then round(10 + r1 * 24, 1) end, 'vol_ratio', round(0.7 + r2 * 1.0, 2),
+      'mom_4w', round((r1 - 0.55) * 24, 1), 'mom_1w', round((r2 - 0.45) * 6, 1), 't212', h.ticker,
       'rationale', jsonb_build_array('Score ' || vs || '/100 from trend, valuation, quality, flows and risk', case when h.gain >= 30 then 'Well above your average cost: prefer a pullback' else 'Close to your average cost: adding is reasonable' end));
     insert into public.value_buy_scores (user_id, ticker, display, pie, currency_symbol, score, score_max, verdict, entry_zones, scorecard, earnings, warning, notes, updated_at, this_week)
       values (p_user, h.ticker, h.display, h.pie, '£', vs, 100, case when vs >= 75 then 'Strong Buy' when vs >= 55 then 'Accumulate' else 'Hold/Wait' end, zones, card, earn, warn,

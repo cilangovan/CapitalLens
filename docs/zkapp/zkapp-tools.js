@@ -29,7 +29,7 @@ async function zkToolsSaveTopic() {
   const v = document.getElementById('zk-topic').value.trim(), msg = document.getElementById('zk-topic-msg');
   try { await ZKNotify.saveTopic(ZKCTX.store, v); msg.textContent = 'Saved (encrypted). Phone alerts on.'; document.getElementById('zk-topic').value = ''; } catch (e) { msg.textContent = e.message; }
 }
-const ZK_ANALYSIS_VERSION = 'lynch-8';      // bump when a release changes what the analysis produces: every browser then re-analyses once on its next login
+const ZK_ANALYSIS_VERSION = 'lynch-9';      // bump when a release changes what the analysis produces: every browser then re-analyses once on its next login
 const ZK_AUTO_MAX_HOURS = 6;
 async function zkAutoRefresh() {            // re-analyse stored data (no Trading 212 call, no credentials) after login when stale or after an app update
   if (!ZKCTX || ZK_RUN.running || window.__zkAutoDone) return; window.__zkAutoDone = true;

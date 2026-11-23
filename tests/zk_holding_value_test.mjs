@@ -89,7 +89,7 @@ vb.sb_delete_stale = lambda t: None
 vb.run()
 print("@@" + json.dumps(cap["rows"]))
 `, { hist: vbHist, info: vbInfo, positions: vbPositions });
-const data = {}; for (const p of vbPositions) { const y = require('../docs/zk/symbols.js').t212ToYahoo(p.ticker, p.exchange)[0]; data[y] = VB.yahooData(vbHist[y] ? { c: vbHist[y].c, h: vbHist[y].h, l: vbHist[y].l } : null, vbInfo[y], y); }
+const data = {}; for (const p of vbPositions) { const y = require('../docs/zk/symbols.js').t212ToYahoo(p.ticker, p.exchange)[0]; data[y] = VB.yahooData(vbHist[y] ? { c: vbHist[y].c, h: vbHist[y].h, l: vbHist[y].l, v: vbHist[y].v } : null, vbInfo[y], y); }
 const jsVB = VB.compute({ positions: vbPositions, data, nowIso: 'X' }).rows;
 ok('value buy: same holdings analysed (short history skipped, duplicate ticker merged)', jsVB.map(r => r.ticker).join() === pyVB.map(r => r.ticker).join() && jsVB.length === 7);
 for (const r of jsVB) {

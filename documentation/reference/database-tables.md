@@ -3,47 +3,50 @@
 > **Generated** by `scripts/build_docs.py` from `db/schema.sql` and `db/tenant/*.sql`. Do not edit by hand; change the SQL and rebuild.
 > Concepts, data flows and who writes each table are in [Database & data flows](../database.md).
 
-39 tables in the `public` schema.
+42 tables in the `public` schema.
 
 | Table | Columns | Defined in |
 |---|---|---|
 | [`alerts`](#alerts) | 13 | `db/schema.sql`, `db/tenant/01_schema.sql` |
-| [`analyst_ratings`](#analyst_ratings) | 13 | `db/schema.sql`, `db/tenant/01_schema.sql` |
+| [`analyst_ratings`](#analyst_ratings) | 19 | `db/schema.sql`, `db/tenant/01_schema.sql` |
 | [`app_settings`](#app_settings) | 3 | `db/schema.sql` |
-| [`audit_log`](#audit_log) | 8 | `db/tenant/13_audit_log.sql` |
-| [`broker_connections`](#broker_connections) | 9 | `db/tenant/01_schema.sql`, `db/tenant/06_convert_legacy.sql` |
-| [`broker_secrets`](#broker_secrets) | 4 | `db/tenant/01_schema.sql`, `db/tenant/06_convert_legacy.sql` |
+| [`audit_log`](#audit_log) | 8 | `db/schema.sql`, `db/tenant/13_audit_log.sql` |
+| [`broker_connections`](#broker_connections) | 11 | `db/schema.sql`, `db/tenant/01_schema.sql`, `db/tenant/06_convert_legacy.sql` |
+| [`broker_secrets`](#broker_secrets) | 5 | `db/schema.sql`, `db/tenant/01_schema.sql`, `db/tenant/06_convert_legacy.sql` |
 | [`dashboard_auth`](#dashboard_auth) | 10 | `db/schema.sql` |
 | [`dividends`](#dividends) | 8 | `db/schema.sql`, `db/tenant/01_schema.sql` |
-| [`enc_rows`](#enc_rows) | 7 | `db/tenant/11_zk_enc_rows.sql` |
+| [`enc_rows`](#enc_rows) | 7 | `db/schema.sql`, `db/tenant/11_zk_enc_rows.sql` |
 | [`holding_decisions`](#holding_decisions) | 26 | `db/schema.sql`, `db/tenant/01_schema.sql` |
 | [`institutional_flow_reports`](#institutional_flow_reports) | 10 | `db/schema.sql`, `db/tenant/01_schema.sql` |
+| [`instrument_country_weights`](#instrument_country_weights) | 5 | `db/schema.sql` |
+| [`instrument_exposure`](#instrument_exposure) | 6 | `db/schema.sql` |
+| [`instrument_sector_weights`](#instrument_sector_weights) | 4 | `db/schema.sql` |
 | [`instruments`](#instruments) | 8 | `db/schema.sql`, `db/tenant/01_schema.sql` |
-| [`ipo_calendar`](#ipo_calendar) | 22 | `db/tenant/15_ipo_calendar.sql` |
-| [`market_cache`](#market_cache) | 3 | `db/tenant/12_market_cache.sql` |
+| [`ipo_calendar`](#ipo_calendar) | 24 | `db/schema.sql`, `db/tenant/15_ipo_calendar.sql` |
+| [`market_cache`](#market_cache) | 3 | `db/schema.sql`, `db/tenant/12_market_cache.sql` |
 | [`ops_daily`](#ops_daily) | 7 | `db/tenant/16_ops_dashboard.sql` |
 | [`pie_history`](#pie_history) | 4 | `db/schema.sql`, `db/tenant/01_schema.sql` |
 | [`platform_admins`](#platform_admins) | 2 | `db/tenant/16_ops_dashboard.sql` |
 | [`portfolio_snapshots`](#portfolio_snapshots) | 10 | `db/schema.sql`, `db/tenant/01_schema.sql` |
-| [`portfolio_snapshots_archive`](#portfolio_snapshots_archive) | 8 | `db/schema.sql` |
+| [`portfolio_snapshots_archive`](#portfolio_snapshots_archive) | 10 | `db/schema.sql` |
 | [`positions`](#positions) | 16 | `db/schema.sql`, `db/tenant/01_schema.sql` |
-| [`positions_archive`](#positions_archive) | 13 | `db/schema.sql` |
-| [`profiles`](#profiles) | 8 | `db/tenant/01_schema.sql`, `db/tenant/06_convert_legacy.sql` |
+| [`positions_archive`](#positions_archive) | 16 | `db/schema.sql` |
+| [`profiles`](#profiles) | 8 | `db/schema.sql`, `db/tenant/01_schema.sql`, `db/tenant/06_convert_legacy.sql` |
 | [`profit_booking`](#profit_booking) | 23 | `db/schema.sql`, `db/tenant/01_schema.sql` |
 | [`profit_booking_summary`](#profit_booking_summary) | 9 | `db/schema.sql`, `db/tenant/01_schema.sql` |
 | [`realised_pnl`](#realised_pnl) | 13 | `db/schema.sql`, `db/tenant/01_schema.sql` |
 | [`returns_summary`](#returns_summary) | 9 | `db/schema.sql`, `db/tenant/01_schema.sql` |
-| [`strategy_recommendations`](#strategy_recommendations) | 12 | `db/schema.sql`, `db/tenant/01_schema.sql` |
-| [`support_levels`](#support_levels) | 15 | `db/tenant/23_support_levels.sql` |
-| [`sync_jobs`](#sync_jobs) | 7 | `db/tenant/01_schema.sql`, `db/tenant/06_convert_legacy.sql` |
+| [`strategy_recommendations`](#strategy_recommendations) | 13 | `db/schema.sql`, `db/tenant/01_schema.sql` |
+| [`support_levels`](#support_levels) | 18 | `db/schema.sql`, `db/tenant/23_support_levels.sql` |
+| [`sync_jobs`](#sync_jobs) | 8 | `db/schema.sql`, `db/tenant/01_schema.sql`, `db/tenant/06_convert_legacy.sql` |
 | [`t212_dividends`](#t212_dividends) | 11 | `db/schema.sql`, `db/tenant/01_schema.sql` |
 | [`t212_orders`](#t212_orders) | 16 | `db/schema.sql`, `db/tenant/01_schema.sql` |
-| [`t212_sync_state`](#t212_sync_state) | 8 | `db/schema.sql`, `db/tenant/01_schema.sql` |
+| [`t212_sync_state`](#t212_sync_state) | 9 | `db/schema.sql`, `db/tenant/01_schema.sql` |
 | [`t212_transactions`](#t212_transactions) | 9 | `db/schema.sql`, `db/tenant/01_schema.sql` |
-| [`user_keys`](#user_keys) | 8 | `db/tenant/10_zk_keys.sql` |
-| [`user_ui_prefs`](#user_ui_prefs) | 3 | `db/tenant/09_user_ui_prefs.sql` |
+| [`user_keys`](#user_keys) | 8 | `db/schema.sql`, `db/tenant/10_zk_keys.sql` |
+| [`user_ui_prefs`](#user_ui_prefs) | 3 | `db/schema.sql`, `db/tenant/09_user_ui_prefs.sql` |
 | [`value_buy_scores`](#value_buy_scores) | 16 | `db/schema.sql`, `db/tenant/01_schema.sql` |
-| [`watchlist`](#watchlist) | 11 | `db/schema.sql`, `db/tenant/01_schema.sql` |
+| [`watchlist`](#watchlist) | 12 | `db/schema.sql`, `db/tenant/01_schema.sql` |
 | [`watchlist_analysis`](#watchlist_analysis) | 6 | `db/schema.sql`, `db/tenant/01_schema.sql` |
 | [`zk_probe`](#zk_probe) | 5 | `db/tenant/10_zk_keys.sql` |
 
@@ -63,7 +66,7 @@
 | `read_at` | `timestamp with time zone` |
 | `archived_at` | `timestamp with time zone` |
 | `dismissed_at` | `timestamp with time zone` |
-| `user_id` | `uuid not null default auth.uid() references auth.users(id) on delete cascade` |
+| `user_id` | `uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null` |
 
 ## analyst_ratings
 
@@ -82,6 +85,12 @@
 | `analyst_count` | `integer` |
 | `updated_at` | `timestamp with time zone default now()` |
 | `source` | `text` |
+| `lynch_bucket` | `integer` |
+| `lynch_name` | `text` |
+| `lynch_reason` | `text` |
+| `lynch_growth` | `double precision` |
+| `lynch_basis` | `text` |
+| `lynch_confidence` | `text` |
 
 ## app_settings
 
@@ -95,37 +104,40 @@
 
 | Column | Definition |
 |---|---|
-| `id` | `bigint generated always as identity primary key` |
-| `at` | `timestamptz not null default now()` |
+| `id` | `bigint generated always as identity not null` |
+| `at` | `timestamp with time zone default now() not null` |
 | `actor` | `text not null` |
 | `subject_user` | `uuid` |
 | `table_name` | `text not null` |
 | `op` | `text not null` |
 | `row_id` | `text` |
-| `detail` | `jsonb not null default '{}'::jsonb` |
+| `detail` | `jsonb default '{}'::jsonb not null` |
 
 ## broker_connections
 
 | Column | Definition |
 |---|---|
-| `id` | `uuid primary key default gen_random_uuid()` |
-| `user_id` | `uuid not null default auth.uid() references auth.users(id) on delete cascade` |
-| `broker` | `text not null check (broker in ('trading212','zerodha','mock'))` |
+| `id` | `uuid default gen_random_uuid() not null` |
+| `user_id` | `uuid default auth.uid() not null` |
+| `broker` | `text not null` |
 | `label` | `text not null` |
-| `native_currency` | `text not null default 'GBP'` |
-| `status` | `text not null default 'pending' check (status in ('pending','active','error','needs_login','disabled'))` |
-| `last_ok_at` | `timestamptz` |
+| `native_currency` | `text default 'GBP'::text not null` |
+| `status` | `text default 'pending'::text not null` |
+| `last_ok_at` | `timestamp with time zone` |
 | `last_error` | `text` |
-| `created_at` | `timestamptz not null default now()` |
+| `created_at` | `timestamp with time zone default now() not null` |
+| `environment` | `text default 'live'::text not null` |
+| `sync_state` | `jsonb default '{}'::jsonb not null` |
 
 ## broker_secrets
 
 | Column | Definition |
 |---|---|
-| `connection_id` | `uuid primary key references public.broker_connections(id) on delete cascade` |
-| `ciphertext` | `bytea not null` |
+| `connection_id` | `uuid not null` |
+| `ciphertext` | `bytea` |
 | `key_hint` | `text` |
-| `created_at` | `timestamptz not null default now()` |
+| `created_at` | `timestamp with time zone default now() not null` |
+| `vault_secret_id` | `uuid` |
 
 ## dashboard_auth
 
@@ -153,19 +165,19 @@
 | `paid_date` | `date` |
 | `amount` | `numeric` |
 | `created_at` | `timestamp with time zone default now()` |
-| `user_id` | `uuid not null default auth.uid() references auth.users(id) on delete cascade` |
+| `user_id` | `uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null` |
 
 ## enc_rows
 
 | Column | Definition |
 |---|---|
-| `user_id` | `uuid not null default auth.uid() references auth.users(id) on delete cascade` |
-| `kind` | `text not null check (kind ~ '^[a-z0-9_]{1,40}$')` |
+| `user_id` | `uuid default auth.uid() not null` |
+| `kind` | `text not null` |
 | `id` | `uuid not null` |
 | `nonce` | `text not null` |
-| `ct` | `text not null check (length(ct) < 200000)` |
-| `key_version` | `int not null default 1` |
-| `updated_at` | `timestamptz not null default now()` |
+| `ct` | `text not null` |
+| `key_version` | `integer default 1 not null` |
+| `updated_at` | `timestamp with time zone default now() not null` |
 
 ## holding_decisions
 
@@ -196,7 +208,7 @@
 | `vol_ratio` | `numeric` |
 | `notes` | `text` |
 | `created_at` | `timestamp with time zone default now()` |
-| `user_id` | `uuid not null default auth.uid() references auth.users(id) on delete cascade` |
+| `user_id` | `uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null` |
 
 ## institutional_flow_reports
 
@@ -212,6 +224,38 @@
 | `portfolio_actions` | `jsonb default '[]'::jsonb` |
 | `summary` | `text` |
 | `created_at` | `timestamp with time zone default now()` |
+
+## instrument_country_weights
+
+| Column | Definition |
+|---|---|
+| `ticker` | `text not null` |
+| `country` | `text not null` |
+| `flag` | `text default ''::text not null` |
+| `pct` | `numeric not null` |
+| `note` | `text default ''::text not null` |
+
+## instrument_exposure
+
+Reference data: full name, country/market flag and one-line description per Trading 212 ticker. Read-only for users; maintained by migrations/service role.
+
+| Column | Definition |
+|---|---|
+| `ticker` | `text not null` |
+| `display_name` | `text not null` |
+| `flag` | `text default ''::text not null` |
+| `exposure` | `text default ''::text not null` |
+| `updated_at` | `timestamp with time zone default now() not null` |
+| `sector` | `text default ''::text not null` |
+
+## instrument_sector_weights
+
+| Column | Definition |
+|---|---|
+| `ticker` | `text not null` |
+| `sector` | `text not null` |
+| `pct` | `numeric` |
+| `note` | `text default ''::text not null` |
 
 ## instruments
 
@@ -230,14 +274,13 @@
 
 | Column | Definition |
 |---|---|
-| `id` | `text primary key` |
-| `e.g.` | `US:ANT market text not null check (market in ('US','UK','IN','HK','EU','JP','CN','SG','AU','OTHER'))` |
+| `id` | `text not null` |
+| `market` | `text not null` |
 | `exchange` | `text` |
-| `LSE` | `` |
-| `NSE` | `SME name text not null` |
+| `name` | `text not null` |
 | `ticker` | `text` |
 | `sector` | `text` |
-| `status` | `text not null default 'upcoming' check (status in ('rumoured','filed','upcoming','open','priced','listed','postponed','withdrawn'))` |
+| `status` | `text default 'upcoming'::text not null` |
 | `start_date` | `date` |
 | `end_date` | `date` |
 | `listing_date` | `date` |
@@ -245,21 +288,24 @@
 | `price_low` | `numeric` |
 | `price_high` | `numeric` |
 | `deal_size_usd` | `numeric` |
-| `rating` | `text not null default 'Not rated' check (rating in ('Subscribe','Neutral','Avoid','Not rated'))` |
+| `rating` | `text default 'Not rated'::text not null` |
 | `rating_source` | `text` |
 | `note` | `text` |
 | `source_name` | `text` |
-| `source_url` | `text check (source_url is null or source_url ~ '^https?://')` |
-| `as_of` | `date not null default current_date` |
-| `updated_at` | `timestamptz not null default now()` |
+| `source_url` | `text` |
+| `as_of` | `date default CURRENT_DATE not null` |
+| `updated_at` | `timestamp with time zone default now() not null` |
+| `e.g.` | `US:ANT market text not null check (market in ('US','UK','IN','HK','EU','JP','CN','SG','AU','OTHER'))` |
+| `LSE` | `` |
+| `NSE` | `SME name text not null` |
 
 ## market_cache
 
 | Column | Definition |
 |---|---|
-| `key` | `text primary key` |
+| `key` | `text not null` |
 | `payload` | `jsonb not null` |
-| `fetched_at` | `timestamptz not null default now()` |
+| `fetched_at` | `timestamp with time zone default now() not null` |
 
 ## ops_daily
 
@@ -282,7 +328,7 @@ Per-pie daily series for the positions drill-down. Rebuilt daily by services/pie
 | `pie` | `text not null` |
 | `updated_at` | `timestamp with time zone default now()` |
 | `series` | `jsonb not null` |
-| `user_id` | `uuid not null default auth.uid() references auth.users(id) on delete cascade` |
+| `user_id` | `uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null` |
 
 ## platform_admins
 
@@ -303,8 +349,8 @@ Per-pie daily series for the positions drill-down. Rebuilt daily by services/pie
 | `total_ppl` | `numeric` |
 | `run_count` | `integer` |
 | `raw` | `jsonb` |
-| `user_id` | `uuid not null default auth.uid() references auth.users(id) on delete cascade` |
-| `connection_id` | `uuid references public.broker_connections(id) on delete cascade` |
+| `user_id` | `uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null` |
+| `connection_id` | `uuid` |
 
 ## portfolio_snapshots_archive
 
@@ -320,6 +366,8 @@ Snapshots older than 45 days, moved by archive_portfolio_history(). Same columns
 | `total_ppl` | `numeric` |
 | `run_count` | `integer` |
 | `raw` | `jsonb` |
+| `user_id` | `uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null` |
+| `connection_id` | `uuid` |
 
 ## positions
 
@@ -338,9 +386,9 @@ Snapshots older than 45 days, moved by archive_portfolio_history(). Same columns
 | `ppl` | `numeric` |
 | `exchange` | `text default 'LSE'::text` |
 | `quantity` | `numeric` |
-| `user_id` | `uuid not null default auth.uid() references auth.users(id) on delete cascade` |
-| `broker` | `text not null default 'trading212'` |
-| `native_currency` | `text not null default 'GBP'` |
+| `user_id` | `uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null` |
+| `broker` | `text default 'trading212'::text not null` |
+| `native_currency` | `text default 'GBP'::text not null` |
 
 ## positions_archive
 
@@ -361,19 +409,22 @@ Positions of archived snapshots. Same columns as positions.
 | `ppl` | `numeric` |
 | `exchange` | `text default 'LSE'::text` |
 | `quantity` | `numeric` |
+| `user_id` | `uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null` |
+| `broker` | `text default 'trading212'::text not null` |
+| `native_currency` | `text default 'GBP'::text not null` |
 
 ## profiles
 
 | Column | Definition |
 |---|---|
-| `user_id` | `uuid primary key references auth.users(id) on delete cascade` |
+| `user_id` | `uuid not null` |
 | `display_name` | `text` |
-| `base_currency` | `text not null default 'GBP'` |
-| `timezone` | `text not null default 'Europe/London'` |
+| `base_currency` | `text default 'GBP'::text not null` |
+| `timezone` | `text default 'Europe/London'::text not null` |
 | `ntfy_topic` | `text` |
-| `email_alerts` | `boolean not null default true` |
-| `is_demo` | `boolean not null default false` |
-| `created_at` | `timestamptz not null default now()` |
+| `email_alerts` | `boolean default true not null` |
+| `is_demo` | `boolean default false not null` |
+| `created_at` | `timestamp with time zone default now() not null` |
 
 ## profit_booking
 
@@ -401,7 +452,7 @@ Positions of archived snapshots. Same columns as positions.
 | `signals` | `jsonb` |
 | `notes` | `jsonb` |
 | `updated_at` | `timestamp with time zone default now()` |
-| `user_id` | `uuid not null default auth.uid() references auth.users(id) on delete cascade` |
+| `user_id` | `uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null` |
 
 ## profit_booking_summary
 
@@ -415,7 +466,7 @@ Positions of archived snapshots. Same columns as positions.
 | `totals` | `jsonb` |
 | `notes` | `jsonb` |
 | `updated_at` | `timestamp with time zone default now()` |
-| `user_id` | `uuid not null default auth.uid() references auth.users(id) on delete cascade` |
+| `user_id` | `uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null` |
 
 ## realised_pnl
 
@@ -433,7 +484,7 @@ Positions of archived snapshots. Same columns as positions.
 | `realised_pnl_pct` | `numeric` |
 | `side` | `text` |
 | `created_at` | `timestamp with time zone default now()` |
-| `user_id` | `uuid not null default auth.uid() references auth.users(id) on delete cascade` |
+| `user_id` | `uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null` |
 
 ## returns_summary
 
@@ -447,7 +498,7 @@ Positions of archived snapshots. Same columns as positions.
 | `monthly_breakdown` | `jsonb` |
 | `updated_at` | `timestamp with time zone default now()` |
 | `details` | `jsonb` |
-| `user_id` | `uuid not null default auth.uid() references auth.users(id) on delete cascade` |
+| `user_id` | `uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null` |
 
 ## strategy_recommendations
 
@@ -464,40 +515,45 @@ Positions of archived snapshots. Same columns as positions.
 | `weeks_in_month` | `integer` |
 | `weekly_budget` | `numeric` |
 | `market_mood` | `jsonb` |
-| `user_id` | `uuid not null default auth.uid() references auth.users(id) on delete cascade` |
+| `user_id` | `uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null` |
+| `invested` | `jsonb` |
 
 ## support_levels
 
 | Column | Definition |
 |---|---|
-| `symbol` | `text primary key check (symbol ~ '^[A-Z0-9.\-]{1,12}$')` |
+| `symbol` | `text not null` |
+| `name` | `text not null` |
+| `level_label` | `text default 'Support zone'::text not null` |
+| `zone_low` | `numeric not null` |
+| `zone_high` | `numeric not null` |
+| `approx` | `boolean default false not null` |
+| `currency` | `text default 'USD'::text not null` |
+| `tags` | `jsonb default '[]'::jsonb not null` |
+| `snap_price` | `numeric` |
+| `snap_pct_from_high` | `numeric` |
+| `note` | `text` |
+| `source_name` | `text not null` |
+| `source_url` | `text` |
+| `as_of` | `date default CURRENT_DATE not null` |
+| `updated_at` | `timestamp with time zone default now() not null` |
 | `e.g.` | `META (T212 META_US_EQ / FB_US_EQ both map here) name text not null` |
-| `level_label` | `text not null default 'Support zone' check (level_label in ('Support zone','Support level','My level','Wait for'))` |
-| `zone_low` | `numeric not null check (zone_low > 0)` |
-| `zone_high` | `numeric not null check (zone_high >= zone_low)` |
-| `approx` | `boolean not null default false` |
-| `currency` | `text not null default 'USD'` |
-| `tags` | `jsonb not null default '[]'::jsonb` |
 | `tone":"neutral|good|warn|bad"}]
 ` | `snap_price numeric` |
-| `snap_pct_from_high` | `numeric` |
 | `as` | `shown by the source note text` |
-| `source_name` | `text not null` |
-| `source_url` | `text check (source_url is null or source_url ~ '^https?://')` |
-| `as_of` | `date not null default current_date` |
-| `updated_at` | `timestamptz not null default now()` |
 
 ## sync_jobs
 
 | Column | Definition |
 |---|---|
-| `id` | `bigint generated always as identity primary key` |
-| `connection_id` | `uuid not null references public.broker_connections(id) on delete cascade` |
+| `id` | `bigint generated always as identity not null` |
+| `connection_id` | `uuid not null` |
 | `kind` | `text not null` |
-| `next_run_at` | `timestamptz not null default now()` |
-| `state` | `text not null default 'queued' check (state in ('queued','running','done','failed'))` |
-| `attempts` | `integer not null default 0` |
+| `next_run_at` | `timestamp with time zone default now() not null` |
+| `state` | `text default 'queued'::text not null` |
+| `attempts` | `integer default 0 not null` |
 | `last_error` | `text` |
+| `started_at` | `timestamp with time zone` |
 
 ## t212_dividends
 
@@ -514,8 +570,8 @@ Raw Trading 212 dividend history (append-only).
 | `raw` | `jsonb not null` |
 | `first_seen` | `timestamp with time zone default now()` |
 | `last_seen` | `timestamp with time zone default now()` |
-| `user_id` | `uuid not null default auth.uid() references auth.users(id) on delete cascade` |
-| `connection_id` | `uuid references public.broker_connections(id) on delete cascade` |
+| `user_id` | `uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null` |
+| `connection_id` | `uuid` |
 
 ## t212_orders
 
@@ -537,8 +593,8 @@ Raw Trading 212 order/fill history (append-only, never deleted). Source for rebu
 | `raw` | `jsonb not null` |
 | `first_seen` | `timestamp with time zone default now()` |
 | `last_seen` | `timestamp with time zone default now()` |
-| `user_id` | `uuid not null default auth.uid() references auth.users(id) on delete cascade` |
-| `connection_id` | `uuid references public.broker_connections(id) on delete cascade` |
+| `user_id` | `uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null` |
+| `connection_id` | `uuid` |
 
 ## t212_sync_state
 
@@ -550,7 +606,8 @@ Raw Trading 212 order/fill history (append-only, never deleted). Source for rebu
 | `items_total` | `integer` |
 | `status` | `text` |
 | `detail` | `text` |
-| `user_id` | `uuid not null default auth.uid() references auth.users(id) on delete cascade` |
+| `user_id` | `uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null` |
+| `resume` | `text` |
 | `connection_id` | `uuid references public.broker_connections(id) on delete cascade` |
 
 ## t212_transactions
@@ -566,29 +623,29 @@ Raw Trading 212 cash transactions — deposits, withdrawals, fees (append-only).
 | `raw` | `jsonb not null` |
 | `first_seen` | `timestamp with time zone default now()` |
 | `last_seen` | `timestamp with time zone default now()` |
-| `user_id` | `uuid not null default auth.uid() references auth.users(id) on delete cascade` |
-| `connection_id` | `uuid references public.broker_connections(id) on delete cascade` |
+| `user_id` | `uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null` |
+| `connection_id` | `uuid` |
 
 ## user_keys
 
 | Column | Definition |
 |---|---|
-| `user_id` | `uuid primary key default auth.uid() references auth.users(id) on delete cascade` |
+| `user_id` | `uuid default auth.uid() not null` |
 | `kdf` | `jsonb not null` |
 | `pw_salt` | `text not null` |
 | `rec_salt` | `text not null` |
 | `wrapped_dk_pw` | `jsonb not null` |
 | `wrapped_dk_rec` | `jsonb not null` |
-| `key_version` | `int not null default 1` |
-| `updated_at` | `timestamptz not null default now()` |
+| `key_version` | `integer default 1 not null` |
+| `updated_at` | `timestamp with time zone default now() not null` |
 
 ## user_ui_prefs
 
 | Column | Definition |
 |---|---|
-| `user_id` | `uuid primary key default auth.uid() references auth.users(id) on delete cascade` |
-| `prefs` | `jsonb not null default '{}'::jsonb` |
-| `updated_at` | `timestamptz not null default now()` |
+| `user_id` | `uuid default auth.uid() not null` |
+| `prefs` | `jsonb default '{}'::jsonb not null` |
+| `updated_at` | `timestamp with time zone default now() not null` |
 
 ## value_buy_scores
 
@@ -609,7 +666,7 @@ Raw Trading 212 cash transactions — deposits, withdrawals, fees (append-only).
 | `notes` | `text` |
 | `updated_at` | `timestamp with time zone default now()` |
 | `this_week` | `jsonb default '{}'::jsonb` |
-| `user_id` | `uuid not null default auth.uid() references auth.users(id) on delete cascade` |
+| `user_id` | `uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null` |
 
 ## watchlist
 
@@ -625,7 +682,8 @@ Raw Trading 212 cash transactions — deposits, withdrawals, fees (append-only).
 | `type` | `text` |
 | `category` | `text default 'stock'::text not null` |
 | `alternatives` | `jsonb` |
-| `user_id` | `uuid not null default auth.uid() references auth.users(id) on delete cascade` |
+| `user_id` | `uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null` |
+| `sort_order` | `integer` |
 
 ## watchlist_analysis
 
@@ -636,7 +694,7 @@ Raw Trading 212 cash transactions — deposits, withdrawals, fees (append-only).
 | `status` | `text` |
 | `verdict` | `text` |
 | `data` | `jsonb` |
-| `user_id` | `uuid not null default auth.uid() references auth.users(id) on delete cascade` |
+| `user_id` | `uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null` |
 
 ## zk_probe
 
