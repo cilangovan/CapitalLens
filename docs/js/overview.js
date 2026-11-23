@@ -829,7 +829,7 @@ async function loadMarketMood() {
         });
         _mmCryptoAt = Date.now();
       }
-    } catch(e) { _mmCrypto = _mmCrypto || []; }
+    } catch(e) { _mmCrypto = _mmCrypto || null; }
   }
   renderMoodTab();
 }
@@ -857,8 +857,10 @@ function renderMoodTab() {
     marketName = 'UK (FTSE 100)'; sourceNote = 'CapitalLens reading: FTSE 100 momentum vs 20-day avg';
   }
   if (!data || !data.days || !data.days.length) {
-    body.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:12px 0;text-align:center">'
-      + (_mmTab !== 'Crypto' ? '⏳ Markets data loading — tap Crypto first, then switch back.' : 'No mood data yet.') + '</div>';
+    const msg = _mmTab === 'Crypto'
+      ? (_mmCrypto === null ? '⚠ Could not reach Alternative.me — try refreshing the page.' : '⏳ Loading crypto sentiment…')
+      : '⏳ Markets data loading — tap Crypto first, then switch back.';
+    body.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:12px 0;text-align:center">' + msg + '</div>';
     return;
   }
   const today = data.days[data.days.length - 1], z = mmZone(today.score);
