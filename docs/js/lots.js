@@ -77,7 +77,10 @@
       <div class="lt-lv"><b>Sell steps</b> ${l.steps.map(x => `<span class="lt-chip ${x.hit ? 'green' : ''}">+${x.pct}% ${x.price != null ? esc(f.q(x.price, s.ticker)) : 'n/a'}${x.hit ? ' ✓' : ''}</span>`).join('')}</div>
       <div class="lt-lv">${sell}</div></div>`;
   }
-  function modalHtml(s, o, idx) {
+  const SORTS = { date: l => l.bought_at, qty: l => l.qty, px: l => l.px, pct: l => l.pct, gain: l => l.gain };
+  const sortedIdx = (lots, st) => { const k = SORTS[st && st.k] ? st.k : 'date', d = st && st.dir === 'desc' ? -1 : 1;      // empty values always go last
+    return lots.map((_, i) => i).sort((a, b) => { const x = SORTS[k](lots[a]), y = SORTS[k](lots[b]); if (x == null || y == null) return x == null && y == null ? a - b : x == null ? 1 : -1; return (x - y) * d || a - b; }); };
+  function modalHtml(s, o, idx, st) {
     if (!s) return '';
     const f = fmts(o), l = idx != null && s.lots[idx] ? s.lots[idx] : null, head = (title, back) => `<div class="lt-m-head">${back ? '<button type="button" class="lt-m-back" data-lt-back>‹ All buys</button>' : ''}<h3>${title}</h3><button type="button" class="lt-m-x" data-lt-close aria-label="Close">✕</button></div>`;
     let body;
@@ -88,15 +91,15 @@
       const tr = (x, i) => `<tr class="lt-tr" data-lot="${i}" tabindex="0" role="button" aria-label="Buy of ${esc(f.date(x.bought_at))}: stop-loss and sell levels"><td>${esc(f.date(x.bought_at))}</td><td>${esc(f.nf(x.qty))}</td><td>${x.px != null ? esc(f.q(x.px, s.ticker)) : 'n/a'}</td>
         <td>${retHtml(f, x.pct)}</td><td class="${f.cls(x.gain)}">${x.gain == null ? 'n/a' : money(f, x.gain)}</td></tr>`;
       body = `<div class="lt-sub">${esc(f.nf(s.held))} sh held outside pies${s.current != null ? ' · now ' + esc(f.q(s.current, s.ticker)) : ''}${s.t212_avg != null ? ` · Trading 212 average ${esc(f.q(s.t212_avg, s.ticker))}` : ''}</div>
-        <table class="lt-tbl"><thead><tr><th>Bought</th><th>Shares</th><th>Paid</th><th>Return</th><th>£</th></tr></thead><tbody>${s.lots.map(tr).join('')}</tbody>
+        <table class="lt-tbl"><thead><tr>${[['date', 'Bought'], ['qty', 'Shares'], ['px', 'Paid'], ['pct', 'Return'], ['gain', '£']].map(([k, n]) => { const on = (st && st.k || 'date') === k, dir = st && st.dir === 'desc' ? 'desc' : 'asc'; return `<th aria-sort="${on ? (dir === 'desc' ? 'descending' : 'ascending') : 'none'}"><button type="button" class="lt-th${on ? ' on' : ''}" data-sort="${k}" aria-label="Sort by ${n}">${n}${on ? (dir === 'desc' ? ' ▼' : ' ▲') : ''}</button></th>`; }).join('')}</tr></thead><tbody>${sortedIdx(s.lots, st).map(i => tr(s.lots[i], i)).join('')}</tbody>
         ${s.lots.length > 1 ? `<tfoot><tr><td colspan="3">All ${s.lots.length} buys</td><td>${retHtml(f, s.pct)}</td><td class="${f.cls(s.gain)}">${s.gain == null ? 'n/a' : money(f, s.gain)}</td></tr></tfoot>` : ''}</table>
-        <div class="lt-sub lt-foot">Tap a buy for its stop-loss (−5% / −10%) and sell levels. A sale takes off your oldest buys first. FX moves and fees are not included.</div>
+        <div class="lt-sub lt-foot">Tap a heading to sort. Tap a buy for its stop-loss (−5% / −10%) and sell levels. A sale takes off your oldest buys first. FX moves and fees are not included.</div>
         ${s.gap ? `<div class="lt-warn">${s.gap.kind === 'earlier' ? `${esc(f.nf(s.gap.qty))} sh are not in the synced order history (bought earlier, or moved out of a pie): no per-buy figures for them, so judge them on the Trading 212 average.` : `The order history lists ${esc(f.nf(s.gap.qty))} sh more than you hold outside pies (some may have moved into a pie): check against Trading 212.`}</div>` : ''}`;
     }
     return `<div class="lt-m-box" role="dialog" aria-modal="true" aria-label="${esc(s.display)} purchases">${head(`${esc(s.display)} · ${s.lots.length} buy${s.lots.length === 1 ? '' : 's'}`, !!l)}<div class="lt-m-body">${body}</div><button type="button" class="lt-m-close" data-lt-close>Close</button></div>`;
   }
   function closeModal() { const m = typeof document !== 'undefined' && document.getElementById('lt-modal'); if (m) m.classList.remove('open'); if (typeof document !== 'undefined') document.body.style.overflow = ''; }
-  function openModal(s, o, idx) {
+  function openModal(s, o, idx, keepSort) {
     if (typeof document === 'undefined' || !s) return null;
     let m = document.getElementById('lt-modal');
     if (!m) {
@@ -104,13 +107,16 @@
       const act = e => {
         if (e.target === m || e.target.closest('[data-lt-close]')) return closeModal();
         if (e.target.closest('[data-lt-back]')) return openModal(m._s, m._o, null);
+        const h = e.target.closest('[data-sort]');
+        if (h) { const k = h.getAttribute('data-sort'), cur = m._sort || { k: 'date', dir: 'asc' }; m._sort = cur.k === k ? { k, dir: cur.dir === 'asc' ? 'desc' : 'asc' } : { k, dir: k === 'date' ? 'asc' : 'desc' }; return openModal(m._s, m._o, null, true); }   // new column: biggest first (dates: oldest first)
         const r = e.target.closest('[data-lot]'); if (r) openModal(m._s, m._o, Number(r.getAttribute('data-lot')));
       };
       m.addEventListener('click', act); m.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest && e.target.closest('[data-lot]')) { e.preventDefault(); act(e); } });
       document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
     }
-    m._s = s; m._o = o; m.innerHTML = modalHtml(s, o, idx); m.classList.add('open'); document.body.style.overflow = 'hidden';
-    const first = m.querySelector('.lt-m-close'); if (first && first.focus) first.focus();
+    if (!keepSort && (!m._s || m._s.ticker !== s.ticker)) m._sort = null;      // a different stock starts oldest-first again
+    m._s = s; m._o = o; m.innerHTML = modalHtml(s, o, idx, m._sort); m.classList.add('open'); document.body.style.overflow = 'hidden';
+    const first = keepSort ? m.querySelector('[data-sort].on') : m.querySelector('.lt-m-close'); if (first && first.focus) first.focus();
     return m;
   }
 

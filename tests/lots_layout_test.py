@@ -26,6 +26,9 @@ with sync_playwright() as p:
             if card["rows"] != 2 or card["lots"] != 0 or card["over"] > 0 or card["small"]: bad += 1; print(f"✗ {page_file} @{w} card: {card}")
             pg.click(".lt-row[data-lt=NVDA_US_EQ]"); s = pg.evaluate(STATE)               # tap NVIDIA -> table of its 4 buys
             if not (s["open"] and s["trs"] == 4 and not s["back"] and s["pageOver"] <= 0 and s["bodyOver"] <= 0 and s["boxRight"] <= 1 and not s["rowsSmall"] and "NVIDIA" in s["title"]): bad += 1; print(f"✗ {page_file} @{w} table: {s}")
+            first = lambda: pg.evaluate("() => document.querySelector('.lt-tr td').textContent")
+            f0 = first(); pg.click("[data-sort=pct]"); f1 = first(); pg.click("[data-sort=pct]"); f2 = first()   # tap Return: best first, tap again: worst first
+            if not (f0 != f1 and f1 != f2 and pg.evaluate("() => document.querySelector('[data-sort=pct]').closest('th').getAttribute('aria-sort')") == "ascending" and pg.evaluate(STATE)["pageOver"] <= 0): bad += 1; print(f"✗ {page_file} @{w} sort: {f0} {f1} {f2}")
             pg.click(".lt-tr >> nth=0"); s = pg.evaluate(STATE)                # tap a buy -> its levels, with Back
             if not (s["open"] and s["back"] and s["order"] == 1 and s["bodyOver"] <= 0 and s["pageOver"] <= 0 and not s["rowsSmall"]): bad += 1; print(f"✗ {page_file} @{w} drill-down: {s}")
             pg.click("[data-lt-back]"); s = pg.evaluate(STATE)
@@ -50,4 +53,4 @@ with sync_playwright() as p:
             if min(r) < 4.4: bad += 1; print(f"✗ {page_file} theme {t}: contrast {r}")
         pg.context.close()
     b.close()
-print("✓ Purchases outside pies: one line per stock, pop-up table + drill-down fit 320/360/390px, keyboard works, readable in every theme" if not bad else f"{bad} layout problem(s)"); sys.exit(1 if bad else 0)
+print("✓ Purchases outside pies: one line per stock, sortable pop-up table + drill-down fit 320/360/390px, keyboard works, readable in every theme" if not bad else f"{bad} layout problem(s)"); sys.exit(1 if bad else 0)
