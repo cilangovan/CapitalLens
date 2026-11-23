@@ -105,6 +105,12 @@ check("Purchases outside pies card (per-buy return, 5%/10% stops, limit-sell lev
       and "Lots.show" in (ROOT / "docs/js/positions.js").read_text() and "seed_demo_lots" in (ROOT / "db/tenant/28_demo_lots.sql").read_text()
       and "Purchases outside pies" in (ROOT / "documentation/menus/positions.md").read_text() and (ROOT / "tests/lots_layout_test.py").exists() and (ROOT / "tests/zk_lots_test.mjs").exists())
 
+check("Alerts market signals (Live / Pre / Post: 100 & 200 SMA crosses, 52-week highs; holdings + watchlist) are on every dashboard, documented, scan only when the tab is open, and tested",
+      all("signals.js" in (ROOT / f).read_text() for f in ["docs/index.html", "docs/demo/index.html", "docs/app/index.html", "docs/zkapp/index.html", "docs/zkapp-prod/index.html"])
+      and "alertsShown" in (ROOT / "docs/js/router.js").read_text() and "Signals.scan" in (ROOT / "docs/js/alerts.js").read_text()
+      and "52 Week High" in (ROOT / "docs/js/signals.js").read_text() and "Market signals" in (ROOT / "documentation/menus/alerts.md").read_text()
+      and (ROOT / "tests/signals_layout_test.py").exists() and (ROOT / "tests/zk_signals_test.mjs").exists())
+
 _ss = (ROOT / "services/strategy_service.py").read_text(); _zs = (ROOT / "docs/zk/strategy.js").read_text(); _js = (ROOT / "docs/js/strategy.js").read_text()
 check("strategy still counts what was actually bought this week (issue #53): browser + legacy + demo, parity-tested (no longer shown against a budget on the Strategy tab)",
       "def contributions" in _ss and "function contributions" in _zs and "strategy_fill_invested" in (ROOT / "db/tenant/26_strategy_invested.sql").read_text()

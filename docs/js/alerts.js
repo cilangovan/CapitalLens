@@ -4,7 +4,9 @@
 //   ↩ restore from Archived/Cleared back to the Inbox. Checkboxes for bulk actions.
 // Writes go through the worker's authenticated /alerts/action route.
 
-const ALERTS = { view: 'inbox', items: [], selected: new Set(), open: new Set() };
+const ALERTS = { view: 'inbox', tab: 'live', items: [], selected: new Set(), open: new Set() };
+// Market signals (100/200-day average crosses, 52-week highs): Live · Pre Market · Post Market tabs on top, the Inbox is one more tab (docs/js/signals.js)
+const SIG = { state: 'idle', rows: [], failed: [], total: 0, done: 0, at: null, expanded: new Set(), error: '' };
 
 const _esc = s => String(s ?? '').replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
 const _when = d => d ? new Date(d).toLocaleString('en-GB', { day:'numeric', month:'short', year:'numeric', hour:'2-digit', minute:'2-digit' }) : '';
@@ -36,8 +38,77 @@ function updateAlertBadge() {
 }
 
 function renderAlerts() {
-  const el = document.getElementById('alerts-log');
-  const c = alertCounts();
+  const el = document.getElementById('alerts-log'); if (!el) return;
+  const c = alertCounts(), head = alertsHead(c);
+  if (ALERTS.tab === 'inbox' || typeof Signals === 'undefined') { el.innerHTML = head + inboxHtml(c); bindSwipes(); }
+  else { el.innerHTML = head + marketHtml(); alertsEnsureScan(); }
+  updateAlertBadge();
+}
+
+function alertsHead(c) {
+  const day = new Date().toLocaleDateString('en-GB', { weekday: 'long', day: 'numeric', month: 'long' });
+  const t = ALERTS.tab, tab = (k, label) => `<button type="button" class="al-tab${t === k ? ' on' : ''}" data-al-tab="${k}" role="tab" aria-selected="${t === k}">${label}</button>`;
+  return `<div class="al-head"><div class="al-date">${_esc(day)}</div><button type="button" class="al-inbox${t === 'inbox' ? ' on' : ''}" data-al-tab="inbox">📥 Inbox${c.unread ? ` <span class="nav-badge">${c.unread}</span>` : ''}</button></div>
+    <div class="al-tabs" role="tablist">${tab('live', '☀️ Live')}${tab('pre', '🌤️ Pre Market')}${tab('post', '🌙 Post Market')}</div>`;
+}
+
+const AL_NOTE = {
+  live: "Today's session while it is running (UK 08:00–16:30, US 14:30–21:00 UK time).",
+  pre: "What was already true at today's open: the last completed daily close.",
+  post: "Today's completed session, once that market has closed.",
+};
+function marketHtml() {
+  const v = ALERTS.tab, note = `<div class="sg-note">${_esc(AL_NOTE[v])}</div>`;
+  if (SIG.state === 'busy' || SIG.state === 'idle') return `${note}<div class="loading busy">Scanning your holdings and watchlist${SIG.total ? ` (${SIG.done}/${SIG.total})` : ''}…</div>`;
+  if (SIG.state === 'error') return `${note}<div class="sg-empty">Signals could not be loaded (${_esc(SIG.error)}). <button type="button" class="sg-more" data-al-rescan>Try again</button></div>`;
+  const rows = SIG.rows, openNow = rows.filter(r => r.a.open).length, doneToday = rows.filter(r => r.a.doneToday).length;
+  const empty = v === 'live' ? (openNow ? 'Nothing has crossed a 100 / 200-day average or made a 52-week high in the markets that are open.' : 'No market you hold or watch is open right now. See Pre Market for what was true at the open, or Post Market once today has closed.')
+    : v === 'post' ? (doneToday ? 'Nothing crossed a 100 / 200-day average or made a 52-week high at today\'s close.' : 'No market you hold or watch has closed today yet.')
+    : 'Nothing was crossing a 100 / 200-day average or at a 52-week high at the last close.';
+  const when = SIG.at ? new Date(SIG.at).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : '';
+  return `${note}${Signals.html(Signals.group(rows, v), { expanded: SIG.expanded, empty })}
+    <div class="sg-note">Checked ${rows.length} of ${SIG.total} holdings and watchlist stocks at ${when}${SIG.failed.length ? ` · ${SIG.failed.length} could not be read (${_esc(SIG.failed.slice(0, 6).join(', '))}${SIG.failed.length > 6 ? '…' : ''}), so nothing is claimed for them` : ''}. From Yahoo daily closes, fetched when you open this tab. A cross means the close moved to the other side of the average since the session before. A screening aid, not advice. <button type="button" class="sg-more sg-inline" data-al-rescan>Rescan</button></div>`;
+}
+
+// stocks to scan: everything you hold that maps to a Yahoo symbol, plus your watchlist (one fetch per symbol; the worker/relay does the Yahoo call)
+async function alertsInputs() {
+  const out = [], yahooOf = (typeof SupportLevels !== 'undefined' && SupportLevels.yahooOf) || (() => null);
+  const snap = (await api('portfolio_snapshots', '?select=id&order=created_at.desc&limit=1'))[0];
+  const pos = snap ? await api('positions', `?snapshot_id=eq.${snap.id}&select=ticker,display`) : [];
+  (pos || []).forEach(p => { const y = yahooOf(p.ticker); if (y) out.push({ symbol: y[0], name: p.display || y[0], src: 'holding' }); });
+  const wl = await api('watchlist', '?select=ticker,name').catch(() => []);
+  (wl || []).forEach(w => { if (w && w.ticker) out.push({ symbol: String(w.ticker), name: String(w.ticker).replace(/\.[A-Z]{1,3}$/, ''), src: 'watch' }); });
+  return out;
+}
+async function alertsChart(symbol) {
+  const r = await fetch(`${PROXY}/chart`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: SESSION_TOKEN, symbol, range: '1y' }) });
+  const d = await r.json().catch(() => ({}));
+  if (!r.ok || !d.points || !d.points.length) throw new Error(d.error || `HTTP ${r.status}`);
+  return d;
+}
+async function alertsEnsureScan(fresh) {
+  const panel = document.getElementById('alerts');
+  if (typeof IS_GUEST !== 'undefined' && IS_GUEST) return;
+  if (!panel || !panel.classList.contains('active')) return;                 // alerts are preloaded at sign-in: only scan once the tab is really open
+  if (SIG.state === 'busy' || (SIG.state === 'done' && !fresh)) return;
+  SIG.state = 'busy'; SIG.done = 0; SIG.total = 0; SIG.error = ''; if (fresh) Signals.clearCache();
+  const repaint = () => { if (ALERTS.tab !== 'inbox') { const el = document.getElementById('alerts-log'); const n = el && el.querySelector('.loading.busy'); if (n && SIG.state === 'busy') n.textContent = `Scanning your holdings and watchlist${SIG.total ? ` (${SIG.done}/${SIG.total})` : ''}…`; } };
+  try {
+    const inputs = await alertsInputs(), res = await Signals.scan(inputs, { fresh: !!fresh, chart: alertsChart, onProgress: (d, t) => { SIG.done = d; SIG.total = t; repaint(); } });
+    Object.assign(SIG, { rows: res.rows, failed: res.failed, total: res.total, at: res.at, state: 'done' });
+  } catch (e) { SIG.state = 'error'; SIG.error = e.message || 'error'; }
+  renderAlerts();
+}
+function alertsShown() { if (ALERTS.tab !== 'inbox') alertsEnsureScan(); }
+
+document.addEventListener('click', e => {
+  const t = e.target && e.target.closest ? e.target.closest('[data-al-tab],[data-al-more],[data-al-rescan]') : null; if (!t) return;
+  if (t.hasAttribute('data-al-tab')) { ALERTS.tab = t.getAttribute('data-al-tab'); ALERTS.selected.clear(); renderAlerts(); }
+  else if (t.hasAttribute('data-al-more')) { SIG.expanded.add(t.getAttribute('data-al-more')); renderAlerts(); }
+  else { SIG.state = 'idle'; alertsEnsureScan(true); renderAlerts(); }
+});
+
+function inboxHtml(c) {
   const v = ALERTS.view;
   const list = ALERTS.items.filter(a => _state(a) === v);
   // drop selections that are no longer visible
@@ -64,7 +135,7 @@ function renderAlerts() {
 
   const empty = { inbox: '🎉 All caught up — no alerts in your inbox.', archived: 'Nothing archived yet.', cleared: 'Nothing cleared.' }[v];
 
-  el.innerHTML = `
+  return `
     <div class="a-tabs">${tabs}</div>
     <div class="a-toolbar">
       <label class="a-check"><input type="checkbox" ${allSel ? 'checked' : ''} ${list.length ? '' : 'disabled'} onchange="alertsSelectAll(this.checked)"> ${sel ? `${sel} selected` : 'Select all'}</label>
@@ -72,8 +143,6 @@ function renderAlerts() {
     </div>
     <div id="alerts-list">${list.length ? list.map(alertCard).join('') : `<div class="loading">${empty}</div>`}</div>
     ${v === 'inbox' ? '<div class="a-hint">Tap an alert to read it · swipe left to clear · 🗄 keeps it in Archived with the date</div>' : ''}`;
-  bindSwipes();
-  updateAlertBadge();
 }
 
 function alertCard(a) {
@@ -107,7 +176,7 @@ function alertCard(a) {
 }
 
 // ── interactions ──────────────────────────────────────────────
-function alertsView(v) { ALERTS.view = v; ALERTS.selected.clear(); renderAlerts(); }
+function alertsView(v) { ALERTS.view = v; ALERTS.tab = 'inbox'; ALERTS.selected.clear(); renderAlerts(); }
 function alertsSelect(id, on) { on ? ALERTS.selected.add(id) : ALERTS.selected.delete(id); renderAlerts(); }
 function alertsSelectAll(on) {
   ALERTS.selected = new Set(on ? ALERTS.items.filter(a => _state(a) === ALERTS.view).map(a => a.id) : []);

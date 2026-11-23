@@ -5,6 +5,7 @@ function showTab(id, btn) {
   document.getElementById(id).classList.add('active');
   btn.classList.add('active');
   loadTab(id);
+  if (id === 'alerts' && typeof alertsShown === 'function') alertsShown();   // start the market-signal scan only once the tab is really open
 }
 
 const loaders = {

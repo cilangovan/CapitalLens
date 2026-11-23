@@ -12,6 +12,33 @@
 <main><article><h1 id="alerts">🔔 Alerts</h1>
 <p><strong>Question it answers:</strong> is any holding outside its plan, and what should I review?</p>
 <p>Tab id <code>alerts</code> · loader <code>loadAlerts()</code> · <code>docs/js/alerts.js</code>; text built by <code>services/alert_service.py</code> / <code>services/alert_format.py</code> and, in the private app, <code>docs/zk/alertreport.js</code> / <code>alertfmt.js</code>.</p>
+<h2 id="market-signals-live-pre-market-post-market">Market signals: Live · Pre Market · Post Market</h2>
+<p>The Alerts tab opens on three market views, in a card style that groups the signals; the existing <strong>📥 Inbox</strong> (below) is one more tab, top right, with its unread badge.</p>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>Card</th>
+<th>What it lists</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Major Movement · SMA Crossover</strong></td>
+<td><strong>100 SMA triggered</strong> and <strong>200 SMA triggered</strong>: stocks whose close moved from one side of the 100- / 200-day average to the other since the session before (▲ up through it, ▼ down through it, with the average level it crossed)</td>
+</tr>
+<tr>
+<td><strong>Major Movement · 52 Week Breakout</strong></td>
+<td><strong>52 Week High</strong>: the close is above every close of the previous year (with the new high)</td>
+</tr>
+</tbody>
+</table></div>
+<p>Covers <strong>your holdings plus your watchlist</strong> (a stock in both shows once, tagged <em>Holding</em>). Each row shows ▲/▼, the name, a <em>Holding</em> / <em>Watchlist</em> tag and the level in the stock's own currency. Three rows show, the rest sit behind <strong>View more (N)</strong>.</p>
+<p><strong>The three views, using each stock's own exchange clock</strong> (UK and US sessions differ):
+- <strong>☀️ Live</strong>: today's session while it is running (price as of when you opened the tab; UK 08:00–16:30, US 14:30–21:00 UK time).
+- <strong>🌤️ Pre Market</strong>: what was already true at today's open = the last completed daily close before today's session.
+- <strong>🌙 Post Market</strong>: today's completed session, once that market has closed.</p>
+<p><strong>Honest about data:</strong> the signals are computed from Yahoo daily closes (one year) fetched <strong>when you open the tab</strong>, with up to 5 fetches in parallel, cached for 10 minutes, <strong>Rescan</strong> at the bottom. It is <strong>not a real-time feed and nothing is pushed while the app is closed</strong>. A 100-day cross needs 101+ sessions, a 200-day cross 201+, a 52-week high 200+ prior sessions; a stock with less history simply gets no such signal. A stock whose chart cannot be read is <strong>listed as "could not be read"</strong>, never shown as clear. Empty views say why (e.g. no market open right now). A screening aid, not advice.</p>
+<p>Code: engine and cards <code>docs/js/signals.js</code> (<code>analyse</code>, <code>scan</code>, <code>group</code>, <code>html</code>); tabs, scan wiring and Inbox in <code>docs/js/alerts.js</code>; the scan starts only once the Alerts tab is open (<code>alertsShown()</code> from the router). The demo serves its stored mock 1-year charts through <code>demo-shim.js</code>. Guarded by <code>tests/zk_signals_test.mjs</code> and <code>tests/signals_layout_test.py</code> (320/360/390px, every theme).</p>
 <h2 id="alerts-are-review-reports">Alerts are review reports</h2>
 <p>One house style for every alert (dashboard, phone push, email). Each report contains:</p>
 <ol>

@@ -56,6 +56,8 @@ jobs:
         run: python -u tests/recent_layout_test.py
       - name: Purchases outside pies card fits phone screens
         run: python -u tests/lots_layout_test.py
+      - name: Alerts market signals fit phone screens
+        run: python -u tests/signals_layout_test.py
       - name: No sign-in flash on refresh (private app, real browser)
         run: python -u tests/login_flash_browser_test.py
       - name: IPO watch / remove (real clicks)
