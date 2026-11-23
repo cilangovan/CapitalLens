@@ -737,10 +737,24 @@ async function loadCountryMap() {
 }
 
 // ── MARKET MOOD INDEX ─────────────────────────────────────────
-// Three markets: Crypto (api.alternative.me free/no-key), US stocks and UK stocks
-// (CapitalLens' own reading computed from VIX/S&P/FTSE data already in _ovMk).
+// Market Mood: Crypto (api.alternative.me free/no-key) + all major markets
+// computed from momentum of their index already loaded in _ovMk.
 // Design: gauge arc, score badge, zone label, 7-day pill row (Mon→Today).
 // CLAUDE.md: Fear & Greed is labelled as CapitalLens' own VIX/S&P/news reading.
+
+// Tab definitions — key matches data-mmt attribute; sym = Yahoo symbol in _ovMk
+const MM_TABS = [
+  { key: 'Crypto', label: '₿ Crypto',  flag: '₿',  sym: null,       name: 'Bitcoin / Crypto' },
+  { key: 'US',     label: '🇺🇸 US',    flag: '🇺🇸', sym: '^GSPC',    name: 'US (S&P 500)' },
+  { key: 'UK',     label: '🇬🇧 UK',    flag: '🇬🇧', sym: '^FTSE',    name: 'UK (FTSE 100)' },
+  { key: 'EU',     label: '🇩🇪 EU/DE', flag: '🇩🇪', sym: '^GDAXI',   name: 'Europe / Germany (DAX)' },
+  { key: 'JP',     label: '🇯🇵 Japan', flag: '🇯🇵', sym: '^N225',    name: 'Japan (Nikkei 225)' },
+  { key: 'IN',     label: '🇮🇳 India', flag: '🇮🇳', sym: '^NSEI',    name: 'India (Nifty 50)' },
+  { key: 'CN',     label: '🇨🇳 China', flag: '🇨🇳', sym: '000001.SS', name: 'China (SSE Composite)' },
+  { key: 'ES',     label: '🇪🇸 Spain', flag: '🇪🇸', sym: '^IBEX',    name: 'Spain (IBEX 35)' },
+  { key: 'NL',     label: '🇳🇱 NL',    flag: '🇳🇱', sym: '^AEX',     name: 'Netherlands (AEX)' },
+  { key: 'TW',     label: '🇹🇼 Taiwan',flag: '🇹🇼', sym: '^TWII',    name: 'Taiwan (TAIEX)' },
+];
 const MM_ZONES = [
   { max: 24,  label: 'Extreme Fear',  color: '#22c55e', bg: 'rgba(34,197,94,.12)'   },
   { max: 44,  label: 'Fear',          color: '#86efac', bg: 'rgba(134,239,172,.1)'  },
@@ -812,13 +826,20 @@ async function loadMarketMood() {
   const card = document.getElementById('mood-section'); if (!card) return;
   const body = document.getElementById('mood-body');   if (!body) return;
   const tabBar = document.getElementById('mood-tabs'); if (!tabBar) return;
+
+  // Build chip strip dynamically from MM_TABS (replaces static HTML buttons)
   if (!tabBar.dataset.wired) {
     tabBar.dataset.wired = '1';
+    const btnStyle = 'flex:0 0 auto;min-height:36px;padding:0 11px;border-radius:20px;border:1px solid var(--border);background:var(--bg3);color:var(--muted);cursor:pointer;font-size:13px;white-space:nowrap';
+    tabBar.innerHTML = MM_TABS.map(function(t) {
+      return '<button type="button" data-mmt="' + t.key + '" style="' + btnStyle + '">' + t.label + '</button>';
+    }).join('');
     tabBar.addEventListener('click', function(e) {
       const b = e.target.closest('[data-mmt]'); if (!b) return;
       _mmTab = b.dataset.mmt; renderMoodTab();
     });
   }
+
   if (!_mmCrypto || Date.now() - _mmCryptoAt > 6e5) {
     try {
       const res = await fetch('https://api.alternative.me/fng/?limit=7&format=json');
@@ -837,38 +858,46 @@ async function loadMarketMood() {
 function renderMoodTab() {
   const body = document.getElementById('mood-body');   if (!body) return;
   const tabBar = document.getElementById('mood-tabs'); if (!tabBar) return;
+
+  // Highlight active chip
   tabBar.querySelectorAll('[data-mmt]').forEach(function(b) {
     const on = b.dataset.mmt === _mmTab;
     b.style.background  = on ? 'var(--accent)' : 'var(--bg3)';
     b.style.color       = on ? '#fff' : 'var(--muted)';
     b.style.borderColor = on ? 'var(--accent)' : 'var(--border)';
+    b.style.fontWeight  = on ? '600' : '400';
   });
-  let data = null, marketName = '', sourceNote = '';
+
+  // Scroll active chip into view (mobile)
+  const activeBtn = tabBar.querySelector('[data-mmt="' + _mmTab + '"]');
+  if (activeBtn) activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+
+  const tabDef = MM_TABS.find(function(t) { return t.key === _mmTab; }) || MM_TABS[0];
+  let data = null, sourceNote = '';
+
   if (_mmTab === 'Crypto') {
     if (_mmCrypto && _mmCrypto.length) data = { days: _mmCrypto };
-    marketName = 'Bitcoin / Crypto'; sourceNote = 'Source: Alternative.me Fear & Greed Index';
-  } else if (_mmTab === 'US') {
-    const sp = _ovMk && _ovMk.m && (_ovMk.m['^GSPC'] || _ovMk.m['^NDX']);
-    if (sp && sp.pts) data = mmFromIndex(sp.pts);
-    marketName = 'US Stocks (S&P 500)'; sourceNote = 'CapitalLens reading: S&P 500 momentum vs 20-day avg · not CNN Fear & Greed';
-  } else if (_mmTab === 'UK') {
-    const ft = _ovMk && _ovMk.m && _ovMk.m['^FTSE'];
-    if (ft && ft.pts) data = mmFromIndex(ft.pts);
-    marketName = 'UK (FTSE 100)'; sourceNote = 'CapitalLens reading: FTSE 100 momentum vs 20-day avg';
+    sourceNote = 'Source: Alternative.me Fear & Greed Index';
+  } else {
+    // All non-crypto tabs: derive mood from index pts in _ovMk
+    const sym = tabDef.sym;
+    const mk = _ovMk && _ovMk.m && sym && (_ovMk.m[sym] || (_mmTab === 'US' && _ovMk.m['^NDX']));
+    if (mk && mk.pts) data = mmFromIndex(mk.pts);
+    sourceNote = 'CapitalLens reading: ' + tabDef.name + ' momentum vs 20-day avg';
   }
+
   if (!data || !data.days || !data.days.length) {
     const msg = _mmTab === 'Crypto'
-      ? (_mmCrypto === null ? '⚠ Could not reach Alternative.me — try refreshing the page.' : '⏳ Loading crypto sentiment…')
-      : '⏳ Markets data loading — tap Crypto first, then switch back.';
+      ? (_mmCrypto === null ? '⚠ Could not reach Alternative.me — try refreshing.' : '⏳ Loading crypto sentiment…')
+      : '⏳ Markets data loading — open the app and press Refresh to populate index history.';
     body.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:12px 0;text-align:center">' + msg + '</div>';
     return;
   }
   const today = data.days[data.days.length - 1], z = mmZone(today.score);
-  const flag = _mmTab === 'US' ? '🇺🇸' : _mmTab === 'UK' ? '🇬🇧' : '₿';
   body.innerHTML = '<div style="text-align:center;padding:4px 0 0">'
     + mmGaugeSvg(today.score)
     + '<div style="font-size:15px;font-weight:700;color:' + z.color + ';margin-top:2px">' + esc(z.label) + '</div>'
-    + '<div style="font-size:11px;color:var(--muted);margin-top:2px">' + flag + ' ' + esc(marketName) + '</div>'
+    + '<div style="font-size:11px;color:var(--muted);margin-top:2px">' + tabDef.flag + ' ' + esc(tabDef.name) + '</div>'
     + '</div>'
     + mmPillsHtml(data.days)
     + '<div style="font-size:10px;color:var(--muted);text-align:center;margin-top:4px">' + esc(sourceNote) + '</div>';
