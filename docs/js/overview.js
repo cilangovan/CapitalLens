@@ -830,13 +830,39 @@ async function loadMarketMood() {
   // Build chip strip dynamically from MM_TABS (replaces static HTML buttons)
   if (!tabBar.dataset.wired) {
     tabBar.dataset.wired = '1';
-    const btnStyle = 'flex:0 0 auto;min-height:36px;padding:0 11px;border-radius:20px;border:1px solid var(--border);background:var(--bg3);color:var(--muted);cursor:pointer;font-size:13px;white-space:nowrap';
-    tabBar.innerHTML = MM_TABS.map(function(t) {
-      return '<button type="button" data-mmt="' + t.key + '" style="' + btnStyle + '">' + t.label + '</button>';
-    }).join('');
+    // Collapsed by default — show trigger + active label; tap to fan out
+    const trigStyle = 'flex:0 0 auto;min-height:36px;padding:0 12px;border-radius:20px;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer;font-size:13px;font-weight:600;white-space:nowrap;display:flex;align-items:center;gap:5px';
+    const chipStyle = 'flex:0 0 auto;min-height:36px;padding:0 11px;border-radius:20px;border:1px solid var(--border);background:var(--bg3);color:var(--muted);cursor:pointer;font-size:13px;white-space:nowrap;transition:opacity .18s,transform .18s;opacity:0;transform:translateX(-18px);pointer-events:none';
+    tabBar.style.cssText = 'display:flex;align-items:center;gap:6px;overflow:hidden;position:relative';
+    tabBar.innerHTML =
+      '<button type="button" id="mood-trigger" style="' + trigStyle + '"><span id="mood-trigger-label">📊 Markets</span><span style="font-size:10px;opacity:.8">▸</span></button>'
+      + MM_TABS.map(function(t) {
+          return '<button type="button" data-mmt="' + t.key + '" style="' + chipStyle + '">' + t.label + '</button>';
+        }).join('');
+
+    let _expanded = false;
+    function mmExpand(open) {
+      _expanded = open;
+      const trig = document.getElementById('mood-trigger');
+      const chips = tabBar.querySelectorAll('[data-mmt]');
+      if (open) {
+        trig.querySelector('span:last-child').textContent = '▾';
+        chips.forEach(function(c, i) {
+          c.style.pointerEvents = 'auto';
+          setTimeout(function() { c.style.opacity = '1'; c.style.transform = 'translateX(0)'; }, i * 28);
+        });
+      } else {
+        trig.querySelector('span:last-child').textContent = '▸';
+        chips.forEach(function(c) { c.style.opacity = '0'; c.style.transform = 'translateX(-18px)'; c.style.pointerEvents = 'none'; });
+      }
+    }
+
+    document.getElementById('mood-trigger').addEventListener('click', function() { mmExpand(!_expanded); });
     tabBar.addEventListener('click', function(e) {
       const b = e.target.closest('[data-mmt]'); if (!b) return;
-      _mmTab = b.dataset.mmt; renderMoodTab();
+      _mmTab = b.dataset.mmt;
+      mmExpand(false);
+      renderMoodTab();
     });
   }
 
@@ -868,9 +894,12 @@ function renderMoodTab() {
     b.style.fontWeight  = on ? '600' : '400';
   });
 
-  // Scroll active chip into view (mobile)
-  const activeBtn = tabBar.querySelector('[data-mmt="' + _mmTab + '"]');
-  if (activeBtn) activeBtn.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+  // Update trigger label to show active market
+  const trigLabel = document.getElementById('mood-trigger-label');
+  if (trigLabel) {
+    const activeDef = MM_TABS.find(function(t) { return t.key === _mmTab; });
+    trigLabel.textContent = activeDef ? (activeDef.flag + ' ' + activeDef.key) : '📊 Markets';
+  }
 
   const tabDef = MM_TABS.find(function(t) { return t.key === _mmTab; }) || MM_TABS[0];
   let data = null, sourceNote = '';
