@@ -123,6 +123,7 @@ async function loadOverview() {
   document.getElementById('active-alerts').innerHTML = alertsHtml;
 
   await loadOverviewCharts();
+  loadMarketMood().catch(e => { const el = document.getElementById('mood-body'); if (el) el.innerHTML = '<div style="color:var(--red);font-size:12px">Mood error: ' + esc(e.message) + '</div>'; });
   loadSectorMap().catch(e => {
     const el = document.getElementById('sector-map');
     if (el) el.innerHTML = `<div style="color:var(--red);font-size:12px">Sector map error: ${e.message}</div>`;
@@ -345,7 +346,7 @@ async function loadSectorMap() {
   el.innerHTML = html;
 }
 
-// ── MARKET DECLINE BY COUNTRY (your holdings, price change between two saved snapshots) ──
+// ── MARKET DECLINE BY COUNTRY (your holdings, price change between two saved snapshots) ── (your holdings, price change between two saved snapshots) ──
 const OV_RANGES = [['1D', 1], ['1W', 7], ['1M', 30], ['3M', 91], ['6M', 182], ['9M', 273], ['1Y', 365]]; // every graph offers the same spans
 // Pick the newest snapshot that is at least ~80% of the span old; null if saved history is too short (never fake a span).
 function ovPickThen(snaps, days, nowMs) {
@@ -592,6 +593,8 @@ async function loadMarketsHeld() {
   if (!OV_MK.sel) OV_MK.sel = list.filter(m => m.always && _ovMk.m[m.sym]).map(m => m.sym).slice(0, 4);
   if (!OV_MK.bar || !_ovMk.m[OV_MK.bar]) OV_MK.bar = (list.find(m => _ovMk.m[m.sym]) || {}).sym || null;
   await ovMkIntra(); ovMarketsRender();
+  // Re-render mood with market data now available (US/UK tabs use _ovMk)
+  if (_mmTab !== 'Crypto') renderMoodTab();
 }
 
 async function loadCountryDecline(range) {
@@ -731,4 +734,140 @@ async function loadCountryMap() {
   }
   html += `</div>`;
   el.innerHTML = html;
+}
+
+// ── MARKET MOOD INDEX ─────────────────────────────────────────
+// Three markets: Crypto (api.alternative.me free/no-key), US stocks and UK stocks
+// (CapitalLens' own reading computed from VIX/S&P/FTSE data already in _ovMk).
+// Design: gauge arc, score badge, zone label, 7-day pill row (Mon→Today).
+// CLAUDE.md: Fear & Greed is labelled as CapitalLens' own VIX/S&P/news reading.
+const MM_ZONES = [
+  { max: 24,  label: 'Extreme Fear',  color: '#22c55e', bg: 'rgba(34,197,94,.12)'   },
+  { max: 44,  label: 'Fear',          color: '#86efac', bg: 'rgba(134,239,172,.1)'  },
+  { max: 55,  label: 'Neutral',       color: '#f59e0b', bg: 'rgba(245,158,11,.12)'  },
+  { max: 75,  label: 'Greed',         color: '#f97316', bg: 'rgba(249,115,22,.12)'  },
+  { max: 100, label: 'Extreme Greed', color: '#ef4444', bg: 'rgba(239,68,68,.12)'   },
+];
+function mmZone(score) { return MM_ZONES.find(z => score <= z.max) || MM_ZONES[MM_ZONES.length - 1]; }
+
+// SVG gauge arc (half-circle, 0-100). Needle = line from centre to rim.
+function mmGaugeSvg(score) {
+  score = Math.max(0, Math.min(100, +score || 0));
+  const z = mmZone(score), W = 200, H = 110, cx = 100, cy = 105, r = 88;
+  const arc = (a1, a2, col) => {
+    const rad = deg => (deg - 180) * Math.PI / 180;
+    const x1 = cx + r * Math.cos(rad(a1)), y1 = cy + r * Math.sin(rad(a1));
+    const x2 = cx + r * Math.cos(rad(a2)), y2 = cy + r * Math.sin(rad(a2));
+    return '<path d="M' + x1.toFixed(1) + ',' + y1.toFixed(1) + ' A' + r + ',' + r + ' 0 0,1 ' + x2.toFixed(1) + ',' + y2.toFixed(1) + '" fill="none" stroke="' + col + '" stroke-width="16" stroke-linecap="round"/>';
+  };
+  const seg = (lo, hi, col) => arc(lo * 1.8, hi * 1.8, col);
+  const segs = MM_ZONES.map(function(z2, i) { const lo = i === 0 ? 0 : MM_ZONES[i-1].max + 1, hi = z2.max; return seg(lo, hi, z2.color + '88'); }).join('');
+  const ang = (score * 1.8 - 180) * Math.PI / 180;
+  const nx = cx + (r - 8) * Math.cos(ang), ny = cy + (r - 8) * Math.sin(ang);
+  const needle = '<line x1="' + cx + '" y1="' + cy + '" x2="' + nx.toFixed(1) + '" y2="' + ny.toFixed(1) + '" stroke="' + z.color + '" stroke-width="3" stroke-linecap="round"/>';
+  const dot = '<circle cx="' + cx + '" cy="' + cy + '" r="6" fill="' + z.color + '"/>';
+  const lbl = '<text x="' + cx + '" y="' + (cy - 14) + '" text-anchor="middle" font-size="28" font-weight="800" fill="' + z.color + '">' + Math.round(score) + '</text>';
+  return '<svg viewBox="0 0 ' + W + ' ' + H + '" width="100%" style="max-width:220px;display:block;margin:0 auto">' + segs + needle + dot + lbl + '</svg>';
+}
+
+// 7 day pills: oldest left, today right.
+function mmPillsHtml(days) {
+  if (!days || !days.length) return '';
+  const D = days.slice(-7), today = new Date().toISOString().slice(0, 10);
+  const labels = ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'];
+  return '<div style="display:flex;gap:5px;justify-content:center;flex-wrap:wrap;margin:8px 0 2px">' + D.map(function(d) {
+    const z = mmZone(d.score), dt = d.date ? d.date.slice(0, 10) : '', isToday = dt === today;
+    const dayIdx = new Date(dt + 'T12:00:00Z').getUTCDay();
+    const dow = dt ? labels[dayIdx === 0 ? 6 : dayIdx - 1] : '';
+    return '<div style="display:flex;flex-direction:column;align-items:center;gap:2px">'
+      + '<div style="font-size:9px;color:var(--muted);font-weight:' + (isToday ? 700 : 400) + '">' + (isToday ? 'Today' : esc(dow)) + '</div>'
+      + '<div title="' + esc(z.label) + ' ' + Math.round(d.score) + '" style="width:36px;height:36px;border-radius:8px;background:' + z.bg + ';border:1.5px solid ' + z.color + (isToday ? '' : '66') + ';display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;color:' + z.color + '">' + Math.round(d.score) + '</div>'
+      + '</div>';
+  }).join('') + '</div>';
+}
+
+// Compute 0-100 mood from daily index close pts ([[unixSec, close], ...]).
+// 20-day price momentum: +10% = 100, -10% = 0. Labelled CapitalLens' own reading.
+function mmFromIndex(pts) {
+  if (!pts || pts.length < 2) return null;
+  const sorted = pts.filter(function(p) { return p && +p[0] > 0 && +p[1] > 0; }).map(function(p) { return [+p[0]*1000, +p[1]]; }).sort(function(a,b) { return a[0]-b[0]; });
+  if (sorted.length < 22) return null;
+  const byDay = new Map();
+  sorted.forEach(function(x) { const d = new Date(x[0]).toISOString().slice(0,10); byDay.set(d, x[1]); });
+  const allDays = Array.from(byDay.keys()).sort();
+  const last7 = allDays.slice(-7);
+  const toScore = function(mom) { return Math.max(0, Math.min(100, 50 + mom * 5)); };
+  const result = last7.map(function(dt) {
+    const idx = allDays.indexOf(dt);
+    if (idx < 20) return { score: 50, date: dt };
+    const cur = byDay.get(dt), prev = byDay.get(allDays[idx - 20]);
+    return { score: toScore(prev ? (cur / prev - 1) * 100 : 0), date: dt };
+  });
+  return { days: result };
+}
+
+let _mmCrypto = null, _mmCryptoAt = 0, _mmTab = 'Crypto';
+
+async function loadMarketMood() {
+  const card = document.getElementById('mood-section'); if (!card) return;
+  const body = document.getElementById('mood-body');   if (!body) return;
+  const tabBar = document.getElementById('mood-tabs'); if (!tabBar) return;
+  if (!tabBar.dataset.wired) {
+    tabBar.dataset.wired = '1';
+    tabBar.addEventListener('click', function(e) {
+      const b = e.target.closest('[data-mmt]'); if (!b) return;
+      _mmTab = b.dataset.mmt; renderMoodTab();
+    });
+  }
+  if (!_mmCrypto || Date.now() - _mmCryptoAt > 6e5) {
+    try {
+      const res = await fetch('https://api.alternative.me/fng/?limit=7&format=json');
+      const json = await res.json();
+      if (json && json.data && json.data.length) {
+        _mmCrypto = json.data.slice().reverse().map(function(d) {
+          return { score: +d.value, date: new Date(+d.timestamp * 1000).toISOString().slice(0, 10) };
+        });
+        _mmCryptoAt = Date.now();
+      }
+    } catch(e) { _mmCrypto = _mmCrypto || []; }
+  }
+  renderMoodTab();
+}
+
+function renderMoodTab() {
+  const body = document.getElementById('mood-body');   if (!body) return;
+  const tabBar = document.getElementById('mood-tabs'); if (!tabBar) return;
+  tabBar.querySelectorAll('[data-mmt]').forEach(function(b) {
+    const on = b.dataset.mmt === _mmTab;
+    b.style.background  = on ? 'var(--accent)' : 'var(--bg3)';
+    b.style.color       = on ? '#fff' : 'var(--muted)';
+    b.style.borderColor = on ? 'var(--accent)' : 'var(--border)';
+  });
+  let data = null, marketName = '', sourceNote = '';
+  if (_mmTab === 'Crypto') {
+    if (_mmCrypto && _mmCrypto.length) data = { days: _mmCrypto };
+    marketName = 'Bitcoin / Crypto'; sourceNote = 'Source: Alternative.me Fear & Greed Index';
+  } else if (_mmTab === 'US') {
+    const sp = _ovMk && _ovMk.m && (_ovMk.m['^GSPC'] || _ovMk.m['^NDX']);
+    if (sp && sp.pts) data = mmFromIndex(sp.pts);
+    marketName = 'US Stocks (S&P 500)'; sourceNote = 'CapitalLens reading: S&P 500 momentum vs 20-day avg · not CNN Fear & Greed';
+  } else if (_mmTab === 'UK') {
+    const ft = _ovMk && _ovMk.m && _ovMk.m['^FTSE'];
+    if (ft && ft.pts) data = mmFromIndex(ft.pts);
+    marketName = 'UK (FTSE 100)'; sourceNote = 'CapitalLens reading: FTSE 100 momentum vs 20-day avg';
+  }
+  if (!data || !data.days || !data.days.length) {
+    body.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:12px 0;text-align:center">'
+      + (_mmTab !== 'Crypto' ? '⏳ Markets data loading — tap Crypto first, then switch back.' : 'No mood data yet.') + '</div>';
+    return;
+  }
+  const today = data.days[data.days.length - 1], z = mmZone(today.score);
+  const flag = _mmTab === 'US' ? '🇺🇸' : _mmTab === 'UK' ? '🇬🇧' : '₿';
+  body.innerHTML = '<div style="text-align:center;padding:4px 0 0">'
+    + mmGaugeSvg(today.score)
+    + '<div style="font-size:15px;font-weight:700;color:' + z.color + ';margin-top:2px">' + esc(z.label) + '</div>'
+    + '<div style="font-size:11px;color:var(--muted);margin-top:2px">' + flag + ' ' + esc(marketName) + '</div>'
+    + '</div>'
+    + mmPillsHtml(data.days)
+    + '<div style="font-size:10px;color:var(--muted);text-align:center;margin-top:4px">' + esc(sourceNote) + '</div>';
 }
