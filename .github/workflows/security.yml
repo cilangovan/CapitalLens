@@ -2,12 +2,15 @@ name: Security checks
 
 # Third-party scripts, CSP, XSS defences, worker hardening, and live probes of the worker and database
 # as an outsider (no session). Runs on every change to the dashboard / worker / tests and daily.
+# xss-scan also runs as part of every push and on a weekly cadence, auto-fixing unescaped DB fields
+# and committing the fix back to main when any are found.
 on:
   push:
     paths: ['docs/**', 'cloudflare-worker/**', 'tests/**', '.github/workflows/security.yml']
   pull_request:
   schedule:
-    - cron: '17 6 * * *'
+    - cron: '17 6 * * *'   # daily static + live checks
+    - cron: '0 3 * * 1'    # weekly full XSS re-scan (Monday 03:00 UTC)
   workflow_dispatch:
 
 permissions:
@@ -30,6 +33,64 @@ jobs:
           SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
           SUPABASE_ANON_KEY: ${{ secrets.SUPABASE_KEY }}
         run: python -u tests/security_check.py
+
+  # ── XSS scanner ─────────────────────────────────────────────────────────────
+  # Scans all JS for unescaped DB-field → DOM-sink paths (OWASP A03).
+  # On push: scan only (lint gate).
+  # On schedule / workflow_dispatch: scan + auto-fix + commit any fixes back.
+  xss-scan:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          # Need write access for auto-fix commits; token available via permissions below
+          fetch-depth: 0
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      # ── Scan only on push (fast gate, no auto-fix) ──────────────────────────
+      - name: XSS scan (push gate)
+        if: github.event_name == 'push' || github.event_name == 'pull_request'
+        run: python -u tests/security_scan.py --report
+        # Non-zero exit = medium+ findings → job fails
+
+      # ── Scan + auto-fix + commit on schedule / manual trigger ───────────────
+      - name: XSS scan + auto-fix
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        run: python -u tests/security_scan.py --fix --report
+
+      - name: Commit auto-fixes (if any)
+        if: (github.event_name == 'schedule' || github.event_name == 'workflow_dispatch') && github.ref == 'refs/heads/main'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          git config user.name  "cilangovan"
+          git config user.email "7702527+cilangolan@users.noreply.github.com"
+          # Stage only JS and the scan report — never stage secrets or generated files
+          git add docs/js/*.js documentation/security-scan-report.md || true
+          if git diff --cached --quiet; then
+            echo "No auto-fixes to commit."
+          else
+            git status --short
+            TIMESTAMP=$(date -u '+%Y-%m-%d %H:%M UTC')
+            git commit -m "security: auto-fix XSS findings detected by security_scan.py [${TIMESTAMP}]
+
+auto-fixed: unescaped DB-sourced string fields in innerHTML/title/onclick contexts
+scanner: tests/security_scan.py --fix
+report:  documentation/security-scan-report.md"
+            git push origin main
+          fi
+
+      # ── Post scan report to GitHub Step Summary ─────────────────────────────
+      - name: Publish scan report to Step Summary
+        if: always()
+        run: |
+          if [ -f documentation/security-scan-report.md ]; then
+            cat documentation/security-scan-report.md >> $GITHUB_STEP_SUMMARY
+          fi
 
   live-smoke:
     runs-on: ubuntu-latest

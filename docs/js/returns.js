@@ -48,7 +48,7 @@ async function loadReturns() {
 
     <div class="card">
       <div class="rt-head"><h3>Profit by period</h3></div>
-      <div class="dd-ranges rt-periods">${d.periods.map(x => `<button class="${RT.period === x.label ? 'active' : ''}" onclick="rtSetPeriod('${x.label}')">${x.label}</button>`).join('')}</div>
+      <div class="dd-ranges rt-periods">${d.periods.map(x => `<button class="${RT.period === x.label ? 'active' : ''}" onclick="rtSetPeriod('${x.label.replace(/\\/g,'\\\\').replace(/'/g,"\\'")}')">${esc(x.label)}</button>`).join('')}</div>
       <div id="rt-period"></div>
     </div>
 

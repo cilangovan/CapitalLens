@@ -281,7 +281,7 @@ function pbInfo(key) {
       <table class="pb-rules pb-m-table"><tr><th>Stock</th><th>Value</th><th>Weight</th><th>Gain</th></tr>
       ${[...rows].sort((a, b) => b.value_gbp - a.value_gbp).map(r => `<tr><td>${name(r)}</td><td>${fmtGbpPlain(r.value_gbp)}</td><td>${fmt(r.weight_pct, 1)}%</td><td class="${clr(r.gain_pct)}">${fmt(r.gain_pct, 1)}%</td></tr>`).join('')}</table>`;
   } else if (key === 'regime') {
-    title = `Market regime — ${reg.mode}`;
+    title = `Market regime — ${esc(reg.mode)}`;
     body = `<p>A quick read of the overall market, which sets how bold the plan is: <b>Aggressive</b> lets winners run, <b>Neutral</b> sticks to the ladder, <b>Defensive</b> books profit sooner and tightens risk.</p>
       <p>Today: <b>${reg.points} points</b> (Aggressive ≥ 4 · Neutral 2–3 · Defensive ≤ 1). Points come from the S&amp;P 500 and MSCI ACWI being above their 50/200-day averages, VIX (fear gauge) ${reg.vix ?? '—'}, and ${reg.breadth_pct ?? '—'}% of your holdings above their 50-day average.</p>`;
   }

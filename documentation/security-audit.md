@@ -226,3 +226,60 @@ These are non-critical — the portal is safe to use. Log as future backlog item
 | `docs/js/positions.js` | Fixed `pieName` display + backslash injection in onclick; `p.ticker`, `u.ticker` |
 | `docs/js/strategy.js` | Fixed `r.summary`, `r.report_date`, `h.display`, `h.decision`, `h.buy_signal`, `h.sell_signal`, `h.notes`, `pie` section heading |
 | `documentation/security-audit.md` | This document (new) |
+| `tests/security_scan.py` | New automated OWASP XSS scanner + auto-fixer (new) |
+| `.github/workflows/security.yml` | Added `xss-scan` job: scan on push, auto-fix + commit on schedule |
+
+---
+
+## Automated Security Framework
+
+Following the initial manual audit, an automated pen-test framework was added to catch new vulnerabilities continuously.
+
+### How It Works
+
+**`tests/security_scan.py`** — OWASP scanner + auto-fixer
+
+Runs as a CI gate on every push and on a weekly schedule. Covers:
+
+| Check | OWASP | Mode |
+|---|---|---|
+| Unescaped DB fields in `innerHTML`/`title`/`onclick` | A03 Stored XSS | Detect + auto-fix |
+| `e.message` / `error.message` in DOM sinks | A03 XSS | Detect + auto-fix |
+| `onclick` backslash injection (single-quote escape without prior backslash escape) | A03 XSS | Detect only |
+| `eval` / `new Function` / `document.write` / string timers | A03 XSS | Detect |
+| Hardcoded secrets (JWT, Stripe, GitHub PAT, AWS keys) | A02 Credentials | Detect |
+| Token written to `localStorage` | A07 Session | Detect |
+| CSP strictness: `default-src`, `object-src`, `base-uri`, `script-src`, `connect-src` | A05 Config | Detect |
+| Worker CORS wildcard | A05 Config | Detect |
+| Worker security headers (HSTS, X-Frame-Options, etc.) | A05 Config | Detect |
+| Worker `verifySession` gate | A07 Auth | Detect |
+
+**Auto-fix logic:** When an unescaped DB field is found in a template literal DOM sink (e.g. `${r.ticker}` → `innerHTML`), the scanner wraps it with the page's esc-equivalent function (e.g. `${esc(r.ticker)}`). Complex expressions (ternaries, nested templates) are flagged for manual review. A `.bak` backup is kept and a unified diff is printed.
+
+**`documentation/security-scan-report.md`** — Living findings log
+
+Generated on every scan run. Shows a table of findings by severity (Critical / High / Medium / Low / Info), per-finding detail with file + line + snippet, and the full OWASP coverage matrix.
+
+### CI Integration (`.github/workflows/security.yml`)
+
+| Trigger | Job | Action |
+|---|---|---|
+| Every push to `docs/**` / `cloudflare-worker/**` / `tests/**` | `xss-scan` | Scan only — exits non-zero on medium+ findings, blocks merge |
+| Daily 06:17 UTC | `security` | Full static + live probe checks |
+| Weekly Monday 03:00 UTC | `xss-scan` | Scan + **auto-fix** + commit any fixes back to `main` |
+| `workflow_dispatch` | `xss-scan` | Scan + auto-fix on demand |
+
+Auto-fix commits are authored as `cilangovan` and include a timestamped message referencing the scanner and report.
+
+### Running Locally
+
+```bash
+# Scan only
+python tests/security_scan.py
+
+# Scan + auto-fix
+python tests/security_scan.py --fix
+
+# Scan + auto-fix + write report
+python tests/security_scan.py --fix --report
+```

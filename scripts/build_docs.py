@@ -42,6 +42,7 @@ NAV = [
     ("Operations", [("workflows.md", "Workflows & schedules"), ("reference/workflows.md", "Workflow reference (generated)"),
                     ("architecture-and-security.md", "Architecture & security"),
                     ("security-audit.md", "Security audit (OWASP)"),
+                    ("security-scan-report.md", "Security scan report (automated)"),
                     ("ops-dashboard.md", "Internal ops dashboard (planned)"),
                     ("demo.md", "Demo user (pre-sales)"),
                     ("demo-requirements.md", "Demo user: requirements and wireframes")]),
