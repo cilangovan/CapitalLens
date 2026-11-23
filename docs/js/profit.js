@@ -22,6 +22,125 @@ function pbPrice(v, u) {
 
 const PB = {};
 
+// ── Live market regime recompute ──────────────────────────────
+// Fetches ^GSPC, ACWI, ^VIX (1y daily closes) from the relay and recomputes the
+// regime score using the same algorithm as the Python pipeline and profitbooking.js.
+// Returns null on network failure so the snapshot values remain.
+let _pbLiveRegCache = null, _pbLiveRegAt = 0;
+async function pbFetchPtsOrdered(sym) {
+  try {
+    const r = await fetch(`${PROXY}/chart`, { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: typeof SESSION_TOKEN !== 'undefined' ? SESSION_TOKEN : undefined, symbol: sym, range: '1y' }) });
+    if (!r.ok) return null;
+    const d = await r.json().catch(() => ({}));
+    return (d.points || []).filter(p => p && Number.isFinite(+p[0]) && +p[1] > 0).sort((a, b) => +a[0] - +b[0]).map(p => +p[1]);
+  } catch (e) { return null; }
+}
+function pbSma(closes, n) {
+  if (!closes || closes.length < n) return null;
+  let s = 0; for (let i = closes.length - n; i < closes.length; i++) s += closes[i];
+  return s / n;
+}
+function pbRet(closes, days) {
+  if (!closes || closes.length <= days) return null;
+  return (closes[closes.length - 1] / closes[closes.length - 1 - days] - 1) * 100;
+}
+function pbTrend(closes) {
+  if (!closes || closes.length < 201) return null;
+  const p = closes[closes.length - 1], m50 = pbSma(closes, 50), m200 = pbSma(closes, 200);
+  return { price: p, above50: p > m50, above200: p > m200, ret3m: pbRet(closes, 63) };
+}
+async function pbComputeRegimeLive(storedBreadth) {
+  if (_pbLiveRegCache && Date.now() - _pbLiveRegAt < 15 * 60 * 1000) return _pbLiveRegCache;
+  // Reuse _ovMk data for ^GSPC if already loaded (avoids a redundant fetch)
+  let spxC = null, acwiC = null, vixC = null;
+  if (typeof _ovMk !== 'undefined' && _ovMk && _ovMk.m && _ovMk.m['^GSPC'] && _ovMk.m['^GSPC'].pts) {
+    spxC = _ovMk.m['^GSPC'].pts.filter(p => p && Number.isFinite(+p[0]) && +p[1] > 0).sort((a, b) => +a[0] - +b[0]).map(p => +p[1]);
+  }
+  const fetches = [
+    spxC ? Promise.resolve(spxC) : pbFetchPtsOrdered('^GSPC'),
+    pbFetchPtsOrdered('ACWI'),
+    pbFetchPtsOrdered('^VIX'),
+  ];
+  const [gsc, asc, vc] = await Promise.all(fetches);
+  spxC = gsc; acwiC = asc; vixC = vc;
+  const spx = pbTrend(spxC), acwi = pbTrend(acwiC);
+  const vix = vixC && vixC.length ? +(vixC[vixC.length - 1]).toFixed(1) : null;
+  let pts = 0;
+  for (const t of [spx, acwi]) if (t) pts += (t.above50 ? 1 : 0) + (t.above200 ? 1 : 0);
+  if (vix != null) pts += vix < 20 ? 1 : vix > 28 ? -1 : 0;
+  const bp = storedBreadth != null ? storedBreadth : null; // breadth needs live portfolio — keep stored value
+  if (bp != null) pts += bp >= 60 ? 1 : bp < 40 ? -1 : 0;
+  const mode = pts >= 4 ? 'Aggressive' : pts >= 2 ? 'Neutral' : 'Defensive';
+  _pbLiveRegCache = {
+    mode, points: pts,
+    spx: spx ? { above50: spx.above50, above200: spx.above200, ret3m: spx.ret3m != null ? +spx.ret3m.toFixed(1) : null } : null,
+    acwi: acwi ? { above50: acwi.above50, above200: acwi.above200, ret3m: acwi.ret3m != null ? +acwi.ret3m.toFixed(1) : null } : null,
+    vix, breadth_pct: bp, _live: true, _at: Date.now(),
+  };
+  _pbLiveRegAt = Date.now();
+  return _pbLiveRegCache;
+}
+
+// Patch the already-rendered profit booking card with live regime data.
+async function pbPatchLiveRegime(storedReg) {
+  const lbl = document.getElementById('pb-regime-freshness');
+  if (lbl) lbl.textContent = '⏳ Refreshing market data…';
+  let live;
+  try { live = await pbComputeRegimeLive(storedReg ? storedReg.breadth_pct : null); }
+  catch (e) { if (lbl) lbl.textContent = '⚠ Could not refresh — showing snapshot'; return; }
+  if (!live) { if (lbl) lbl.textContent = '⚠ Could not refresh — showing snapshot'; return; }
+
+  // Patch regime header chip
+  const chip = document.getElementById('pb-regime-chip');
+  if (chip) {
+    const regColor = { Aggressive: 'green', Neutral: 'yellow', Defensive: 'red' }[live.mode] || '';
+    const regIcon = { Aggressive: '🚀', Neutral: '⚖️', Defensive: '🛡️' }[live.mode] || '';
+    chip.className = 'value ' + regColor;
+    chip.textContent = regIcon + ' ' + live.mode;
+    const sub = document.getElementById('pb-regime-pts');
+    if (sub) sub.textContent = live.points + ' signal pts';
+  }
+
+  // Patch market conditions table
+  const tbl = document.getElementById('pb-mkt-table');
+  if (tbl && (live.spx || live.acwi)) {
+    const idx2 = (n, t) => t ? `<tr><td>${n}</td><td>${pbTick(t.above50)}</td><td>${pbTick(t.above200)}</td><td class="${clr(t.ret3m)}">${fmt(t.ret3m, 1)}%</td></tr>` : '';
+    tbl.innerHTML = `<tr><th>Index</th><th>&gt; 50 DMA</th><th>&gt; 200 DMA</th><th>3-month</th></tr>${idx2('S&amp;P 500', live.spx)}${idx2('MSCI ACWI', live.acwi)}`;
+  }
+  const vixEl = document.getElementById('pb-mkt-vix');
+  if (vixEl && live.vix != null) {
+    const v = live.vix;
+    vixEl.innerHTML = `<b>VIX</b>${v} ${v < 20 ? '<span class="green">calm</span>' : v > 28 ? '<span class="red">stressed</span>' : '<span class="yellow">elevated</span>'}`;
+  }
+
+  // Patch notes section if regime changed
+  const notesEl = document.getElementById('pb-watchouts-body');
+  if (notesEl && live.mode !== storedReg.mode) {
+    const newNote = { Aggressive: 'Market regime Aggressive — let winners run, trim only at ladder levels.',
+      Neutral: 'Market regime Neutral — follow the ladder, tighten review on weak sectors.',
+      Defensive: 'Market regime Defensive — book ladder profits fully, protect gains, avoid new stock risk.' }[live.mode];
+    // Replace the old regime note (it's always the last item)
+    const items = notesEl.querySelectorAll('div');
+    for (const item of items) {
+      if (item.textContent.startsWith('Market regime ')) { item.textContent = newNote; break; }
+    }
+  }
+
+  // Update execute panel mode badge
+  const execBadge = document.getElementById('pb-exec-badge');
+  if (execBadge) {
+    const isUp = live.mode === 'Aggressive' || live.mode === 'Neutral';
+    execBadge.style.background = isUp ? 'rgba(34,197,94,.15)' : 'rgba(245,158,11,.15)';
+    execBadge.style.color = isUp ? 'var(--green)' : 'var(--yellow)';
+    execBadge.textContent = 'Market ' + live.mode;
+  }
+
+  const now = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  if (lbl) lbl.innerHTML = `🟢 Live data · updated ${now}`;
+  PB.liveReg = live;
+}
+
 // ── tap a header tile → pop-up explaining it, with the stocks behind the number ──
 // Closest single stocks to the first ladder step (+20%), so "£0" always says how far away the next trim is.
 function pbClosest(rows, dueCount) {
@@ -147,7 +266,7 @@ async function loadProfit() {
   // ── Header stats
   const stats = `
     <div class="stats-strip">
-      <div class="stat-card pb-tap" onclick="pbInfo('regime')" role="button" tabindex="0"><div class="label">Market regime <span class="pb-i">ⓘ</span></div><div class="value ${regColor}">${regIcon} ${reg.mode}</div><div class="sub">${reg.points} signal pts</div></div>
+      <div class="stat-card pb-tap" onclick="pbInfo('regime')" role="button" tabindex="0"><div class="label">Market regime <span class="pb-i">ⓘ</span></div><div id="pb-regime-chip" class="value ${regColor}">${regIcon} ${reg.mode}</div><div id="pb-regime-pts" class="sub">${reg.points} signal pts</div></div>
       <div class="stat-card pb-tap" onclick="pbInfo('holdings')" role="button" tabindex="0"><div class="label">Holdings <span class="pb-i">ⓘ</span></div><div class="value">${fmtGbp(tot.holdings_gbp)}</div><div class="sub">invested ${fmtGbpPlain(tot.invested_gbp)}</div></div>
       <div class="stat-card pb-tap" onclick="pbInfo('trims')" role="button" tabindex="0"><div class="label">Profit to book <span class="pb-i">ⓘ</span></div><div class="value yellow">${fmtGbp(tot.suggested_trims_gbp)}</div><div class="sub">${(cnt.trim || 0) > 0 && !(tot.suggested_trims_gbp > 0) ? `ladder: none due · ${cnt.trim} flagged by score` : 'ladder trims due'}</div></div>
       <div class="stat-card pb-tap" onclick="pbInfo('actions')" role="button" tabindex="0"><div class="label">Actions <span class="pb-i">ⓘ</span></div><div class="value" style="font-size:15px">
@@ -164,9 +283,6 @@ async function loadProfit() {
     const maxStock = concentration.max_stock_pct || 25;
     const overweight = (rowsData || []).filter(r => r.weight_pct > maxStock).sort((a, b) => b.weight_pct - a.weight_pct);
     if (!isUp && !pieProfits.length) return '';
-    const moodBadge = isUp
-      ? `<span style="background:rgba(34,197,94,.15);color:var(--green);border-radius:5px;padding:2px 7px;font-size:12px">Market ${regData.mode}</span>`
-      : `<span style="background:rgba(245,158,11,.15);color:var(--yellow);border-radius:5px;padding:2px 7px;font-size:12px">Market ${(regData || {}).mode || 'Unknown'}</span>`;
     // Build contextual step list
     const steps = [];
     // Step 1: Check which pies are actually up
@@ -225,9 +341,10 @@ async function loadProfit() {
         </div>
       </div>
     </div>`);
+    const badgeId = `id="pb-exec-badge" style="${isUp ? 'background:rgba(34,197,94,.15);color:var(--green)' : 'background:rgba(245,158,11,.15);color:var(--yellow)'};border-radius:5px;padding:2px 7px;font-size:12px"`;
     return `<div class="card" style="border-left:3px solid var(--accent)">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
-        <h3 style="margin:0">🎯 How to cash out</h3>${moodBadge}
+        <h3 style="margin:0">🎯 How to cash out</h3><span ${badgeId}>Market ${(regData || {}).mode || 'Unknown'}</span>
       </div>
       <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Step-by-step — T212 has no "sell profit only" button. Here's how to do it given your portfolio.</div>
       <div class="pb-exec-steps">${steps.join('')}</div>
@@ -239,17 +356,18 @@ async function loadProfit() {
   const idx = (n, t) => t ? `<tr><td>${n}</td><td>${pbTick(t.above50)}</td><td>${pbTick(t.above200)}</td><td class="${clr(t.ret3m)}">${fmt(t.ret3m, 1)}%</td></tr>` : '';
   const market = `
     <div class="card"><h3>① Market conditions</h3>
-      <table class="pb-rules" style="width:100%"><tr><th>Index</th><th>&gt; 50 DMA</th><th>&gt; 200 DMA</th><th>3-month</th></tr>
+      <div style="font-size:11px;margin-bottom:6px"><span id="pb-regime-freshness" style="color:var(--muted)">📸 Snapshot · ${upd}</span></div>
+      <table id="pb-mkt-table" class="pb-rules" style="width:100%"><tr><th>Index</th><th>&gt; 50 DMA</th><th>&gt; 200 DMA</th><th>3-month</th></tr>
         ${idx('S&amp;P 500', reg.spx)}${idx('MSCI ACWI', reg.acwi)}</table>
       <div class="pb-kv">
-        <div><b>VIX</b>${reg.vix ?? '—'} ${reg.vix != null ? (reg.vix < 20 ? '<span class="green">calm</span>' : reg.vix > 28 ? '<span class="red">stressed</span>' : '<span class="yellow">elevated</span>') : ''}</div>
+        <div id="pb-mkt-vix"><b>VIX</b>${reg.vix ?? '—'} ${reg.vix != null ? (reg.vix < 20 ? '<span class="green">calm</span>' : reg.vix > 28 ? '<span class="red">stressed</span>' : '<span class="yellow">elevated</span>') : ''}</div>
         <div><b>Breadth</b>${reg.breadth_pct ?? '—'}% of holdings above 50 DMA</div>
       </div>
       <div style="font-size:12px;color:var(--muted)">Aggressive ≥ 4 pts · Neutral 2–3 · Defensive ≤ 1. Each index above its 50/200 DMA +1, VIX &lt; 20 +1 (&gt; 28 −1), breadth ≥ 60% +1 (&lt; 40% −1).</div>
     </div>`;
 
   // ── Watch-outs
-  const notes = (s.notes || []).length ? `<div class="card"><h3>⚠️ Watch-outs</h3>${s.notes.map(n => `<div style="font-size:13px;padding:5px 0;border-bottom:1px solid var(--border)">${n}</div>`).join('')}</div>` : '';
+  const notes = (s.notes || []).length ? `<div class="card"><h3>⚠️ Watch-outs</h3><div id="pb-watchouts-body">${s.notes.map(n => `<div style="font-size:13px;padding:5px 0;border-bottom:1px solid var(--border)">${n}</div>`).join('')}</div></div>` : '';
 
   // ── Layer 2 + 5: sector & pie exposure
   const maxSec = lim.max_sector_pct || 25;
@@ -361,8 +479,10 @@ async function loadProfit() {
         <span style="color:var(--muted)">Stops aren't guaranteed prices — gaps can fill below the trigger. Review prompts, not automatic sell orders.</span></div>
     </div>`;
 
-  el.innerHTML = `<div style="font-size:11px;color:var(--muted);margin-bottom:10px">Updated ${upd}</div>`
+  el.innerHTML = `<div style="font-size:11px;color:var(--muted);margin-bottom:10px">Pipeline run: ${upd}</div>`
     + stats + executePanel + notes + `<div class="grid2">${market}${sectors}</div>` + holdings + pies + pbPieCard(s, rows) + rules;
+  // Fire-and-forget: overlay live market data onto the snapshot
+  pbPatchLiveRegime(reg).catch(() => {});
 }
 
 function pbToggle(i) {
