@@ -52,20 +52,17 @@ function pbTrend(closes) {
 }
 async function pbComputeRegimeLive(storedBreadth) {
   if (_pbLiveRegCache && Date.now() - _pbLiveRegAt < 15 * 60 * 1000) return _pbLiveRegCache;
-  // Reuse _ovMk data for ^GSPC if already loaded (avoids a redundant fetch)
-  let spxC = null, acwiC = null, vixC = null;
-  if (typeof _ovMk !== 'undefined' && _ovMk && _ovMk.m && _ovMk.m['^GSPC'] && _ovMk.m['^GSPC'].pts) {
-    spxC = _ovMk.m['^GSPC'].pts.filter(p => p && Number.isFinite(+p[0]) && +p[1] > 0).sort((a, b) => +a[0] - +b[0]).map(p => +p[1]);
-  }
+  // Always fetch fresh — never reuse _ovMk which may be hours old.
+  // _ovMk has no age guard here and CF doesn't cache POSTs, so stale _ovMk
+  // would silently serve mid-session data. Each fresh POST hits Yahoo directly.
   const fetches = [
-    spxC ? Promise.resolve(spxC) : pbFetchPtsOrdered('^GSPC'),
+    pbFetchPtsOrdered('^GSPC'),
     pbFetchPtsOrdered('ACWI'),
     pbFetchPtsOrdered('^VIX'),
   ];
   const [gsc, asc, vc] = await Promise.all(fetches);
-  spxC = gsc; acwiC = asc; vixC = vc;
-  const spx = pbTrend(spxC), acwi = pbTrend(acwiC);
-  const vix = vixC && vixC.length ? +(vixC[vixC.length - 1]).toFixed(1) : null;
+  const spx = pbTrend(gsc), acwi = pbTrend(asc);
+  const vix = vc && vc.length ? +(vc[vc.length - 1]).toFixed(1) : null;
   let pts = 0;
   for (const t of [spx, acwi]) if (t) pts += (t.above50 ? 1 : 0) + (t.above200 ? 1 : 0);
   if (vix != null) pts += vix < 20 ? 1 : vix > 28 ? -1 : 0;

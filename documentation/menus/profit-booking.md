@@ -43,6 +43,37 @@ Score ≥ 80 lowers the trim % (let winners run). **ETFs** are hold-and-rebalanc
 
 Six factors, weighted: Market trend 20 · Sector strength 20 · Price momentum 15 · Relative volume 15 · Fundamentals 20 · Concentration 10 (total 100). Colour: ≥80 green, ≥65 blue, ≥50 amber, below red.
 
+## Live data vs snapshot
+
+| Card / field | Source | Live? |
+|---|---|---|
+| Market regime chip, VIX, DMA table | `^GSPC`, `ACWI`, `^VIX` via relay (`/chart` POST, 1y daily) | ✅ Live — `pbPatchLiveRegime()` runs after render, 15-min client cache |
+| 50/200 DMA ✓/✗ per holding | `r.yahoo_ticker` via relay | ✅ Live — `pbPatchLiveHoldingDMAs()` batch-fetches 4 at a time |
+| Watch-outs note, Execute panel badge | Derived from live regime | ✅ Live — patched alongside regime |
+| Sector exposure bars | ETF look-through % from pipeline | 📸 Snapshot — needs full pipeline run; labelled with run date |
+| Pie-level view | Pie flags, avg score from pipeline | 📸 Snapshot — labelled |
+| Holding scores, signals, notes | Pipeline factors (momentum, volume, fundamentals) | 📸 Snapshot — labelled |
+| Breadth % | % of holdings above 50 DMA — from pipeline | 📸 Snapshot value used in regime scoring |
+
+**Sector look-through cannot be recomputed live** — it requires ETF constituent sector weights that are only available during the full pipeline run.
+
+## Live data architecture
+
+`pbFetchPtsOrdered(sym)` — POST to `PROXY/chart` with `{symbol, range:'1y'}`. Returns sorted array of daily closes. No server-side KV cache (Cloudflare does not cache POST requests).
+
+`pbComputeRegimeLive(storedBreadth)` — always fetches `^GSPC`, `ACWI`, `^VIX` in parallel (never reuses `_ovMk`, which may be hours old). 15-min client-side result cache `_pbLiveRegCache`.
+
+`pbPatchLiveHoldingDMAs(rows)` — iterates `rows`, groups unique `yahoo_ticker` values, batch-fetches 4 at a time, patches `id="pb-dma-{sym}"` spans in-place. 15-min per-symbol client cache `_pbDmaCache`.
+
+### Known limitation — breadth %
+The breadth signal (% of your holdings above their 50 DMA) is kept from the pipeline snapshot. Computing it live would require fetching 1y data for every holding — that is done by the DMA patch for tick display, but the breadth number feeds into the regime score. Future improvement: derive live breadth from `_pbDmaCache` once it populates.
+
+## Known bugs / fixed
+
+| Date | Bug | Fix |
+|---|---|---|
+| 2026-11-23 | Live regime showed stale data (VIX 27.4, S&P ✗ DMA) despite green indicator — `pbComputeRegimeLive` reused `_ovMk.m['^GSPC'].pts` without an age check; `_ovMk` could be hours old from an earlier Overview tab fetch | Removed `_ovMk` reuse entirely; always fetch `^GSPC` fresh from relay |
+
 ## Data
 
 `profit_booking` (per holding) and `profit_booking_summary` (totals, limits, regime), from `services/profit_booking_service.py`; in the private app from `docs/zk/profitbooking.js`.

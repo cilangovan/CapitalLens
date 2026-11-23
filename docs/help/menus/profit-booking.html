@@ -85,6 +85,77 @@
 <p>Score ≥ 80 lowers the trim % (let winners run). <strong>ETFs</strong> are hold-and-rebalance: +5–10% means hold with no automatic selling.</p>
 <h2 id="score">Score</h2>
 <p>Six factors, weighted: Market trend 20 · Sector strength 20 · Price momentum 15 · Relative volume 15 · Fundamentals 20 · Concentration 10 (total 100). Colour: ≥80 green, ≥65 blue, ≥50 amber, below red.</p>
+<h2 id="live-data-vs-snapshot">Live data vs snapshot</h2>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>Card / field</th>
+<th>Source</th>
+<th>Live?</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>Market regime chip, VIX, DMA table</td>
+<td><code>^GSPC</code>, <code>ACWI</code>, <code>^VIX</code> via relay (<code>/chart</code> POST, 1y daily)</td>
+<td>✅ Live — <code>pbPatchLiveRegime()</code> runs after render, 15-min client cache</td>
+</tr>
+<tr>
+<td>50/200 DMA ✓/✗ per holding</td>
+<td><code>r.yahoo_ticker</code> via relay</td>
+<td>✅ Live — <code>pbPatchLiveHoldingDMAs()</code> batch-fetches 4 at a time</td>
+</tr>
+<tr>
+<td>Watch-outs note, Execute panel badge</td>
+<td>Derived from live regime</td>
+<td>✅ Live — patched alongside regime</td>
+</tr>
+<tr>
+<td>Sector exposure bars</td>
+<td>ETF look-through % from pipeline</td>
+<td>📸 Snapshot — needs full pipeline run; labelled with run date</td>
+</tr>
+<tr>
+<td>Pie-level view</td>
+<td>Pie flags, avg score from pipeline</td>
+<td>📸 Snapshot — labelled</td>
+</tr>
+<tr>
+<td>Holding scores, signals, notes</td>
+<td>Pipeline factors (momentum, volume, fundamentals)</td>
+<td>📸 Snapshot — labelled</td>
+</tr>
+<tr>
+<td>Breadth %</td>
+<td>% of holdings above 50 DMA — from pipeline</td>
+<td>📸 Snapshot value used in regime scoring</td>
+</tr>
+</tbody>
+</table></div>
+<p><strong>Sector look-through cannot be recomputed live</strong> — it requires ETF constituent sector weights that are only available during the full pipeline run.</p>
+<h2 id="live-data-architecture">Live data architecture</h2>
+<p><code>pbFetchPtsOrdered(sym)</code> — POST to <code>PROXY/chart</code> with <code>{symbol, range:'1y'}</code>. Returns sorted array of daily closes. No server-side KV cache (Cloudflare does not cache POST requests).</p>
+<p><code>pbComputeRegimeLive(storedBreadth)</code> — always fetches <code>^GSPC</code>, <code>ACWI</code>, <code>^VIX</code> in parallel (never reuses <code>_ovMk</code>, which may be hours old). 15-min client-side result cache <code>_pbLiveRegCache</code>.</p>
+<p><code>pbPatchLiveHoldingDMAs(rows)</code> — iterates <code>rows</code>, groups unique <code>yahoo_ticker</code> values, batch-fetches 4 at a time, patches <code>id="pb-dma-{sym}"</code> spans in-place. 15-min per-symbol client cache <code>_pbDmaCache</code>.</p>
+<h3 id="known-limitation-breadth">Known limitation — breadth %</h3>
+<p>The breadth signal (% of your holdings above their 50 DMA) is kept from the pipeline snapshot. Computing it live would require fetching 1y data for every holding — that is done by the DMA patch for tick display, but the breadth number feeds into the regime score. Future improvement: derive live breadth from <code>_pbDmaCache</code> once it populates.</p>
+<h2 id="known-bugs-fixed">Known bugs / fixed</h2>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>Date</th>
+<th>Bug</th>
+<th>Fix</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>2026-11-23</td>
+<td>Live regime showed stale data (VIX 27.4, S&amp;P ✗ DMA) despite green indicator — <code>pbComputeRegimeLive</code> reused <code>_ovMk.m['^GSPC'].pts</code> without an age check; <code>_ovMk</code> could be hours old from an earlier Overview tab fetch</td>
+<td>Removed <code>_ovMk</code> reuse entirely; always fetch <code>^GSPC</code> fresh from relay</td>
+</tr>
+</tbody>
+</table></div>
 <h2 id="data">Data</h2>
 <p><code>profit_booking</code> (per holding) and <code>profit_booking_summary</code> (totals, limits, regime), from <code>services/profit_booking_service.py</code>; in the private app from <code>docs/zk/profitbooking.js</code>.</p>
 <h2 id="tests">Tests</h2>
