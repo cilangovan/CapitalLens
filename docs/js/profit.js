@@ -141,6 +141,61 @@ async function pbPatchLiveRegime(storedReg) {
   PB.liveReg = live;
 }
 
+// ── Live per-holding DMA patch ─────────────────────────────────
+// Fetches 1y closes for each unique yahoo_ticker and patches the
+// 50/200 DMA ✓/✗ ticks in the holdings cards. Runs in batches of 4.
+let _pbDmaCache = {}, _pbDmaAt = {};
+const PB_DMA_TTL = 15 * 60 * 1000;
+
+async function pbFetchDmaTrend(sym) {
+  if (!sym) return null;
+  if (_pbDmaCache[sym] && Date.now() - (_pbDmaAt[sym] || 0) < PB_DMA_TTL) return _pbDmaCache[sym];
+  const closes = await pbFetchPtsOrdered(sym);
+  if (!closes || closes.length < 51) return null;
+  const price = closes[closes.length - 1];
+  const m50 = pbSma(closes, 50);
+  const m200 = closes.length >= 201 ? pbSma(closes, 200) : null;
+  const result = { above50: price > m50, above200: m200 != null ? price > m200 : null };
+  _pbDmaCache[sym] = result; _pbDmaAt[sym] = Date.now();
+  return result;
+}
+
+async function pbPatchLiveHoldingDMAs(rows) {
+  const freshLbl = document.getElementById('pb-dma-freshness');
+  // Collect unique tickers with a DOM target
+  const tasks = [];
+  const seen = new Set();
+  for (const r of rows) {
+    if (!r.yahoo_ticker) continue;
+    const sym = r.yahoo_ticker;
+    const domId = 'pb-dma-' + sym.replace(/[^a-zA-Z0-9]/g, '_');
+    if (!document.getElementById(domId)) continue;
+    if (!seen.has(sym)) { seen.add(sym); tasks.push(sym); }
+  }
+  if (!tasks.length) { if (freshLbl) freshLbl.textContent = ''; return; }
+  // Batch fetch in groups of 4
+  let done = 0;
+  for (let i = 0; i < tasks.length; i += 4) {
+    const batch = tasks.slice(i, i + 4);
+    const results = await Promise.all(batch.map(s => pbFetchDmaTrend(s).catch(() => null)));
+    for (let j = 0; j < batch.length; j++) {
+      const sym = batch[j], trend = results[j];
+      if (!trend) continue;
+      const domId = 'pb-dma-' + sym.replace(/[^a-zA-Z0-9]/g, '_');
+      const el = document.getElementById(domId);
+      if (el) {
+        const a200 = trend.above200 != null ? pbTick(trend.above200) : '—';
+        el.innerHTML = pbTick(trend.above50) + a200;
+        el.title = 'Live · ' + new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+      }
+      done++;
+    }
+    if (freshLbl) freshLbl.textContent = `⏳ DMA refresh: ${Math.min(i + 4, tasks.length)}/${tasks.length}…`;
+  }
+  const nowT = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+  if (freshLbl) freshLbl.innerHTML = `🟢 DMA live · ${nowT} (${done}/${tasks.length} updated)`;
+}
+
 // ── tap a header tile → pop-up explaining it, with the stocks behind the number ──
 // Closest single stocks to the first ladder step (+20%), so "£0" always says how far away the next trim is.
 function pbClosest(rows, dueCount) {
@@ -371,8 +426,10 @@ async function loadProfit() {
 
   // ── Layer 2 + 5: sector & pie exposure
   const maxSec = lim.max_sector_pct || 25;
+  const snapshotNote = `<div style="font-size:11px;color:var(--muted);margin-bottom:6px">📸 Pipeline snapshot · ${upd} — sector weights need a full pipeline run to refresh</div>`;
   const sectors = `
     <div class="card"><h3>② Sector exposure (look-through) — cap ${maxSec}%</h3>
+      ${snapshotNote}
       ${(s.sectors || []).map(x => `
         <div style="display:grid;grid-template-columns:150px 1fr 54px;gap:10px;align-items:center;margin-bottom:7px;font-size:12px">
           <div>${x.sector}</div>
@@ -384,6 +441,7 @@ async function loadProfit() {
     </div>`;
   const pies = `
     <div class="card"><h3>⑤ Pie-level view</h3>
+      ${snapshotNote}
       <table class="pb-rules" style="width:100%"><tr><th>Pie</th><th>Value</th><th>Weight</th><th>Gain</th><th>Score</th><th>Flags</th></tr>
       ${(s.pies || []).filter(p => p.gbp > 0).map(p => `<tr>
         <td>${p.pie}</td><td>${fmtGbp(p.gbp)}</td><td>${fmt(p.pct, 1)}%</td>
@@ -436,7 +494,7 @@ async function loadProfit() {
         <div class="pb-hold-body" id="pb-body-${i}">
           <div style="margin:8px 0;padding:8px;background:var(--bg2);border-radius:6px">🧭 ${sig.rule || ''}<br>📊 Volume: ${sig.volume || '—'}${r.rel_volume ? ` (RV ${fmt(r.rel_volume, 2)})` : ''}
             · Sector vs benchmark 3m: <span class="${clr(sig.sector_rel_3m)}">${sig.sector_rel_3m == null ? '—' : fmt(sig.sector_rel_3m, 1) + '%'}</span>
-            · 50/200 DMA ${pbTick(sig.above50)}${pbTick(sig.above200)} · Sector: ${r.sector}</div>
+            · 50/200 DMA <span id="pb-dma-${r.yahoo_ticker ? r.yahoo_ticker.replace(/[^a-zA-Z0-9]/g, '_') : i}" data-pb-dma="${r.yahoo_ticker || ''}">${pbTick(sig.above50)}${pbTick(sig.above200)}</span> · Sector: ${r.sector}</div>
           ${factors}
           ${protect}
           ${ladder}
@@ -446,7 +504,8 @@ async function loadProfit() {
   };
   const holdings = `
     <div class="card"><h3>③④ Holdings — weekly score &amp; action</h3>
-      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Score: 80–100 let it run · 65–79 hold &amp; monitor · 50–64 consider partial booking · &lt;50 reassess. Tap a row for detail.</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:4px">Score: 80–100 let it run · 65–79 hold &amp; monitor · 50–64 consider partial booking · &lt;50 reassess. Tap a row for detail.</div>
+      <div style="font-size:11px;color:var(--muted);margin-bottom:8px">📸 Scores/signals: Pipeline snapshot · ${upd} &nbsp;|&nbsp; <span id="pb-dma-freshness">⏳ Refreshing 50/200 DMA…</span></div>
       ${sorted.map(holdCard).join('')}
     </div>`;
 
@@ -481,8 +540,9 @@ async function loadProfit() {
 
   el.innerHTML = `<div style="font-size:11px;color:var(--muted);margin-bottom:10px">Pipeline run: ${upd}</div>`
     + stats + executePanel + notes + `<div class="grid2">${market}${sectors}</div>` + holdings + pies + pbPieCard(s, rows) + rules;
-  // Fire-and-forget: overlay live market data onto the snapshot
+  // Fire-and-forget: overlay live market + DMA data onto the snapshot
   pbPatchLiveRegime(reg).catch(() => {});
+  pbPatchLiveHoldingDMAs(rows).catch(() => { const l = document.getElementById('pb-dma-freshness'); if (l) l.textContent = '⚠ Could not refresh DMA'; });
 }
 
 function pbToggle(i) {
