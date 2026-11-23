@@ -1,7 +1,7 @@
 name: Security checks
 
 # Runs on every change, daily, and weekly for the full XSS auto-fix cycle.
-# Daily: static code scan + live probes + GitHub issue sync + email digest.
+# Daily: static code scan + live probes + GitHub issue sync + Gmail digest.
 # Push:  fast XSS gate (no auto-fix, blocks CI on new medium+ findings).
 # Weekly (Mon 03:00 UTC): XSS scan + auto-fix + commit + issue sync.
 on:
@@ -141,9 +141,10 @@ findings: documentation/security-findings.json"
 
       - name: Build and send security email digest
         env:
-          SENDGRID_API_KEY: ${{ secrets.SENDGRID_API_KEY }}
-          DIGEST_TO_EMAIL:  ${{ secrets.DIGEST_TO_EMAIL }}
-          GH_TOKEN:         ${{ secrets.GITHUB_TOKEN }}
+          GMAIL_FROM:        ${{ secrets.GMAIL_FROM }}
+          GMAIL_APP_PASSWORD: ${{ secrets.GMAIL_APP_PASSWORD }}
+          DIGEST_TO_EMAIL:   ${{ secrets.DIGEST_TO_EMAIL }}
+          GH_TOKEN:          ${{ secrets.GITHUB_TOKEN }}
         run: python -u tests/security_email.py
 
   # ── Browser smoke test ─────────────────────────────────────────────────────

@@ -10,12 +10,17 @@ and GitHub Issues (via gh CLI) to build a categorised HTML email:
     🔵 Low / ⚪ Info                    → summary table only
     ✅ Resolved since last email        → closed issues from the past 24 h
 
-  Delivery: SendGrid API (env SENDGRID_API_KEY + DIGEST_TO_EMAIL).
-  Falls back to printing the email body if the env vars are absent (useful for local testing).
+  Delivery: Gmail SMTP with App Password (env GMAIL_FROM + GMAIL_APP_PASSWORD + DIGEST_TO_EMAIL).
+  Falls back to writing a preview HTML file if the env vars are absent (useful for local testing).
+
+  GitHub Actions secrets required:
+    GMAIL_FROM         — the Gmail address to send from (e.g. you@gmail.com)
+    GMAIL_APP_PASSWORD — Gmail App Password (Google Account → Security → App passwords)
+    DIGEST_TO_EMAIL    — recipient address
 
 Usage:
   python tests/security_email.py
-  SENDGRID_API_KEY=xxx DIGEST_TO_EMAIL=hoop@example.com python tests/security_email.py
+  GMAIL_FROM=you@gmail.com GMAIL_APP_PASSWORD=xxxx DIGEST_TO_EMAIL=you@gmail.com python tests/security_email.py
 """
 import json
 import os
@@ -205,22 +210,33 @@ def build_html(findings: list[dict], open_issues: list[dict], resolved: list[dic
 </html>"""
 
 
-def send_via_sendgrid(html: str, subject: str, to_email: str, api_key: str):
-    import urllib.request
-    payload = json.dumps({
-        "personalizations": [{"to": [{"email": to_email}]}],
-        "from": {"email": "security@capitallens.app", "name": "CapitalLens Security"},
-        "subject": subject,
-        "content": [{"type": "text/html", "value": html}],
-    }).encode()
-    req = urllib.request.Request(
-        "https://api.sendgrid.com/v3/mail/send",
-        data=payload,
-        headers={"Authorization": f"Bearer {api_key}", "Content-Type": "application/json"},
-        method="POST",
+def send_via_gmail(html: str, subject: str, from_email: str, to_email: str, app_password: str):
+    """Send HTML email via Gmail SMTP using an App Password (port 587 / STARTTLS)."""
+    import smtplib
+    from email.mime.multipart import MIMEMultipart
+    from email.mime.text import MIMEText
+
+    msg = MIMEMultipart("alternative")
+    msg["Subject"] = subject
+    msg["From"] = f"CapitalLens Security <{from_email}>"
+    msg["To"] = to_email
+
+    # Plain-text fallback (brief summary — clients that can't render HTML see this)
+    plain = (
+        f"CapitalLens Daily Security Digest\n"
+        f"{subject}\n\n"
+        "This email requires an HTML-capable mail client.\n"
+        f"Full report: https://github.com/{REPO}/blob/main/documentation/security-audit.md"
     )
-    with urllib.request.urlopen(req) as resp:
-        print(f"  SendGrid: {resp.status}")
+    msg.attach(MIMEText(plain, "plain"))
+    msg.attach(MIMEText(html, "html"))
+
+    with smtplib.SMTP("smtp.gmail.com", 587) as smtp:
+        smtp.ehlo()
+        smtp.starttls()
+        smtp.login(from_email, app_password)
+        smtp.sendmail(from_email, to_email, msg.as_string())
+    print(f"  Gmail SMTP: sent to {to_email}")
 
 
 def main():
@@ -236,17 +252,22 @@ def main():
 
     html = build_html(findings, open_issues, resolved)
 
-    api_key  = os.environ.get("SENDGRID_API_KEY", "")
-    to_email = os.environ.get("DIGEST_TO_EMAIL", "")
+    gmail_from    = os.environ.get("GMAIL_FROM", "")
+    gmail_pass    = os.environ.get("GMAIL_APP_PASSWORD", "")
+    to_email      = os.environ.get("DIGEST_TO_EMAIL", "")
 
-    if api_key and to_email:
-        send_via_sendgrid(html, subject, to_email, api_key)
+    if gmail_from and gmail_pass and to_email:
+        send_via_gmail(html, subject, gmail_from, to_email, gmail_pass)
         print(f"  Email sent to {to_email}: {subject}")
     else:
-        # Fallback: write to file (useful for local review or if SendGrid not configured)
+        # Fallback: write to file (useful for local review or when Gmail not configured)
         out = ROOT / "documentation" / "security-email-preview.html"
         out.write_text(html)
-        print(f"  No SENDGRID_API_KEY / DIGEST_TO_EMAIL set.")
+        missing = []
+        if not gmail_from:   missing.append("GMAIL_FROM")
+        if not gmail_pass:   missing.append("GMAIL_APP_PASSWORD")
+        if not to_email:     missing.append("DIGEST_TO_EMAIL")
+        print(f"  Missing env vars: {', '.join(missing)}")
         print(f"  Email preview written to {out.relative_to(ROOT)}")
         print(f"  Subject: {subject}")
 

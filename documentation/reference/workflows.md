@@ -16,7 +16,7 @@
 | IPO Calendar | `ipo_calendar.yml` | push, manual | `15 6 * * 1-5` weekdays 06:15 UTC |
 | CapitalLens | `monitor.yml` | manual | `0,15,30 8 * * 1-5` NASDAQ open window: every 15 min 14:30–15:00 UTC<br>`30,45 14 * * 1-5`<br>`0 15 * * 1-5` LSE close window: every 15 min 16:00–16:30 UTC<br>`0,15,30 16 * * 1-5` NASDAQ close window: every 15 min 20:30–21:00 UTC<br>`30,45 20 * * 1-5`<br>`0 21 * * 1-5` Regular hours: every 45 min across full market day 07:00–21:00 UTC<br>`0,45 7 * * 1-5`<br>`0,45 9 * * 1-5`<br>`0,45 10 * * 1-5`<br>`0,45 11 * * 1-5`<br>`0,45 12 * * 1-5`<br>`0,45 13 * * 1-5`<br>`0,45 17 * * 1-5`<br>`0,45 18 * * 1-5`<br>`0,45 19 * * 1-5` 2hrs after NASDAQ close: 21:00–23:00 UTC (after-hours moves)<br>`0,45 22 * * 1-5`<br>`0 23 * * 1-5` |
 | Public market cache (zero-knowledge design) | `public_market.yml` | manual | `30 5 * * 1-5` weekdays 05:30 UTC (after the daily jobs' data is available) |
-| Security checks | `security.yml` | push, pull request, manual | `17 6 * * *` daily static + live checks<br>`0 3 * * 1` weekly full XSS re-scan (Monday 03:00 UTC) |
+| Security checks | `security.yml` | push, pull request, manual | `17 6 * * *` daily: static + live checks + issue sync + email<br>`0 3 * * 1` weekly Mon 03:00 UTC: XSS auto-fix cycle |
 | Send Password Reset Email | `send_reset_email.yml` | repository_dispatch | — |
 | T212 History Sync | `t212_sync.yml` | manual | — |
 | UI tests (mobile layout) | `ui_tests.yml` | push, pull request, manual | `47 7 * * 1-5` after the morning data refresh |
@@ -73,8 +73,9 @@ python -m services.institutional_flow_service
 
 ```
 python -u tests/security_check.py
-python -u tests/security_scan.py --report
-python -u tests/security_scan.py --fix --report
+python -u tests/security_scan.py --report --json
+python -u tests/security_scan.py --fix --report --json
+python tests/security_issue_sync.py \
 ```
 
 ## Send Password Reset Email
