@@ -2,6 +2,119 @@
 // Trading 212 credentials are used for this run only: they are never stored, and the fields are cleared afterwards.
 function zkToolsOpen() { document.getElementById('zk-tools').style.display = 'flex'; const c = document.getElementById('zk-chip'); if (c) c.style.display = 'none'; }
 var ZK_RUN = { running: false, started: 0, last: '', timer: null };
+
+// ── LIVE TICKER ───────────────────────────────────────────────────────────────
+// Polls T212 account/cash + portfolio every LIVE_INTERVAL_MS while the tab is active.
+// Credentials live in session memory only (never encrypted to DB, never persisted):
+// _liveKey/_liveSec are cleared on logout via zkLiveStop().
+const LIVE_INTERVAL_MS = 5 * 60 * 1000;   // 5 minutes (T212 rate limit ~10.5s/req; 2 reqs + margin = ok)
+let _liveKey = null, _liveSec = null, _liveTimer = null, _liveTicking = false;
+
+function zkLiveBadge(state, msg) {
+  // state: 'live'|'error'|'off'
+  let b = document.getElementById('zk-live-badge');
+  if (!b) {
+    b = document.createElement('div'); b.id = 'zk-live-badge';
+    b.style.cssText = 'position:fixed;left:14px;bottom:14px;z-index:40;padding:5px 11px;border-radius:8px;font-size:12px;font-weight:600;cursor:pointer;box-shadow:0 2px 10px #0005;display:none';
+    b.addEventListener('click', zkToolsOpen); document.body.appendChild(b);
+  }
+  if (state === 'off') { b.style.display = 'none'; return; }
+  b.style.background = state === 'live' ? 'rgba(34,197,94,.18)' : 'rgba(239,68,68,.18)';
+  b.style.color = state === 'live' ? 'var(--green)' : 'var(--red)';
+  b.style.border = state === 'live' ? '1px solid rgba(34,197,94,.4)' : '1px solid rgba(239,68,68,.4)';
+  b.textContent = state === 'live' ? '🟢 LIVE · ' + msg : '🔴 ' + msg;
+  b.style.display = 'block';
+}
+
+async function zkLiveTick() {
+  if (!ZKCTX || !_liveKey || !_liveSec || _liveTicking) return;
+  _liveTicking = true;
+  try {
+    const client = ZKT212.client({ relayUrl: RELAY_URL });
+    client.setCreds(_liveKey, _liveSec);
+    const [account, positions] = await Promise.all([
+      client.get('/api/v0/equity/account/cash', { after: 500 }),
+      client.get('/api/v0/equity/portfolio', { after: 500 }),
+    ]);
+    client.clear();
+    // Parse the live numbers
+    const cash = account ? (Number(account.free) || 0) : 0;
+    const invested = account ? (Number(account.invested) || 0) : 0;
+    const ppl = positions ? positions.reduce((s, p) => s + (Number(p.ppl) || 0), 0) : 0;
+    const total = invested + ppl + cash;
+    // Update the stats strip headline numbers in-place (without re-rendering the whole overview)
+    const tsEl = document.getElementById('live-ts');
+    const now = new Date().toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+    if (tsEl) tsEl.textContent = now;
+    const liveTotal = document.getElementById('live-total');
+    const livePpl = document.getElementById('live-ppl');
+    const liveCash = document.getElementById('live-cash');
+    const liveInv = document.getElementById('live-invested');
+    const fmtGbp = v => '£' + Math.abs(v).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    if (liveTotal) liveTotal.textContent = fmtGbp(total);
+    if (livePpl) { livePpl.textContent = (ppl >= 0 ? '+' : '−') + fmtGbp(ppl); livePpl.style.color = ppl >= 0 ? 'var(--green)' : 'var(--red)'; }
+    if (liveCash) liveCash.textContent = fmtGbp(cash);
+    if (liveInv) liveInv.textContent = fmtGbp(invested);
+    // Show/update the live strip if the overview hasn't rendered the live IDs yet — inject a mini live strip
+    if (!liveTotal) zkLiveInjectStrip({ total, ppl, cash, invested, now });
+    zkLiveBadge('live', now);
+  } catch (e) {
+    zkLiveBadge('error', (e.message || 'T212 error').slice(0, 40));
+  } finally { _liveTicking = false; }
+}
+
+function zkLiveInjectStrip(d) {
+  // If the overview hasn't loaded (or overview doesn't have live-* ids), inject a minimal live strip at the top of the page
+  let strip = document.getElementById('zk-live-strip');
+  const fmtGbp = v => '£' + Math.abs(v).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  const pplSign = d.ppl >= 0 ? '+' : '−';
+  if (!strip) {
+    strip = document.createElement('div'); strip.id = 'zk-live-strip';
+    strip.style.cssText = 'background:var(--bg2);border-bottom:1px solid var(--border);padding:8px 16px;display:flex;gap:16px;flex-wrap:wrap;align-items:center;font-size:13px;position:sticky;top:0;z-index:30';
+    const app = document.getElementById('app'); if (app) app.prepend(strip); else return;
+  }
+  strip.innerHTML = `<span style="color:var(--muted);font-size:11px">🟢 LIVE ${d.now}</span>
+    <span><b style="font-size:15px" id="live-total">${fmtGbp(d.total)}</b> <span class="w-dim w-small">total</span></span>
+    <span id="live-ppl" style="font-weight:600;color:${d.ppl>=0?'var(--green)':'var(--red)'}">${pplSign}${fmtGbp(d.ppl)}</span>
+    <span class="w-dim w-small">cash <span id="live-cash">${fmtGbp(d.cash)}</span></span>
+    <span class="w-dim w-small">inv <span id="live-invested">${fmtGbp(d.invested)}</span></span>
+    <span style="color:var(--muted);font-size:11px;margin-left:auto" id="live-ts">${d.now}</span>`;
+}
+
+function zkLiveStart(key, sec) {
+  _liveKey = key; _liveSec = sec;
+  if (_liveTimer) clearInterval(_liveTimer);
+  zkLiveTick();   // immediate first tick
+  _liveTimer = setInterval(zkLiveTick, LIVE_INTERVAL_MS);
+  // Update UI state in the Tools panel
+  const btn = document.getElementById('zk-live-btn');
+  const status = document.getElementById('zk-live-status');
+  if (btn) btn.textContent = '⏹ Stop live feed';
+  if (status) status.textContent = 'Live — updating every 5 min';
+}
+
+function zkLiveStop() {
+  _liveKey = null; _liveSec = null;
+  if (_liveTimer) { clearInterval(_liveTimer); _liveTimer = null; }
+  zkLiveBadge('off');
+  const strip = document.getElementById('zk-live-strip'); if (strip) strip.remove();
+  const btn = document.getElementById('zk-live-btn');
+  const status = document.getElementById('zk-live-status');
+  if (btn) btn.textContent = '▶ Start live feed';
+  if (status) status.textContent = '';
+}
+
+function zkLiveToggle() {
+  if (_liveKey) { zkLiveStop(); return; }
+  const key = document.getElementById('zk-key').value.trim(), sec = document.getElementById('zk-sec').value.trim();
+  if (!key || !sec) {
+    const status = document.getElementById('zk-live-status');
+    if (status) status.textContent = 'Enter your T212 key & secret above first';
+    return;
+  }
+  zkLiveStart(key, sec);
+  document.getElementById('zk-key').value = ''; document.getElementById('zk-sec').value = '';
+}
 function zkChip() {            // small progress chip: the refresh keeps running while the panel is hidden and you use the dashboard
   let c = document.getElementById('zk-chip');
   if (!c) {

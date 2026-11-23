@@ -66,6 +66,7 @@ async function _unlocked(token, dk) {
 }
 function logout() {
   clearTimeout(_inactivityTimer); ZKCTX = null;
+  if (typeof zkLiveStop === 'function') zkLiveStop();   // clear live-feed credentials from session memory
   try { const keep = ['t212_timeout', 't212_expired'].filter(k => sessionStorage.getItem(k)); sessionStorage.clear(); keep.forEach(k => sessionStorage.setItem(k, '1')); } catch (e) {}
   location.reload();
 }

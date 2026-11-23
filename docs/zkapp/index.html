@@ -710,6 +710,9 @@
 #zk-tools .zk-help-btn{width:24px;height:24px;border-radius:50%;background:var(--bg3);color:var(--text);border:1px solid var(--border);font-size:13px;font-weight:700;padding:0;cursor:pointer;display:flex;align-items:center;justify-content:center}
 #zk-tools button{background:var(--accent);color:#fff;border:0;border-radius:8px;padding:8px 14px;font-size:13px;cursor:pointer}
 #zk-tools button:disabled{opacity:.5;cursor:default}
+#zk-live-badge{animation:none}
+@keyframes zk-pulse{0%,100%{opacity:1}50%{opacity:.55}}
+#zk-live-badge.pulsing{animation:zk-pulse 2s ease-in-out infinite}
 </style>
 <div id="zk-tools" style="display:none;position:fixed;inset:0;background:rgba(0,0,0,.6);z-index:50;align-items:center;justify-content:center">
   <div style="background:var(--card,#161b22);border:1px solid var(--border);border-radius:12px;padding:20px;width:min(560px,92vw);max-height:90vh;overflow:auto">
@@ -723,6 +726,7 @@
       <b>🔑 Recovery key:</b> the only way back in if you forget your password. Press <i>Check my key</i> about once a week to confirm yours still works. Lost it? <i>Create a new recovery key</i> while you are signed in.<br>
       <b>🧪 Compare / duplicates:</b> health checks for your stored data. <i>Scan</i> only reads. Use <i>Fix</i> only if Scan reports extra rows.<br>
       <b>🔄 Refresh your data:</b> pulls your latest Trading 212 data and updates every dashboard. Paste your <u>read-only</u> Trading 212 key (Settings &gt; API in Trading 212). It is used once and never saved. Leave the fields empty to just re-analyse what is already stored. When you press <i>Refresh now</i> this window shrinks to a small progress chip; keep the tab open until it shows ✅.<br>
+      <b>🟢 Live feed:</b> keeps your headline numbers (total value, P&amp;L, cash) updating every 5 minutes while this tab stays open. Enter your key &amp; secret and press <i>Start live feed</i>. Credentials are held in browser memory only and cleared the moment you stop the feed or sign out — never saved anywhere.<br>
       <b>Buttons:</b> <i>Minimise</i> hides this window but keeps anything running; <i>Close</i> hides it too. Neither stops a refresh in progress.<br>
       <b>Automatic:</b> when you log in, your stored data is re-analysed by itself if it is more than 6 hours old or the app was updated, so new features appear without you pressing anything. Only the Trading 212 sync needs your key.<br>
       <b>Phone alerts:</b> save your ntfy topic at the bottom to get alerts on your phone.
@@ -760,6 +764,10 @@
     <div id="zk-changes" style="display:none;margin:0 0 10px;padding:10px 12px;border:1px solid var(--border);border-left:3px solid var(--accent);border-radius:8px;background:var(--bg2);font-size:12px;line-height:1.55;white-space:pre-line;word-break:break-word"></div>
     <pre id="zk-log" style="font-size:11px;max-height:200px;overflow:auto;background:#0004;padding:8px;border-radius:6px;white-space:pre-wrap"></pre>
     <hr style="border-color:var(--border)">
+    <h3 style="margin:0 0 6px;font-size:15px">🟢 Live feed</h3>
+    <p style="font-size:12px;color:var(--muted);margin:0 0 10px">Updates your headline numbers every 5 min while this tab is open. Enter your key &amp; secret above, then press Start. Credentials stay in browser memory only — never saved — and are cleared when you stop the feed or sign out.</p>
+    <button id="zk-live-btn" onclick="zkLiveToggle()">▶ Start live feed</button> <span id="zk-live-status" style="font-size:12px;margin-left:8px;color:var(--muted)"></span>
+    <hr style="border-color:var(--border)">
     <p style="font-size:12px;color:var(--muted);margin:6px 0">Phone alerts (ntfy topic, kept encrypted; treat it like a password):</p>
     <input id="zk-topic" type="password" placeholder="ntfy topic" autocomplete="off" style="width:70%"> <button onclick="zkToolsSaveTopic()">Save</button> <span id="zk-topic-msg" style="font-size:12px"></span>
   </div>
@@ -790,9 +798,9 @@
 <script src="../zk/postgrest.js?v=4fb32c84005f" integrity="sha384-TAmHrohvRyy+jJUgcLXNgsD0jeI83fkiX/OXoe1YrQQamDYsaHVmru/kUFga4EoP"></script>
 <script src="../zk/shim.js?v=8f139584f22b" integrity="sha384-/5Tg2tLsvkSaFJMl/YgvHdR4t6NXP5QbxC+JnmOzi3a+NZQAGiXC5IOLiH3GC18t"></script>
 <script src="../zk/pipeline.js?v=e26ff8a3aee9" integrity="sha384-8MW4AygKMYZTWrf0848VfcYI/pFbzgyUbHW8TrCp+5GTwIchIIo97MESDZY32IoY"></script>
-<script src="handler-names.js?v=a66836d82211" integrity="sha384-Het23ocsiKleDDbAnUwVwjvdbvexFyMuIVBqD7gD+SGgj7+fKZ4id4Amui+B/5Ss"></script>
-<script src="zkapp-auth.js?v=f4c605f95961" integrity="sha384-f40UpPZzqkyPfGcHmBKmvwzGyzSNyAmpvz4bmrWjclAU7TePByW5DPRe+lX+M6Jp"></script>
-<script src="zkapp-tools.js?v=b283fb3ecfdc" integrity="sha384-P1cgbQ6gUpqsfWvIVWnmQ53BMd+P9bTj5Bv8ZnHRpYbED1k1v8Bwko6N6Tf0lBzj"></script>
+<script src="handler-names.js?v=cd613e87bc56" integrity="sha384-yr6RZ5JkeR51sWRPJOIktIfYd4fXtNuujK3JnCay4lOKWhUl5WtxLpRXFE40JUHA"></script>
+<script src="zkapp-auth.js?v=03ca8c05b69c" integrity="sha384-Kq7FKxMDgJCs5zOv2rW2tXV9Ps8nqdYT+EDQoJ8bESX4zCaS9HwjFZSC1T9I++7p"></script>
+<script src="zkapp-tools.js?v=63c96d9c0170" integrity="sha384-wJx/ISHV8/W9oBlaeI5RgOX8RDEqkdwXCVeL+0u7UKOtQS5tas8RFnFKPbYWSmso"></script>
 
 <script src="../js/overview.js?v=9ca96e3dcdac" integrity="sha384-kjsIjl7QN6nn82yMuTElXFw/VAFbw8QC0iKRFoYLoPfK9ng/LbqAP0Mn1LBU/lg9"></script>
 <script src="../js/heatmap.js?v=18153c2b6032" integrity="sha384-+RtUrwd6IpQKa+m/4o+mOKS8Hqsx2NWgxhI7X56tG+LU9IWMEQJjhaZRfDf483rU"></script>
