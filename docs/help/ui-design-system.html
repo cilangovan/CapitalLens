@@ -14,7 +14,7 @@
 <h2 id="principles">Principles</h2>
 <ol>
 <li><strong>Mobile first.</strong> The owner views on a phone. Every dashboard and section fits <strong>360px and 390px with no sideways scroll</strong> (also checked at 320px for IPO Watch). Tap targets are <strong>at least 40px</strong>.</li>
-<li><strong>Dark, calm, data-first.</strong> One dark theme, restrained colour, colour only where it means something (green gain, red loss, amber caution).</li>
+<li><strong>Calm, data-first, your choice of look.</strong> Midnight (dark) is the default; each user can switch theme, font and text size in 🎨 Appearance. Restrained colour, colour only where it means something (green gain, red loss, amber caution). <strong>Never hard-code the palette</strong>: use the CSS variables (<code>var(--text)</code>, <code>var(--bg2)</code>, <code>var(--border)</code>…); canvas charts read them with <code>clv('--muted')</code>. Gain/loss always carry a sign or arrow as well as colour.</li>
 <li><strong>Everything collapses</strong> and remembers its state.</li>
 <li><strong>Honest.</strong> Missing data is labelled; sources are named; estimates say they are estimates.</li>
 <li><strong>No inline scripts.</strong> Strict CSP; handlers go through <code>docs/zk/handlers.js</code> and its whitelist (<code>handler-names.js</code>).</li>

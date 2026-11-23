@@ -205,3 +205,12 @@ check("no fixed budget: demo seeds carry shares only (no £ amounts / budget obj
 check("Watchlist amount box and Plan button are phone-sized (>=40px tap targets) on the live and demo pages",
       all(re.search(r"\.w-budget input \{[^}]*min-height:40px", (ROOT / f).read_text()) and re.search(r"\.w-budget button \{[^}]*min-height:40px", (ROOT / f).read_text()) for f in ("docs/index.html", "docs/demo/index.html")))
 check("Watchlist amount box has a phone layout test wired into CI", (ROOT / "tests/watchlist_amount_layout_test.py").exists() and "watchlist_amount_layout_test.py" in (ROOT / ".github/workflows/ui_tests.yml").read_text())
+
+# Appearance (themes/fonts/size): shared module on every dashboard, no hard-coded dark palette in dashboard scripts, tested, documented
+_ap = (ROOT / "docs/js/appearance.js").read_text()
+check("Appearance: loaded first by the live and demo pages (so by app, zkapp and zkapp-prod), 6 themes and 6 fonts, tested, documented",
+      all("appearance.js" in (ROOT / f).read_text() for f in ("docs/index.html", "docs/demo/index.html", "docs/app/index.html", "docs/zkapp/index.html", "docs/zkapp-prod/index.html"))
+      and _ap.count("{ id: '") >= 16 and (ROOT / "tests/zk_appearance_test.mjs").exists() and "appearance_layout_test.py" in (ROOT / ".github/workflows/ui_tests.yml").read_text()
+      and "Appearance" in (ROOT / "documentation/menus/settings-and-account.md").read_text() and "never hard-code palette" in doc.lower())
+_hard = [f.name for f in (ROOT / "docs/js").glob("*.js") if f.name != "appearance.js" and re.search(r"#(?:e2e8f0|8892a4|2d3353|1a1d27|0f1117|22263a)\b", f.read_text(), re.I)]
+check("dashboard scripts use the theme variables, not the old dark palette hex codes (a hard-coded colour breaks the light themes): " + ", ".join(_hard), not _hard)

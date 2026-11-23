@@ -7,7 +7,7 @@
 | **Requirement ID** | UI-21 and UI-G16 ([UI requirements](ui-requirements.md)) |
 | **Owner** | HOOP (`cilangovan`) |
 | **Raised** | 23 Nov 2026 |
-| **Status** | **Proposed. Nothing is built yet.** This page is the options paper and the requirement; the choices in [section 9](#9-decisions-needed-from-the-owner) decide the first build |
+| **Status** | **Steps 1-2 built (23 Nov 2026):** 6 themes, 6 fonts, 4 text sizes, 🎨 Appearance window on every dashboard. Decided: all 6 themes and all 6 fonts. **Not built yet:** language, region, display currency (decisions 3-5 below are still open). Only Inter is bundled; the other fonts use the device's copy, see [Verification](#12-verification) |
 
 ## 1. Problem
 
@@ -191,4 +191,10 @@ Every step: update `documentation/` and `ui-design-system.md` (replace the "one 
 
 ## 12. Verification
 
-Not applicable yet (proposed). The first build will list its tests and results here, as in [Epic: Support Levels](epic-support-levels.md#verification).
+Steps 1-2 (themes, fonts, text size):
+
+- `tests/zk_appearance_test.mjs`: 6 themes / 6 fonts / 4 sizes present; contrast **computed** per theme (text and muted on page and cards ≥ 4.5:1, ≥ 7:1 for High contrast; white on accent and gain/loss/caution ≥ 4.5:1, except the unchanged original Midnight palette at 4.47:1); stored values validated; no inline handlers; no third-party font URL.
+- `tests/appearance_layout_test.py` (live and demo page CSS, offline): fits 320/360/390px at every text size; every choice ≥ 40px; every theme and font applies; choice survives a reload and is applied before first paint; Reset; Match my device follows light/dark; no request leaves the site.
+- Rendered check in a browser of Daylight, Sepia and High contrast (labels, pills, stat cards, buttons) on a sample of the real stylesheet. **Not verified:** every screen of the real dashboards in every theme (needs signed-in data, unavailable offline). Charts recolour on change; run the app once in each light theme before relying on it.
+- **Fonts:** only Inter (regular and semibold, OFL, subset) is bundled. The sandbox could not download IBM Plex Sans, Atkinson Hyperlegible, Source Serif 4 or JetBrains Mono, so those tiles use the device's copy if installed and say so; bundling them is a follow-up (`docs/fonts/README.md`).
+- **Storage deviation from section 8:** choices are saved in the existing `user_ui_prefs` row (key `__appearance`) on every dashboard, not in the encrypted store: theme, font and size are not financial data.

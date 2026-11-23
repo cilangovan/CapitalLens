@@ -141,7 +141,9 @@
     document.querySelectorAll('.sub-closed').forEach(b => b.classList.remove('sub-closed'));
     document.querySelectorAll('[data-sub-ready],[data-oready]').forEach(e => { e.removeAttribute('data-sub-ready'); e.removeAttribute('data-oready'); });
     setup(); subSetup(); restoreOpen();
+    if (window.ClAppearance) window.ClAppearance.adopt(saved.__appearance);   // theme / font / size follow the account
   }
+  window.ClPrefs = { set(k, v) { saved[k] = v; persist(); }, get(k) { return saved[k]; } };   // other modules (appearance.js) keep their per-user choices in the same row
   function replaceSaved(obj) {
     Object.keys(OPEN).forEach(k => delete OPEN[k]);
     Object.keys(saved).forEach(k => { if (k !== 'o') delete saved[k]; });

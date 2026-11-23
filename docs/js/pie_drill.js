@@ -8,7 +8,7 @@
 const PD = { key: null, ticker: null, tab: 'overview', range: '1d', hist: {}, intraday: null, snap: null, meta: {} };
 const PD_RANGES = [['1d', '1D'], ['1w', '1W'], ['1m', '1M'], ['3m', '3M'], ['6m', '6M'], ['9m', '9M'], ['1y', '1Y'], ['max', 'MAX']];
 const PD_DAYS = { '1w': 7, '1m': 30, '3m': 91, '6m': 182, '9m': 273, '1y': 365 };
-const PDC = { up: '#0ca30c', down: '#e66767', grid: '#2d3353', ink: '#8892a4' };   // validated (dark surface)
+const PDC = { up: '#0ca30c', down: '#e66767', grid: 'var(--border)', ink: 'var(--muted)' };   // validated (dark surface)
 const pdEsc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
 const pdGbp = (v, sign) => v == null || isNaN(v) ? '—' : `${sign && v > 0 ? '+' : v < 0 ? '−' : ''}£${Math.abs(v).toLocaleString('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 const pdPct = v => v == null || !isFinite(v) ? '—' : `${v > 0 ? '+' : v < 0 ? '−' : ''}${Math.abs(v).toFixed(2)}%`;
@@ -264,7 +264,7 @@ function pdDraw(live) {
     <path d="${area}" fill="url(#pdg)"/><path d="${line}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round"/>
     ${ticks.map((t, i) => `<text x="${X(t)}" y="${H - 6}" text-anchor="${i === 0 ? 'start' : i === 2 ? 'end' : 'middle'}" fill="${PDC.ink}" font-size="11">${fmtT(t)}</text>`).join('')}
     <text x="${W - m.r}" y="${m.t - 2}" text-anchor="end" fill="${PDC.ink}" font-size="10">high ${pdGbp(hi - pad)}</text>
-    <g id="pd-x" style="display:none"><line id="pd-xl" y1="${m.t}" y2="${H - m.b}" stroke="${PDC.ink}"/><circle id="pd-xd" r="4.5" fill="${col}" stroke="#1a1d27" stroke-width="2"/></g>
+    <g id="pd-x" style="display:none"><line id="pd-xl" y1="${m.t}" y2="${H - m.b}" stroke="${PDC.ink}"/><circle id="pd-xd" r="4.5" fill="${col}" stroke="var(--bg2)" stroke-width="2"/></g>
     <rect x="0" y="0" width="${W}" height="${H}" fill="transparent" id="pd-hit"/>
   </svg><div id="pd-tip" class="dd-tip"></div>`;
   const svg = box.querySelector('svg'), hit = box.querySelector('#pd-hit'), g = box.querySelector('#pd-x'), tip = box.querySelector('#pd-tip');

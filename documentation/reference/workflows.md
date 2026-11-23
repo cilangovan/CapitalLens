@@ -102,9 +102,9 @@ python -u tests/ui_layout_test.py
 python -u tests/ipo_layout_test.py
 python -u tests/support_layout_test.py
 python -u tests/dipplan_layout_test.py
+python -u tests/appearance_layout_test.py
 python -u tests/watchlist_amount_layout_test.py
 python -u tests/watchlist_order_layout_test.py
-python -u tests/fivecheck_layout_test.py
 ```
 
 ## Watchlist Analysis

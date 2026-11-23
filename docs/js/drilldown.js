@@ -6,7 +6,7 @@
 
 const DD = { ticker: null, range: '1d', ma: new Set(), chart: null, cache: {} };
 // Validated against the dark surface (dataviz validate_palette: all checks pass)
-const DDC = { up: '#0ca30c', down: '#e66767', ma50: '#3987e5', ma200: '#d95926', grid: '#2d3353', ink: '#8892a4' };
+const DDC = { up: '#0ca30c', down: '#e66767', ma50: '#3987e5', ma200: '#d95926', grid: 'var(--border)', ink: 'var(--muted)' };
 const DD_RANGES = [['1d', '1D'], ['5d', '1W'], ['1mo', '1M'], ['3mo', '3M'], ['6mo', '6M'], ['9mo', '9M'], ['1y', '1Y'], ['5y', '5Y']];
 const DD_SLICE = { '3mo': ['1y', 63], '9mo': ['1y', 189] }; // spans Yahoo has no range for: the last N daily closes of the 1y chart
 const ddEsc = s => String(s ?? '').replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
@@ -153,8 +153,8 @@ function ddGauge(an) {
   const arc = (a0, a1, col) => { const p = a => [cx + r * Math.cos(a), cy - r * Math.sin(a)]; const [x0, y0] = p(a0), [x1, y1] = p(a1);
     return `<path d="M${x0},${y0} A${r},${r} 0 0 1 ${x1},${y1}" stroke="${col}" stroke-width="7" fill="none"/>`; };
   return `<div class="dd-gauge"><svg viewBox="0 0 120 66" width="120" height="66" role="img" aria-label="Analyst consensus ${an.label}">
-      ${arc(Math.PI, Math.PI * 0.62, DDC.down)}${arc(Math.PI * 0.6, Math.PI * 0.4, '#8892a4')}${arc(Math.PI * 0.38, 0, DDC.up)}
-      <line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="#e2e8f0" stroke-width="2.5" stroke-linecap="round"/><circle cx="${cx}" cy="${cy}" r="3.5" fill="#e2e8f0"/></svg>
+      ${arc(Math.PI, Math.PI * 0.62, DDC.down)}${arc(Math.PI * 0.6, Math.PI * 0.4, 'var(--muted)')}${arc(Math.PI * 0.38, 0, DDC.up)}
+      <line x1="${cx}" y1="${cy}" x2="${x}" y2="${y}" stroke="var(--text)" stroke-width="2.5" stroke-linecap="round"/><circle cx="${cx}" cy="${cy}" r="3.5" fill="var(--text)"/></svg>
     <div class="dd-big ${an.mean <= 2.5 ? 'green' : an.mean >= 3.5 ? 'red' : ''}">${ddEsc(an.label)}</div></div>`;
 }
 
@@ -165,8 +165,8 @@ function ddRadar(sc) {
   const rings = [2, 4, 6].map(v => `<polygon points="${axes.map((_, i) => pt(i, v).join(',')).join(' ')}" fill="none" stroke="${DDC.grid}"/>`).join('');
   const spokes = axes.map((_, i) => `<line x1="${cx}" y1="${cy}" x2="${pt(i, 6)[0]}" y2="${pt(i, 6)[1]}" stroke="${DDC.grid}"/>`).join('');
   const poly = axes.map(([k], i) => pt(i, sc[k] ?? 0).join(',')).join(' ');
-  const dots = axes.map(([k], i) => sc[k] == null ? '' : `<circle cx="${pt(i, sc[k])[0]}" cy="${pt(i, sc[k])[1]}" r="4" fill="#3987e5" stroke="#1a1d27" stroke-width="2"/>`).join('');
-  const labels = axes.map(([k, l], i) => { const [x, y] = pt(i, 7.9); return `<text x="${x}" y="${y}" text-anchor="middle" fill="#8892a4" font-size="11">${l}</text><text x="${x}" y="${y + 13}" text-anchor="middle" fill="#e2e8f0" font-size="11" font-weight="600">${sc[k] ?? '–'}/6</text>`; }).join('');
+  const dots = axes.map(([k], i) => sc[k] == null ? '' : `<circle cx="${pt(i, sc[k])[0]}" cy="${pt(i, sc[k])[1]}" r="4" fill="#3987e5" stroke="var(--bg2)" stroke-width="2"/>`).join('');
+  const labels = axes.map(([k, l], i) => { const [x, y] = pt(i, 7.9); return `<text x="${x}" y="${y}" text-anchor="middle" fill="var(--muted)" font-size="11">${l}</text><text x="${x}" y="${y + 13}" text-anchor="middle" fill="var(--text)" font-size="11" font-weight="600">${sc[k] ?? '–'}/6</text>`; }).join('');
   return `<svg class="dd-radar" viewBox="0 0 260 236" role="img" aria-label="Scores: ${axes.map(([k, l]) => `${l} ${sc[k] ?? 'n/a'} of 6`).join(', ')}">
     ${rings}${spokes}<polygon points="${poly}" fill="rgba(57,135,229,.28)" stroke="#3987e5" stroke-width="2"/>${dots}${labels}</svg>`;
 }
@@ -267,7 +267,7 @@ function ddDrawChart() {
       <text x="${W - m.r - 2}" y="${Y(c.meta.prev_close) - 5}" text-anchor="end" fill="${DDC.ink}" font-size="10">Prev close ${ddPx(c.meta.prev_close, a)}</text>` : ''}
     <path d="${area}" fill="url(#ddg)"/>${maPaths}
     <path d="${line}" fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round"/>
-    <g id="dd-x" style="display:none"><line id="dd-xl" y1="${m.t}" y2="${H - m.b}" stroke="${DDC.ink}" stroke-width="1"/><circle id="dd-xd" r="4.5" fill="${col}" stroke="#1a1d27" stroke-width="2"/></g>
+    <g id="dd-x" style="display:none"><line id="dd-xl" y1="${m.t}" y2="${H - m.b}" stroke="${DDC.ink}" stroke-width="1"/><circle id="dd-xd" r="4.5" fill="${col}" stroke="var(--bg2)" stroke-width="2"/></g>
     <rect x="${m.l}" y="0" width="${W - m.l - m.r}" height="${H}" fill="transparent" id="dd-hit"/>
   </svg><div id="dd-tip" class="dd-tip"></div>`;
   leg.innerHTML = series.length ? `<span><i style="background:${col}"></i>Price</span>` + series.map(s => `<span><i class="dash" style="border-color:${s.col}"></i>${s.key}</span>`).join('') : '';

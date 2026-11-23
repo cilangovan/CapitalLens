@@ -44,6 +44,37 @@
 </tbody>
 </table></div>
 <p><strong>Automatic re-analysis:</strong> on login, stored data is re-analysed if older than 6 hours or if the app was updated, so new features appear without pressing anything. Only the Trading 212 sync needs your key. Trading 212 allows 6 requests a minute, so a first full sync takes a while.</p>
+<h2 id="appearance-every-dashboard">🎨 Appearance (every dashboard)</h2>
+<p>The <strong>🎨 Appearance</strong> button in the header (next to Sign out) opens a window with three choices; each applies <strong>instantly</strong> and is remembered per user.</p>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>Choice</th>
+<th>Options</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Theme</strong></td>
+<td>Midnight (default) · Daylight · AMOLED black · High contrast (AAA text, thick borders) · Forest · Sepia · <strong>Match my device</strong> (Daylight by day, Midnight by night, as the phone is set)</td>
+</tr>
+<tr>
+<td><strong>Font</strong></td>
+<td>System (default) · Inter · IBM Plex Sans · Atkinson Hyperlegible · Serif · Monospace</td>
+</tr>
+<tr>
+<td><strong>Text size</strong></td>
+<td>Small 13 · Normal 14 · Large 16 · Extra large 18 px (body text; small fixed-size labels stay small)</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li>Only <strong>System and Inter are bundled</strong> (self-hosted, <code>docs/fonts/</code>). IBM Plex Sans, Atkinson Hyperlegible, Serif (Source Serif) and Monospace (JetBrains Mono) use a copy <strong>already installed on your device</strong>; if there is none the fallback named on the tile shows (Verdana, Georgia, the system monospace). Nothing is downloaded from another site.</li>
+<li><strong>Reset to defaults</strong> restores Midnight · System · Normal.</li>
+<li>Remembered on this device (so the sign-in screen and the first paint are right, no flash) and saved to your account with your other screen preferences (<code>user_ui_prefs</code>, own row only, not financial data) so it follows you to other devices. The account copy wins after sign-in.</li>
+<li>Code: <code>docs/js/appearance.js</code>, loaded first on every dashboard. Tests: <code>tests/zk_appearance_test.mjs</code> (palette contrast computed), <code>tests/appearance_layout_test.py</code> (320/360/390px, every text size, every theme and font, reload, reset). Requirements: <a href="../requirements/epic-personalisation.html">Epic: Personalisation</a>.</li>
+<li>Language, region and currency (the rest of the epic) are <strong>not built yet</strong>.</li>
+</ul>
 <h2 id="account-page-zk-prod">Account page (<code>/zk-prod/</code>)</h2>
 <p>Create account · log in · password reset with the recovery key · upgrade an existing account · <strong>Trading 212 sync</strong> (snapshot, sync history, full re-sync; runs in your browser through a stateless relay) · change password · "what is stored" (decrypted counts per table). The page also shows what the database holds for you (ciphertext only).</p>
 <h2 id="connecting-trading-212-step-by-step">Connecting Trading 212 (step by step)</h2>

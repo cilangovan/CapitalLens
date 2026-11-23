@@ -87,7 +87,7 @@ async function loadInstFlow() {
     const sig = s.signal==='Inflow'?'▲':s.signal==='Outflow'?'▼':'–';
     return `<div style="display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid #0d1b2e;font-size:11px">
       <span style="color:${sc};font-size:13px">${sig}</span>
-      <span style="flex:1;color:#e2e8f0">${s.sector}</span>
+      <span style="flex:1;color:var(--text)">${s.sector}</span>
       <span style="color:var(--muted);min-width:40px">${s.ticker}</span>
       <span style="color:${s.mom_4w>=0?'#22c55e':'#ef4444'};min-width:50px;text-align:right">${s.mom_4w>=0?'+':''}${s.mom_4w}%</span>
       <span style="color:#94a3b8;min-width:36px;text-align:right">RSI ${s.rsi}</span>
@@ -117,7 +117,7 @@ async function loadInstFlow() {
     if (!hits.length) return '';
     const chips = hits.map(h => {
       const pct = h.pct != null ? (+h.pct >= 100 ? '100% ' : '~' + (+h.pct) + '% ') : '';
-      return `<span style="display:inline-flex;align-items:center;gap:3px;background:#0f1117;border:1px solid #2d3353;border-radius:4px;padding:2px 6px;font-size:10px">
+      return `<span style="display:inline-flex;align-items:center;gap:3px;background:var(--bg);border:1px solid var(--border);border-radius:4px;padding:2px 6px;font-size:10px">
         <span style="color:#a5b4fc;font-weight:700">${String(h.ticker).replace(/_EQ$/, '')}</span>
         <span style="color:#475569">${pct}${h.note || ''}</span>
       </span>`;
@@ -287,7 +287,7 @@ async function loadHoldingDecisions() {
           <div style="border:1px solid ${slm.color}33;border-radius:9px;overflow:hidden;margin-bottom:8px">
             <div onclick="toggleVB('${id}')" style="display:flex;align-items:center;gap:10px;padding:10px 13px;cursor:pointer;background:#0d1b2e">
               <div style="flex:1">
-                <div style="font-weight:700;font-size:12px;color:#e2e8f0">${h.display||h.ticker}</div>
+                <div style="font-weight:700;font-size:12px;color:var(--text)">${h.display||h.ticker}</div>
                 <div style="font-size:10px;color:var(--muted);margin-top:2px">${techBadges}</div>
               </div>
               ${h.sell_level?`<div style="font-size:10px;padding:2px 7px;border-radius:8px;background:${slm.bg};color:${slm.color};font-weight:600;white-space:nowrap">${slm.label}</div>`:''}
@@ -410,7 +410,7 @@ async function loadStrategy() {
             <span style="font-size:18px">${am.icon}</span>
             <div style="flex:1">
               <div style="font-size:13px;font-weight:800;color:${am.color}">${tw.action}</div>
-              <div style="font-size:11px;color:var(--muted)">Target entry: <strong style="color:#e2e8f0">${sym}${tw.price}</strong>
+              <div style="font-size:11px;color:var(--muted)">Target entry: <strong style="color:var(--text)">${sym}${tw.price}</strong>
                 ${hasCost ? `&nbsp;· Avg cost: <strong style="color:${costColor}">${sym}${tw.avg_cost} (${diffPct>=0?'+':''}${diffPct.toFixed(1)}%)</strong>` : ''}
                 ${tw.rsi ? `&nbsp;· RSI: <strong style="color:${tw.rsi<40?'#22c55e':tw.rsi>65?'#ef4444':'#e8a838'}">${tw.rsi}</strong>` : ''}
               </div>
@@ -420,7 +420,7 @@ async function loadStrategy() {
 
         const priceStats = tw.current ? `
           <div style="display:flex;gap:12px;flex-wrap:wrap;font-size:11px;color:var(--muted);margin-bottom:10px;padding:8px;background:#0d1b2e;border-radius:6px">
-            <span>Current <strong style="color:#e2e8f0">${sym}${tw.current}</strong></span>
+            <span>Current <strong style="color:var(--text)">${sym}${tw.current}</strong></span>
             ${tw.ma20  ? `<span>MA20 <strong style="color:${tw.current>tw.ma20?'#22c55e':'#ef4444'}">${sym}${tw.ma20}</strong></span>` : ''}
             ${tw.ma50  ? `<span>MA50 <strong style="color:${tw.current>tw.ma50?'#22c55e':'#ef4444'}">${sym}${tw.ma50}</strong></span>` : ''}
             ${tw.low_52w  ? `<span>52w Low <strong style="color:#94a3b8">${sym}${tw.low_52w}</strong></span>` : ''}
@@ -431,7 +431,7 @@ async function loadStrategy() {
         const zonesHtml = zones.map(z => {
           const m = ratingMeta[z.rating] || ratingMeta.low;
           return `<div style="display:flex;align-items:center;gap:8px;padding:5px 8px;border-radius:6px;background:${m.bg};margin-bottom:3px">
-            <span style="font-size:11px;min-width:110px;color:#e2e8f0">${z.label}</span>
+            <span style="font-size:11px;min-width:110px;color:var(--text)">${z.label}</span>
             <span style="font-size:11px;font-weight:600;color:${m.color};min-width:80px">${m.dot} ${m.label}</span>
             <span style="font-size:11px;color:var(--muted)">${z.note||''}</span>
           </div>`;
@@ -460,10 +460,10 @@ async function loadStrategy() {
           </div>` : '';
 
         return `
-          <div style="border:1px solid #2d3353;border-radius:10px;overflow:hidden;margin-bottom:10px">
+          <div style="border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:10px">
             <div onclick="toggleVB('${id}')" style="display:flex;align-items:center;gap:12px;padding:11px 14px;cursor:pointer;user-select:none;background:#0d1b2e">
               <div style="flex:1">
-                <div style="font-weight:700;font-size:13px;color:#e2e8f0">${v.display||v.ticker}</div>
+                <div style="font-weight:700;font-size:13px;color:var(--text)">${v.display||v.ticker}</div>
                 ${tw.action ? `<div style="font-size:11px;color:${am.color};margin-top:1px">${am.icon} ${tw.action}${tw.price?` · target ${sym}${tw.price}`:''}</div>` : ''}
               </div>
               <div style="text-align:center;min-width:52px">
@@ -473,7 +473,7 @@ async function loadStrategy() {
               <div style="font-size:10px;font-weight:600;color:${scoreColor};padding:2px 7px;border-radius:10px;background:${scoreColor}22;white-space:nowrap">${v.verdict||'—'}</div>
               <div style="color:var(--muted);font-size:11px" id="${id}-chevron">▼</div>
             </div>
-            <div id="${id}" style="display:none;padding:12px 14px;border-top:1px solid #2d3353">
+            <div id="${id}" style="display:none;padding:12px 14px;border-top:1px solid var(--border)">
               ${twBox}
               ${priceStats}
               <div class="m-grid2" style="gap:16px">

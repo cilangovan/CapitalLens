@@ -35,8 +35,8 @@
     tip = document.createElement('div');
     tip.id = 'tt-global';
     tip.style.cssText = 'position:fixed;z-index:99999;display:none;pointer-events:none;max-width:260px;' +
-      'background:#0f1117;border:1px solid #2d3353;border-radius:8px;padding:8px 10px;font-size:12px;' +
-      'line-height:1.4;color:#e2e8f0;box-shadow:0 6px 20px rgba(0,0,0,.5)';
+      'background:var(--bg);border:1px solid var(--border);border-radius:8px;padding:8px 10px;font-size:12px;' +
+      'line-height:1.4;color:var(--text);box-shadow:0 6px 20px rgba(0,0,0,.5)';
     document.body.appendChild(tip);
     return tip;
   }

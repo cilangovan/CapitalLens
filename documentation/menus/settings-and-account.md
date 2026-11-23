@@ -16,6 +16,22 @@ The window has two header dots (red **Close**, yellow **Minimise**) and a **?** 
 
 **Automatic re-analysis:** on login, stored data is re-analysed if older than 6 hours or if the app was updated, so new features appear without pressing anything. Only the Trading 212 sync needs your key. Trading 212 allows 6 requests a minute, so a first full sync takes a while.
 
+## 🎨 Appearance (every dashboard)
+
+The **🎨 Appearance** button in the header (next to Sign out) opens a window with three choices; each applies **instantly** and is remembered per user.
+
+| Choice | Options |
+|---|---|
+| **Theme** | Midnight (default) · Daylight · AMOLED black · High contrast (AAA text, thick borders) · Forest · Sepia · **Match my device** (Daylight by day, Midnight by night, as the phone is set) |
+| **Font** | System (default) · Inter · IBM Plex Sans · Atkinson Hyperlegible · Serif · Monospace |
+| **Text size** | Small 13 · Normal 14 · Large 16 · Extra large 18 px (body text; small fixed-size labels stay small) |
+
+- Only **System and Inter are bundled** (self-hosted, `docs/fonts/`). IBM Plex Sans, Atkinson Hyperlegible, Serif (Source Serif) and Monospace (JetBrains Mono) use a copy **already installed on your device**; if there is none the fallback named on the tile shows (Verdana, Georgia, the system monospace). Nothing is downloaded from another site.
+- **Reset to defaults** restores Midnight · System · Normal.
+- Remembered on this device (so the sign-in screen and the first paint are right, no flash) and saved to your account with your other screen preferences (`user_ui_prefs`, own row only, not financial data) so it follows you to other devices. The account copy wins after sign-in.
+- Code: `docs/js/appearance.js`, loaded first on every dashboard. Tests: `tests/zk_appearance_test.mjs` (palette contrast computed), `tests/appearance_layout_test.py` (320/360/390px, every text size, every theme and font, reload, reset). Requirements: [Epic: Personalisation](../requirements/epic-personalisation.md).
+- Language, region and currency (the rest of the epic) are **not built yet**.
+
 ## Account page (`/zk-prod/`)
 
 Create account · log in · password reset with the recovery key · upgrade an existing account · **Trading 212 sync** (snapshot, sync history, full re-sync; runs in your browser through a stateless relay) · change password · "what is stored" (decrypted counts per table). The page also shows what the database holds for you (ciphertext only).

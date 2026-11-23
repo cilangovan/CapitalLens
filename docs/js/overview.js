@@ -210,8 +210,8 @@ async function renderGainChart(periodKey) {
     options: {
       plugins:{ legend:{display:false} },
       scales:{
-        x:{ ticks:{color:'#8892a4',font:{size:9}}, grid:{color:'#2d3353'} },
-        y:{ ticks:{color:'#8892a4', callback: v => v+'%'}, grid:{color:'#2d3353'} }
+        x:{ ticks:{color:clv('--muted'),font:{size:9}}, grid:{color:clv('--border')} },
+        y:{ ticks:{color:clv('--muted'), callback: v => v+'%'}, grid:{color:clv('--border')} }
       },
       responsive:true
     }
@@ -231,7 +231,7 @@ function renderPieChart(positions) {
   ctx2._chart = new Chart(ctx2, {
     type: 'doughnut',
     data: { labels: pienames, datasets: [{ data: pienames.map(k => pieMap[k]), backgroundColor: COLORS }] },
-    options: { plugins:{ legend:{ position:'right', labels:{ color:'#e2e8f0', font:{size:11} } } }, responsive:true }
+    options: { plugins:{ legend:{ position:'right', labels:{ color:clv('--text'), font:{size:11} } } }, responsive:true }
   });
 }
 
@@ -294,7 +294,7 @@ async function loadSectorMap() {
         const gpColor = gp == null ? '#475569' : gp >= 0 ? '#22c55e' : '#ef4444';
         const gpStr = gp == null ? '' : `${gp >= 0 ? '+' : ''}${gp.toFixed(1)}%`;
         const sym = (h.display || h.ticker || '').replace(/_EQ$/, '');
-        return `<div style="display:inline-flex;align-items:center;gap:5px;background:#0f1117;border:1px solid ${sc.border}44;border-radius:6px;padding:4px 8px;font-size:11px;cursor:default" title="${pieName}">
+        return `<div style="display:inline-flex;align-items:center;gap:5px;background:var(--bg);border:1px solid ${sc.border}44;border-radius:6px;padding:4px 8px;font-size:11px;cursor:default" title="${pieName}">
           <span style="font-weight:700;color:${sc.text}">${sym}</span>
           ${gpStr ? `<span style="font-size:10px;color:${gpColor}">${gpStr}</span>` : ''}
         </div>`;
@@ -386,7 +386,7 @@ function ovLineSvg(points, lay) {
   lay = lay || ovLineLayout(points); if (!lay) return '';
   const { W, H, L, R, T, B, x, y, lo, hi } = lay, up = points[points.length - 1].v >= points[0].v, col = up ? '#4ade80' : '#f87171', P = i => x(points[i].t).toFixed(1) + ',' + y(points[i].v).toFixed(1);
   const money = v => '£' + Math.round(v).toLocaleString('en-GB'), span = lay.t1 - lay.t0, dayFmt = t => span <= 1.2 * 864e5 ? new Date(t).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' }) : span <= 4 * 864e5 ? new Date(t).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) : new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-  const grid = [hi, (hi + lo) / 2, lo].map(v => `<line x1="${L}" x2="${W - R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="#2d3353" stroke-width="1"/><text x="${L - 4}" y="${(y(v) + 3).toFixed(1)}" text-anchor="end" font-size="10" fill="#9aa0c3">${money(v)}</text>`).join('');
+  const grid = [hi, (hi + lo) / 2, lo].map(v => `<line x1="${L}" x2="${W - R}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="var(--border)" stroke-width="1"/><text x="${L - 4}" y="${(y(v) + 3).toFixed(1)}" text-anchor="end" font-size="10" fill="#9aa0c3">${money(v)}</text>`).join('');
   const xl = `<text x="${L}" y="${H - 5}" font-size="10" fill="#9aa0c3">${esc(dayFmt(lay.t0))}</text><text x="${W - R}" y="${H - 5}" text-anchor="end" font-size="10" fill="#9aa0c3">${esc(dayFmt(lay.t1))}</text>`;
   const lines = lay.segs.map(s => s.length > 1 ? `<polyline fill="none" stroke="${col}" stroke-width="2" stroke-linejoin="round" stroke-linecap="round" points="${s.map(P).join(' ')}"/>` : '').join('');
   const dashed = lay.gaps.map(([a, b]) => `<line x1="${x(points[a].t).toFixed(1)}" y1="${y(points[a].v).toFixed(1)}" x2="${x(points[b].t).toFixed(1)}" y2="${y(points[b].v).toFixed(1)}" stroke="${col}" stroke-width="1.5" stroke-dasharray="3 4" opacity="0.55"/>`).join('');
@@ -444,7 +444,7 @@ function ovIndexMoves(points, nowMs) {
 }
 function ovMarketRows(rows) {
   const f = v => v == null ? '<span style="color:var(--muted)">–</span>' : `<span style="color:${v < 0 ? 'var(--red,#f87171)' : 'var(--green,#4ade80)'}">${v > 0 ? '+' : ''}${v.toFixed(1)}%</span>`;
-  return rows.map(r => `<div style="padding:8px 0;border-top:1px solid var(--border,#2d3353)"><div style="display:flex;justify-content:space-between;gap:8px;font-size:14px"><span>${esc(r.flag)} <b>${esc(r.name)}</b>${r.held ? ' <span style="font-size:11px;color:var(--muted)">● you hold</span>' : ''}</span>`
+  return rows.map(r => `<div style="padding:8px 0;border-top:1px solid var(--border)"><div style="display:flex;justify-content:space-between;gap:8px;font-size:14px"><span>${esc(r.flag)} <b>${esc(r.name)}</b>${r.held ? ' <span style="font-size:11px;color:var(--muted)">● you hold</span>' : ''}</span>`
     + (r.m ? `<span>${Number(r.m.last).toLocaleString('en-GB', { maximumFractionDigits: 0 })}</span>` : '<span style="color:var(--muted)">no data</span>') + '</div>'
     + (r.m ? `<div style="display:flex;flex-wrap:wrap;gap:4px 12px;font-size:12px;margin-top:3px">${[['1D', r.m.d1], ['1W', r.m.w1], ['1M', r.m.m1], ['3M', r.m.m3], ['1Y', r.m.y1]].map(([k, v]) => `<span><span style="color:var(--muted)">${k}</span> ${f(v)}</span>`).join('')}<span><span style="color:var(--muted)">from 1Y high</span> ${f(r.m.fromHigh)}</span></div>` : '') + '</div>').join('');
 }
@@ -482,7 +482,7 @@ const OV_SVG_W = 340, OV_SVG_H = 170, OV_PAD = { l: 38, r: 8, t: 8, b: 16 };
 function ovAxis(lo, hi) {
   const y = v => OV_PAD.t + (hi - v) / (hi - lo || 1) * (OV_SVG_H - OV_PAD.t - OV_PAD.b), zero = lo < 0 && hi > 0, ticks = [lo, hi].filter(v => !zero || Math.abs(y(v) - y(0)) > 16);
   if (zero) ticks.push(0);
-  return { y, grid: ticks.map(v => `<line x1="${OV_PAD.l}" x2="${OV_SVG_W - OV_PAD.r}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="${v === 0 ? '#6b7194' : '#2d3353'}" stroke-width="1"/><text x="${OV_PAD.l - 4}" y="${(y(v) + 3).toFixed(1)}" text-anchor="end" font-size="9" fill="#9aa0c3">${v > 0 ? '+' : ''}${v.toFixed(Math.abs(hi - lo) < 5 ? 1 : 0)}%</text>`).join('') };
+  return { y, grid: ticks.map(v => `<line x1="${OV_PAD.l}" x2="${OV_SVG_W - OV_PAD.r}" y1="${y(v).toFixed(1)}" y2="${y(v).toFixed(1)}" stroke="${v === 0 ? '#6b7194' : 'var(--border)'}" stroke-width="1"/><text x="${OV_PAD.l - 4}" y="${(y(v) + 3).toFixed(1)}" text-anchor="end" font-size="9" fill="#9aa0c3">${v > 0 ? '+' : ''}${v.toFixed(Math.abs(hi - lo) < 5 ? 1 : 0)}%</text>`).join('') };
 }
 function ovTrendSvg(series) {
   const all = series.flatMap(x => x.pts); if (all.length < 2) return '';
@@ -501,16 +501,16 @@ function ovBarsSvg(weeks) {
       return `<rect data-i="${i}" x="${(OV_PAD.l + i * w + (w - bw) / 2).toFixed(1)}" y="${top.toFixed(1)}" width="${bw.toFixed(1)}" height="${h.toFixed(1)}" rx="${Math.min(2, bw / 2)}" fill="${k.pct < 0 ? '#e66767' : '#0ca30c'}"/>`; }).join('') + '</svg>';
 }
 let _ovMk = null; const OV_MK = { view: 'trend', range: '3M', sel: null, bar: null, list: [], held: new Set(), colors: {} };
-const ovMkBtn = (attr, k, on) => `<button type="button" ${attr}="${k}" style="min-height:40px;min-width:48px;padding:0 10px;border-radius:8px;border:1px solid var(--border,#2d3353);background:${on ? 'var(--accent,#6366f1)' : 'transparent'};color:inherit;cursor:pointer">${esc(k)}</button>`;
+const ovMkBtn = (attr, k, on) => `<button type="button" ${attr}="${k}" style="min-height:40px;min-width:48px;padding:0 10px;border-radius:8px;border:1px solid var(--border);background:${on ? 'var(--accent,#6366f1)' : 'transparent'};color:inherit;cursor:pointer">${esc(k)}</button>`;
 function ovMkColor(sym) { if (!OV_MK.colors[sym]) { const used = new Set(Object.entries(OV_MK.colors).filter(([k]) => OV_MK.sel.includes(k)).map(([, c]) => c)); OV_MK.colors[sym] = OV_MK_COLORS.find(c => !used.has(c)) || OV_MK_COLORS[0]; } return OV_MK.colors[sym]; }
 function ovMarketsRender() {
   const body = document.getElementById('ov-markets-body'); if (!body) return;
   const days = (OV_MK_RANGES.find(r => r[0] === OV_MK.range) || OV_MK_RANGES[3])[1], is1d = OV_MK.range === '1D', now = Date.now(), got = OV_MK.list.filter(m => _ovMk.m[m.sym]);
-  let h = `<div style="display:flex;gap:6px;flex-wrap:wrap">${[['trend', 'Trend'], ['bars', 'Weekly change'], ['table', 'Table']].map(([k, l]) => `<button type="button" data-mkv="${k}" style="min-height:40px;padding:0 12px;border-radius:8px;border:1px solid var(--border,#2d3353);background:${OV_MK.view === k ? 'var(--accent,#6366f1)' : 'transparent'};color:inherit;cursor:pointer">${l}</button>`).join('')}</div>`;
+  let h = `<div style="display:flex;gap:6px;flex-wrap:wrap">${[['trend', 'Trend'], ['bars', 'Weekly change'], ['table', 'Table']].map(([k, l]) => `<button type="button" data-mkv="${k}" style="min-height:40px;padding:0 12px;border-radius:8px;border:1px solid var(--border);background:${OV_MK.view === k ? 'var(--accent,#6366f1)' : 'transparent'};color:inherit;cursor:pointer">${l}</button>`).join('')}</div>`;
   if (OV_MK.view === 'table') { body.innerHTML = h + ovMarketRows(OV_MK.list.map(m => ({ flag: m.flag, name: m.name, held: OV_MK.held.has(m.c), m: (_ovMk.m[m.sym] || {}).mv }))); return; }
   h += `<div style="display:flex;gap:6px;flex-wrap:wrap;margin-top:6px">${OV_MK_RANGES.map(([k]) => ovMkBtn('data-mkr', k, k === OV_MK.range)).join('')}</div>`;
   h += `<div style="display:flex;gap:6px;flex-wrap:wrap;margin:6px 0">${got.map(m => { const on = OV_MK.view === 'trend' ? OV_MK.sel.includes(m.sym) : OV_MK.bar === m.sym, c = on ? ovMkColor(m.sym) : 'transparent';
-    return `<button type="button" data-mks="${esc(m.sym)}" style="min-height:40px;padding:0 10px;border-radius:20px;border:1px solid ${on ? c : 'var(--border,#2d3353)'};background:transparent;color:inherit;cursor:pointer;font-size:12px"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${on ? c : '#4a5078'};margin-right:5px"></span>${esc(m.name)}</button>`; }).join('')}</div>`;
+    return `<button type="button" data-mks="${esc(m.sym)}" style="min-height:40px;padding:0 10px;border-radius:20px;border:1px solid ${on ? c : 'var(--border)'};background:transparent;color:inherit;cursor:pointer;font-size:12px"><span style="display:inline-block;width:10px;height:10px;border-radius:50%;background:${on ? c : '#4a5078'};margin-right:5px"></span>${esc(m.name)}</button>`; }).join('')}</div>`;
   if (!got.length) { body.innerHTML = h + '<div style="color:var(--muted);font-size:13px">No index data came back from Yahoo Finance just now.</div>'; return; }
   if (OV_MK.view === 'trend') {
     const ser = OV_MK.sel.map(sym => got.find(m => m.sym === sym)).filter(Boolean).map(m => ({ m, color: ovMkColor(m.sym), pts: is1d ? ((_ovMk.intra || {})[m.sym] || []) : ovRebase(_ovMk.m[m.sym].pts, days, now) })).filter(x => x.pts.length > 1), T = ovTrendSvg(ser);
@@ -577,7 +577,7 @@ async function loadCountryDecline(range) {
     document.getElementById('ov-decline-btns').addEventListener('click', e => { const b = e.target.closest('[data-ovr]'); if (b) loadCountryDecline(b.dataset.ovr).catch(() => {}); });
   }
   range = range || '1W'; const days = (OV_RANGES.find(r => r[0] === range) || OV_RANGES[1])[1];
-  document.getElementById('ov-decline-btns').innerHTML = OV_RANGES.map(([k]) => `<button type="button" data-ovr="${k}" style="min-height:40px;min-width:48px;border-radius:8px;border:1px solid var(--border,#2d3353);background:${k === range ? 'var(--accent,#6366f1)' : 'transparent'};color:inherit;cursor:pointer">${k}</button>`).join('');
+  document.getElementById('ov-decline-btns').innerHTML = OV_RANGES.map(([k]) => `<button type="button" data-ovr="${k}" style="min-height:40px;min-width:48px;border-radius:8px;border:1px solid var(--border);background:${k === range ? 'var(--accent,#6366f1)' : 'transparent'};color:inherit;cursor:pointer">${k}</button>`).join('');
   const body = document.getElementById('ov-decline-body');
   const snaps = await api('portfolio_snapshots', '?select=id,created_at&order=created_at.desc&limit=400');
   const pick = ovPickThen(snaps, days, Date.now());
@@ -601,7 +601,7 @@ async function loadInvestLine(range) {
     document.getElementById('ov-line-btns').addEventListener('click', e => { const b = e.target.closest('[data-ovl]'); if (b) loadInvestLine(b.dataset.ovl).catch(() => {}); });
   }
   range = range || '1W'; const days = (OV_RANGES.find(r => r[0] === range) || OV_RANGES[1])[1];
-  document.getElementById('ov-line-btns').innerHTML = OV_RANGES.map(([k]) => `<button type="button" data-ovl="${k}" style="min-height:40px;min-width:48px;border-radius:8px;border:1px solid var(--border,#2d3353);background:${k === range ? 'var(--accent,#6366f1)' : 'transparent'};color:inherit;cursor:pointer">${k}</button>`).join('');
+  document.getElementById('ov-line-btns').innerHTML = OV_RANGES.map(([k]) => `<button type="button" data-ovl="${k}" style="min-height:40px;min-width:48px;border-radius:8px;border:1px solid var(--border);background:${k === range ? 'var(--accent,#6366f1)' : 'transparent'};color:inherit;cursor:pointer">${k}</button>`).join('');
   const snaps = await api('portfolio_snapshots', '?select=created_at,raw&order=created_at.desc&limit=400');
   let L = ovLinePoints(snaps, days, Date.now()), rebuilt = false; const body = document.getElementById('ov-line-body');
   if (L.n < 2 || L.spanDays < days * 0.8) { try { const H = ovHistLine((await api('pie_history', '?select=pie,series')).find(r => r.pie === '__ALL__'), days, Date.now()); if (H.n >= 2 && (L.n < 2 || H.spanDays > L.spanDays)) { L = H; rebuilt = true; } } catch (e) {} }
@@ -681,7 +681,7 @@ async function loadCountryMap() {
     const etfChips = data.etfs.map(e => {
       const gc = e.gain != null ? perfColor(e.gain) : '#475569';
       const gs = e.gain != null ? `${e.gain >= 0 ? '+' : ''}${e.gain.toFixed(1)}%` : '';
-      return `<div style="display:inline-flex;align-items:center;gap:4px;background:#0f1117;border:1px solid ${pc}33;border-radius:5px;padding:3px 7px;font-size:10px" title="${e.label} — ${e.note}">
+      return `<div style="display:inline-flex;align-items:center;gap:4px;background:var(--bg);border:1px solid ${pc}33;border-radius:5px;padding:3px 7px;font-size:10px" title="${e.label} — ${e.note}">
         <span style="color:#a5b4fc;font-weight:700">${e.ticker}</span>
         <span style="color:#334155">${e.pct < 100 ? e.pct+'%' : ''}</span>
         ${gs ? `<span style="color:${gc}">${gs}</span>` : ''}
@@ -692,7 +692,7 @@ async function loadCountryMap() {
       <div style="display:flex;align-items:center;gap:10px;padding:8px 12px">
         <div style="font-size:22px;line-height:1">${data.flag}</div>
         <div style="flex:1">
-          <div data-sub-head style="font-size:13px;font-weight:700;color:#e2e8f0"><span class="sub-chev">▾</span>${country}</div>
+          <div data-sub-head style="font-size:13px;font-weight:700;color:var(--text)"><span class="sub-chev">▾</span>${country}</div>
           <div data-sub-body style="display:flex;flex-wrap:wrap;gap:4px;margin-top:4px">${etfChips}</div>
         </div>
         <div style="text-align:right;min-width:70px">

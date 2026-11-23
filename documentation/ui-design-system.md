@@ -5,7 +5,7 @@ The single reference for how CapitalLens looks and behaves. New UI **reuses thes
 ## Principles
 
 1. **Mobile first.** The owner views on a phone. Every dashboard and section fits **360px and 390px with no sideways scroll** (also checked at 320px for IPO Watch). Tap targets are **at least 40px**.
-2. **Dark, calm, data-first.** One dark theme, restrained colour, colour only where it means something (green gain, red loss, amber caution).
+2. **Calm, data-first, your choice of look.** Midnight (dark) is the default; each user can switch theme, font and text size in 🎨 Appearance. Restrained colour, colour only where it means something (green gain, red loss, amber caution). **Never hard-code the palette**: use the CSS variables (`var(--text)`, `var(--bg2)`, `var(--border)`…); canvas charts read them with `clv('--muted')`. Gain/loss always carry a sign or arrow as well as colour.
 3. **Everything collapses** and remembers its state.
 4. **Honest.** Missing data is labelled; sources are named; estimates say they are estimates.
 5. **No inline scripts.** Strict CSP; handlers go through `docs/zk/handlers.js` and its whitelist (`handler-names.js`).

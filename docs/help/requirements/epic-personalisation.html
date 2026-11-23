@@ -40,7 +40,7 @@
 </tr>
 <tr>
 <td><strong>Status</strong></td>
-<td><strong>Proposed. Nothing is built yet.</strong> This page is the options paper and the requirement; the choices in <a href="#9-decisions-needed-from-the-owner">section 9</a> decide the first build</td>
+<td><strong>Steps 1-2 built (23 Nov 2026):</strong> 6 themes, 6 fonts, 4 text sizes, 🎨 Appearance window on every dashboard. Decided: all 6 themes and all 6 fonts. <strong>Not built yet:</strong> language, region, display currency (decisions 3-5 below are still open). Only Inter is bundled; the other fonts use the device's copy, see <a href="#12-verification">Verification</a></td>
 </tr>
 </tbody>
 </table></div>
@@ -473,6 +473,13 @@
 </tbody>
 </table></div>
 <h2 id="12-verification">12. Verification</h2>
-<p>Not applicable yet (proposed). The first build will list its tests and results here, as in <a href="epic-support-levels.html#verification">Epic: Support Levels</a>.</p></article>
+<p>Steps 1-2 (themes, fonts, text size):</p>
+<ul>
+<li><code>tests/zk_appearance_test.mjs</code>: 6 themes / 6 fonts / 4 sizes present; contrast <strong>computed</strong> per theme (text and muted on page and cards ≥ 4.5:1, ≥ 7:1 for High contrast; white on accent and gain/loss/caution ≥ 4.5:1, except the unchanged original Midnight palette at 4.47:1); stored values validated; no inline handlers; no third-party font URL.</li>
+<li><code>tests/appearance_layout_test.py</code> (live and demo page CSS, offline): fits 320/360/390px at every text size; every choice ≥ 40px; every theme and font applies; choice survives a reload and is applied before first paint; Reset; Match my device follows light/dark; no request leaves the site.</li>
+<li>Rendered check in a browser of Daylight, Sepia and High contrast (labels, pills, stat cards, buttons) on a sample of the real stylesheet. <strong>Not verified:</strong> every screen of the real dashboards in every theme (needs signed-in data, unavailable offline). Charts recolour on change; run the app once in each light theme before relying on it.</li>
+<li><strong>Fonts:</strong> only Inter (regular and semibold, OFL, subset) is bundled. The sandbox could not download IBM Plex Sans, Atkinson Hyperlegible, Source Serif 4 or JetBrains Mono, so those tiles use the device's copy if installed and say so; bundling them is a follow-up (<code>docs/fonts/README.md</code>).</li>
+<li><strong>Storage deviation from section 8:</strong> choices are saved in the existing <code>user_ui_prefs</code> row (key <code>__appearance</code>) on every dashboard, not in the encrypted store: theme, font and size are not financial data.</li>
+</ul></article>
 <footer class="foot"><a href="https://github.com/cilangovan/CapitalLens/blob/main/documentation/requirements/epic-personalisation.md">Edit this page on GitHub</a> · <a href="../../">Back to the dashboard</a> · <a href="../index.html">Documentation home</a></footer></main></div>
 </body></html>

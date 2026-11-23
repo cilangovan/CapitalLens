@@ -160,7 +160,7 @@ async function loadHeatmap() {
       const col = period.hasRef ? pplColor(val, ringMaxAbs[ri]) : '#1e2a3a';
       const path = arcPath(aStart, aEnd, r1, r2);
       const line = `${period.label}: ${val >= 0 ? '+' : ''}£${val.toFixed(2)}${period.refMap ? ' Δ' : ''}`;
-      paths += `<path d="${path}" fill="${col}" stroke="#0f1117" stroke-width="0.8" ${tipAttrs(ticker, sym0, line)} class="rad-seg" data-ri="${ri}"/>`;
+      paths += `<path d="${path}" fill="${col}" stroke="var(--bg)" stroke-width="0.8" ${tipAttrs(ticker, sym0, line)} class="rad-seg" data-ri="${ri}"/>`;
     });
 
     // ticker label at outer edge — always reads outward, never flipped
@@ -176,7 +176,7 @@ async function loadHeatmap() {
     const gainPct = p.gain_pct != null ? (p.gain_pct >= 0 ? '+' : '') + p.gain_pct.toFixed(1) + '%' : '';
     const labelColor = p.gain_pct >= 0 ? '#34d399' : '#f87171';
     const lblTip = tipAttrs(ticker, sym, `All-time gain: ${gainPct || 'n/a'}`);
-    labels += `<text x="${lp.x}" y="${lp.y}" font-size="13" font-weight="700" fill="#e2e8f0" text-anchor="${anchor}" dominant-baseline="middle"
+    labels += `<text x="${lp.x}" y="${lp.y}" font-size="13" font-weight="700" fill="var(--text)" text-anchor="${anchor}" dominant-baseline="middle"
       transform="rotate(${rotDeg}, ${lp.x}, ${lp.y})" dy="-5" class="rad-lbl" style="cursor:pointer" ${lblTip}>${_hmEsc(sym)}</text>`;
     labels += `<text x="${lp.x}" y="${lp.y}" font-size="11" fill="${labelColor}" text-anchor="${anchor}" dominant-baseline="middle"
       transform="rotate(${rotDeg}, ${lp.x}, ${lp.y})" dy="9" class="rad-lbl" style="cursor:pointer" ${lblTip}>${gainPct}</text>`;
@@ -213,8 +213,8 @@ async function loadHeatmap() {
         ${labels}
         ${ringLabels}
         <circle cx="${cx}" cy="${cy}" r="${innerR - 2}" fill="#0d1117"/>
-        <text x="${cx}" y="${cy - 16}" font-size="17" font-weight="800" fill="#e2e8f0" text-anchor="middle">Portfolio</text>
-        <text x="${cx}" y="${cy + 6}"  font-size="13" fill="#8892a4" text-anchor="middle">P&amp;L Rings</text>
+        <text x="${cx}" y="${cy - 16}" font-size="17" font-weight="800" fill="var(--text)" text-anchor="middle">Portfolio</text>
+        <text x="${cx}" y="${cy + 6}"  font-size="13" fill="var(--muted)" text-anchor="middle">P&amp;L Rings</text>
         <text x="${cx}" y="${cy + 24}" font-size="11" fill="#475569" text-anchor="middle">${N} positions</text>
       </svg>
       <!-- horizontal legend below chart -->
@@ -225,8 +225,8 @@ async function loadHeatmap() {
       </div>
       <div id="rad-tooltip" style="
         position:absolute;pointer-events:none;display:none;
-        background:#1a1d27;border:1px solid #2d3353;border-radius:6px;
-        padding:6px 10px;font-size:12px;color:#e2e8f0;max-width:260px;z-index:10;line-height:1.35
+        background:var(--bg2);border:1px solid var(--border);border-radius:6px;
+        padding:6px 10px;font-size:12px;color:var(--text);max-width:260px;z-index:10;line-height:1.35
       "></div>
     </div>
     <div class="dd-ranges" id="rad-periods" style="justify-content:center;flex:0 0 100%;width:100%;flex-wrap:wrap;margin:12px 0 6px"></div>
@@ -284,7 +284,7 @@ async function loadHeatmap() {
     tip.appendChild(head);
     if (ds.name) {
       const sub = document.createElement('div');
-      sub.style.cssText = 'color:#8892a4;font-size:11px';
+      sub.style.cssText = 'color:var(--muted);font-size:11px';
       sub.textContent = ds.sym + (ds.note ? ' · ' + ds.note : '');
       tip.appendChild(sub);
     }

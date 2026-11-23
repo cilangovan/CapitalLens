@@ -2,7 +2,8 @@
 // Built from your real Trading 212 money flows (services/returns_service.py): every deposit, withdrawal,
 // trade, dividend and interest payment. Profit = account value − money you've put in (deposits − withdrawals).
 const RT = { period: 'All', charts: [] };
-const RT_UP = '#0ca30c', RT_DOWN = '#e66767', RT_LINE = '#3987e5', RT_MUTED = '#8892a4';
+const RT_UP = '#0ca30c', RT_DOWN = '#e66767', RT_LINE = '#3987e5';
+
 
 function rtGbp(v, sign) {
   if (IS_GUEST) return '£***';
@@ -136,7 +137,7 @@ function rtPeriod() {
 function rtCharts() {
   RT.charts.forEach(c => c.destroy()); RT.charts = [];
   if (typeof Chart === 'undefined') return;
-  const s = RT.d.series, grid = '#2d3353';
+  const s = RT.d.series, grid = clv('--border');
   const money = v => IS_GUEST ? '£***' : '£' + Math.round(v).toLocaleString('en-GB');
   rtValueChart();
   const months = Object.keys(RT.r.monthly_breakdown || {}).sort().slice(-24);
@@ -148,8 +149,8 @@ function rtCharts() {
       plugins: { legend: { display: false }, tooltip: { callbacks: { label: c => {
         const x = RT.r.monthly_breakdown[months[c.dataIndex]];
         return [`Profit: ${rtGbp(x.profit, true)}`, `Return: ${rtPct(x.twr_pct)}`, `Added: ${rtGbp(x.net_added, true)}`]; } } } },
-      scales: { x: { ticks: { color: RT_MUTED, maxRotation: 0, autoSkip: true, maxTicksLimit: 8 }, grid: { display: false } },
-                y: { ticks: { color: RT_MUTED, callback: v => money(v), maxTicksLimit: 5 }, grid: { color: grid } } } },
+      scales: { x: { ticks: { color: clv('--muted'), maxRotation: 0, autoSkip: true, maxTicksLimit: 8 }, grid: { display: false } },
+                y: { ticks: { color: clv('--muted'), callback: v => money(v), maxTicksLimit: 5 }, grid: { color: grid } } } },
   }));
 }
 
@@ -181,7 +182,7 @@ function rtValueChart() {
   const money = v => IS_GUEST ? '£***' : '£' + Math.round(v).toLocaleString('en-GB');
   const signed = v => IS_GUEST ? '£***' : (v >= 0 ? '+' : '−') + '£' + Math.abs(Math.round(v)).toLocaleString('en-GB');
   const dateFmt = d => new Date(d).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
-  const gridC = '#2d3353';
+  const gridC = clv('--border');
 
   // Headline for the selected range
   const dProfit = profit[n - 1] - profit[0];
@@ -197,7 +198,7 @@ function rtValueChart() {
   }
 
   const common = { responsive: true, maintainAspectRatio: false, interaction: { mode: 'index', intersect: false },
-    scales: { x: { type: 'category', ticks: { color: RT_MUTED, maxTicksLimit: 6, maxRotation: 0, callback(v) {
+    scales: { x: { type: 'category', ticks: { color: clv('--muted'), maxTicksLimit: 6, maxRotation: 0, callback(v) {
       const d = new Date(this.getLabelForValue(v)); return ['1D', '1W', '1M', '3M'].includes(RT.range) ? d.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' }) : d.toLocaleDateString('en-GB', { month: 'short', year: '2-digit' }); } }, grid: { display: false } } } };
 
   if (RT.view === 'profit') {
@@ -209,8 +210,8 @@ function rtValueChart() {
         title: i => dateFmt(i[0].label),
         label: c => `Profit: ${signed(c.raw)}`,
         afterLabel: c => IS_GUEST ? '' : [`Account value: ${money(x.value[c.dataIndex])}`, `Money put in: ${money(x.net[c.dataIndex])}`, `Return on money in: ${x.net[c.dataIndex] > 0 ? rtPct(c.raw / x.net[c.dataIndex] * 100) : '—'}`] } } },
-        scales: { ...common.scales, y: { ticks: { color: RT_MUTED, callback: v => signed(v), maxTicksLimit: 6 },
-          grid: { color: c => (c.tick && c.tick.value === 0 ? '#8892a4' : gridC), lineWidth: c => (c.tick && c.tick.value === 0 ? 1.5 : 1) } } } },
+        scales: { ...common.scales, y: { ticks: { color: clv('--muted'), callback: v => signed(v), maxTicksLimit: 6 },
+          grid: { color: c => (c.tick && c.tick.value === 0 ? clv('--muted') : gridC), lineWidth: c => (c.tick && c.tick.value === 0 ? 1.5 : 1) } } } },
     });
   } else {
     const all = x.value.concat(x.net), lo = Math.min(...all), hi = Math.max(...all), pad = (hi - lo) * 0.08 || 1;
@@ -218,14 +219,14 @@ function rtValueChart() {
       data: { labels: x.dates, datasets: [
         { label: 'Account value', data: x.value, borderColor: RT_LINE, borderWidth: 2.5, pointRadius: 0, tension: 0.15,
           fill: { target: 1, above: 'rgba(12,163,12,.20)', below: 'rgba(230,103,103,.22)' } },
-        { label: 'Money put in', data: x.net, borderColor: RT_MUTED, borderWidth: 2, pointRadius: 0, stepped: true },
+        { label: 'Money put in', data: x.net, borderColor: clv('--muted'), borderWidth: 2, pointRadius: 0, stepped: true },
       ] },
       options: { ...common, plugins: { legend: { display: false }, tooltip: { callbacks: {
         title: i => dateFmt(i[0].label),
         label: c => `${c.dataset.label}: ${money(c.raw)}`,
         footer: i => { const v = i.find(q => q.datasetIndex === 0)?.raw, m = i.find(q => q.datasetIndex === 1)?.raw; return v != null && m != null ? `Profit: ${signed(v - m)}` : ''; } } } },
         scales: { ...common.scales, y: { min: Math.max(0, Math.floor((lo - pad) / 10) * 10), max: Math.ceil((hi + pad) / 10) * 10,
-          ticks: { color: RT_MUTED, callback: v => money(v), maxTicksLimit: 6 }, grid: { color: gridC } } } },
+          ticks: { color: clv('--muted'), callback: v => money(v), maxTicksLimit: 6 }, grid: { color: gridC } } } },
     });
   }
 }

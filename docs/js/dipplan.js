@@ -215,12 +215,12 @@ async function loadDipPlanner(vbRows, stratRow) {
       <div style="font-size:11px;color:var(--muted);margin-bottom:12px">No fixed budget. Enter what you want to invest when the market dips and get the plan: which pies to buy or hold, how much per pie and per stock.</div>
       <style>
         #dip-planner-card .dp-row{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:8px}
-        #dip-planner-card .dp-in{flex:1 1 140px;min-width:0;min-height:44px;box-sizing:border-box;background:var(--bg3,#0d1b2e);border:1px solid var(--border,#2d3353);border-radius:8px;color:var(--text,#e2e8f0);padding:8px 12px;font-size:16px}
+        #dip-planner-card .dp-in{flex:1 1 140px;min-width:0;min-height:44px;box-sizing:border-box;background:var(--bg3,#0d1b2e);border:1px solid var(--border);border-radius:8px;color:var(--text);padding:8px 12px;font-size:16px}
         #dip-planner-card .dp-go{flex:0 0 auto;min-height:44px;padding:8px 16px;border:0;border-radius:8px;background:var(--accent,#6366f1);color:#fff;font-size:14px;font-weight:600;cursor:pointer}
-        #dip-planner-card .dp-chip{min-height:44px;min-width:56px;padding:6px 12px;border:1px solid var(--border,#2d3353);border-radius:8px;background:transparent;color:var(--text,#e2e8f0);font-size:13px;cursor:pointer}
-        #dip-planner-card .dp-pie{border:1px solid #2d3353;border-radius:10px;overflow:hidden;margin-bottom:10px}
+        #dip-planner-card .dp-chip{min-height:44px;min-width:56px;padding:6px 12px;border:1px solid var(--border);border-radius:8px;background:transparent;color:var(--text);font-size:13px;cursor:pointer}
+        #dip-planner-card .dp-pie{border:1px solid var(--border);border-radius:10px;overflow:hidden;margin-bottom:10px}
         #dip-planner-card .dp-head{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px 12px;cursor:pointer;background:#0d1b2e;min-height:44px}
-        #dip-planner-card .dp-body{display:none;padding:10px 12px;border-top:1px solid #2d3353;background:#060f1e}
+        #dip-planner-card .dp-body{display:none;padding:10px 12px;border-top:1px solid var(--border);background:var(--bg)}
         #dip-planner-card .dp-st{padding:8px 0;border-bottom:1px solid #1e293b}
         #dip-planner-card .dp-st:last-child{border-bottom:0}
         #dip-planner-card .dp-line{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
