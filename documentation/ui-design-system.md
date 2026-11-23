@@ -36,7 +36,7 @@ Typography: system font stack (`-apple-system, BlinkMacSystemFont, 'Segoe UI', s
 | Card | `.card` + `h3` | **Collapsible automatically** (see below) |
 | Stats strip | `.stats-strip > .stat-card` (`.label .value .sub`) | `auto-fill, minmax(140px,1fr)` grid |
 | Grids | `.grid2`, `.grid3` | One column under 640px |
-| Loading | `.loading.busy` | Muted, centred, with a spinning ring (use `.busy` only for "still fetching"; empty states use plain `.loading`) |
+| Loading | `.loading.busy` | Muted, centred, with a small sand-clock (⌛) that drains, then flips (still while "reduce motion" is on; use `.busy` only for "still fetching"; empty states use plain `.loading`) |
 | Boot splash | `#boot-splash` | Private app only; full-screen spinner until sign-in or dashboard shows; CSS only |
 | Period / range buttons | `.period-btn`, `.dd-ranges button` | Active = accent fill |
 | Sub-tabs | `.w-cats` (watchlist, IPO markets), `.a-tabs` / `.a-tab` (alerts), `.pd-tabs` | Pill chips, wrap on a phone |

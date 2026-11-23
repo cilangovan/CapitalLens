@@ -26,7 +26,7 @@ anything new the owner asks for as a *standing* rule is added here in the same c
 - Shares held outside pies (NVIDIA, SpaceX, SGLN…) are listed on the positions dashboard in an **Untagged** category. The Emerging Markets pie is included everywhere.
 - History (value, 24h change, rate of return, 1D–1Y charts) comes from Trading 212's own data stored in Supabase, shown as a positions drill-down.
 - **Every dashboard has a footer with a 📘 Documentation link** to the portal (`/help/`, relative to the page: `help/` from `docs/index.html`, `../help/` from the others), plus a link on the sign-in box. The portal also fits 360px/390px (`tests/docs_layout_test.py`).
-- **Never a blank screen while loading:** the private app shows a boot splash (spinner + text) until the sign-in box or the dashboard appears, and every card's "Loading…" placeholder has a spinner (`.loading.busy`). CSS-only (strict CSP); checked by `tests/login_flash_browser_test.py`.
+- **Never a blank screen while loading:** the private app shows a boot splash (spinner + text) until the sign-in box or the dashboard appears, and every card's "Loading…" placeholder has a sand-clock animation (`.loading.busy`). CSS-only (strict CSP); checked by `tests/login_flash_browser_test.py`.
 - No login flash on refresh: the sign-in box stays hidden until the saved-session check finishes (`tests/login_flash_browser_test.py`).
 
 ## Data and security rules
