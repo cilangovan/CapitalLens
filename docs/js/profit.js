@@ -156,6 +156,85 @@ async function loadProfit() {
       <div class="stat-card pb-tap" onclick="pbInfo('risk')" role="button" tabindex="0"><div class="label">1% risk / trade <span class="pb-i">ⓘ</span></div><div class="value">${fmtGbp(lim.risk_per_trade_gbp)}</div><div class="sub">max loss on one stock</div></div>
     </div>`;
 
+  // ── Execute panel: shown when market is up (regime = Aggressive or Neutral) with contextual steps
+  function pbExecuteSteps(piesData, rowsData, regData, totData) {
+    const isUp = regData && (regData.mode === 'Aggressive' || regData.mode === 'Neutral');
+    const pieProfits = (piesData || []).filter(p => p.gbp > 0 && p.gain_pct > 0).sort((a, b) => (b.gain_pct || 0) - (a.gain_pct || 0));
+    const concentration = (s.limits || {});
+    const maxStock = concentration.max_stock_pct || 25;
+    const overweight = (rowsData || []).filter(r => r.weight_pct > maxStock).sort((a, b) => b.weight_pct - a.weight_pct);
+    if (!isUp && !pieProfits.length) return '';
+    const moodBadge = isUp
+      ? `<span style="background:rgba(34,197,94,.15);color:var(--green);border-radius:5px;padding:2px 7px;font-size:12px">Market ${regData.mode}</span>`
+      : `<span style="background:rgba(245,158,11,.15);color:var(--yellow);border-radius:5px;padding:2px 7px;font-size:12px">Market ${(regData || {}).mode || 'Unknown'}</span>`;
+    // Build contextual step list
+    const steps = [];
+    // Step 1: Check which pies are actually up
+    if (pieProfits.length) {
+      const best = pieProfits[0];
+      steps.push(`<div class="pb-exec-step">
+        <div class="pb-exec-num">1</div>
+        <div class="pb-exec-body">
+          <b>Check your pie gains</b>
+          <div class="w-dim w-small" style="margin-top:3px">Your pies in profit right now:</div>
+          ${pieProfits.map(p => `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:13px">
+            <span>${p.pie}</span><span class="${clr(p.gain_pct)}" style="font-weight:600">${p.gain_pct >= 0 ? '+' : ''}${fmt(p.gain_pct, 2)}%  ${p.gain_gbp != null ? '≈ ' + fmtGbpPlain(p.gain_gbp) : ''}</span>
+          </div>`).join('')}
+        </div>
+      </div>`);
+    }
+    // Step 2: Choose method based on what you want
+    steps.push(`<div class="pb-exec-step">
+      <div class="pb-exec-num">2</div>
+      <div class="pb-exec-body">
+        <b>Choose your exit method in T212</b>
+        <div style="margin-top:6px;display:flex;flex-direction:column;gap:6px">
+          <div style="padding:8px;background:var(--bg2);border-radius:6px;border-left:3px solid var(--green)">
+            <b style="font-size:13px">Option A — Partial Withdraw (easiest)</b>
+            <div class="w-dim w-small">Pie → "Withdraw" → enter £ amount → T212 sells proportionally across ALL holdings. Preserves your allocation weights. Best for clean cash-out.</div>
+          </div>
+          <div style="padding:8px;background:var(--bg2);border-radius:6px;border-left:3px solid var(--yellow)">
+            <b style="font-size:13px">Option B — Sell overweight holdings directly</b>
+            <div class="w-dim w-small">Tap a holding inside the pie → "Sell". Target overweight stocks first to fix concentration AND book profit at once. Pie will go off-target — rebalance next investment.</div>
+          </div>
+        </div>
+      </div>
+    </div>`);
+    // Step 3: Concentration fix — name the culprits
+    if (overweight.length) {
+      steps.push(`<div class="pb-exec-step">
+        <div class="pb-exec-num">3</div>
+        <div class="pb-exec-body">
+          <b>Fix concentration first</b>
+          <div class="w-dim w-small" style="margin-top:3px">These are over the ${maxStock}% limit — Option B targets here:</div>
+          ${overweight.map(r => `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:13px">
+            <span>${r.display || r.ticker} <span class="w-dim w-small">${r.pie}</span></span>
+            <span class="red" style="font-weight:600">${fmt(r.weight_pct, 1)}% <span class="w-dim w-small">(limit ${maxStock}%)</span></span>
+          </div>`).join('')}
+        </div>
+      </div>`);
+    }
+    // Step 4: Timing warning
+    steps.push(`<div class="pb-exec-step">
+      <div class="pb-exec-num">${overweight.length ? 4 : 3}</div>
+      <div class="pb-exec-body">
+        <b>When to do it</b>
+        <div class="w-dim w-small" style="margin-top:3px">T212 executes at market price (fractional shares). Best done during market hours for liquid ETFs — avoid after-hours for stocks. Settlement is T+2 so the cash clears in 2 business days.</div>
+        <div style="margin-top:6px;padding:7px 10px;background:rgba(239,68,68,.08);border-radius:6px;border-left:3px solid var(--red);font-size:12px">
+          😈 Devil's advocate: market up 1 day ≠ peak. If you're ISA-sheltered, the tax argument disappears. Selling your best performers removes the engine of your gains. Consider: is this booking profit, or just reducing exposure because you're nervous?
+        </div>
+      </div>
+    </div>`);
+    return `<div class="card" style="border-left:3px solid var(--accent)">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+        <h3 style="margin:0">🎯 How to cash out</h3>${moodBadge}
+      </div>
+      <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Step-by-step — T212 has no "sell profit only" button. Here's how to do it given your portfolio.</div>
+      <div class="pb-exec-steps">${steps.join('')}</div>
+    </div>`;
+  }
+  const executePanel = pbExecuteSteps(s.pies, rows, reg, tot);
+
   // ── Layer 1: market
   const idx = (n, t) => t ? `<tr><td>${n}</td><td>${pbTick(t.above50)}</td><td>${pbTick(t.above200)}</td><td class="${clr(t.ret3m)}">${fmt(t.ret3m, 1)}%</td></tr>` : '';
   const market = `
@@ -283,7 +362,7 @@ async function loadProfit() {
     </div>`;
 
   el.innerHTML = `<div style="font-size:11px;color:var(--muted);margin-bottom:10px">Updated ${upd}</div>`
-    + stats + notes + `<div class="grid2">${market}${sectors}</div>` + holdings + pies + pbPieCard(s, rows) + rules;
+    + stats + executePanel + notes + `<div class="grid2">${market}${sectors}</div>` + holdings + pies + pbPieCard(s, rows) + rules;
 }
 
 function pbToggle(i) {

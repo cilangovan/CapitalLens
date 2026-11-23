@@ -419,6 +419,10 @@
   .pb-ladder { display:flex; gap:6px; flex-wrap:wrap; margin:8px 0; }
   .pb-step { flex:1; min-width:90px; border:1px solid var(--border); border-radius:6px; padding:6px 8px; font-size:11px; background:var(--bg2); }
   .pb-step.hit { border-color:var(--yellow); background:rgba(245,158,11,.08); }
+  .pb-exec-steps { display:flex; flex-direction:column; gap:12px; }
+  .pb-exec-step { display:flex; gap:12px; align-items:flex-start; }
+  .pb-exec-num { flex-shrink:0; width:28px; height:28px; border-radius:50%; background:var(--accent); color:#fff; font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; margin-top:2px; }
+  .pb-exec-body { flex:1; min-width:0; }
   .pb-kv { display:grid; grid-template-columns: repeat(auto-fill,minmax(130px,1fr)); gap:8px; margin:8px 0; }
   .pb-kv div { background:var(--bg2); border-radius:6px; padding:6px 8px; }
   .pb-kv b { display:block; font-size:10px; color:var(--muted); font-weight:600; text-transform:uppercase; }
@@ -800,7 +804,7 @@
 <script src="../js/strategy.js?v=51acadca5417" integrity="sha384-MpBndmwBKkXukOQmbMyLcPbzYB9Wc0nGyp2iFs9Pyq5EU2laiw/+vg4+jCCb39Uq"></script>
 <script src="../js/dipplan.js?v=610eeda761c5" integrity="sha384-qmLDu+yo2sZYeO4XFpb3NU3DFTB67hnhdMPk8OXBR7KhS5hK7SSJ0bn8jwhqbFe0"></script>
 <script src="../js/support.js?v=95358640d9cb" integrity="sha384-TZX3AuXhXFtQGZXwjfmtBtTSXLsAQlCUl/9bpTTT3+UgNvn+bxigU7KHZE4GpWnh"></script>
-<script src="../js/profit.js?v=99e7feaabf8a" integrity="sha384-6EDqiRrTow/ODCUeh2AjVzLd/wNumwSmYFs3/TE8hwqsw8FdFWr6k1Kps1cJOfbb"></script>
+<script src="../js/profit.js?v=eadc175a6aeb" integrity="sha384-rchHcF5jDvvxtNvLnDnxVAUmEUXQzPmf7mkWBUsSjO1n+lLHzjxTFDYrIF73qbaU"></script>
 <script src="../js/returns.js?v=61ed0d1dbb6f" integrity="sha384-aaWdYZ32gT7ZrlctPUFlqRV4Mkyjy7N8l5K+v9XBPC6qfrrjlU/qCazApQD4Zj+e"></script>
 <script src="../js/signals.js?v=f7ab9021f9e6" integrity="sha384-UlHXnuIyLukUBn9beXBELjBtUNKbIr7fEa6k1AMVDXA6C9pQ3OM6PIjNW1Zjnw9w"></script>
 <script src="../js/alerts.js?v=d8c761aace44" integrity="sha384-4arzLUjttl7RGPlOu/U04Z4sxwOcdMuhkWcovz63bRmvk0TlfDm2XOJw2uKy/nnh"></script>

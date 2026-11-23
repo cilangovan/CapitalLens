@@ -405,6 +405,10 @@
   .pb-ladder { display:flex; gap:6px; flex-wrap:wrap; margin:8px 0; }
   .pb-step { flex:1; min-width:90px; border:1px solid var(--border); border-radius:6px; padding:6px 8px; font-size:11px; background:var(--bg2); }
   .pb-step.hit { border-color:var(--yellow); background:rgba(245,158,11,.08); }
+  .pb-exec-steps { display:flex; flex-direction:column; gap:12px; }
+  .pb-exec-step { display:flex; gap:12px; align-items:flex-start; }
+  .pb-exec-num { flex-shrink:0; width:28px; height:28px; border-radius:50%; background:var(--accent); color:#fff; font-weight:700; font-size:13px; display:flex; align-items:center; justify-content:center; margin-top:2px; }
+  .pb-exec-body { flex:1; min-width:0; }
   .pb-kv { display:grid; grid-template-columns: repeat(auto-fill,minmax(130px,1fr)); gap:8px; margin:8px 0; }
   .pb-kv div { background:var(--bg2); border-radius:6px; padding:6px 8px; }
   .pb-kv b { display:block; font-size:10px; color:var(--muted); font-weight:600; text-transform:uppercase; }
