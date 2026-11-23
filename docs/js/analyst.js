@@ -4,9 +4,9 @@
 const LYNCH = { 0: ['Fund / ETF', '#64748b'], 1: ['1 Fast Grower', '#22c55e'], 2: ['2 Stalwart', '#86efac'], 3: ['3 Cyclical', '#eab308'], 4: ['4 Slow Grower', '#fde68a'], 5: ['5 Turnaround', '#d946ef'], 6: ['6 Asset Play', '#ef4444'] };
 function lynchBadge(r) {
   if (r.lynch_bucket === undefined) return '<span style="color:var(--muted)" title="Run Refresh to classify">—</span>';
-  if (r.lynch_bucket === null) return '<span style="color:var(--muted)" title="' + (r.lynch_reason || 'No data') + '">?</span>';
+  if (r.lynch_bucket === null) return '<span style="color:var(--muted)" title="' + esc(r.lynch_reason || 'No data') + '">?</span>';
   const [name, col] = LYNCH[r.lynch_bucket] || ['?', '#64748b'];
-  return `<span title="${(r.lynch_reason || '').replace(/"/g, '&quot;')} (confidence: ${r.lynch_confidence || '?'})" style="display:inline-block;padding:2px 8px;border-radius:999px;background:${col}22;border:1px solid ${col};color:${col};font-size:11px;white-space:nowrap">${name}</span>`;
+  return `<span title="${esc(r.lynch_reason || '')} (confidence: ${esc(String(r.lynch_confidence || '?'))})" style="display:inline-block;padding:2px 8px;border-radius:999px;background:${col}22;border:1px solid ${col};color:${col};font-size:11px;white-space:nowrap">${esc(name)}</span>`;
 }
 function lynchSummary(rows) {
   const has = rows.some(r => r.lynch_bucket !== undefined);
@@ -16,7 +16,7 @@ function lynchSummary(rows) {
   const cards = Object.entries(pies).map(([pie, rs]) => {
     const groups = {}; rs.forEach(r => { const k = r.lynch_bucket === undefined || r.lynch_bucket === null ? '?' : r.lynch_bucket; (groups[k] = groups[k] || []).push(r.ticker); });
     const short = t => String(t).replace(/_(US_)?EQ$/, '').replace(/([a-z])$/, '');
-    return `<div class="card"><h3>${pie}</h3>` + Object.keys(groups).sort().map(k => { const [n, c] = LYNCH[k] || ['Unclassified', '#64748b']; return `<div style="font-size:12px;margin:3px 0"><span style="color:${c};font-weight:600">${n}</span> <span style="color:var(--muted)">${groups[k].map(short).join(', ')}</span></div>`; }).join('') + '</div>';
+    return `<div class="card"><h3>${esc(pie)}</h3>` + Object.keys(groups).sort().map(k => { const [n, c] = LYNCH[k] || ['Unclassified', '#64748b']; return `<div style="font-size:12px;margin:3px 0"><span style="color:${c};font-weight:600">${esc(n)}</span> <span style="color:var(--muted)">${groups[k].map(t => esc(short(t))).join(', ')}</span></div>`; }).join('') + '</div>';
   }).join('');
   return `<h3 style="margin:18px 0 6px">Peter Lynch buckets</h3><div style="margin-bottom:8px">${legend}</div><div class="pie-ratings-grid" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:12px">${cards}</div>
   <div style="font-size:11px;color:var(--muted);margin-top:6px">Rule-based estimate from public fundamentals (growth, profit margin, book value, sector). Hover a badge for the reason. A screening aid, not advice.</div>`;
@@ -53,7 +53,7 @@ async function loadAnalyst() {
     const avgBuy = covered.length ? (covered.reduce((s,t) => s + (t.buy_pct||0), 0) / covered.length).toFixed(0) : null;
     const nTrend = tickers.length - covered.length;
     return `<div class="card">
-      <h3>${pie}</h3>
+      <h3>${esc(pie)}</h3>
       <div style="font-size:22px;color:var(--yellow)">${'★'.repeat(Math.round(avgStar))}${'☆'.repeat(5-Math.round(avgStar))}</div>
       <div style="font-size:12px;color:var(--muted);margin-top:4px">⭐ ${avgStar} avg${avgBuy != null ? ` · ${avgBuy}% analysts buy` : ''}${nTrend ? ` · ${nTrend} trend-rated (no analysts)` : ''}</div>
     </div>`;
@@ -62,8 +62,8 @@ async function loadAnalyst() {
   const tableHtml = `<table class="analyst-table">
     <thead><tr><th>Ticker</th><th>Pie</th><th>Lynch</th><th>Rating</th><th>Stars</th><th>Analysts</th><th>Target</th><th>Buy%</th><th>Hold%</th><th>Sell%</th></tr></thead>
     <tbody>${rows.map(r => `<tr>
-      <td><strong>${r.ticker}</strong></td>
-      <td style="color:var(--muted)">${r.pie||'—'}</td>
+      <td><strong>${esc(r.ticker)}</strong></td>
+      <td style="color:var(--muted)">${esc(r.pie||'—')}</td>
       <td>${lynchBadge(r)}</td>
       <td>${badgeRating(r)}</td>
       <td><span class="stars">${stars(r.star_rating)}</span></td>
@@ -82,8 +82,8 @@ async function loadAnalyst() {
         <span style="width:${+r.buy_pct || 0}%" class="b"></span><span style="width:${+r.hold_pct || 0}%" class="h"></span><span style="width:${+r.sell_pct || 0}%" class="s"></span></div>
       <div class="an-votes"><span class="green">Buy ${r.buy_pct ?? '—'}%</span><span class="yellow">Hold ${r.hold_pct ?? '—'}%</span><span class="red">Sell ${r.sell_pct ?? '—'}%</span></div>`;
     return `<div class="an-card">
-      <div class="an-top"><strong>${short(r.ticker)}</strong><span class="stars">${stars(r.star_rating)}</span></div>
-      <div class="an-mid">${badgeRating(r)} ${lynchBadge(r)}<span class="an-meta">${r.pie || '—'}</span></div>
+      <div class="an-top"><strong>${esc(short(r.ticker))}</strong><span class="stars">${stars(r.star_rating)}</span></div>
+      <div class="an-mid">${badgeRating(r)} ${lynchBadge(r)}<span class="an-meta">${esc(r.pie || '—')}</span></div>
       <div class="an-meta">${trend ? 'Trend score — no analyst coverage' : `${r.analyst_count || '—'} analysts · target ${fmtTarget(r.target_mean, r.yahoo_ticker)}`}</div>
       ${votes}
     </div>`;

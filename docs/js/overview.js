@@ -126,14 +126,14 @@ async function loadOverview() {
   loadMarketMood().catch(e => { const el = document.getElementById('mood-body'); if (el) el.innerHTML = '<div style="color:var(--red);font-size:12px">Mood error: ' + esc(e.message) + '</div>'; });
   loadSectorMap().catch(e => {
     const el = document.getElementById('sector-map');
-    if (el) el.innerHTML = `<div style="color:var(--red);font-size:12px">Sector map error: ${e.message}</div>`;
+    if (el) el.innerHTML = `<div style="color:var(--red);font-size:12px">Sector map error: ${esc(e.message)}</div>`;
   });
   loadInvestLine().catch(e => { const el = document.getElementById('ov-line-body'); if (el) el.innerHTML = `<div style="color:var(--red);font-size:12px">Line chart error: ${esc(e.message)}</div>`; });
   loadMarketsHeld().catch(e => { const el = document.getElementById('ov-markets-body'); if (el) el.innerHTML = `<div style="color:var(--red);font-size:12px">Markets error: ${esc(e.message)}</div>`; });
   loadCountryDecline().catch(e => { const el = document.getElementById('ov-decline-body'); if (el) el.innerHTML = `<div style="color:var(--red);font-size:12px">Decline chart error: ${esc(e.message)}</div>`; });
   loadCountryMap().catch(e => {
     const el = document.getElementById('country-map');
-    if (el) el.innerHTML = `<div style="color:var(--red);font-size:12px">Country map error: ${e.message}</div>`;
+    if (el) el.innerHTML = `<div style="color:var(--red);font-size:12px">Country map error: ${esc(e.message)}</div>`;
   });
 }
 

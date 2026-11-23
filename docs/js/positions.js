@@ -56,9 +56,9 @@ async function loadPositions() {
     div.className = 'pie-group';
     div.innerHTML = `
       <div class="pie-header" onclick="togglePie(this)">
-        <span class="pie-name"><a href="#positions/${encodeURIComponent(pieName)}" class="w-link" onclick="pdOpen('${pieName.replace(/'/g, "\\'")}', null, event)">${pieName}</a></span>
+        <span class="pie-name"><a href="#positions/${encodeURIComponent(pieName)}" class="w-link" onclick="pdOpen('${pieName.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}', null, event)">${esc(pieName)}</a></span>
         <span class="pie-meta">${pl && pl.value ? `${fmtGbpPlain(pl.value)} · <span class="${clr(pror)}">${pdArrow(pror)} ${pror != null ? Math.abs(pror).toFixed(1) + '%' : ''}</span> · ` : ''}${pos.length} holdings · P&amp;L <span class="${clr(totalPpl)}">${fmtGbpPlain(totalPpl)}</span>
-          <button class="pd-chartbtn" title="Chart & returns" onclick="pdOpen('${pieName.replace(/'/g, "\\'")}', null, event)">📈</button></span>
+          <button class="pd-chartbtn" title="Chart &amp; returns" onclick="pdOpen('${pieName.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}', null, event)">📈</button></span>
       </div>
       <div class="pie-body">
         <div class="pos-row">
@@ -78,7 +78,7 @@ async function loadPositions() {
             ? `<span class="masked">***</span>`
             : `<span class="${clr(p.gain_pct)}">${fmt(p.gain_pct)}%</span>`;
           return `<div class="pos-row">
-            <span><a href="#positions/${encodeURIComponent(p.ticker)}" class="w-link" onclick="pdOpen('${(p.pie || '__ALL__').replace(/'/g, "\\'")}','${p.ticker}', event)">${p.display||p.ticker}</a></span>
+            <span><a href="#positions/${encodeURIComponent(p.ticker)}" class="w-link" onclick="pdOpen('${(p.pie || '__ALL__').replace(/\\/g, '\\\\').replace(/'/g, "\\'")}','${p.ticker.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}', event)">${esc(p.display||p.ticker)}</a></span>
             <span>${fmtQuote(p.current_price, p.ticker)}</span>
             <span>${fmtQuote(p.avg_price, p.ticker)}</span>
             ${pplCell}
@@ -139,7 +139,7 @@ async function loadPositions() {
           const analystHtml = a.star_rating ? `<span class="stars">${'★'.repeat(a.star_rating)}</span> ${badgeRating(a)}` : '—';
           const also = pieQty[u.ticker] > 1e-6 ? ` · also in ${pdEsc(u.pie || 'a pie')}` : '';
           return `<div class="pos-row">
-            <span><a href="#positions/${encodeURIComponent(u.ticker)}" class="w-link" onclick="pdOpen('__DIRECT__','${u.ticker}', event)">${u.display || u.ticker}</a>
+            <span><a href="#positions/${encodeURIComponent(u.ticker)}" class="w-link" onclick="pdOpen('__DIRECT__','${u.ticker.replace(/\\/g, '\\\\').replace(/'/g, "\\'")}', event)">${esc(u.display || u.ticker)}</a>
               <div class="w-dim w-small">${(+u.dq).toLocaleString('en-GB', { maximumFractionDigits: 4 })} sh${also}</div></span>
             <span>${fmtQuote(u.current_price, u.ticker)}</span>
             <span>${IS_GUEST ? '<span class="masked">***</span>' : u.value != null ? fmtGbpPlain(u.value) : '—'}</span>

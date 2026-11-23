@@ -166,9 +166,9 @@ async function loadInstFlow() {
       <div style="display:flex;align-items:flex-start;justify-content:space-between;margin-bottom:4px;flex-wrap:wrap;gap:6px">
         <div>
           <h3 style="margin:0">🌍 Global Institutional Capital</h3>
-          <div style="font-size:11px;color:var(--muted);margin-top:2px">${r.summary||''}</div>
+          <div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(r.summary||'')}</div>
         </div>
-        <div style="font-size:10px;color:#334155">Week of ${r.report_date}</div>
+        <div style="font-size:10px;color:#334155">Week of ${esc(r.report_date)}</div>
       </div>
       <div style="font-size:10px;color:#334155;margin-bottom:14px;padding:6px 10px;background:#060f1e;border-radius:6px">
         🕐 Daily: detect changes &nbsp;·&nbsp; Weekly: Buy / Hold / Reduce / Watch &nbsp;·&nbsp; Monthly: rebalance &nbsp;·&nbsp; Quarterly: reassess fundamentals + 13F
@@ -287,7 +287,7 @@ async function loadHoldingDecisions() {
           <div style="border:1px solid ${slm.color}33;border-radius:9px;overflow:hidden;margin-bottom:8px">
             <div onclick="toggleVB('${id}')" style="display:flex;align-items:center;gap:10px;padding:10px 13px;cursor:pointer;background:#0d1b2e">
               <div style="flex:1">
-                <div style="font-weight:700;font-size:12px;color:var(--text)">${h.display||h.ticker}</div>
+                <div style="font-weight:700;font-size:12px;color:var(--text)">${esc(h.display||h.ticker)}</div>
                 <div style="font-size:10px;color:var(--muted);margin-top:2px">${techBadges}</div>
               </div>
               ${h.sell_level?`<div style="font-size:10px;padding:2px 7px;border-radius:8px;background:${slm.bg};color:${slm.color};font-weight:600;white-space:nowrap">${slm.label}</div>`:''}
@@ -295,15 +295,15 @@ async function loadHoldingDecisions() {
                 <div style="font-size:18px;font-weight:800;color:${dc}">${h.score}</div>
                 <div style="font-size:9px;color:var(--muted)">/100</div>
               </div>
-              <div style="font-size:9px;padding:2px 6px;border-radius:6px;background:${dc}22;color:${dc};white-space:nowrap">${h.decision}</div>
+              <div style="font-size:9px;padding:2px 6px;border-radius:6px;background:${dc}22;color:${dc};white-space:nowrap">${esc(h.decision)}</div>
               <div style="color:var(--muted);font-size:11px" id="${id}-chevron">▼</div>
             </div>
             <div id="${id}" style="display:none;padding:10px 13px;border-top:1px solid #1e293b;background:#060f1e">
-              <div style="padding:7px 10px;border-radius:7px;background:${buySigColor}11;border-left:2px solid ${buySigColor};margin-bottom:9px;font-size:11px;color:${buySigColor}">${buySig}</div>
-              ${h.sell_signal?`<div style="padding:7px 10px;border-radius:7px;background:rgba(239,68,68,0.07);border-left:2px solid #ef4444;margin-bottom:9px;font-size:11px;color:#fca5a5">⚠️ ${h.sell_signal}</div>`:''}
+              <div style="padding:7px 10px;border-radius:7px;background:${buySigColor}11;border-left:2px solid ${buySigColor};margin-bottom:9px;font-size:11px;color:${buySigColor}">${esc(buySig)}</div>
+              ${h.sell_signal?`<div style="padding:7px 10px;border-radius:7px;background:rgba(239,68,68,0.07);border-left:2px solid #ef4444;margin-bottom:9px;font-size:11px;color:#fca5a5">⚠️ ${esc(h.sell_signal)}</div>`:''}
               <div style="font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.06em;margin-bottom:5px">Score Breakdown</div>
               ${factors}
-              ${h.notes?`<div style="margin-top:7px;font-size:10px;color:var(--muted)">${h.notes}</div>`:''}
+              ${h.notes?`<div style="margin-top:7px;font-size:10px;color:var(--muted)">${esc(h.notes)}</div>`:''}
               ${typeof FiveCheck !== 'undefined' ? FiveCheck.html(h.display, h.ticker, 'hd') : ''}
             </div>
           </div>`;
@@ -312,7 +312,7 @@ async function loadHoldingDecisions() {
       return `
         <div style="margin-bottom:16px">
           <div style="font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:6px;padding-bottom:4px;border-bottom:1px solid #1e293b">
-            ${pie} <span style="color:#334155;font-weight:400">(${stocks.length})</span>
+            ${esc(pie)} <span style="color:#334155;font-weight:400">(${stocks.length})</span>
           </div>
           ${cards}
         </div>`;

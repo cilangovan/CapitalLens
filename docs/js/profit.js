@@ -198,14 +198,14 @@ async function pbPatchLiveHoldingDMAs(rows) {
 function pbClosest(rows, dueCount) {
   const st = (rows || []).filter(r => r.kind === 'stock' && !(r.trim_plan || []).some(x => x.hit && x.sell_pct)).sort((a, b) => (b.gain_pct || 0) - (a.gain_pct || 0)).slice(0, 3);
   if (!st.length) return '<div class="w-dim w-small">No individual stocks are tracked here: the ladder has nothing to work on.</div>';
-  return `<div class="pb-m-grp"><b>${dueCount ? 'Next in line' : 'Closest to the first step'}</b>${st.map(r => `<div class="pb-m-row"><span>${r.display || r.ticker}</span><span class="w-dim w-small">${r.gain_pct >= 0 ? '+' : ''}${fmt(r.gain_pct, 1)}% · ${r.gain_pct >= 20 ? 'at the step' : fmt(20 - (r.gain_pct || 0), 1) + ' points to +20%'}</span></div>`).join('')}</div>`;
+  return `<div class="pb-m-grp"><b>${dueCount ? 'Next in line' : 'Closest to the first step'}</b>${st.map(r => `<div class="pb-m-row"><span>${esc(r.display || r.ticker)}</span><span class="w-dim w-small">${r.gain_pct >= 0 ? '+' : ''}${fmt(r.gain_pct, 1)}% · ${r.gain_pct >= 20 ? 'at the step' : fmt(20 - (r.gain_pct || 0), 1) + ' points to +20%'}</span></div>`).join('')}</div>`;
 }
 // Holdings flagged "Book profit" by the score rule (score 50-64) have no ladder £ amount: list them with the reason instead of leaving the £0 unexplained.
 function pbScoreFlags(rows) {
   const fl = (rows || []).filter(r => r.action_level === 'trim' && !(r.trim_plan || []).some(x => x.hit && x.sell_pct));
   if (!fl.length) return '';
   return `<div class="pb-m-grp"><b>${fl.length} flagged “Book profit” by score, no £ amount</b> <span class="w-dim w-small">These scored 50–64: the rulebook says consider partial booking or reducing exposure, but no ladder step is reached, so nothing is added to the total.</span>
-    ${fl.map(r => `<div class="pb-m-row"><span>${r.display || r.ticker}<span class="w-dim w-small"> · ${r.kind === 'stock' ? 'stock' : 'fund'} · score ${r.score} · ${r.gain_pct >= 0 ? '+' : ''}${fmt(r.gain_pct, 1)}%</span></span><span class="w-dim w-small">${r.action || ''}</span></div>`).join('')}</div>`;
+    ${fl.map(r => `<div class="pb-m-row"><span>${esc(r.display || r.ticker)}<span class="w-dim w-small"> · ${r.kind === 'stock' ? 'stock' : 'fund'} · score ${+r.score || 0} · ${r.gain_pct >= 0 ? '+' : ''}${fmt(r.gain_pct, 1)}%</span></span><span class="w-dim w-small">${esc(r.action || '')}</span></div>`).join('')}</div>`;
 }
 // Pie-level profit check (its own card): what a pie has gained and what the booking rules say about it.
 function pbPieStatus(g) {
@@ -241,7 +241,7 @@ function pbPieCard(s, rows) {
 }
 function pbInfo(key) {
   const s = PB.s, rows = PB.rows || [], lim = s.limits || {}, tot = s.totals || {}, reg = s.regime || {};
-  const name = r => `<b>${r.display || r.ticker}</b><div class="w-dim w-small">${r.pie || ''}</div>`;
+  const name = r => `<b>${esc(r.display || r.ticker)}</b><div class="w-dim w-small">${esc(r.pie || '')}</div>`;
   const unit = r => (r.trim_plan && r.trim_plan[0] && r.trim_plan[0].unit) || '';
   let title = '', body = '';
   if (key === 'risk') {
@@ -274,7 +274,7 @@ function pbInfo(key) {
     const what = { reassess: 'Something broke (trend, stop or fundamentals). Re-check the reason you own it.', trim: 'Up enough to book some profit.',
       rebalance: 'Too big a share of the portfolio or sector — move some elsewhere.', run: 'Strong — leave it alone.', hold: 'Nothing to do.' };
     body = groups.map(g => { const list = rows.filter(r => r.action_level === g); return list.length ? `<div class="pb-m-grp">${pbLvl(g)} <span class="w-dim">${what[g]}</span>
-      <div>${list.map(r => `<div class="pb-m-row"><span>${r.display || r.ticker}</span><span class="w-dim w-small">${r.action || ''}</span></div>`).join('')}</div></div>` : ''; }).join('');
+      <div>${list.map(r => `<div class="pb-m-row"><span>${esc(r.display || r.ticker)}</span><span class="w-dim w-small">${esc(r.action || '')}</span></div>`).join('')}</div></div>` : ''; }).join('');
   } else if (key === 'holdings') {
     title = `Holdings — ${fmtGbpPlain(tot.holdings_gbp)}`;
     body = `<p>Market value of everything you hold, and what you paid (${fmtGbpPlain(tot.invested_gbp)}). Biggest first:</p>
@@ -287,7 +287,7 @@ function pbInfo(key) {
   }
   let m = document.getElementById('pb-modal');
   if (!m) { m = document.createElement('div'); m.id = 'pb-modal'; document.body.appendChild(m); m.addEventListener('click', e => { if (e.target === m) pbClose(); }); }
-  m.innerHTML = `<div class="pb-m-box" role="dialog" aria-modal="true"><div class="pb-m-head"><h3>${title}</h3><button class="pb-m-x" onclick="pbClose()" aria-label="Close">✕</button></div>
+  m.innerHTML = `<div class="pb-m-box" role="dialog" aria-modal="true"><div class="pb-m-head"><h3>${esc(title)}</h3><button class="pb-m-x" onclick="pbClose()" aria-label="Close">✕</button></div>
     <div class="pb-m-body">${body}</div><button class="pb-m-close" onclick="pbClose()">Close</button></div>`;
   m.classList.add('open'); document.body.style.overflow = 'hidden';
 }
@@ -376,7 +376,7 @@ async function loadProfit() {
           <b>Fix concentration first</b>
           <div class="w-dim w-small" style="margin-top:3px">These are over the ${maxStock}% limit — Option B targets here:</div>
           ${overweight.map(r => `<div style="display:flex;justify-content:space-between;padding:4px 0;border-bottom:1px solid var(--border);font-size:13px">
-            <span>${r.display || r.ticker} <span class="w-dim w-small">${r.pie}</span></span>
+            <span>${esc(r.display || r.ticker)} <span class="w-dim w-small">${esc(r.pie)}</span></span>
             <span class="red" style="font-weight:600">${fmt(r.weight_pct, 1)}% <span class="w-dim w-small">(limit ${maxStock}%)</span></span>
           </div>`).join('')}
         </div>
@@ -419,7 +419,7 @@ async function loadProfit() {
     </div>`;
 
   // ── Watch-outs
-  const notes = (s.notes || []).length ? `<div class="card"><h3>⚠️ Watch-outs</h3><div id="pb-watchouts-body">${s.notes.map(n => `<div style="font-size:13px;padding:5px 0;border-bottom:1px solid var(--border)">${n}</div>`).join('')}</div></div>` : '';
+  const notes = (s.notes || []).length ? `<div class="card"><h3>⚠️ Watch-outs</h3><div id="pb-watchouts-body">${s.notes.map(n => `<div style="font-size:13px;padding:5px 0;border-bottom:1px solid var(--border)">${esc(n)}</div>`).join('')}</div></div>` : '';
 
   // ── Layer 2 + 5: sector & pie exposure
   const maxSec = lim.max_sector_pct || 25;
@@ -429,7 +429,7 @@ async function loadProfit() {
       ${snapshotNote}
       ${(s.sectors || []).map(x => `
         <div style="display:grid;grid-template-columns:150px 1fr 54px;gap:10px;align-items:center;margin-bottom:7px;font-size:12px">
-          <div>${x.sector}</div>
+          <div>${esc(x.sector)}</div>
           <div class="pb-bar"><i style="width:${Math.min(100, x.pct / 50 * 100)}%;background:${x.over ? 'var(--red)' : 'var(--accent)'}"></i>
             <span style="position:absolute;left:${maxSec / 50 * 100}%;top:-2px;bottom:-2px;border-left:2px dashed var(--muted)"></span></div>
           <div style="text-align:right;font-weight:700" class="${x.over ? 'red' : ''}">${fmt(x.pct, 1)}%</div>
@@ -441,12 +441,12 @@ async function loadProfit() {
       ${snapshotNote}
       <table class="pb-rules" style="width:100%"><tr><th>Pie</th><th>Value</th><th>Weight</th><th>Gain</th><th>Score</th><th>Flags</th></tr>
       ${(s.pies || []).filter(p => p.gbp > 0).map(p => `<tr>
-        <td>${p.pie}</td><td>${fmtGbp(p.gbp)}</td><td>${fmt(p.pct, 1)}%</td>
+        <td>${esc(p.pie)}</td><td>${fmtGbp(p.gbp)}</td><td>${fmt(p.pct, 1)}%</td>
         <td class="${clr(p.gain_pct)}">${p.gain_pct == null ? '—' : fmt(p.gain_pct, 1) + '%'}</td>
         <td style="color:${p.avg_score ? pbScoreColor(p.avg_score) : ''};font-weight:700">${p.avg_score ?? '—'}</td>
-        <td style="font-size:11px;color:var(--muted)">${p.flags.join(', ') || '—'}</td></tr>`).join('')}
+        <td style="font-size:11px;color:var(--muted)">${p.flags.map(f => esc(f)).join(', ') || '—'}</td></tr>`).join('')}
       </table>
-      ${(s.pies || []).filter(p => !p.gbp).length ? `<div style="font-size:11px;color:var(--muted);margin-top:6px">Not yet funded: ${(s.pies || []).filter(p => !p.gbp).map(p => p.pie).join(', ')}</div>` : ''}
+      ${(s.pies || []).filter(p => !p.gbp).length ? `<div style="font-size:11px;color:var(--muted);margin-top:6px">Not yet funded: ${(s.pies || []).filter(p => !p.gbp).map(p => esc(p.pie)).join(', ')}</div>` : ''}
     </div>`;
 
   // ── Layers 3 + 4: holdings
@@ -481,21 +481,21 @@ async function loadProfit() {
     return `
       <div class="pb-hold-card">
         <div class="pb-hold-head" onclick="pbToggle(${i})">
-          <div><div style="font-weight:700">${r.display} <span style="font-size:10px;color:var(--muted);font-weight:400">${r.kind.toUpperCase()} · ${r.pie}</span></div>
-            <div style="font-size:11px;color:var(--muted);margin-top:2px">${r.action}</div></div>
+          <div><div style="font-weight:700">${esc(r.display)} <span style="font-size:10px;color:var(--muted);font-weight:400">${esc(r.kind.toUpperCase())} · ${esc(r.pie)}</span></div>
+            <div style="font-size:11px;color:var(--muted);margin-top:2px">${esc(r.action)}</div></div>
           <div class="pb-score" style="color:${pbScoreColor(r.score)}">${r.score}</div>
           <div class="${clr(r.gain_pct)}" style="font-weight:700;text-align:right">${r.gain_pct > 0 ? '+' : ''}${fmt(r.gain_pct, 1)}%</div>
           <div class="pb-hide-sm" style="text-align:right">${pbLvl(r.action_level)}<div style="font-size:10px;color:var(--muted);margin-top:2px">${fmt(r.weight_pct, 1)}% · ${fmtGbpPlain(r.value_gbp)}</div></div>
           <div id="pb-chev-${i}" style="color:var(--muted)">▼</div>
         </div>
         <div class="pb-hold-body" id="pb-body-${i}">
-          <div style="margin:8px 0;padding:8px;background:var(--bg2);border-radius:6px">🧭 ${sig.rule || ''}<br>📊 Volume: ${sig.volume || '—'}${r.rel_volume ? ` (RV ${fmt(r.rel_volume, 2)})` : ''}
+          <div style="margin:8px 0;padding:8px;background:var(--bg2);border-radius:6px">🧭 ${esc(sig.rule || '')}<br>📊 Volume: ${esc(sig.volume || '—')}${r.rel_volume ? ` (RV ${fmt(r.rel_volume, 2)})` : ''}
             · Sector vs benchmark 3m: <span class="${clr(sig.sector_rel_3m)}">${sig.sector_rel_3m == null ? '—' : fmt(sig.sector_rel_3m, 1) + '%'}</span>
-            · 50/200 DMA <span id="pb-dma-${r.yahoo_ticker ? r.yahoo_ticker.replace(/[^a-zA-Z0-9]/g, '_') : i}" data-pb-dma="${r.yahoo_ticker || ''}">${pbTick(sig.above50)}${pbTick(sig.above200)}</span> · Sector: ${r.sector}</div>
+            · 50/200 DMA <span id="pb-dma-${r.yahoo_ticker ? r.yahoo_ticker.replace(/[^a-zA-Z0-9]/g, '_') : i}" data-pb-dma="${esc(r.yahoo_ticker || '')}">${pbTick(sig.above50)}${pbTick(sig.above200)}</span> · Sector: ${esc(r.sector)}</div>
           ${factors}
           ${protect}
           ${ladder}
-          ${(r.notes || []).map(n => `<div style="color:var(--yellow);margin-top:4px">• ${n}</div>`).join('')}
+          ${(r.notes || []).map(n => `<div style="color:var(--yellow);margin-top:4px">• ${esc(n)}</div>`).join('')}
         </div>
       </div>`;
   };
