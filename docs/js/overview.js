@@ -52,7 +52,7 @@ function ovFormulaHtml(H) {
 
 async function loadOverview() {
   const [snaps, , alerts] = await Promise.all([
-    api('portfolio_snapshots','?select=*&order=created_at.desc&limit=1'),
+    api('portfolio_snapshots','?select=*&order=created_at.desc&limit=48'),
     api('positions','?select=*&order=gain_pct.desc&limit=1'),
     api('alerts','?select=*&order=created_at.desc&limit=5'),
   ]);
@@ -64,13 +64,40 @@ async function loadOverview() {
   document.getElementById('last-updated').textContent = `Updated: ${ts}${ageMs !== null && ageMs >= 0 ? ' (' + ovAgo(ageMs) + ')' : ''}`;
   ovStaleBanner(ageMs, ts);
 
+  // Last 24H: find the snapshot closest to 24h ago and compare total_value.
+  // Uses the same definition as Trading 212: full account value change (shares + cash).
+  // Deposits/withdrawals in that window skew the number just like T212's own figure.
+  const ov24h = (() => {
+    if (snaps.length < 2 || !snap.created_at) return null;
+    const nowMs = new Date(snap.created_at).getTime();
+    const target = nowMs - 24 * 3600e3;
+    // pick the snapshot closest to 24h ago (but no newer than snap)
+    let best = null, bestDiff = Infinity;
+    for (let i = 1; i < snaps.length; i++) {
+      const t = new Date(snaps[i].created_at).getTime();
+      const diff = Math.abs(t - target);
+      if (diff < bestDiff) { bestDiff = diff; best = snaps[i]; }
+    }
+    if (!best || bestDiff > 36 * 3600e3) return null;   // nothing within 36h of the target
+    const cur = +snap.total_value || 0, prev = +best.total_value || 0;
+    if (!cur || !prev) return null;
+    const change = cur - prev, pct = prev ? change / prev * 100 : 0;
+    const ageH = (nowMs - new Date(best.created_at).getTime()) / 3600e3;
+    return { change, pct, ageH };
+  })();
+
   const allPos = await api('positions', `?snapshot_id=eq.${snap.id}&select=gain_pct,ppl`).catch(()=>[]);
   const winners = allPos.filter(p => (p.gain_pct||0) > 0).length;
   const losers  = allPos.filter(p => (p.gain_pct||0) < 0).length;
   const alertCount = alerts.length;
 
+  const last24Card = ov24h
+    ? `<div class="stat-card"><div class="label">Last ${ov24h.ageH < 25 ? '24H' : Math.round(ov24h.ageH) + 'H'}</div><div class="value ${clr(ov24h.change)}">${fmtGbp(ov24h.change)}</div><div class="sub ${clr(ov24h.pct)}">${ov24h.pct >= 0 ? '+' : ''}${ov24h.pct.toFixed(2)}%</div></div>`
+    : '';
+
   document.getElementById('stats-strip').innerHTML = `
     <div class="stat-card"><div class="label">Total Value</div><div class="value">${fmtGbp(tv)}</div><div class="sub">account incl. cash</div></div>
+    ${last24Card}
     <div class="stat-card"><div class="label">Investments</div><div class="value">${fmtGbp(H.investments)}</div><div class="sub">${H.exact ? 'value of your shares' : 'total − free cash (estimate)'}</div></div>
     ${H.exact ? `<div class="stat-card"><div class="label">Cost basis</div><div class="value">${fmtGbp(H.cost)}</div><div class="sub">money put into them</div></div>` : ''}
     <div class="stat-card"><div class="label">Cash</div><div class="value">${fmtGbp(cash)}</div><div class="sub">free cash</div></div>
