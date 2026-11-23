@@ -41,7 +41,7 @@ async function loadPositions() {
     card.onclick = () => pdOpen('__ALL__');
     card.innerHTML = `<div class="w-dim w-small">ALL POSITIONS · tap for chart</div>
       <div class="pd-allrow"><span class="pd-allval">${fmtGbpPlain(all.value)}</span>
-      <span class="${clr(all.result)}">${pdArrow(ror)} ${ror != null ? Math.abs(ror).toFixed(1) + '%' : '—'} · ${fmtGbpPlain(all.result)}</span>
+      <span class="${clr(all.result)}">${pdArrow(ror)} ${ror != null ? Math.abs(ror).toFixed(1) + '% all-time' : '—'} · ${fmtGbpPlain(all.result)}</span>
       <span class="w-chev">›</span></div>`;
     container.appendChild(card);
   }
