@@ -23,6 +23,51 @@ function pbPrice(v, u) {
 const PB = {};
 
 // ── tap a header tile → pop-up explaining it, with the stocks behind the number ──
+// Closest single stocks to the first ladder step (+20%), so "£0" always says how far away the next trim is.
+function pbClosest(rows, dueCount) {
+  const st = (rows || []).filter(r => r.kind === 'stock' && !(r.trim_plan || []).some(x => x.hit && x.sell_pct)).sort((a, b) => (b.gain_pct || 0) - (a.gain_pct || 0)).slice(0, 3);
+  if (!st.length) return '<div class="w-dim w-small">No individual stocks are tracked here: the ladder has nothing to work on.</div>';
+  return `<div class="pb-m-grp"><b>${dueCount ? 'Next in line' : 'Closest to the first step'}</b>${st.map(r => `<div class="pb-m-row"><span>${r.display || r.ticker}</span><span class="w-dim w-small">${r.gain_pct >= 0 ? '+' : ''}${fmt(r.gain_pct, 1)}% · ${r.gain_pct >= 20 ? 'at the step' : fmt(20 - (r.gain_pct || 0), 1) + ' points to +20%'}</span></div>`).join('')}</div>`;
+}
+// Holdings flagged "Book profit" by the score rule (score 50-64) have no ladder £ amount: list them with the reason instead of leaving the £0 unexplained.
+function pbScoreFlags(rows) {
+  const fl = (rows || []).filter(r => r.action_level === 'trim' && !(r.trim_plan || []).some(x => x.hit && x.sell_pct));
+  if (!fl.length) return '';
+  return `<div class="pb-m-grp"><b>${fl.length} flagged “Book profit” by score, no £ amount</b> <span class="w-dim w-small">These scored 50–64: the rulebook says consider partial booking or reducing exposure, but no ladder step is reached, so nothing is added to the total.</span>
+    ${fl.map(r => `<div class="pb-m-row"><span>${r.display || r.ticker}<span class="w-dim w-small"> · ${r.kind === 'stock' ? 'stock' : 'fund'} · score ${r.score} · ${r.gain_pct >= 0 ? '+' : ''}${fmt(r.gain_pct, 1)}%</span></span><span class="w-dim w-small">${r.action || ''}</span></div>`).join('')}</div>`;
+}
+// Pie-level profit check (its own card): what a pie has gained and what the booking rules say about it.
+function pbPieStatus(g) {
+  if (g === null || g === undefined) return { cls: 'yellow', txt: 'Not enough data yet' };
+  if (g < 0) return { cls: 'red', txt: 'In a loss: nothing to book; reduce only if the thesis has weakened' };
+  if (g < 5) return { cls: '', txt: 'Too early to book: no rule applies below +5%' };
+  if (g < 10) return { cls: 'green', txt: 'Hold: +5–10%, no automatic selling' };
+  if (g < 20) return { cls: 'green', txt: 'Review: +10–20%, check allocation and the underlying index' };
+  return { cls: 'yellow', txt: 'Strong gain: trim only if the pie is overweight, and check which of its stocks passed +20%' };
+}
+function pbPieGbp(p) {                   // exact when the engine sent it, otherwise worked back from value and %
+  if (p.gain_gbp !== null && p.gain_gbp !== undefined) return { v: p.gain_gbp, approx: false };
+  if (p.gain_pct === null || p.gain_pct === undefined || !p.gbp) return { v: null, approx: false };
+  return { v: p.gbp - p.gbp / (1 + p.gain_pct / 100), approx: true };
+}
+function pbPieCard(s, rows) {
+  const pies = (s.pies || []).filter(p => p.gbp > 0).slice().sort((a, b) => (b.gain_pct ?? -999) - (a.gain_pct ?? -999));
+  const blocks = pies.map(p => {
+    const st = pbPieStatus(p.gain_pct), g = pbPieGbp(p), mem = (rows || []).filter(r => (r.pie || '').trim() === p.pie), stocks = mem.filter(r => r.kind === 'stock'), funds = mem.filter(r => r.kind !== 'stock');
+    const best = stocks.slice().sort((a, b) => (b.gain_pct || 0) - (a.gain_pct || 0))[0];
+    const mix = `${stocks.length} stock${stocks.length === 1 ? '' : 's'} · ${funds.length} fund${funds.length === 1 ? '' : 's'}`;
+    const ladder = !stocks.length ? 'Funds only: the stock ladder does not apply; rebalance and review rules do.' : best ? `Best stock: ${best.display || best.ticker} ${best.gain_pct >= 0 ? '+' : ''}${fmt(best.gain_pct, 1)}% (ladder starts at +20% on a stock's own buy price)` : '';
+    return `<div class="pb-pie" style="padding:10px 0;border-bottom:1px solid var(--border)">
+      <div style="display:flex;justify-content:space-between;gap:10px;align-items:baseline;flex-wrap:wrap"><b>${p.pie}</b><span class="${clr(p.gain_pct)}" style="font-weight:700;font-size:16px">${p.gain_pct == null ? '—' : (p.gain_pct >= 0 ? '+' : '') + fmt(p.gain_pct, 2) + '%'}${g.v === null ? '' : ` <span style="font-size:13px">${g.approx ? '≈ ' : ''}${g.v >= 0 ? '+' : '−'}${fmtGbpPlain(Math.abs(g.v))}</span>`}</span></div>
+      <div class="w-dim w-small">Value ${fmtGbpPlain(p.gbp)} · invested ${p.invested_gbp != null ? fmtGbpPlain(p.invested_gbp) : '—'} · ${fmt(p.pct, 1)}% of holdings · ${mix}</div>
+      <div class="${st.cls}" style="font-size:13px;margin-top:3px">${st.txt}</div>
+      ${ladder ? `<div class="w-dim w-small">${ladder}</div>` : ''}</div>`;
+  }).join('');
+  return `<div class="card"><h3>⑥ Pie profit check</h3>
+    <div class="w-dim w-small" style="margin-bottom:4px">What each pie has gained (Trading 212's own value against what you paid) and what the booking rules say. The ladder in <i>Profit to book</i> works on single stocks only, so a rising pie can still show £0 there. Biggest gain first.</div>
+    ${blocks || '<div class="w-dim w-small">No funded pies yet.</div>'}
+    <div class="w-dim w-small" style="margin-top:6px">Gain % = pie value ÷ amount invested − 1, from the last Trading 212 refresh. “≈” means worked back from the rounded percentage.</div></div>`;
+}
 function pbInfo(key) {
   const s = PB.s, rows = PB.rows || [], lim = s.limits || {}, tot = s.totals || {}, reg = s.regime || {};
   const name = r => `<b>${r.display || r.ticker}</b><div class="w-dim w-small">${r.pie || ''}</div>`;
@@ -48,7 +93,10 @@ function pbInfo(key) {
     body = `<p>Profit-taking ladder: when a stock is up by each step (e.g. +25%, +50%, +100%), sell a slice to lock in gains and keep the rest running.</p>
       ${due.length ? `<table class="pb-rules pb-m-table"><tr><th>Stock</th><th>Step reached</th><th>Sell</th><th>≈ £</th></tr>
         ${due.map(({ r, x }) => `<tr><td>${name(r)}</td><td>${x.label || '+' + x.gain + '%'}</td><td>${x.sell_pct}%</td><td>${fmtGbpPlain(r.value_gbp * x.sell_pct / 100)}</td></tr>`).join('')}</table>`
-        : '<div class="pb-m-sum green">✓ No ladder steps reached right now — nothing to book.</div>'}`;
+        : '<div class="pb-m-sum green">✓ No stock has reached a ladder step (+20% on its own buy price), so there is nothing to book from the ladder.</div>'}
+      ${pbClosest(rows, due.length)}
+      ${pbScoreFlags(rows)}
+      <p class="w-dim w-small">Only <b>single stocks</b> use the ladder, and each is judged on <b>its own gain against its own average buy price</b>. Funds (ETFs) are hold-and-rebalance, never trimmed automatically. A rising <b>pie</b> is shown in its own card, ⑥ Pie profit check.</p>`;
   } else if (key === 'actions') {
     title = 'Actions';
     const groups = ['reassess', 'trim', 'rebalance', 'run', 'hold'];
@@ -101,7 +149,7 @@ async function loadProfit() {
     <div class="stats-strip">
       <div class="stat-card pb-tap" onclick="pbInfo('regime')" role="button" tabindex="0"><div class="label">Market regime <span class="pb-i">ⓘ</span></div><div class="value ${regColor}">${regIcon} ${reg.mode}</div><div class="sub">${reg.points} signal pts</div></div>
       <div class="stat-card pb-tap" onclick="pbInfo('holdings')" role="button" tabindex="0"><div class="label">Holdings <span class="pb-i">ⓘ</span></div><div class="value">${fmtGbp(tot.holdings_gbp)}</div><div class="sub">invested ${fmtGbpPlain(tot.invested_gbp)}</div></div>
-      <div class="stat-card pb-tap" onclick="pbInfo('trims')" role="button" tabindex="0"><div class="label">Profit to book <span class="pb-i">ⓘ</span></div><div class="value yellow">${fmtGbp(tot.suggested_trims_gbp)}</div><div class="sub">ladder trims due</div></div>
+      <div class="stat-card pb-tap" onclick="pbInfo('trims')" role="button" tabindex="0"><div class="label">Profit to book <span class="pb-i">ⓘ</span></div><div class="value yellow">${fmtGbp(tot.suggested_trims_gbp)}</div><div class="sub">${(cnt.trim || 0) > 0 && !(tot.suggested_trims_gbp > 0) ? `ladder: none due · ${cnt.trim} flagged by score` : 'ladder trims due'}</div></div>
       <div class="stat-card pb-tap" onclick="pbInfo('actions')" role="button" tabindex="0"><div class="label">Actions <span class="pb-i">ⓘ</span></div><div class="value" style="font-size:15px">
         <span class="red">${cnt.reassess || 0}</span> · <span class="yellow">${cnt.trim || 0}</span> · <span style="color:#a78bfa">${cnt.rebalance || 0}</span> · <span class="green">${(cnt.run || 0) + (cnt.hold || 0)}</span></div>
         <div class="sub">reassess · book · rebal · hold</div></div>
@@ -235,7 +283,7 @@ async function loadProfit() {
     </div>`;
 
   el.innerHTML = `<div style="font-size:11px;color:var(--muted);margin-bottom:10px">Updated ${upd}</div>`
-    + stats + notes + `<div class="grid2">${market}${sectors}</div>` + holdings + pies + rules;
+    + stats + notes + `<div class="grid2">${market}${sectors}</div>` + holdings + pies + pbPieCard(s, rows) + rules;
 }
 
 function pbToggle(i) {

@@ -478,6 +478,7 @@ def run():
         pr = [r for r in rows if r["pie"] == pname]
         pies.append({
             "pie": pname, "gbp": round(val, 2), "pct": round(val / total * 100, 1),
+            "invested_gbp": round(invd, 2), "gain_gbp": round(val - invd, 2) if invd else None,
             "gain_pct": round((val / invd - 1) * 100, 1) if invd else None,
             "avg_score": round(sum(r["score"] for r in pr) / len(pr)) if pr else None,
             "flags": [r["display"] for r in pr if r["action_level"] in ("trim", "rebalance", "reassess")],

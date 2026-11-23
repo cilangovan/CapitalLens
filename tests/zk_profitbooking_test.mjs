@@ -77,4 +77,7 @@ const store = { load: async k => tables[k] || [], put: async (k, rows) => { save
 const symOf = {}; const market = { chart: async s => hist[s] ? { close: hist[s].c, high: hist[s].h, low: hist[s].l, volume: hist[s].v } : null, info: async s => info[s] || {} };
 const res = await PB.run({ store, market, ratings: Object.values(ratings) }, new Date('2026-11-18T12:00:00Z'));
 ok('run(): same result through the store/market path, stale row removed, summary saved', diff(res.rows.map(r => ({ ...r, trim_plan: r.trim_plan })), js.rows) === null && removed.join() === 'OLD_US_EQ' && saved.profit_booking_summary.length === 1);
+// regression (owner: "semiconductor is up, why is nothing in profit booking?"): each pie reports what it invested and gained in £ as well as %, in both engines,
+// so the Pie profit check card can show a rising pie even when the stock ladder has nothing due
+ok('pies carry invested_gbp and gain_gbp that agree with gain_pct (JS and Python identical)', js.summary.pies.every(p => p.invested_gbp !== undefined && p.gain_gbp !== undefined && (p.gain_pct === null || Math.abs(p.gain_gbp - (p.gbp - p.invested_gbp)) < 0.011)) && py.summary.pies.every((p, i) => p.invested_gbp === js.summary.pies[i].invested_gbp && p.gain_gbp === js.summary.pies[i].gain_gbp));
 console.log(`\n${pass} passed · ${fail} failed`); process.exit(fail ? 1 : 0);

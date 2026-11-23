@@ -214,3 +214,7 @@ check("Appearance: loaded first by the live and demo pages (so by app, zkapp and
       and "Appearance" in (ROOT / "documentation/menus/settings-and-account.md").read_text() and "never hard-code palette" in doc.lower())
 _hard = [f.name for f in (ROOT / "docs/js").glob("*.js") if f.name != "appearance.js" and re.search(r"#(?:e2e8f0|8892a4|2d3353|1a1d27|0f1117|22263a)\b", f.read_text(), re.I)]
 check("dashboard scripts use the theme variables, not the old dark palette hex codes (a hard-coded colour breaks the light themes): " + ", ".join(_hard), not _hard)
+
+check("Profit tab: separate Pie profit check card, Profit to book explains a £0 total, guarded by a layout test wired into CI",
+      "pbPieCard" in (ROOT / "docs/js/profit.js").read_text() and "pbClosest" in (ROOT / "docs/js/profit.js").read_text() and "gain_gbp" in (ROOT / "services/profit_booking_service.py").read_text()
+      and "gain_gbp" in (ROOT / "docs/zk/profitbooking.js").read_text() and "profit_pies_layout_test.py" in (ROOT / ".github/workflows/ui_tests.yml").read_text())

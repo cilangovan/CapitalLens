@@ -163,7 +163,7 @@
     const sectors = Object.entries(sectorExp).map(([s, v]) => ({ sector: s, gbp: rnd(v, 2), pct: rnd(v / total * 100, 1), over: v / total * 100 > MAX_SECTOR_PCT })).sort((a, b) => b.pct - a.pct);
     const pies = piesRaw.map(p => {
       const pname = p.name.trim(), items = Object.values(inst).filter(v => v.pie === pname), val = sum(items.map(i => i.value)), invd = sum(items.map(i => i.invested)), pr = rows.filter(r => r.pie === pname);
-      return { pie: pname, gbp: rnd(val, 2), pct: rnd(val / total * 100, 1), gain_pct: invd ? rnd((val / invd - 1) * 100, 1) : null, avg_score: pr.length ? rnd(sum(pr.map(r => r.score)) / pr.length, 0) : null,
+      return { pie: pname, gbp: rnd(val, 2), pct: rnd(val / total * 100, 1), invested_gbp: rnd(invd, 2), gain_gbp: invd ? rnd(val - invd, 2) : null, gain_pct: invd ? rnd((val / invd - 1) * 100, 1) : null, avg_score: pr.length ? rnd(sum(pr.map(r => r.score)) / pr.length, 0) : null,
         flags: pr.filter(r => ['trim', 'rebalance', 'reassess'].includes(r.action_level)).map(r => r.display) };
     }).sort((a, b) => b.gbp - a.gbp);
     let trims = 0; for (const r of rows) if (r.kind === 'stock' && r.action_level === 'trim') { const x = [...r.trim_plan].reverse().find(z => z.hit && z.sell_pct); trims += x ? x.sell_gbp : 0; }

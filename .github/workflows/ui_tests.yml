@@ -42,6 +42,8 @@ jobs:
         run: python -u tests/support_layout_test.py
       - name: Dip Planner fits phone screens
         run: python -u tests/dipplan_layout_test.py
+      - name: Profit tab pie check and £0 explanation fit phone screens
+        run: python -u tests/profit_pies_layout_test.py
       - name: Appearance (themes, fonts, text size) fits phone screens
         run: python -u tests/appearance_layout_test.py
       - name: Watchlist amount box (no fixed budget) fits phone screens
