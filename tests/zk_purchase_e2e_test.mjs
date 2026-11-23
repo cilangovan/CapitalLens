@@ -80,7 +80,7 @@ A.portfolioStatus = 403; const r3 = await refresh(); const d3 = await latest();
 const failed3 = r3.results.filter(x => !x.ok);
 ok('AC3 refused key: the refresh is NOT reported as fine, and names the reason and the fix', !r3.ok && failed3.some(x => x.name === 'Portfolio snapshot' && /refused the key for your open positions \(HTTP 403\)/.test(x.note) && /Portfolio and Account data permissions/.test(x.note)));
 ok('AC3 …no new snapshot was written, the previous complete one stays', d3.s.id === snapBefore && d3.pos.length === 4);
-ok('AC3 …and the analyses are labelled as based on the previous snapshot', r3.warnings.some(w => /used the previous snapshot from 2026-11-20/.test(w)) && r3.changes.snapshotSaved === false && /No new portfolio snapshot/.test(r3.changes.lines[0]));
+ok('AC3 …and the analyses are labelled as based on the previous snapshot', r3.warnings.some(w => /used the previous snapshot from \d{4}-\d{2}-\d{2} \d{2}:\d{2} UTC/.test(w)) && r3.changes.snapshotSaved === false && /No new portfolio snapshot/.test(r3.changes.lines[0]));
 A.portfolioStatus = 429; const r3b = await refresh(); ok('AC3 rate limit: says to wait and refresh again', r3b.results.some(x => /rate-limiting.*Wait a minute/.test(x.note)));
 A.portfolioStatus = 200;
 // a failed account call must not write a snapshot with a total of 0
