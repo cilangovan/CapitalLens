@@ -4,6 +4,10 @@
 create table if not exists public.demo_market_cache (key text primary key, payload jsonb not null, fetched_at timestamptz not null default now());
 create table if not exists public.demo_ipo_calendar (like public.ipo_calendar including defaults including constraints);
 create table if not exists public.demo_institutional_flow_reports (like public.institutional_flow_reports including defaults including constraints);
+-- the copy does not always carry the id default; give it its own sequence so the demo seed can insert a weekly report
+create sequence if not exists public.demo_institutional_flow_reports_id_seq owned by public.demo_institutional_flow_reports.id;
+select setval('public.demo_institutional_flow_reports_id_seq', coalesce((select max(id) from public.demo_institutional_flow_reports), 0) + 1, false);
+alter table public.demo_institutional_flow_reports alter column id set default nextval('public.demo_institutional_flow_reports_id_seq');
 alter table public.demo_market_cache enable row level security;
 alter table public.demo_ipo_calendar enable row level security;
 alter table public.demo_institutional_flow_reports enable row level security;

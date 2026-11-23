@@ -204,3 +204,4 @@ check("no fixed budget: demo seeds carry shares only (no £ amounts / budget obj
       "amount_gbp" not in (ROOT / "db/tenant/21_demo_markets.sql").read_text() and "'budget'" not in (ROOT / "db/tenant/21_demo_markets.sql").read_text() and "weekly_budget" not in (ROOT / "db/tenant/19_demo_insights.sql").read_text())
 check("Watchlist amount box and Plan button are phone-sized (>=40px tap targets) on the live and demo pages",
       all(re.search(r"\.w-budget input \{[^}]*min-height:40px", (ROOT / f).read_text()) and re.search(r"\.w-budget button \{[^}]*min-height:40px", (ROOT / f).read_text()) for f in ("docs/index.html", "docs/demo/index.html")))
+check("Watchlist amount box has a phone layout test wired into CI", (ROOT / "tests/watchlist_amount_layout_test.py").exists() and "watchlist_amount_layout_test.py" in (ROOT / ".github/workflows/ui_tests.yml").read_text())
