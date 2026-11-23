@@ -23,7 +23,7 @@ The shell is everything around the nine menus. It is the same in every variant e
 
 **No login flash on refresh.** The sign-in box is hidden by CSS (`#login-screen:not(.show){visibility:hidden}`) until the saved-session check finishes. If a session is restored the dashboard appears directly; only if not is the box shown. Guarded by `tests/login_flash_browser_test.py` and `tests/zk_login_flash_test.mjs`.
 
-**Loading state.** While the saved-session check runs (the key unlock takes a moment) the private app shows a full-screen **boot splash**: 🔒 CapitalLens, a spinning ring and "Unlocking your private dashboard…" (after 12 seconds it adds "Taking longer than usual. Check your connection, then reload."). The splash disappears the moment the sign-in box or the dashboard shows, so the screen is never blank. It is pure CSS (`#boot-splash` in `scripts/build_zkapp.py`). Inside the dashboard every card that is still fetching shows a small spinner beside "Loading…" (`.loading.busy`).
+**Loading state.** While the saved-session check runs (the key unlock takes a moment) the private app shows a full-screen **boot splash**: 🔒 CapitalLens, a gold coin that spins and changes between £, $ and € (the symbol changes while the coin is edge-on; with "reduce motion" on it stays still and only the symbol changes) and "Unlocking your private dashboard…" (after 12 seconds it adds "Taking longer than usual. Check your connection, then reload."). The splash disappears the moment the sign-in box or the dashboard shows, so the screen is never blank. It is pure CSS (`#boot-splash` in `scripts/build_zkapp.py`). Inside the dashboard every card that is still fetching shows a small spinner beside "Loading…" (`.loading.busy`).
 
 ## Header
 

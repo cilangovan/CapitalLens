@@ -6,7 +6,7 @@ inspected mid-load. Covers zkapp and zkapp-prod:
   2. no saved session  -> the box appears once the check finishes
   3. broken saved session (cannot unlock) -> falls back to the box, never a blank page
   4. a saved session that unlocks -> the app opens and the box is never shown (simulated: unlock stubbed to succeed)
-  5. while loading, a visible loading splash (spinner + text) fills the screen - never a blank dark page - and it is gone once the box or the app shows"""
+  5. while loading, a visible loading splash (£ $ € coin + text) fills the screen - never a blank dark page - and it is gone once the box or the app shows"""
 import functools, http.server, sys, threading, time
 from pathlib import Path
 from playwright.sync_api import sync_playwright
@@ -20,7 +20,7 @@ srv = http.server.ThreadingHTTPServer(("127.0.0.1", 0), functools.partial(Quiet,
 threading.Thread(target=srv.serve_forever, daemon=True).start()
 BASE = f"http://127.0.0.1:{srv.server_address[1]}"
 LOGIN_VISIBLE = "(() => { const e = document.getElementById('login-screen'); return !!e && getComputedStyle(e).visibility !== 'hidden' && getComputedStyle(e).display !== 'none'; })()"
-SPLASH_VISIBLE = "(() => { const e = document.getElementById('boot-splash'); if (!e) return false; const c = getComputedStyle(e), r = e.getBoundingClientRect(), sp = e.querySelector('.bs-spin'); return c.display !== 'none' && r.width >= innerWidth - 1 && r.height >= innerHeight - 1 && !!sp && getComputedStyle(sp).animationName !== 'none' && e.innerText.length > 5; })()"
+SPLASH_VISIBLE = "(() => { const e = document.getElementById('boot-splash'); if (!e) return false; const c = getComputedStyle(e), r = e.getBoundingClientRect(), sp = e.querySelector('.bs-coin'); return c.display !== 'none' && r.width >= innerWidth - 1 && r.height >= innerHeight - 1 && !!sp && getComputedStyle(sp).animationName !== 'none' && e.innerText.length > 5; })()"
 SESSION_KEYS = {"zkapp": ("zk_token", "zk_dk"), "zkapp-prod": None}   # prod uses its own storage keys; read them from the shipped script
 bad = 0
 
@@ -51,7 +51,7 @@ with sync_playwright() as p:
             pg.goto(f"{BASE}/{page}/index.html", wait_until="commit")
             pg.wait_for_selector("#login-screen", state="attached")
             check(f"{label}: sign-in box hidden while the app is still loading", not pg.evaluate(LOGIN_VISIBLE))
-            check(f"{label}: a loading splash (animated spinner + text) is on screen, not a blank page", pg.evaluate(SPLASH_VISIBLE))
+            check(f"{label}: a loading splash (animated £ $ € coin + text) is on screen, not a blank page", pg.evaluate(SPLASH_VISIBLE))
             for _ in range(80):
                 if pg.evaluate("document.getElementById('login-screen').classList.contains('show')"): break
                 time.sleep(0.25)
