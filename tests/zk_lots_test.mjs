@@ -40,10 +40,20 @@ ok('junk input never throws', L.rows(null, null, NOW).length === 0 && L.rows([nu
 // two stocks: biggest £ gain first
 const two = L.rows([...buys, o({ id: 'z', ticker: 'AMD_US_EQ', side: 'BUY', filled_at: d('10-01'), quantity: 1, price: 100, net_value: -100 })], [...un, { ticker: 'AMD_US_EQ', display: 'AMD', dq: 1, current_price: 90 }], NOW);
 ok('stocks sorted by £ gain, biggest first (NVIDIA +£24 before AMD −£10)', two.map(x => x.display).join() === 'NVIDIA,AMD');
-const h = L.html(two, { gbp: v => '£' + Number(v).toFixed(2), quote: (v) => '$' + Number(v).toFixed(2) });
-ok('card: title, honest estimate note (oldest-first, FX and fees excluded, you place orders yourself), per-buy chips, copy-ready limit line', /Purchases outside pies/.test(h) && /oldest buys first/.test(h) && /FX moves and fees are not included/.test(h) && /place any limit or stop order yourself/.test(h) && /SELL 1 NVDA limit \$130\.00/.test(h) && /−5% \$95\.00 \(−£4\.00\)/.test(h));
-ok('each stock is a native collapsible (no inline handler), total line for several stocks', /<details/.test(h) && !/\son[a-z]+=/.test(h) && /All buys:/.test(h));
-const evil = L.html(L.rows([o({ id: 'q', ticker: '<img src=x onerror=alert(1)>_US_EQ', side: 'BUY', filled_at: d('11-10'), quantity: 1, price: 1, net_value: -1 })], [{ ticker: '<img src=x onerror=alert(1)>_US_EQ', display: '<b>x</b>', dq: 1, current_price: 2 }], NOW), {});
+const fm = { gbp: v => '£' + Number(v).toFixed(2), quote: (v) => '$' + Number(v).toFixed(2) };
+const h = L.html(two, fm);
+ok('card: ONE short line per stock (name, buys, shares, return, £), not one per buy', /Purchases outside pies/.test(h) && (h.match(/class="lt-row"/g) || []).length === 2 && !/lt-lot|SELL |Stop-loss/.test(h) && /3 buys · 3 sh/.test(h));
+ok('card rows are real buttons with a data hook, no inline handler; total line for several stocks', /<button type="button" class="lt-row" data-lt="NVDA_US_EQ"/.test(h) && !/\son[a-z]+=/.test(h) && /All: /.test(h));
+ok('stock return % = total £ gain / cash paid (+£24 on £264 = +9.1%)', two[0].pct === 9.09);
+const mh = L.modalHtml(two[0], fm, null);
+ok('pop-up: table with Bought / Shares / Paid / Return / £ and one row per buy, oldest first, plus an "All 3 buys" total', /<table class="lt-tbl">/.test(mh) && /<th>Bought<\/th><th>Shares<\/th><th>Paid<\/th><th>Return<\/th><th>£<\/th>/.test(mh) && (mh.match(/class="lt-tr"/g) || []).length === 3 && /All 3 buys/.test(mh) && mh.indexOf('$100.00') < mh.indexOf('$80.00') && /data-lt-close/.test(mh) && !/\son[a-z]+=/.test(mh));
+ok('pop-up has a Close button and an ✕, and says tap a buy for levels', (mh.match(/data-lt-close/g) || []).length === 2 && /Tap a buy/.test(mh) && /oldest buys first/.test(mh) && /FX moves and fees are not included/.test(mh));
+const dh = L.modalHtml(two[0], fm, 0);
+ok('drill-down for one buy: back button, stops −5%/−10% with £ at risk, sell steps, copy-ready limit line, place-orders-yourself note', /data-lt-back/.test(dh) && /−5% \$95\.00 \(−£4\.00\)/.test(dh) && /−10% \$90\.00/.test(dh) && /\+30% \$130\.00/.test(dh) && /SELL 1 NVDA limit \$130\.00/.test(dh) && /place nothing|places nothing/.test(dh) && /Stop from today/.test(dh));
+ok('drill-down with a missing index falls back to the table; junk stock gives nothing', /lt-tbl/.test(L.modalHtml(two[0], fm, 99)) && L.modalHtml(null, fm, 0) === '');
+ok('gap warning lives in the pop-up and the card row says "incomplete history"', /incomplete history/.test(L.html(L.rows(buys.slice(1), un, NOW), fm)) && /not in the synced order history/.test(L.modalHtml(L.rows(buys.slice(1), un, NOW)[0], fm, null)));
+const evil0 = L.rows([o({ id: 'q', ticker: '<img src=x onerror=alert(1)>_US_EQ', side: 'BUY', filled_at: d('11-10'), quantity: 1, price: 1, net_value: -1 })], [{ ticker: '<img src=x onerror=alert(1)>_US_EQ', display: '<b>x</b>', dq: 1, current_price: 2 }], NOW);
+const evil = L.html(evil0, {}) + L.modalHtml(evil0[0], {}, null) + L.modalHtml(evil0[0], {}, 0);
 ok('everything that goes into the HTML is escaped', !/<img|<b>x/.test(evil) && /&lt;b&gt;x/.test(evil));
 // show(): reads orders through api(), appends the card, replaces itself, hides for guests, says nothing if orders cannot be read
 const box = { _h: '', querySelector() { return this._old; }, insertAdjacentHTML(_, x) { this._h += x; } };

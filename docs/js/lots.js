@@ -39,39 +39,79 @@
       const gainK = lotRows.length > 0 && lotRows.every(l => l.gain != null);
       out.push({ ticker: u.ticker, display: u.display || sym(u.ticker), pie: u.pie || null, held: r4(dq), current: cur, t212_avg: num(u.avg_price), lots: lotRows,
         gap: miss > TOL ? { qty: r4(miss), kind: 'earlier' } : miss < -TOL ? { qty: r4(-miss), kind: 'extra' } : null,    // earlier = bought before the synced history; extra = orders list more than you hold outside pies
-        cost, gain: gainK ? r2(lotRows.reduce((a, l) => a + l.gain, 0)) : null, best: lotRows.reduce((m, l) => l.pct != null && (m == null || l.pct > m) ? l.pct : m, null),
+        cost, gain: gainK ? r2(lotRows.reduce((a, l) => a + l.gain, 0)) : null, pct: gainK && costK && cost > 0 ? r2(lotRows.reduce((a, l) => a + l.gain, 0) / cost * 100) : null, best: lotRows.reduce((m, l) => l.pct != null && (m == null || l.pct > m) ? l.pct : m, null),
         worst: lotRows.reduce((m, l) => l.pct != null && (m == null || l.pct < m) ? l.pct : m, null),
         fromNow: cur != null ? STOPS.map(s => ({ pct: s, price: r4(cur * (1 - s / 100)) })) : null });
     }
     return out.sort((a, b) => (b.gain == null ? -1e9 : b.gain) - (a.gain == null ? -1e9 : a.gain));
   }
 
+  function fmts(o) {
+    o = o || {};
+    return { q: o.quote || ((v) => String(v)), gbp: o.gbp || (v => '£' + Number(v).toFixed(2)), cls: v => v > 0 ? 'green' : v < 0 ? 'red' : '',
+      date: t => new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }), nf: v => Number(v).toLocaleString('en-GB', { maximumFractionDigits: 4 }),
+      sgn: (v, d) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(d == null ? 1 : d) };
+  }
+  const money = (f, v) => (v < 0 ? '−' : '') + esc(f.gbp(Math.abs(v)));
+  const retHtml = (f, pct) => pct == null ? '<span class="lt-na">n/a</span>' : `<span class="${f.cls(pct)}">${pct > 0 ? '▲' : pct < 0 ? '▼' : '■'} ${esc(f.sgn(pct, 1))}%</span>`;
+
+  // THE CARD: one short line per stock; tap a stock to open its purchases in a pop-up
   function html(list, o) {
     if (!list || !list.length) return '';                                      // nothing held outside pies: no card
-    o = o || {}; const q = o.quote || ((v) => String(v)), gbp = o.gbp || (v => '£' + Number(v).toFixed(2)), cls = v => v > 0 ? 'green' : v < 0 ? 'red' : '';
-    const date = t => new Date(t).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }), nf = v => Number(v).toLocaleString('en-GB', { maximumFractionDigits: 4 });
-    const sgn = (v, d) => (v > 0 ? '+' : v < 0 ? '−' : '') + Math.abs(v).toFixed(d == null ? 1 : d);
-    const money = v => (v < 0 ? '−' : '') + esc(gbp(Math.abs(v)));
-    const lot = (s, l) => {
-      const nx = l.next ? `<code class="lt-order" title="Limit sell: enter this in Trading 212 yourself">SELL ${nf(l.qty)} ${esc(sym(s.ticker))} limit ${esc(q(l.next.price, s.ticker))}</code> <span class="lt-sub">(+${l.next.pct}% on this buy)</span>` : '<span class="lt-sub">above every sell step (+30%): decide your own target</span>';
-      return `<div class="lt-lot"><div class="lt-top"><span><b>${esc(date(l.bought_at))}</b> · ${esc(nf(l.qty))} sh${l.qty < l.of - TOL ? ` <span class="lt-sub">(of ${esc(nf(l.of))}, rest sold)</span>` : ''}</span>
-        <span class="lt-res">${l.pct == null ? '<span class="lt-na">price n/a</span>' : `<span class="${cls(l.pct)}">${l.pct > 0 ? '▲' : l.pct < 0 ? '▼' : '■'} ${esc(sgn(l.pct, 2))}%</span>`}</span></div>
-        <div class="lt-sub">paid ${l.px != null ? esc(q(l.px, s.ticker)) : 'price n/a'}${l.cost != null ? ' · ' + esc(gbp(l.cost)) : ''}${s.current != null ? ' · now ' + esc(q(s.current, s.ticker)) : ''}${l.gain != null ? ` · <span class="${cls(l.gain)}">${money(l.gain)}</span>` : ''}</div>
-        <div class="lt-lv"><b>Stop-loss</b> ${l.stops.map(x => `<span class="lt-chip ${x.hit ? 'red' : ''}">−${x.pct}% ${x.price != null ? esc(q(x.price, s.ticker)) : 'n/a'}${x.loss != null ? ` (−${esc(gbp(x.loss))})` : ''}${x.hit ? ' · hit' : ''}</span>`).join('')}</div>
-        <div class="lt-lv"><b>Sell steps</b> ${l.steps.map(x => `<span class="lt-chip ${x.hit ? 'green' : ''}">+${x.pct}% ${x.price != null ? esc(q(x.price, s.ticker)) : 'n/a'}${x.hit ? ' ✓' : ''}</span>`).join('')}</div>
-        <div class="lt-lv">${nx}</div></div>`;
-    };
-    const stock = s => `<details class="lt-stock" ${list.length === 1 ? 'open' : ''}><summary><span class="lt-name">${esc(s.display)}${s.pie ? ` <span class="lt-sub">also in ${esc(s.pie)}</span>` : ''}</span>
-        <span class="lt-res">${s.gain == null ? '<span class="lt-na">n/a</span>' : `<span class="${cls(s.gain)}">${money(s.gain)}</span>`}<span class="lt-sub"> · ${s.lots.length} buy${s.lots.length === 1 ? '' : 's'}${s.best != null && s.lots.length > 1 ? ` · ${esc(sgn(s.worst))}% to ${esc(sgn(s.best))}%` : ''}</span></span></summary>
-      <div class="lt-body"><div class="lt-sub">${esc(nf(s.held))} sh held outside pies${s.t212_avg != null ? ` · Trading 212 average ${esc(q(s.t212_avg, s.ticker))} (blends every buy)` : ''}${s.cost != null ? ` · cost of the buys below ${esc(gbp(s.cost))}` : ''}</div>
-        ${s.fromNow ? `<div class="lt-lv"><b>Stop from today's price</b> ${s.fromNow.map(x => `<span class="lt-chip">−${x.pct}% ${esc(q(x.price, s.ticker))}</span>`).join('')}</div>` : ''}
-        ${s.lots.map(l => lot(s, l)).join('')}
-        ${s.gap ? `<div class="lt-warn">${s.gap.kind === 'earlier' ? `${esc(nf(s.gap.qty))} sh are not in the synced order history (bought earlier, or moved out of a pie): no per-buy figures for them, so judge them on the Trading 212 average above.` : `The order history lists ${esc(nf(s.gap.qty))} sh more than you hold outside pies (some may have moved into a pie): check against Trading 212.`}</div>` : ''}</div></details>`;
-    const tot = list.reduce((a, s) => (s.gain != null ? a + s.gain : a), 0), allG = list.every(s => s.gain != null);
+    const f = fmts(o), tot = list.reduce((a, s) => (s.gain != null ? a + s.gain : a), 0), allG = list.every(s => s.gain != null);
+    const row = s => `<button type="button" class="lt-row" data-lt="${esc(s.ticker)}" aria-label="${esc(s.display)}: see ${s.lots.length} purchase${s.lots.length === 1 ? '' : 's'}">
+        <span class="lt-name">${esc(s.display)}<span class="lt-sub">${s.lots.length} buy${s.lots.length === 1 ? '' : 's'} · ${esc(f.nf(s.held))} sh${s.gap ? ' · incomplete history' : ''}</span></span>
+        <span class="lt-res">${retHtml(f, s.pct)}<span class="lt-sub">${s.gain == null ? 'n/a' : money(f, s.gain)}</span></span><span class="lt-go" aria-hidden="true">›</span></button>`;
     return `<div class="card lt-card" id="lots-card"><h3>🧾 Purchases outside pies</h3>
-      <div class="lt-note">Each buy of a share you still hold outside a pie, with its own return, stop-loss and sell levels. A sold share disappears. Estimate from your Trading 212 fill prices and the latest price at your last Refresh: a sale takes off your oldest buys first, FX moves and fees are not included. Levels are suggestions; place any limit or stop order yourself in Trading 212.</div>
-      ${list.map(stock).join('')}
-      ${list.length > 1 ? `<div class="lt-total">All buys: <span class="${cls(tot)}">${money(tot)}</span>${allG ? '' : ' <span class="lt-na">(some not priced)</span>'}</div>` : ''}</div>`;
+      <div class="lt-note">Shares you hold outside a pie. Tap a stock to see every purchase, its return and stop-loss / sell levels. A sold share disappears. Estimate only.</div>
+      ${list.map(row).join('')}
+      ${list.length > 1 ? `<div class="lt-total">All: <span class="${f.cls(tot)}">${money(f, tot)}</span>${allG ? '' : ' <span class="lt-na">(some not priced)</span>'}</div>` : ''}</div>`;
+  }
+
+  // THE POP-UP: table of this stock's buys; tap a buy for its stop-loss and sell levels
+  function lotDetail(s, l, f) {
+    const sell = l.next ? `<code class="lt-order" title="Limit sell: enter this in Trading 212 yourself">SELL ${f.nf(l.qty)} ${esc(sym(s.ticker))} limit ${esc(f.q(l.next.price, s.ticker))}</code> <span class="lt-sub">(+${l.next.pct}% on this buy)</span>` : '<span class="lt-sub">above every sell step (+30%): decide your own target</span>';
+    return `<div class="lt-lot"><div class="lt-top"><span><b>${esc(f.date(l.bought_at))}</b> · ${esc(f.nf(l.qty))} sh${l.qty < l.of - TOL ? ` <span class="lt-sub">(of ${esc(f.nf(l.of))}, rest sold)</span>` : ''}</span><span class="lt-res">${retHtml(f, l.pct)}</span></div>
+      <div class="lt-sub">paid ${l.px != null ? esc(f.q(l.px, s.ticker)) : 'price n/a'}${l.cost != null ? ' · ' + esc(f.gbp(l.cost)) : ''}${s.current != null ? ' · now ' + esc(f.q(s.current, s.ticker)) : ''}${l.gain != null ? ` · <span class="${f.cls(l.gain)}">${money(f, l.gain)}</span>` : ''}</div>
+      <div class="lt-lv"><b>Stop-loss</b> ${l.stops.map(x => `<span class="lt-chip ${x.hit ? 'red' : ''}">−${x.pct}% ${x.price != null ? esc(f.q(x.price, s.ticker)) : 'n/a'}${x.loss != null ? ` (−${esc(f.gbp(x.loss))})` : ''}${x.hit ? ' · hit' : ''}</span>`).join('')}</div>
+      <div class="lt-lv"><b>Sell steps</b> ${l.steps.map(x => `<span class="lt-chip ${x.hit ? 'green' : ''}">+${x.pct}% ${x.price != null ? esc(f.q(x.price, s.ticker)) : 'n/a'}${x.hit ? ' ✓' : ''}</span>`).join('')}</div>
+      <div class="lt-lv">${sell}</div></div>`;
+  }
+  function modalHtml(s, o, idx) {
+    if (!s) return '';
+    const f = fmts(o), l = idx != null && s.lots[idx] ? s.lots[idx] : null, head = (title, back) => `<div class="lt-m-head">${back ? '<button type="button" class="lt-m-back" data-lt-back>‹ All buys</button>' : ''}<h3>${title}</h3><button type="button" class="lt-m-x" data-lt-close aria-label="Close">✕</button></div>`;
+    let body;
+    if (l) {
+      body = lotDetail(s, l, f) + (s.fromNow ? `<div class="lt-lv"><b>Stop from today's price</b> ${s.fromNow.map(x => `<span class="lt-chip">−${x.pct}% ${esc(f.q(x.price, s.ticker))}</span>`).join('')}</div>` : '')
+        + '<div class="lt-sub lt-foot">Levels are suggestions. CapitalLens places nothing: enter any limit or stop order yourself in Trading 212.</div>';
+    } else {
+      const tr = (x, i) => `<tr class="lt-tr" data-lot="${i}" tabindex="0" role="button" aria-label="Buy of ${esc(f.date(x.bought_at))}: stop-loss and sell levels"><td>${esc(f.date(x.bought_at))}</td><td>${esc(f.nf(x.qty))}</td><td>${x.px != null ? esc(f.q(x.px, s.ticker)) : 'n/a'}</td>
+        <td>${retHtml(f, x.pct)}</td><td class="${f.cls(x.gain)}">${x.gain == null ? 'n/a' : money(f, x.gain)}</td></tr>`;
+      body = `<div class="lt-sub">${esc(f.nf(s.held))} sh held outside pies${s.current != null ? ' · now ' + esc(f.q(s.current, s.ticker)) : ''}${s.t212_avg != null ? ` · Trading 212 average ${esc(f.q(s.t212_avg, s.ticker))}` : ''}</div>
+        <table class="lt-tbl"><thead><tr><th>Bought</th><th>Shares</th><th>Paid</th><th>Return</th><th>£</th></tr></thead><tbody>${s.lots.map(tr).join('')}</tbody>
+        ${s.lots.length > 1 ? `<tfoot><tr><td colspan="3">All ${s.lots.length} buys</td><td>${retHtml(f, s.pct)}</td><td class="${f.cls(s.gain)}">${s.gain == null ? 'n/a' : money(f, s.gain)}</td></tr></tfoot>` : ''}</table>
+        <div class="lt-sub lt-foot">Tap a buy for its stop-loss (−5% / −10%) and sell levels. A sale takes off your oldest buys first. FX moves and fees are not included.</div>
+        ${s.gap ? `<div class="lt-warn">${s.gap.kind === 'earlier' ? `${esc(f.nf(s.gap.qty))} sh are not in the synced order history (bought earlier, or moved out of a pie): no per-buy figures for them, so judge them on the Trading 212 average.` : `The order history lists ${esc(f.nf(s.gap.qty))} sh more than you hold outside pies (some may have moved into a pie): check against Trading 212.`}</div>` : ''}`;
+    }
+    return `<div class="lt-m-box" role="dialog" aria-modal="true" aria-label="${esc(s.display)} purchases">${head(`${esc(s.display)} · ${s.lots.length} buy${s.lots.length === 1 ? '' : 's'}`, !!l)}<div class="lt-m-body">${body}</div><button type="button" class="lt-m-close" data-lt-close>Close</button></div>`;
+  }
+  function closeModal() { const m = typeof document !== 'undefined' && document.getElementById('lt-modal'); if (m) m.classList.remove('open'); if (typeof document !== 'undefined') document.body.style.overflow = ''; }
+  function openModal(s, o, idx) {
+    if (typeof document === 'undefined' || !s) return null;
+    let m = document.getElementById('lt-modal');
+    if (!m) {
+      m = document.createElement('div'); m.id = 'lt-modal'; document.body.appendChild(m);
+      const act = e => {
+        if (e.target === m || e.target.closest('[data-lt-close]')) return closeModal();
+        if (e.target.closest('[data-lt-back]')) return openModal(m._s, m._o, null);
+        const r = e.target.closest('[data-lot]'); if (r) openModal(m._s, m._o, Number(r.getAttribute('data-lot')));
+      };
+      m.addEventListener('click', act); m.addEventListener('keydown', e => { if ((e.key === 'Enter' || e.key === ' ') && e.target.closest && e.target.closest('[data-lot]')) { e.preventDefault(); act(e); } });
+      document.addEventListener('keydown', e => { if (e.key === 'Escape') closeModal(); });
+    }
+    m._s = s; m._o = o; m.innerHTML = modalHtml(s, o, idx); m.classList.add('open'); document.body.style.overflow = 'hidden';
+    const first = m.querySelector('.lt-m-close'); if (first && first.focus) first.focus();
+    return m;
   }
 
   async function show(container, untagged, o) {
@@ -80,10 +120,12 @@
       if (o.guest || !untagged || !untagged.length) return;
       const orders = await o.api('t212_orders', '?select=id,ticker,side,status,filled_at,quantity,price,net_value&order=filled_at.asc&limit=2000');
       const h = html(rows(orders, untagged, o.now), { quote: o.quote, gbp: o.gbp });
-      if (h) container.insertAdjacentHTML('beforeend', h);
+      if (!h) return; container.insertAdjacentHTML('beforeend', h);
+      const card = container.querySelector('#lots-card'), list = rows(orders, untagged, o.now);
+      if (card && card.addEventListener) card.addEventListener('click', e => { const r = e.target.closest('[data-lt]'); if (r) openModal(list.find(x => x.ticker === r.getAttribute('data-lt')), { quote: o.quote, gbp: o.gbp }, null); });
     } catch (e) { /* orders could not be read: show nothing rather than a wrong card */ }
   }
 
-  root.Lots = { STOPS, STEPS, rows, html, show };
+  root.Lots = { STOPS, STEPS, rows, html, modalHtml, openModal, closeModal, show };
   if (typeof module !== 'undefined' && module.exports) module.exports = root.Lots;
 })(typeof window !== 'undefined' ? window : globalThis);
