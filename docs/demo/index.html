@@ -640,6 +640,14 @@
 </nav>
 
 <div id="overview" class="tab active">
+  <div class="card" id="mood-section" style="margin-bottom:16px">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
+      <h3 style="margin:0">Market Mood</h3>
+      <div id="mood-tabs" style="display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px"><style>#mood-tabs::-webkit-scrollbar{display:none}</style></div>
+    </div>
+    <div id="mood-body"><div class="loading busy">Loading…</div></div>
+  </div>
+  <div id="stats-strip" class="stats-strip"><div class="loading busy">Loading…</div></div>
   <div class="grid2">
     <div class="card">
       <h3>Gain % by Position</h3>
@@ -697,14 +705,6 @@
 <div id="alerts" class="tab">
   <div id="alerts-log"><div class="loading busy">Loading…</div></div>
 </div>
-  <div id="stats-strip" class="stats-strip"><div class="loading busy">Loading…</div></div>
-  <div class="card" id="mood-section" style="margin-bottom:16px">
-    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:8px">
-      <h3 style="margin:0">Market Mood</h3>
-      <div id="mood-tabs" style="display:flex;gap:6px;overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;padding-bottom:2px"><style>#mood-tabs::-webkit-scrollbar{display:none}</style></div>
-    </div>
-    <div id="mood-body"><div class="loading busy">Loading…</div></div>
-  </div>
 <footer class="app-footer"><a href="../help/" id="docs-link">📘 Documentation</a><span>CapitalLens · screening aids, not financial advice</span></footer>
 </div><!-- /#app -->
 

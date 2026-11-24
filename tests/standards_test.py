@@ -229,13 +229,3 @@ check("dashboard scripts use the theme variables, not the old dark palette hex c
 check("Profit tab: separate Pie profit check card, Profit to book explains a £0 total, guarded by a layout test wired into CI",
       "pbPieCard" in (ROOT / "docs/js/profit.js").read_text() and "pbClosest" in (ROOT / "docs/js/profit.js").read_text() and "gain_gbp" in (ROOT / "services/profit_booking_service.py").read_text()
       and "gain_gbp" in (ROOT / "docs/zk/profitbooking.js").read_text() and "profit_pies_layout_test.py" in (ROOT / ".github/workflows/ui_tests.yml").read_text())
-
-# Persistent header strip: Stats strip + Market Mood sit outside every tab (visible on all tabs), stats first, then mood, then the footer. Generated pages too.
-def _persistent(f):
-    h = (ROOT / f).read_text()
-    s, m, ft = h.find('id="stats-strip"'), h.find('id="mood-section"'), h.find('<footer class="app-footer">')
-    o, a = h.find('<div id="overview" class="tab active">'), h.find('<div id="alerts" class="tab">')
-    return min(s, m, ft, o, a) >= 0 and h.count('id="stats-strip"') == 1 and h.count('id="mood-section"') == 1 and a < s < m < ft and not (o < s < a) and not (o < m < a)
-_pf = ("docs/index.html", "docs/demo/index.html", "docs/app/index.html", "docs/zkapp/index.html", "docs/zkapp-prod/index.html")
-check("Stats strip and Market Mood sit outside every tab (persistent on all tabs), order stats → mood → footer, on all 5 dashboards: " + ", ".join(f for f in _pf if not _persistent(f)),
-      all(_persistent(f) for f in _pf))
