@@ -1,40 +1,45 @@
 {
- "generated": "2026-11-24T03:39:18.092Z",
+ "generated": "2026-11-24T04:04:16.773Z",
  "symbols": 92,
  "requested": 92,
  "failed": [],
  "years": 5,
  "cost": 0.004,
  "cut": "2024-11-21",
+ "variants_tried": 4,
+ "chosen": "market_up",
+ "config": {
+  "regime": true
+ },
  "all": {
-  "trades": 607,
-  "winRate": 40.2,
-  "expectancy": -0.244,
-  "avgWin": 4.38,
-  "avgLoss": -3.35,
-  "profitFactor": 0.88,
-  "avgR": -0.141,
-  "maxDrawdown10pct": 19.6
+  "trades": 405,
+  "winRate": 41.7,
+  "expectancy": -0.114,
+  "avgWin": 4.13,
+  "avgLoss": -3.15,
+  "profitFactor": 0.94,
+  "avgR": -0.099,
+  "maxDrawdown10pct": 8.6
  },
  "in_sample": {
-  "trades": 355,
-  "winRate": 42.3,
-  "expectancy": -0.228,
-  "avgWin": 4.02,
-  "avgLoss": -3.34,
-  "profitFactor": 0.88,
-  "avgR": -0.107,
-  "maxDrawdown10pct": 16
+  "trades": 223,
+  "winRate": 45.7,
+  "expectancy": 0.119,
+  "avgWin": 3.96,
+  "avgLoss": -3.12,
+  "profitFactor": 1.07,
+  "avgR": -0.008,
+  "maxDrawdown10pct": 5.4
  },
  "out_of_sample": {
-  "trades": 252,
-  "winRate": 37.3,
-  "expectancy": -0.266,
-  "avgWin": 4.94,
-  "avgLoss": -3.36,
-  "profitFactor": 0.87,
-  "avgR": -0.188,
-  "maxDrawdown10pct": 11.2
+  "trades": 182,
+  "winRate": 36.8,
+  "expectancy": -0.4,
+  "avgWin": 4.4,
+  "avgLoss": -3.19,
+  "profitFactor": 0.8,
+  "avgR": -0.21,
+  "maxDrawdown10pct": 8.6
  },
  "baseline": {
   "trades": 4517,
@@ -48,113 +53,303 @@
  },
  "by_setup": {
   "Pullback bounce": {
-   "trades": 443,
-   "winRate": 37,
-   "expectancy": -0.345,
-   "avgWin": 4.11,
-   "avgLoss": -2.97,
-   "profitFactor": 0.82,
-   "avgR": -0.199,
-   "maxDrawdown10pct": 17
+   "trades": 282,
+   "winRate": 37.9,
+   "expectancy": -0.293,
+   "avgWin": 3.76,
+   "avgLoss": -2.77,
+   "profitFactor": 0.83,
+   "avgR": -0.17,
+   "maxDrawdown10pct": 9.4
   },
   "Breakout": {
-   "trades": 164,
-   "winRate": 48.8,
-   "expectancy": 0.028,
-   "avgWin": 4.91,
-   "avgLoss": -4.62,
-   "profitFactor": 1.01,
-   "avgR": 0.015,
-   "maxDrawdown10pct": 10.1
+   "trades": 123,
+   "winRate": 50.4,
+   "expectancy": 0.297,
+   "avgWin": 4.78,
+   "avgLoss": -4.26,
+   "profitFactor": 1.14,
+   "avgR": 0.065,
+   "maxDrawdown10pct": 3.6
   }
  },
- "by_exit": {
-  "stop": {
-   "trades": 300,
-   "winRate": 0,
-   "expectancy": -3.655,
-   "avgWin": 0,
-   "avgLoss": -3.66,
-   "profitFactor": 0,
-   "avgR": -1.254,
-   "maxDrawdown10pct": 66.7
+ "variants": {
+  "original": {
+   "all": {
+    "trades": 607,
+    "winRate": 40.2,
+    "expectancy": -0.244,
+    "avgWin": 4.38,
+    "avgLoss": -3.35,
+    "profitFactor": 0.88,
+    "avgR": -0.141,
+    "maxDrawdown10pct": 19.6
+   },
+   "in_sample": {
+    "trades": 355,
+    "winRate": 42.3,
+    "expectancy": -0.228,
+    "avgWin": 4.02,
+    "avgLoss": -3.34,
+    "profitFactor": 0.88,
+    "avgR": -0.107,
+    "maxDrawdown10pct": 16
+   },
+   "out_of_sample": {
+    "trades": 252,
+    "winRate": 37.3,
+    "expectancy": -0.266,
+    "avgWin": 4.94,
+    "avgLoss": -3.36,
+    "profitFactor": 0.87,
+    "avgR": -0.188,
+    "maxDrawdown10pct": 11.2
+   },
+   "baseline": {
+    "trades": 4517,
+    "winRate": 50,
+    "expectancy": 0.306,
+    "avgWin": 5.42,
+    "avgLoss": -4.81,
+    "profitFactor": 1.13,
+    "avgR": null,
+    "maxDrawdown10pct": 63.5
+   },
+   "by_setup": {
+    "Pullback bounce": {
+     "trades": 443,
+     "winRate": 37,
+     "expectancy": -0.345,
+     "avgWin": 4.11,
+     "avgLoss": -2.97,
+     "profitFactor": 0.82,
+     "avgR": -0.199,
+     "maxDrawdown10pct": 17
+    },
+    "Breakout": {
+     "trades": 164,
+     "winRate": 48.8,
+     "expectancy": 0.028,
+     "avgWin": 4.91,
+     "avgLoss": -4.62,
+     "profitFactor": 1.01,
+     "avgR": 0.015,
+     "maxDrawdown10pct": 10.1
+    }
+   },
+   "validation": {
+    "ok": false,
+    "why": "Out-of-sample expectancy is -0.266% per trade after costs: not positive, so no entries are shown."
+   }
   },
-  "target": {
-   "trades": 132,
-   "winRate": 100,
-   "expectancy": 5.309,
-   "avgWin": 5.31,
-   "avgLoss": 0,
-   "profitFactor": null,
-   "avgR": 1.809,
-   "maxDrawdown10pct": 0
+  "wide_stop": {
+   "all": {
+    "trades": 815,
+    "winRate": 48.8,
+    "expectancy": 0.181,
+    "avgWin": 4.89,
+    "avgLoss": -4.32,
+    "profitFactor": 1.08,
+    "avgR": 0.012,
+    "maxDrawdown10pct": 17.9
+   },
+   "in_sample": {
+    "trades": 461,
+    "winRate": 49.5,
+    "expectancy": 0.027,
+    "avgWin": 4.39,
+    "avgLoss": -4.24,
+    "profitFactor": 1.01,
+    "avgR": 0,
+    "maxDrawdown10pct": 17.9
+   },
+   "out_of_sample": {
+    "trades": 354,
+    "winRate": 48,
+    "expectancy": 0.383,
+    "avgWin": 5.57,
+    "avgLoss": -4.41,
+    "profitFactor": 1.17,
+    "avgR": 0.028,
+    "maxDrawdown10pct": 16
+   },
+   "baseline": {
+    "trades": 4517,
+    "winRate": 50,
+    "expectancy": 0.306,
+    "avgWin": 5.42,
+    "avgLoss": -4.81,
+    "profitFactor": 1.13,
+    "avgR": null,
+    "maxDrawdown10pct": 63.5
+   },
+   "by_setup": {
+    "Pullback bounce": {
+     "trades": 626,
+     "winRate": 47.9,
+     "expectancy": 0.128,
+     "avgWin": 4.83,
+     "avgLoss": -4.2,
+     "profitFactor": 1.06,
+     "avgR": 0.001,
+     "maxDrawdown10pct": 17.6
+    },
+    "Breakout": {
+     "trades": 189,
+     "winRate": 51.9,
+     "expectancy": 0.357,
+     "avgWin": 5.1,
+     "avgLoss": -4.75,
+     "profitFactor": 1.16,
+     "avgR": 0.051,
+     "maxDrawdown10pct": 10.3
+    }
+   },
+   "validation": {
+    "ok": false,
+    "why": "Profit factor 1.08 is below 1.2: not enough edge, so no entries are shown."
+   }
   },
-  "time": {
-   "trades": 175,
-   "winRate": 64,
-   "expectancy": 1.415,
-   "avgWin": 3.27,
-   "avgLoss": -1.89,
-   "profitFactor": 3.08,
-   "avgR": 0.296,
-   "maxDrawdown10pct": 1.1
+  "market_up": {
+   "all": {
+    "trades": 405,
+    "winRate": 41.7,
+    "expectancy": -0.114,
+    "avgWin": 4.13,
+    "avgLoss": -3.15,
+    "profitFactor": 0.94,
+    "avgR": -0.099,
+    "maxDrawdown10pct": 8.6
+   },
+   "in_sample": {
+    "trades": 223,
+    "winRate": 45.7,
+    "expectancy": 0.119,
+    "avgWin": 3.96,
+    "avgLoss": -3.12,
+    "profitFactor": 1.07,
+    "avgR": -0.008,
+    "maxDrawdown10pct": 5.4
+   },
+   "out_of_sample": {
+    "trades": 182,
+    "winRate": 36.8,
+    "expectancy": -0.4,
+    "avgWin": 4.4,
+    "avgLoss": -3.19,
+    "profitFactor": 0.8,
+    "avgR": -0.21,
+    "maxDrawdown10pct": 8.6
+   },
+   "baseline": {
+    "trades": 4517,
+    "winRate": 50,
+    "expectancy": 0.306,
+    "avgWin": 5.42,
+    "avgLoss": -4.81,
+    "profitFactor": 1.13,
+    "avgR": null,
+    "maxDrawdown10pct": 63.5
+   },
+   "by_setup": {
+    "Pullback bounce": {
+     "trades": 282,
+     "winRate": 37.9,
+     "expectancy": -0.293,
+     "avgWin": 3.76,
+     "avgLoss": -2.77,
+     "profitFactor": 0.83,
+     "avgR": -0.17,
+     "maxDrawdown10pct": 9.4
+    },
+    "Breakout": {
+     "trades": 123,
+     "winRate": 50.4,
+     "expectancy": 0.297,
+     "avgWin": 4.78,
+     "avgLoss": -4.26,
+     "profitFactor": 1.14,
+     "avgR": 0.065,
+     "maxDrawdown10pct": 3.6
+    }
+   },
+   "validation": {
+    "ok": false,
+    "why": "Out-of-sample expectancy is -0.4% per trade after costs: not positive, so no entries are shown."
+   }
+  },
+  "leaders": {
+   "all": {
+    "trades": 341,
+    "winRate": 38.7,
+    "expectancy": -0.193,
+    "avgWin": 5.09,
+    "avgLoss": -3.53,
+    "profitFactor": 0.91,
+    "avgR": -0.149,
+    "maxDrawdown10pct": 15
+   },
+   "in_sample": {
+    "trades": 205,
+    "winRate": 37.1,
+    "expectancy": -0.394,
+    "avgWin": 4.82,
+    "avgLoss": -3.47,
+    "profitFactor": 0.82,
+    "avgR": -0.181,
+    "maxDrawdown10pct": 13.4
+   },
+   "out_of_sample": {
+    "trades": 136,
+    "winRate": 41.2,
+    "expectancy": 0.111,
+    "avgWin": 5.44,
+    "avgLoss": -3.62,
+    "profitFactor": 1.05,
+    "avgR": -0.101,
+    "maxDrawdown10pct": 6.7
+   },
+   "baseline": {
+    "trades": 4517,
+    "winRate": 50,
+    "expectancy": 0.306,
+    "avgWin": 5.42,
+    "avgLoss": -4.81,
+    "profitFactor": 1.13,
+    "avgR": null,
+    "maxDrawdown10pct": 63.5
+   },
+   "by_setup": {
+    "Pullback bounce": {
+     "trades": 235,
+     "winRate": 34.5,
+     "expectancy": -0.383,
+     "avgWin": 4.7,
+     "avgLoss": -3.05,
+     "profitFactor": 0.81,
+     "avgR": -0.236,
+     "maxDrawdown10pct": 14
+    },
+    "Breakout": {
+     "trades": 106,
+     "winRate": 48.1,
+     "expectancy": 0.229,
+     "avgWin": 5.71,
+     "avgLoss": -4.85,
+     "profitFactor": 1.09,
+     "avgR": 0.044,
+     "maxDrawdown10pct": 9.2
+    }
+   },
+   "validation": {
+    "ok": false,
+    "why": "Profit factor 0.91 is below 1.2: not enough edge, so no entries are shown."
+   }
   }
  },
- "by_year": {
-  "2022": {
-   "trades": 111,
-   "winRate": 31.5,
-   "expectancy": -1.177,
-   "avgWin": 4.3,
-   "avgLoss": -3.7,
-   "profitFactor": 0.54,
-   "avgR": -0.349,
-   "maxDrawdown10pct": 16
-  },
-  "2023": {
-   "trades": 118,
-   "winRate": 44.9,
-   "expectancy": 0.017,
-   "avgWin": 3.96,
-   "avgLoss": -3.2,
-   "profitFactor": 1.01,
-   "avgR": -0.028,
-   "maxDrawdown10pct": 5.8
-  },
-  "2024": {
-   "trades": 151,
-   "winRate": 45,
-   "expectancy": 0.065,
-   "avgWin": 3.75,
-   "avgLoss": -2.96,
-   "profitFactor": 1.04,
-   "avgR": -0.068,
-   "maxDrawdown10pct": 5.2
-  },
-  "2025": {
-   "trades": 133,
-   "winRate": 37.6,
-   "expectancy": -0.307,
-   "avgWin": 4.59,
-   "avgLoss": -3.26,
-   "profitFactor": 0.85,
-   "avgR": -0.197,
-   "maxDrawdown10pct": 9
-  },
-  "2026": {
-   "trades": 94,
-   "winRate": 40.4,
-   "expectancy": 0.123,
-   "avgWin": 5.85,
-   "avgLoss": -3.76,
-   "profitFactor": 1.05,
-   "avgR": -0.073,
-   "maxDrawdown10pct": 5.1
-  }
- },
- "caveat": "Today’s surviving stocks only (survivorship bias), the quality screen and earnings dates are not in the test, and fills at the stop are assumed with no extra slippage on gaps beyond the open price.",
+ "caveat": "Today’s surviving stocks only (survivorship bias), the quality screen and earnings dates are not in the test, and fills at the stop are assumed with no extra slippage on gaps beyond the open price. Four rule sets were tried and the one with the best in-sample result was kept, so the out-of-sample figure is the one to trust.",
  "validation": {
   "ok": false,
-  "why": "Out-of-sample expectancy is -0.266% per trade after costs: not positive, so no entries are shown."
+  "why": "Out-of-sample expectancy is -0.4% per trade after costs: not positive, so no entries are shown."
  }
 }
