@@ -63,6 +63,7 @@ async function _unlocked(token, dk) {
   ZKShim.install(PROXY, ZKShim.create({ store, call: zkCall, token, positions: () => store.load('positions'), defuse, ops }));
   startApp();
   if (typeof zkReminderInit === 'function') zkReminderInit();
+  if (typeof zkLiveResume === 'function') zkLiveResume();      // live feed survives a page reload until logout / inactivity timeout
   if (typeof zkAutoRefresh === 'function') zkAutoRefresh();
 }
 function logout() {

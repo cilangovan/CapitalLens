@@ -5,8 +5,9 @@ var ZK_RUN = { running: false, started: 0, last: '', timer: null };
 
 // ── LIVE TICKER ───────────────────────────────────────────────────────────────
 // Polls T212 account/cash + portfolio every LIVE_INTERVAL_MS while the tab is active.
-// Credentials live in session memory only (never encrypted to DB, never persisted):
-// _liveKey/_liveSec are cleared on logout via zkLiveStop().
+// Credentials are never written to the database or localStorage. They stay in session memory, and so that a page reload does not drop the live
+// feed they are also kept in THIS TAB's sessionStorage, encrypted under the user's data key (same lifetime as the signed-in session, zk_dk/zk_token):
+// gone on logout, on the 45-minute inactivity logout (both call sessionStorage.clear()), on Stop, or when the tab closes.
 const LIVE_INTERVAL_MS = 5 * 60 * 1000;   // 5 minutes (T212 rate limit ~10.5s/req; 2 reqs + margin = ok)
 let _liveKey = null, _liveSec = null, _liveTimer = null, _liveTicking = false;
 
@@ -81,8 +82,18 @@ function zkLiveInjectStrip(d) {
     <span style="color:var(--muted);font-size:11px;margin-left:auto" id="live-ts">${d.now}</span>`;
 }
 
-function zkLiveStart(key, sec) {
-  _liveKey = key; _liveSec = sec;
+const ZK_LIVE_SS = 'zk_live';
+async function zkLiveRemember(key, sec) {            // encrypted with the data key; AAD binds it to this user
+  try { if (!ZKCTX || !ZKCTX.dk) return; const box = await ZK.encryptRow(ZKCTX.dk, { key, sec }, 'live_creds', 'live', ZKCTX.uid); sessionStorage.setItem(ZK_LIVE_SS, JSON.stringify(box)); } catch (e) {}
+}
+async function zkLiveResume() {                      // after a reload: signed-in session restored -> bring the live feed straight back
+  if (_liveKey || !ZKCTX || !ZKCTX.dk) return false;
+  let raw = null; try { raw = sessionStorage.getItem(ZK_LIVE_SS); } catch (e) {} if (!raw) return false;
+  try { const c = await ZK.decryptRow(ZKCTX.dk, JSON.parse(raw), 'live_creds', 'live', ZKCTX.uid); if (!c || !c.key || !c.sec) throw new Error('empty'); zkLiveStart(c.key, c.sec, true); return true; }
+  catch (e) { try { sessionStorage.removeItem(ZK_LIVE_SS); } catch (x) {} return false; }
+}
+function zkLiveStart(key, sec, resumed) {
+  _liveKey = key; _liveSec = sec; if (!resumed) zkLiveRemember(key, sec);
   if (_liveTimer) clearInterval(_liveTimer);
   zkLiveTick();   // immediate first tick
   _liveTimer = setInterval(zkLiveTick, LIVE_INTERVAL_MS);
@@ -94,7 +105,7 @@ function zkLiveStart(key, sec) {
 }
 
 function zkLiveStop() {
-  _liveKey = null; _liveSec = null;
+  _liveKey = null; _liveSec = null; try { sessionStorage.removeItem(ZK_LIVE_SS); } catch (e) {}
   if (_liveTimer) { clearInterval(_liveTimer); _liveTimer = null; }
   zkLiveBadge('off');
   const strip = document.getElementById('zk-live-strip'); if (strip) strip.remove();

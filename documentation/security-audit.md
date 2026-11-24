@@ -171,7 +171,7 @@ This effectively eliminates the remaining `unsafe-inline` risk on the ZK dashboa
 | Check | Result |
 |---|---|
 | Token storage | `sessionStorage` only — clears on tab/browser close; never `localStorage` ✅ |
-| T212 credentials | Never stored (CLAUDE.md rule enforced) — JS memory only, cleared on logout/inactivity ✅ |
+| T212 credentials | Never in the database or localStorage. JS memory, plus (so a reload keeps LIVE on) this tab's `sessionStorage` **encrypted under the user's data key** (AES-GCM, AAD bound to the user); cleared on logout, the 45-min inactivity logout, Stop, or tab close. Owner-approved trade-off (24 Nov): it sits next to `zk_dk`, so an XSS in the page could read both — strict CSP + `defuse` are the mitigation; use a read-only Trading 212 key ✅ |
 | Inactivity timeout | `_inactivityTimer` in `auth.js`; fires `SESSION_TOKEN = null` + `sessionStorage.clear()` ✅ |
 | Token cleared on logout | `SESSION_TOKEN = null` + `sessionStorage.clear()` ✅ |
 | Token cleared on session expiry | 401 response from Worker triggers `SESSION_TOKEN = null` ✅ |
@@ -186,7 +186,7 @@ This effectively eliminates the remaining `unsafe-inline` risk on the ZK dashboa
 |---|---|
 | API keys in JS source | None — `SUPABASE_KEY` is the **anon** (public) key injected at build time for Supabase; appropriate ✅ |
 | Service role key | Never in source — Cloudflare Worker env var only ✅ |
-| T212 API key | Never in source — user-entered at runtime, session memory only ✅ |
+| T212 API key | Never in source — user-entered at runtime; session memory + encrypted tab `sessionStorage` (see above) ✅ |
 | GitHub PAT | Never in source — Cloudflare Worker env var only ✅ |
 | Hardcoded secrets pattern scan | No `eyJ` JWTs, no `sk_`, `pk_`, `ghp_`, `glpat_` patterns found in source ✅ |
 

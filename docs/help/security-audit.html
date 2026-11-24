@@ -212,7 +212,7 @@ manifest-src 'self'
 </tr>
 <tr>
 <td>T212 credentials</td>
-<td>Never stored (CLAUDE.md rule enforced) — JS memory only, cleared on logout/inactivity ✅</td>
+<td>Never in the database or localStorage. JS memory, plus (so a reload keeps LIVE on) this tab's <code>sessionStorage</code> <strong>encrypted under the user's data key</strong> (AES-GCM, AAD bound to the user); cleared on logout, the 45-min inactivity logout, Stop, or tab close. Owner-approved trade-off (24 Nov): it sits next to <code>zk_dk</code>, so an XSS in the page could read both — strict CSP + <code>defuse</code> are the mitigation; use a read-only Trading 212 key ✅</td>
 </tr>
 <tr>
 <td>Inactivity timeout</td>
@@ -256,7 +256,7 @@ manifest-src 'self'
 </tr>
 <tr>
 <td>T212 API key</td>
-<td>Never in source — user-entered at runtime, session memory only ✅</td>
+<td>Never in source — user-entered at runtime; session memory + encrypted tab <code>sessionStorage</code> (see above) ✅</td>
 </tr>
 <tr>
 <td>GitHub PAT</td>
