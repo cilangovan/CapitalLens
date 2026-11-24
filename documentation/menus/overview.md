@@ -4,6 +4,8 @@
 
 Tab id `overview` · loader `loadOverview()` · `docs/js/overview.js`
 
+**Persistent strip:** the **Stats strip** and **Market Mood** (`#mood-section`) sit *outside* every tab, just above the footer (order: stats → mood → footer), so they stay on screen whichever tab is open. Guarded by `tests/standards_test.py`.
+
 ## Cards
 
 | Card | What it shows | Data |
