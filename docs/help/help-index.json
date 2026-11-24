@@ -768,7 +768,7 @@
 "title": "📈 Returns",
 "heading": "Tests",
 "url": "menus/returns.html#tests",
-"text": "tests/zk returns test.mjs, tests/zk t212sync test.mjs. Cash reconciliation line: the footer says whether the rebuilt cash matches Trading 212. Data that carries no reconciliation (for example the demo seed) shows \"cash reconciliation not available for this data\" instead of a made-up match (guard: tests/zk returns footer test.mjs)."
+"text": "tests/zk returns test.mjs, tests/zk t212sync test.mjs. Cash reconciliation line: the footer says whether the rebuilt cash matches Trading 212. Data that carries no reconciliation (for example the demo seed) shows \"cash reconciliation not available for this data\" instead of a made-up match (guard: tests/zk returns footer test.mjs). The demo seed (seed demo returns) writes a check object like the real pipeline (migration 20261124171800 demo returns check.sql)."
 },
 {
 "id": "menus/settings-and-account#settings-account",
