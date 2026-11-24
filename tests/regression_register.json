@@ -750,5 +750,17 @@
    "b9be161"
   ],
   "auto": true
+ },
+ {
+  "id": "Aa513896",
+  "date": "2026-11-24",
+  "area": "general",
+  "bug": "fix: LIVE feed survives a browser refresh until logout or inactivity timeout; guard: tests/zk_live_persist_test.mjs",
+  "guard": "zk_live_persist_test.mjs",
+  "marker": "",
+  "commits": [
+   "a513896"
+  ],
+  "auto": true
  }
 ]

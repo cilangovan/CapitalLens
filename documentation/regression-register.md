@@ -51,6 +51,7 @@ Every bug that was fixed has a row here: what broke and the test that fails if i
 | R22 | 2026-11-23 | mobile | Profit-tab layout test harness lacked esc() after the XSS fix, so the test was red in CI | `tests/profit_pies_layout_test.py` | dde640c |
 | A10aa228 | 2026-11-24 | general | fix: register-sync bot job rebases before pushing (lost a push race with the back-test bot commit); guard: tests/standards_test.py | `tests/standards_test.py` | 10aa228 |
 | A4fc9848 | 2026-11-24 | mood | fix(mood): every country tab fetches its own index data; add Italy | `tests/mood_layout_test.py` | 4fc9848 |
+| Aa513896 | 2026-11-24 | general | fix: LIVE feed survives a browser refresh until logout or inactivity timeout; guard: tests/zk_live_persist_test.mjs | `tests/zk_live_persist_test.mjs` | a513896 |
 | Ab9be161 | 2026-11-24 | general | fix: let the Swing back-test result be committed (.gitignore hid docs/data/swing_backtest.json); guard: tests/regression_guards_test.py R14 | `tests/regression_guards_test.py` | b9be161 |
 | R11 | 2026-11-24 | mobile | Market Mood chip strip was clipped at 360px: nothing past Germany could be tapped | `tests/mood_layout_test.py` | 6e86efd |
 | R12 | 2026-11-24 | ui | Active Alerts list on Overview (owner wants alerts only on the Alerts dashboard) | `tests/standards_test.py` | 7afcaf6 |
