@@ -113,12 +113,18 @@ async function loadReturns() {
           ['Holding', 'Date', 'Amount'], x => [x.display || x.ticker, x.paid_date || '—', `<span class="green">£${(+x.amount || 0).toFixed(2)}</span>`])}
       </div>
     </div>
-    <div class="w-dim w-small dd-foot">Rebuilt from your Trading 212 deposits, withdrawals, trades, dividends and interest · cash reconciles to Trading 212 ${d.check && Math.abs(d.check.cash_rebuilt - d.check.cash_t212) < 0.05 ? 'to the penny' : 'within £' + Math.abs(d.check.cash_rebuilt - d.check.cash_t212).toFixed(2)} · updated ${new Date(d.as_of).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</div>`;
+    <div class="w-dim w-small dd-foot">Rebuilt from your Trading 212 deposits, withdrawals, trades, dividends and interest · ${rtCheckText(d.check)} · updated ${new Date(d.as_of).toLocaleString('en-GB', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}</div>`;
 
   rtPeriod();
   rtCharts();
 }
 
+// Cash reconciliation footer. `check` is missing on rows not written by the real pipeline (e.g. the demo seed): say so, never crash or fake "to the penny".
+function rtCheckText(check) {
+  if (!check || !Number.isFinite(+check.cash_rebuilt) || !Number.isFinite(+check.cash_t212)) return 'cash reconciliation not available for this data';
+  const diff = Math.abs(check.cash_rebuilt - check.cash_t212);
+  return 'cash reconciles to Trading 212 ' + (diff < 0.05 ? 'to the penny' : 'within £' + diff.toFixed(2));
+}
 function rtTable(rows, head, cells) {
   if (!rows.length) return '<div class="w-dim">None yet.</div>';
   return `<table class="pb-rules"><tr>${head.map(h => `<th>${h}</th>`).join('')}</tr>${rows.map(x => `<tr>${cells(x).map(c => `<td>${c}</td>`).join('')}</tr>`).join('')}</table>`;
@@ -230,3 +236,5 @@ function rtValueChart() {
     });
   }
 }
+
+if (typeof module !== 'undefined') module.exports = { rtCheckText };

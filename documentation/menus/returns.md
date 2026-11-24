@@ -32,3 +32,5 @@ If the history is incomplete the card says so; no extrapolated numbers are shown
 ## Tests
 
 `tests/zk_returns_test.mjs`, `tests/zk_t212sync_test.mjs`.
+
+**Cash reconciliation line:** the footer says whether the rebuilt cash matches Trading 212. Data that carries no reconciliation (for example the demo seed) shows "cash reconciliation not available for this data" instead of a made-up match (guard: `tests/zk_returns_footer_test.mjs`).
