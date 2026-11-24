@@ -227,6 +227,11 @@ _of = (ROOT / "docs/zk/orderflow.js").read_text(); _ofp = (ROOT / "services/orde
 check("Order flow: estimator exists in JS and Python, is labelled an estimate, uses relative (not fixed-lot) thresholds, golden test + docs exist",
       "estimated: true" in _of and '"estimated": True' in _ofp and "EVENT_RVOL" in _of and "EVENT_RVOL" in _ofp and "20k" not in _ofp.replace("20k lots", "")
       and (ROOT / "tests/zk_orderflow_test.mjs").exists() and (ROOT / "tests/data/orderflow_golden.json").exists() and "estimated" in (ROOT / "documentation/menus/watchlist.md").read_text())
+import re as _re
+_shim = (ROOT / "docs/demo/demo-shim.js").read_text(); _grants = " ".join(f.read_text() for f in (ROOT / "supabase/migrations").glob("*.sql"))
+_demo_tabs = set(_re.findall(r"'/(demo_[a-z_]+)'", _shim))
+check("Demo tables the demo page reads (DEMO_ONLY in demo-shim.js) each have a SELECT grant for authenticated in a migration (regression: Global Institutional Capital card was 'permission denied')",
+      bool(_demo_tabs) and all(_re.search(r"grant\s+select\s+on[^;]*public\." + t + r"\b[^;]*to\s+authenticated", _grants, _re.I) for t in _demo_tabs))
 _hb = (ROOT / "docs/js/helpbot.js").read_text(); _hw = (ROOT / "cloudflare-worker/help.js").read_text()
 check("Help assistant: ❓ button on every dashboard, CSP allows only our help worker, chat never sends holdings/keys (client blocks secrets, no innerHTML)",
       all("helpbot.js" in (ROOT / p).read_text() and "capitallens-help.itsme-daf.workers.dev" in (ROOT / p).read_text() for p in ("docs/index.html", "docs/demo/index.html", "docs/app/index.html", "docs/zkapp/index.html", "docs/zkapp-prod/index.html"))
