@@ -1,0 +1,308 @@
+{
+ "generated": "2026-11-24T04:26:08.050Z",
+ "symbols": 92,
+ "requested": 92,
+ "failed": [],
+ "years": 5,
+ "cost": 0.004,
+ "cut": "2024-11-21",
+ "variants_tried": 2,
+ "chosen": "minervini_hold200",
+ "config": {
+  "strat": "minervini",
+  "exit": "hold200"
+ },
+ "all": {
+  "trades": 188,
+  "winRate": 42,
+  "expectancy": 16.583,
+  "avgWin": 53.78,
+  "avgLoss": -10.38,
+  "profitFactor": 3.76,
+  "avgR": 0.663,
+  "maxDrawdown10pct": 20.5
+ },
+ "in_sample": {
+  "trades": 102,
+  "winRate": 51,
+  "expectancy": 19.108,
+  "avgWin": 47.05,
+  "avgLoss": -9.95,
+  "profitFactor": 4.92,
+  "avgR": 0.764,
+  "maxDrawdown10pct": 9.5
+ },
+ "out_of_sample": {
+  "trades": 86,
+  "winRate": 31.4,
+  "expectancy": 13.587,
+  "avgWin": 66.76,
+  "avgLoss": -10.75,
+  "profitFactor": 2.84,
+  "avgR": 0.543,
+  "maxDrawdown10pct": 20.5
+ },
+ "baseline": {
+  "trades": 4517,
+  "winRate": 50,
+  "expectancy": 0.306,
+  "avgWin": 5.42,
+  "avgLoss": -4.81,
+  "profitFactor": 1.13,
+  "avgR": null,
+  "maxDrawdown10pct": 63.5
+ },
+ "by_setup": {
+  "minervini": {
+   "trades": 188,
+   "winRate": 42,
+   "expectancy": 16.583,
+   "avgWin": 53.78,
+   "avgLoss": -10.38,
+   "profitFactor": 3.76,
+   "avgR": 0.663,
+   "maxDrawdown10pct": 20.5
+  }
+ },
+ "variants": {
+  "minervini_hold50": {
+   "baseline": {
+    "trades": 285,
+    "winRate": 64.2,
+    "expectancy": 11.101,
+    "avgWin": 24.4,
+    "avgLoss": -12.76,
+    "profitFactor": 3.43,
+    "avgR": null,
+    "maxDrawdown10pct": 11
+   },
+   "all": {
+    "trades": 345,
+    "winRate": 40.9,
+    "expectancy": 2.676,
+    "avgWin": 15.23,
+    "avgLoss": -6,
+    "profitFactor": 1.75,
+    "avgR": 0.178,
+    "maxDrawdown10pct": 18.9
+   },
+   "in_sample": {
+    "trades": 178,
+    "winRate": 47.2,
+    "expectancy": 3.854,
+    "avgWin": 14.45,
+    "avgLoss": -5.62,
+    "profitFactor": 2.3,
+    "avgR": 0.257,
+    "maxDrawdown10pct": 13.2
+   },
+   "out_of_sample": {
+    "trades": 167,
+    "winRate": 34.1,
+    "expectancy": 1.42,
+    "avgWin": 16.38,
+    "avgLoss": -6.33,
+    "profitFactor": 1.34,
+    "avgR": 0.095,
+    "maxDrawdown10pct": 18.9
+   },
+   "baseline_hold_days": 120,
+   "by_setup": {
+    "minervini": {
+     "trades": 345,
+     "winRate": 40.9,
+     "expectancy": 2.676,
+     "avgWin": 15.23,
+     "avgLoss": -6,
+     "profitFactor": 1.75,
+     "avgR": 0.178,
+     "maxDrawdown10pct": 18.9
+    }
+   },
+   "exits": {
+    "signal": 326,
+    "stop": 11,
+    "time": 8
+   },
+   "pct_5plus": 27.8,
+   "by_year": {
+    "2022": {
+     "trades": 2,
+     "winRate": 0,
+     "expectancy": -3.078,
+     "avgWin": 0,
+     "avgLoss": -3.08,
+     "profitFactor": 0,
+     "avgR": -0.205,
+     "maxDrawdown10pct": 0.6
+    },
+    "2023": {
+     "trades": 92,
+     "winRate": 41.3,
+     "expectancy": 3.909,
+     "avgWin": 17.11,
+     "avgLoss": -5.38,
+     "profitFactor": 2.24,
+     "avgR": 0.261,
+     "maxDrawdown10pct": 13.2
+    },
+    "2024": {
+     "trades": 90,
+     "winRate": 52.2,
+     "expectancy": 3.526,
+     "avgWin": 12.24,
+     "avgLoss": -6,
+     "profitFactor": 2.23,
+     "avgR": 0.235,
+     "maxDrawdown10pct": 6.8
+    },
+    "2025": {
+     "trades": 91,
+     "winRate": 34.1,
+     "expectancy": 3.04,
+     "avgWin": 19.53,
+     "avgLoss": -5.48,
+     "profitFactor": 1.84,
+     "avgR": 0.203,
+     "maxDrawdown10pct": 11.3
+    },
+    "2026": {
+     "trades": 70,
+     "winRate": 35.7,
+     "expectancy": -0.346,
+     "avgWin": 12.67,
+     "avgLoss": -7.58,
+     "profitFactor": 0.93,
+     "avgR": -0.023,
+     "maxDrawdown10pct": 18.9
+    }
+   },
+   "validation": {
+    "ok": false,
+    "why": "Out-of-sample expectancy (1.42%) does not beat a random 10-day entry (11.101%): no edge, so no entries are shown."
+   }
+  },
+  "minervini_hold200": {
+   "baseline": {
+    "trades": 92,
+    "winRate": 66.3,
+    "expectancy": 23.267,
+    "avgWin": 44.58,
+    "avgLoss": -18.67,
+    "profitFactor": 4.7,
+    "avgR": null,
+    "maxDrawdown10pct": 11.9
+   },
+   "all": {
+    "trades": 188,
+    "winRate": 42,
+    "expectancy": 16.583,
+    "avgWin": 53.78,
+    "avgLoss": -10.38,
+    "profitFactor": 3.76,
+    "avgR": 0.663,
+    "maxDrawdown10pct": 20.5
+   },
+   "in_sample": {
+    "trades": 102,
+    "winRate": 51,
+    "expectancy": 19.108,
+    "avgWin": 47.05,
+    "avgLoss": -9.95,
+    "profitFactor": 4.92,
+    "avgR": 0.764,
+    "maxDrawdown10pct": 9.5
+   },
+   "out_of_sample": {
+    "trades": 86,
+    "winRate": 31.4,
+    "expectancy": 13.587,
+    "avgWin": 66.76,
+    "avgLoss": -10.75,
+    "profitFactor": 2.84,
+    "avgR": 0.543,
+    "maxDrawdown10pct": 20.5
+   },
+   "baseline_hold_days": 250,
+   "by_setup": {
+    "minervini": {
+     "trades": 188,
+     "winRate": 42,
+     "expectancy": 16.583,
+     "avgWin": 53.78,
+     "avgLoss": -10.38,
+     "profitFactor": 3.76,
+     "avgR": 0.663,
+     "maxDrawdown10pct": 20.5
+    }
+   },
+   "exits": {
+    "signal": 148,
+    "time": 35,
+    "stop": 5
+   },
+   "pct_5plus": 36.7,
+   "by_year": {
+    "2022": {
+     "trades": 2,
+     "winRate": 0,
+     "expectancy": -8.462,
+     "avgWin": 0,
+     "avgLoss": -8.46,
+     "profitFactor": 0,
+     "avgR": -0.338,
+     "maxDrawdown10pct": 1.7
+    },
+    "2023": {
+     "trades": 54,
+     "winRate": 55.6,
+     "expectancy": 23.18,
+     "avgWin": 49.69,
+     "avgLoss": -9.96,
+     "profitFactor": 6.23,
+     "avgR": 0.927,
+     "maxDrawdown10pct": 8
+    },
+    "2024": {
+     "trades": 50,
+     "winRate": 46,
+     "expectancy": 14.442,
+     "avgWin": 43.3,
+     "avgLoss": -10.14,
+     "profitFactor": 3.64,
+     "avgR": 0.578,
+     "maxDrawdown10pct": 5.2
+    },
+    "2025": {
+     "trades": 56,
+     "winRate": 39.3,
+     "expectancy": 23.898,
+     "avgWin": 77.01,
+     "avgLoss": -10.47,
+     "profitFactor": 4.76,
+     "avgR": 0.956,
+     "maxDrawdown10pct": 15.9
+    },
+    "2026": {
+     "trades": 26,
+     "winRate": 15.4,
+     "expectancy": -6.832,
+     "avgWin": 17.05,
+     "avgLoss": -11.17,
+     "profitFactor": 0.28,
+     "avgR": -0.273,
+     "maxDrawdown10pct": 20.5
+    }
+   },
+   "validation": {
+    "ok": false,
+    "why": "Out-of-sample expectancy (13.587%) does not beat a random 10-day entry (23.267%): no edge, so no entries are shown."
+   }
+  }
+ },
+ "caveat": "Today’s surviving stocks only (survivorship bias), the quality screen and earnings dates are not in the test, and fills at the stop are assumed with no extra slippage on gaps beyond the open price. Confirmation run: only minervini_hold50,minervini_hold200 was tested here, on stocks it was not chosen on.",
+ "validation": {
+  "ok": true,
+  "why": ""
+ }
+}

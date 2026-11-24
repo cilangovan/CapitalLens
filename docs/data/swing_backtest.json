@@ -1,5 +1,5 @@
 {
- "generated": "2026-11-24T04:16:35.282Z",
+ "generated": "2026-11-24T04:24:53.212Z",
  "symbols": 92,
  "requested": 92,
  "failed": [],
@@ -66,6 +66,16 @@
  },
  "variants": {
   "original": {
+   "baseline": {
+    "trades": 4517,
+    "winRate": 50,
+    "expectancy": 0.306,
+    "avgWin": 5.42,
+    "avgLoss": -4.81,
+    "profitFactor": 1.13,
+    "avgR": null,
+    "maxDrawdown10pct": 63.5
+   },
    "all": {
     "trades": 607,
     "winRate": 40.2,
@@ -96,16 +106,7 @@
     "avgR": -0.188,
     "maxDrawdown10pct": 11.2
    },
-   "baseline": {
-    "trades": 4517,
-    "winRate": 50,
-    "expectancy": 0.306,
-    "avgWin": 5.42,
-    "avgLoss": -4.81,
-    "profitFactor": 1.13,
-    "avgR": null,
-    "maxDrawdown10pct": 63.5
-   },
+   "baseline_hold_days": 10,
    "by_setup": {
     "Pullback bounce": {
      "trades": 443,
@@ -192,6 +193,16 @@
    }
   },
   "wide_stop": {
+   "baseline": {
+    "trades": 4517,
+    "winRate": 50,
+    "expectancy": 0.306,
+    "avgWin": 5.42,
+    "avgLoss": -4.81,
+    "profitFactor": 1.13,
+    "avgR": null,
+    "maxDrawdown10pct": 63.5
+   },
    "all": {
     "trades": 815,
     "winRate": 48.8,
@@ -222,16 +233,7 @@
     "avgR": 0.028,
     "maxDrawdown10pct": 16
    },
-   "baseline": {
-    "trades": 4517,
-    "winRate": 50,
-    "expectancy": 0.306,
-    "avgWin": 5.42,
-    "avgLoss": -4.81,
-    "profitFactor": 1.13,
-    "avgR": null,
-    "maxDrawdown10pct": 63.5
-   },
+   "baseline_hold_days": 10,
    "by_setup": {
     "Pullback bounce": {
      "trades": 626,
@@ -318,6 +320,16 @@
    }
   },
   "market_up": {
+   "baseline": {
+    "trades": 4517,
+    "winRate": 50,
+    "expectancy": 0.306,
+    "avgWin": 5.42,
+    "avgLoss": -4.81,
+    "profitFactor": 1.13,
+    "avgR": null,
+    "maxDrawdown10pct": 63.5
+   },
    "all": {
     "trades": 405,
     "winRate": 41.7,
@@ -348,16 +360,7 @@
     "avgR": -0.21,
     "maxDrawdown10pct": 8.6
    },
-   "baseline": {
-    "trades": 4517,
-    "winRate": 50,
-    "expectancy": 0.306,
-    "avgWin": 5.42,
-    "avgLoss": -4.81,
-    "profitFactor": 1.13,
-    "avgR": null,
-    "maxDrawdown10pct": 63.5
-   },
+   "baseline_hold_days": 10,
    "by_setup": {
     "Pullback bounce": {
      "trades": 282,
@@ -444,6 +447,16 @@
    }
   },
   "leaders": {
+   "baseline": {
+    "trades": 4517,
+    "winRate": 50,
+    "expectancy": 0.306,
+    "avgWin": 5.42,
+    "avgLoss": -4.81,
+    "profitFactor": 1.13,
+    "avgR": null,
+    "maxDrawdown10pct": 63.5
+   },
    "all": {
     "trades": 341,
     "winRate": 38.7,
@@ -474,16 +487,7 @@
     "avgR": -0.101,
     "maxDrawdown10pct": 6.7
    },
-   "baseline": {
-    "trades": 4517,
-    "winRate": 50,
-    "expectancy": 0.306,
-    "avgWin": 5.42,
-    "avgLoss": -4.81,
-    "profitFactor": 1.13,
-    "avgR": null,
-    "maxDrawdown10pct": 63.5
-   },
+   "baseline_hold_days": 10,
    "by_setup": {
     "Pullback bounce": {
      "trades": 235,
@@ -570,6 +574,16 @@
    }
   },
   "connors_natural": {
+   "baseline": {
+    "trades": 4517,
+    "winRate": 50,
+    "expectancy": 0.306,
+    "avgWin": 5.42,
+    "avgLoss": -4.81,
+    "profitFactor": 1.13,
+    "avgR": null,
+    "maxDrawdown10pct": 63.5
+   },
    "all": {
     "trades": 2638,
     "winRate": 60,
@@ -600,16 +614,7 @@
     "avgR": -0.04,
     "maxDrawdown10pct": 31.2
    },
-   "baseline": {
-    "trades": 4517,
-    "winRate": 50,
-    "expectancy": 0.306,
-    "avgWin": 5.42,
-    "avgLoss": -4.81,
-    "profitFactor": 1.13,
-    "avgR": null,
-    "maxDrawdown10pct": 63.5
-   },
+   "baseline_hold_days": 10,
    "by_setup": {
     "connors": {
      "trades": 2638,
@@ -686,6 +691,16 @@
    }
   },
   "connors_5pct": {
+   "baseline": {
+    "trades": 4517,
+    "winRate": 50,
+    "expectancy": 0.306,
+    "avgWin": 5.42,
+    "avgLoss": -4.81,
+    "profitFactor": 1.13,
+    "avgR": null,
+    "maxDrawdown10pct": 63.5
+   },
    "all": {
     "trades": 2759,
     "winRate": 49,
@@ -716,16 +731,7 @@
     "avgR": -0.063,
     "maxDrawdown10pct": 30.6
    },
-   "baseline": {
-    "trades": 4517,
-    "winRate": 50,
-    "expectancy": 0.306,
-    "avgWin": 5.42,
-    "avgLoss": -4.81,
-    "profitFactor": 1.13,
-    "avgR": null,
-    "maxDrawdown10pct": 63.5
-   },
+   "baseline_hold_days": 10,
    "by_setup": {
     "connors": {
      "trades": 2759,
@@ -802,6 +808,16 @@
    }
   },
   "ibs_natural": {
+   "baseline": {
+    "trades": 4517,
+    "winRate": 50,
+    "expectancy": 0.306,
+    "avgWin": 5.42,
+    "avgLoss": -4.81,
+    "profitFactor": 1.13,
+    "avgR": null,
+    "maxDrawdown10pct": 63.5
+   },
    "all": {
     "trades": 7650,
     "winRate": 54.9,
@@ -832,16 +848,7 @@
     "avgR": -0.033,
     "maxDrawdown10pct": 57.8
    },
-   "baseline": {
-    "trades": 4517,
-    "winRate": 50,
-    "expectancy": 0.306,
-    "avgWin": 5.42,
-    "avgLoss": -4.81,
-    "profitFactor": 1.13,
-    "avgR": null,
-    "maxDrawdown10pct": 63.5
-   },
+   "baseline_hold_days": 10,
    "by_setup": {
     "ibs": {
      "trades": 7650,
@@ -918,6 +925,16 @@
    }
   },
   "ibs_5pct": {
+   "baseline": {
+    "trades": 4517,
+    "winRate": 50,
+    "expectancy": 0.306,
+    "avgWin": 5.42,
+    "avgLoss": -4.81,
+    "profitFactor": 1.13,
+    "avgR": null,
+    "maxDrawdown10pct": 63.5
+   },
    "all": {
     "trades": 5637,
     "winRate": 47.9,
@@ -948,16 +965,7 @@
     "avgR": -0.076,
     "maxDrawdown10pct": 57.8
    },
-   "baseline": {
-    "trades": 4517,
-    "winRate": 50,
-    "expectancy": 0.306,
-    "avgWin": 5.42,
-    "avgLoss": -4.81,
-    "profitFactor": 1.13,
-    "avgR": null,
-    "maxDrawdown10pct": 63.5
-   },
+   "baseline_hold_days": 10,
    "by_setup": {
     "ibs": {
      "trades": 5637,
@@ -1034,6 +1042,16 @@
    }
   },
   "grail_natural": {
+   "baseline": {
+    "trades": 4517,
+    "winRate": 50,
+    "expectancy": 0.306,
+    "avgWin": 5.42,
+    "avgLoss": -4.81,
+    "profitFactor": 1.13,
+    "avgR": null,
+    "maxDrawdown10pct": 63.5
+   },
    "all": {
     "trades": 453,
     "winRate": 32.9,
@@ -1064,16 +1082,7 @@
     "avgR": -0.103,
     "maxDrawdown10pct": 13.2
    },
-   "baseline": {
-    "trades": 4517,
-    "winRate": 50,
-    "expectancy": 0.306,
-    "avgWin": 5.42,
-    "avgLoss": -4.81,
-    "profitFactor": 1.13,
-    "avgR": null,
-    "maxDrawdown10pct": 63.5
-   },
+   "baseline_hold_days": 10,
    "by_setup": {
     "grail": {
      "trades": 453,
@@ -1150,6 +1159,16 @@
    }
   },
   "grail_5pct": {
+   "baseline": {
+    "trades": 4517,
+    "winRate": 50,
+    "expectancy": 0.306,
+    "avgWin": 5.42,
+    "avgLoss": -4.81,
+    "profitFactor": 1.13,
+    "avgR": null,
+    "maxDrawdown10pct": 63.5
+   },
    "all": {
     "trades": 399,
     "winRate": 48.4,
@@ -1180,16 +1199,7 @@
     "avgR": -0.178,
     "maxDrawdown10pct": 12.6
    },
-   "baseline": {
-    "trades": 4517,
-    "winRate": 50,
-    "expectancy": 0.306,
-    "avgWin": 5.42,
-    "avgLoss": -4.81,
-    "profitFactor": 1.13,
-    "avgR": null,
-    "maxDrawdown10pct": 63.5
-   },
+   "baseline_hold_days": 10,
    "by_setup": {
     "grail": {
      "trades": 399,
@@ -1266,6 +1276,16 @@
    }
   },
   "minervini_natural": {
+   "baseline": {
+    "trades": 4517,
+    "winRate": 50,
+    "expectancy": 0.306,
+    "avgWin": 5.42,
+    "avgLoss": -4.81,
+    "profitFactor": 1.13,
+    "avgR": null,
+    "maxDrawdown10pct": 63.5
+   },
    "all": {
     "trades": 513,
     "winRate": 42.5,
@@ -1296,16 +1316,7 @@
     "avgR": 0.096,
     "maxDrawdown10pct": 8.7
    },
-   "baseline": {
-    "trades": 4517,
-    "winRate": 50,
-    "expectancy": 0.306,
-    "avgWin": 5.42,
-    "avgLoss": -4.81,
-    "profitFactor": 1.13,
-    "avgR": null,
-    "maxDrawdown10pct": 63.5
-   },
+   "baseline_hold_days": 10,
    "by_setup": {
     "minervini": {
      "trades": 513,
@@ -1382,6 +1393,16 @@
    }
   },
   "minervini_5pct": {
+   "baseline": {
+    "trades": 4517,
+    "winRate": 50,
+    "expectancy": 0.306,
+    "avgWin": 5.42,
+    "avgLoss": -4.81,
+    "profitFactor": 1.13,
+    "avgR": null,
+    "maxDrawdown10pct": 63.5
+   },
    "all": {
     "trades": 589,
     "winRate": 46.5,
@@ -1412,16 +1433,7 @@
     "avgR": -0.108,
     "maxDrawdown10pct": 11.8
    },
-   "baseline": {
-    "trades": 4517,
-    "winRate": 50,
-    "expectancy": 0.306,
-    "avgWin": 5.42,
-    "avgLoss": -4.81,
-    "profitFactor": 1.13,
-    "avgR": null,
-    "maxDrawdown10pct": 63.5
-   },
+   "baseline_hold_days": 10,
    "by_setup": {
     "minervini": {
      "trades": 589,

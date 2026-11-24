@@ -1,5 +1,5 @@
 {
- "generated": "2026-11-24T04:17:16.590Z",
+ "generated": "2026-11-24T04:25:33.872Z",
  "symbols": 111,
  "requested": 114,
  "failed": [
@@ -70,6 +70,16 @@
  },
  "variants": {
   "minervini_natural": {
+   "baseline": {
+    "trades": 5459,
+    "winRate": 49.7,
+    "expectancy": 0.042,
+    "avgWin": 5.24,
+    "avgLoss": -5.1,
+    "profitFactor": 1.02,
+    "avgR": null,
+    "maxDrawdown10pct": 78.1
+   },
    "all": {
     "trades": 550,
     "winRate": 40.4,
@@ -100,16 +110,7 @@
     "avgR": -0.022,
     "maxDrawdown10pct": 12.6
    },
-   "baseline": {
-    "trades": 5459,
-    "winRate": 49.7,
-    "expectancy": 0.042,
-    "avgWin": 5.24,
-    "avgLoss": -5.1,
-    "profitFactor": 1.02,
-    "avgR": null,
-    "maxDrawdown10pct": 78.1
-   },
+   "baseline_hold_days": 10,
    "by_setup": {
     "minervini": {
      "trades": 550,
