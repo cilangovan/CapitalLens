@@ -1,45 +1,46 @@
 {
- "generated": "2026-11-24T04:04:16.773Z",
+ "generated": "2026-11-24T04:11:38.943Z",
  "symbols": 92,
  "requested": 92,
  "failed": [],
  "years": 5,
  "cost": 0.004,
  "cut": "2024-11-21",
- "variants_tried": 4,
- "chosen": "market_up",
+ "variants_tried": 12,
+ "chosen": "grail_5pct",
  "config": {
-  "regime": true
+  "strat": "grail",
+  "exit": "target5"
  },
  "all": {
-  "trades": 405,
-  "winRate": 41.7,
-  "expectancy": -0.114,
-  "avgWin": 4.13,
-  "avgLoss": -3.15,
-  "profitFactor": 0.94,
-  "avgR": -0.099,
-  "maxDrawdown10pct": 8.6
+  "trades": 399,
+  "winRate": 48.4,
+  "expectancy": -0.143,
+  "avgWin": 3.62,
+  "avgLoss": -3.67,
+  "profitFactor": 0.92,
+  "avgR": -0.036,
+  "maxDrawdown10pct": 15.7
  },
  "in_sample": {
-  "trades": 223,
-  "winRate": 45.7,
-  "expectancy": 0.119,
-  "avgWin": 3.96,
-  "avgLoss": -3.12,
-  "profitFactor": 1.07,
-  "avgR": -0.008,
-  "maxDrawdown10pct": 5.4
+  "trades": 229,
+  "winRate": 52.8,
+  "expectancy": 0.281,
+  "avgWin": 3.62,
+  "avgLoss": -3.47,
+  "profitFactor": 1.17,
+  "avgR": 0.07,
+  "maxDrawdown10pct": 6.1
  },
  "out_of_sample": {
-  "trades": 182,
-  "winRate": 36.8,
-  "expectancy": -0.4,
-  "avgWin": 4.4,
-  "avgLoss": -3.19,
-  "profitFactor": 0.8,
-  "avgR": -0.21,
-  "maxDrawdown10pct": 8.6
+  "trades": 170,
+  "winRate": 42.4,
+  "expectancy": -0.713,
+  "avgWin": 3.62,
+  "avgLoss": -3.9,
+  "profitFactor": 0.68,
+  "avgR": -0.178,
+  "maxDrawdown10pct": 12.6
  },
  "baseline": {
   "trades": 4517,
@@ -52,25 +53,15 @@
   "maxDrawdown10pct": 63.5
  },
  "by_setup": {
-  "Pullback bounce": {
-   "trades": 282,
-   "winRate": 37.9,
-   "expectancy": -0.293,
-   "avgWin": 3.76,
-   "avgLoss": -2.77,
-   "profitFactor": 0.83,
-   "avgR": -0.17,
-   "maxDrawdown10pct": 9.4
-  },
-  "Breakout": {
-   "trades": 123,
-   "winRate": 50.4,
-   "expectancy": 0.297,
-   "avgWin": 4.78,
-   "avgLoss": -4.26,
-   "profitFactor": 1.14,
-   "avgR": 0.065,
-   "maxDrawdown10pct": 3.6
+  "grail": {
+   "trades": 399,
+   "winRate": 48.4,
+   "expectancy": -0.143,
+   "avgWin": 3.62,
+   "avgLoss": -3.67,
+   "profitFactor": 0.92,
+   "avgR": -0.036,
+   "maxDrawdown10pct": 15.7
   }
  },
  "variants": {
@@ -135,6 +126,64 @@
      "profitFactor": 1.01,
      "avgR": 0.015,
      "maxDrawdown10pct": 10.1
+    }
+   },
+   "exits": {
+    "stop": 300,
+    "target": 132,
+    "time": 175
+   },
+   "pct_5plus": 16.8,
+   "by_year": {
+    "2022": {
+     "trades": 111,
+     "winRate": 31.5,
+     "expectancy": -1.177,
+     "avgWin": 4.3,
+     "avgLoss": -3.7,
+     "profitFactor": 0.54,
+     "avgR": -0.349,
+     "maxDrawdown10pct": 16
+    },
+    "2023": {
+     "trades": 118,
+     "winRate": 44.9,
+     "expectancy": 0.017,
+     "avgWin": 3.96,
+     "avgLoss": -3.2,
+     "profitFactor": 1.01,
+     "avgR": -0.028,
+     "maxDrawdown10pct": 5.8
+    },
+    "2024": {
+     "trades": 151,
+     "winRate": 45,
+     "expectancy": 0.065,
+     "avgWin": 3.75,
+     "avgLoss": -2.96,
+     "profitFactor": 1.04,
+     "avgR": -0.068,
+     "maxDrawdown10pct": 5.2
+    },
+    "2025": {
+     "trades": 133,
+     "winRate": 37.6,
+     "expectancy": -0.307,
+     "avgWin": 4.59,
+     "avgLoss": -3.26,
+     "profitFactor": 0.85,
+     "avgR": -0.197,
+     "maxDrawdown10pct": 9
+    },
+    "2026": {
+     "trades": 94,
+     "winRate": 40.4,
+     "expectancy": 0.123,
+     "avgWin": 5.85,
+     "avgLoss": -3.76,
+     "profitFactor": 1.05,
+     "avgR": -0.073,
+     "maxDrawdown10pct": 5.1
     }
    },
    "validation": {
@@ -205,6 +254,64 @@
      "maxDrawdown10pct": 10.3
     }
    },
+   "exits": {
+    "stop": 202,
+    "time": 554,
+    "target": 59
+   },
+   "pct_5plus": 21.5,
+   "by_year": {
+    "2022": {
+     "trades": 130,
+     "winRate": 41.5,
+     "expectancy": -1.109,
+     "avgWin": 4.07,
+     "avgLoss": -4.79,
+     "profitFactor": 0.6,
+     "avgR": -0.18,
+     "maxDrawdown10pct": 17.9
+    },
+    "2023": {
+     "trades": 155,
+     "winRate": 51.6,
+     "expectancy": 0.453,
+     "avgWin": 4.43,
+     "avgLoss": -3.79,
+     "profitFactor": 1.25,
+     "avgR": 0.07,
+     "maxDrawdown10pct": 4.4
+    },
+    "2024": {
+     "trades": 199,
+     "winRate": 49.7,
+     "expectancy": 0.157,
+     "avgWin": 4.41,
+     "avgLoss": -4.05,
+     "profitFactor": 1.08,
+     "avgR": 0.015,
+     "maxDrawdown10pct": 8.1
+    },
+    "2025": {
+     "trades": 198,
+     "winRate": 52.5,
+     "expectancy": 0.73,
+     "avgWin": 5.25,
+     "avgLoss": -4.26,
+     "profitFactor": 1.36,
+     "avgR": 0.096,
+     "maxDrawdown10pct": 14.7
+    },
+    "2026": {
+     "trades": 133,
+     "winRate": 45.9,
+     "expectancy": 0.344,
+     "avgWin": 6.42,
+     "avgLoss": -4.81,
+     "profitFactor": 1.13,
+     "avgR": 0.005,
+     "maxDrawdown10pct": 4.9
+    }
+   },
    "validation": {
     "ok": false,
     "why": "Profit factor 1.08 is below 1.2: not enough edge, so no entries are shown."
@@ -271,6 +378,64 @@
      "profitFactor": 1.14,
      "avgR": 0.065,
      "maxDrawdown10pct": 3.6
+    }
+   },
+   "exits": {
+    "target": 93,
+    "stop": 184,
+    "time": 128
+   },
+   "pct_5plus": 15.8,
+   "by_year": {
+    "2022": {
+     "trades": 33,
+     "winRate": 27.3,
+     "expectancy": -1.252,
+     "avgWin": 4.37,
+     "avgLoss": -3.36,
+     "profitFactor": 0.49,
+     "avgR": -0.419,
+     "maxDrawdown10pct": 4.1
+    },
+    "2023": {
+     "trades": 80,
+     "winRate": 47.5,
+     "expectancy": 0.143,
+     "avgWin": 3.82,
+     "avgLoss": -3.19,
+     "profitFactor": 1.09,
+     "avgR": 0.07,
+     "maxDrawdown10pct": 4.1
+    },
+    "2024": {
+     "trades": 134,
+     "winRate": 44.8,
+     "expectancy": 0.115,
+     "avgWin": 3.83,
+     "avgLoss": -2.89,
+     "profitFactor": 1.07,
+     "avgR": -0.078,
+     "maxDrawdown10pct": 4.3
+    },
+    "2025": {
+     "trades": 97,
+     "winRate": 41.2,
+     "expectancy": 0.051,
+     "avgWin": 4.47,
+     "avgLoss": -3.05,
+     "profitFactor": 1.03,
+     "avgR": -0.1,
+     "maxDrawdown10pct": 6.3
+    },
+    "2026": {
+     "trades": 61,
+     "winRate": 36.1,
+     "expectancy": -0.603,
+     "avgWin": 4.79,
+     "avgLoss": -3.64,
+     "profitFactor": 0.74,
+     "avgR": -0.19,
+     "maxDrawdown10pct": 5.1
     }
    },
    "validation": {
@@ -341,15 +506,1001 @@
      "maxDrawdown10pct": 9.2
     }
    },
+   "exits": {
+    "stop": 172,
+    "target": 66,
+    "time": 103
+   },
+   "pct_5plus": 20.5,
+   "by_year": {
+    "2022": {
+     "trades": 81,
+     "winRate": 30.9,
+     "expectancy": -1.417,
+     "avgWin": 4.37,
+     "avgLoss": -4,
+     "profitFactor": 0.49,
+     "avgR": -0.37,
+     "maxDrawdown10pct": 13.3
+    },
+    "2023": {
+     "trades": 61,
+     "winRate": 39.3,
+     "expectancy": 0.385,
+     "avgWin": 5.71,
+     "avgLoss": -3.07,
+     "profitFactor": 1.21,
+     "avgR": -0.027,
+     "maxDrawdown10pct": 3
+    },
+    "2024": {
+     "trades": 77,
+     "winRate": 40.3,
+     "expectancy": -0.217,
+     "avgWin": 4.12,
+     "avgLoss": -3.14,
+     "profitFactor": 0.88,
+     "avgR": -0.173,
+     "maxDrawdown10pct": 4.8
+    },
+    "2025": {
+     "trades": 64,
+     "winRate": 43.8,
+     "expectancy": 0.386,
+     "avgWin": 5.44,
+     "avgLoss": -3.55,
+     "profitFactor": 1.19,
+     "avgR": 0,
+     "maxDrawdown10pct": 5.9
+    },
+    "2026": {
+     "trades": 58,
+     "winRate": 41.4,
+     "expectancy": 0.304,
+     "avgWin": 6.03,
+     "avgLoss": -3.74,
+     "profitFactor": 1.14,
+     "avgR": -0.1,
+     "maxDrawdown10pct": 4.3
+    }
+   },
    "validation": {
     "ok": false,
     "why": "Profit factor 0.91 is below 1.2: not enough edge, so no entries are shown."
    }
+  },
+  "connors_natural": {
+   "all": {
+    "trades": 2638,
+    "winRate": 60,
+    "expectancy": -0.079,
+    "avgWin": 1.94,
+    "avgLoss": -3.11,
+    "profitFactor": 0.94,
+    "avgR": -0.011,
+    "maxDrawdown10pct": 35.2
+   },
+   "in_sample": {
+    "trades": 1374,
+    "winRate": 61.9,
+    "expectancy": 0.103,
+    "avgWin": 1.78,
+    "avgLoss": -2.62,
+    "profitFactor": 1.1,
+    "avgR": 0.015,
+    "maxDrawdown10pct": 17.9
+   },
+   "out_of_sample": {
+    "trades": 1264,
+    "winRate": 57.9,
+    "expectancy": -0.277,
+    "avgWin": 2.13,
+    "avgLoss": -3.59,
+    "profitFactor": 0.82,
+    "avgR": -0.04,
+    "maxDrawdown10pct": 31.2
+   },
+   "baseline": {
+    "trades": 4517,
+    "winRate": 50,
+    "expectancy": 0.306,
+    "avgWin": 5.42,
+    "avgLoss": -4.81,
+    "profitFactor": 1.13,
+    "avgR": null,
+    "maxDrawdown10pct": 63.5
+   },
+   "by_setup": {
+    "connors": {
+     "trades": 2638,
+     "winRate": 60,
+     "expectancy": -0.079,
+     "avgWin": 1.94,
+     "avgLoss": -3.11,
+     "profitFactor": 0.94,
+     "avgR": -0.011,
+     "maxDrawdown10pct": 35.2
+    }
+   },
+   "exits": {
+    "signal": 2337,
+    "stop": 276,
+    "time": 25
+   },
+   "pct_5plus": 5,
+   "by_year": {
+    "2022": {
+     "trades": 65,
+     "winRate": 70.8,
+     "expectancy": 0.203,
+     "avgWin": 1.18,
+     "avgLoss": -2.16,
+     "profitFactor": 1.32,
+     "avgR": 0.029,
+     "maxDrawdown10pct": 1.3
+    },
+    "2023": {
+     "trades": 634,
+     "winRate": 64,
+     "expectancy": 0.083,
+     "avgWin": 1.85,
+     "avgLoss": -3.06,
+     "profitFactor": 1.08,
+     "avgR": 0.012,
+     "maxDrawdown10pct": 17.9
+    },
+    "2024": {
+     "trades": 749,
+     "winRate": 57.4,
+     "expectancy": -0.015,
+     "avgWin": 1.74,
+     "avgLoss": -2.39,
+     "profitFactor": 0.98,
+     "avgR": -0.002,
+     "maxDrawdown10pct": 9.2
+    },
+    "2025": {
+     "trades": 553,
+     "winRate": 57,
+     "expectancy": -0.222,
+     "avgWin": 1.95,
+     "avgLoss": -3.1,
+     "profitFactor": 0.83,
+     "avgR": -0.032,
+     "maxDrawdown10pct": 22.8
+    },
+    "2026": {
+     "trades": 637,
+     "winRate": 60.4,
+     "expectancy": -0.22,
+     "avgWin": 2.36,
+     "avgLoss": -4.16,
+     "profitFactor": 0.87,
+     "avgR": -0.031,
+     "maxDrawdown10pct": 25.7
+    }
+   },
+   "validation": {
+    "ok": false,
+    "why": "Out-of-sample expectancy is -0.277% per trade after costs: not positive, so no entries are shown."
+   }
+  },
+  "connors_5pct": {
+   "all": {
+    "trades": 2759,
+    "winRate": 49,
+    "expectancy": -0.114,
+    "avgWin": 3.71,
+    "avgLoss": -3.79,
+    "profitFactor": 0.94,
+    "avgR": -0.028,
+    "maxDrawdown10pct": 35.8
+   },
+   "in_sample": {
+    "trades": 1403,
+    "winRate": 50.8,
+    "expectancy": 0.018,
+    "avgWin": 3.56,
+    "avgLoss": -3.64,
+    "profitFactor": 1.01,
+    "avgR": 0.005,
+    "maxDrawdown10pct": 25.5
+   },
+   "out_of_sample": {
+    "trades": 1356,
+    "winRate": 47.1,
+    "expectancy": -0.25,
+    "avgWin": 3.88,
+    "avgLoss": -3.92,
+    "profitFactor": 0.88,
+    "avgR": -0.063,
+    "maxDrawdown10pct": 30.6
+   },
+   "baseline": {
+    "trades": 4517,
+    "winRate": 50,
+    "expectancy": 0.306,
+    "avgWin": 5.42,
+    "avgLoss": -4.81,
+    "profitFactor": 1.13,
+    "avgR": null,
+    "maxDrawdown10pct": 63.5
+   },
+   "by_setup": {
+    "connors": {
+     "trades": 2759,
+     "winRate": 49,
+     "expectancy": -0.114,
+     "avgWin": 3.71,
+     "avgLoss": -3.79,
+     "profitFactor": 0.94,
+     "avgR": -0.028,
+     "maxDrawdown10pct": 35.8
+    }
+   },
+   "exits": {
+    "time": 774,
+    "stop": 1047,
+    "target": 938
+   },
+   "pct_5plus": 34,
+   "by_year": {
+    "2022": {
+     "trades": 59,
+     "winRate": 57.6,
+     "expectancy": 0.246,
+     "avgWin": 2.7,
+     "avgLoss": -3.09,
+     "profitFactor": 1.19,
+     "avgR": 0.061,
+     "maxDrawdown10pct": 2.5
+    },
+    "2023": {
+     "trades": 660,
+     "winRate": 48.8,
+     "expectancy": -0.17,
+     "avgWin": 3.62,
+     "avgLoss": -3.78,
+     "profitFactor": 0.91,
+     "avgR": -0.042,
+     "maxDrawdown10pct": 25.5
+    },
+    "2024": {
+     "trades": 763,
+     "winRate": 49.8,
+     "expectancy": 0.021,
+     "avgWin": 3.57,
+     "avgLoss": -3.5,
+     "profitFactor": 1.01,
+     "avgR": 0.005,
+     "maxDrawdown10pct": 21.8
+    },
+    "2025": {
+     "trades": 587,
+     "winRate": 50.1,
+     "expectancy": -0.05,
+     "avgWin": 3.65,
+     "avgLoss": -3.77,
+     "profitFactor": 0.97,
+     "avgR": -0.013,
+     "maxDrawdown10pct": 25.6
+    },
+    "2026": {
+     "trades": 690,
+     "winRate": 46.5,
+     "expectancy": -0.293,
+     "avgWin": 4.14,
+     "avgLoss": -4.15,
+     "profitFactor": 0.87,
+     "avgR": -0.073,
+     "maxDrawdown10pct": 29.9
+    }
+   },
+   "validation": {
+    "ok": false,
+    "why": "Out-of-sample expectancy is -0.25% per trade after costs: not positive, so no entries are shown."
+   }
+  },
+  "ibs_natural": {
+   "all": {
+    "trades": 7650,
+    "winRate": 54.9,
+    "expectancy": -0.209,
+    "avgWin": 1.52,
+    "avgLoss": -2.32,
+    "profitFactor": 0.8,
+    "avgR": -0.03,
+    "maxDrawdown10pct": 83.5
+   },
+   "in_sample": {
+    "trades": 4030,
+    "winRate": 54.8,
+    "expectancy": -0.193,
+    "avgWin": 1.38,
+    "avgLoss": -2.1,
+    "profitFactor": 0.8,
+    "avgR": -0.028,
+    "maxDrawdown10pct": 62.9
+   },
+   "out_of_sample": {
+    "trades": 3620,
+    "winRate": 55,
+    "expectancy": -0.228,
+    "avgWin": 1.68,
+    "avgLoss": -2.57,
+    "profitFactor": 0.8,
+    "avgR": -0.033,
+    "maxDrawdown10pct": 57.8
+   },
+   "baseline": {
+    "trades": 4517,
+    "winRate": 50,
+    "expectancy": 0.306,
+    "avgWin": 5.42,
+    "avgLoss": -4.81,
+    "profitFactor": 1.13,
+    "avgR": null,
+    "maxDrawdown10pct": 63.5
+   },
+   "by_setup": {
+    "ibs": {
+     "trades": 7650,
+     "winRate": 54.9,
+     "expectancy": -0.209,
+     "avgWin": 1.52,
+     "avgLoss": -2.32,
+     "profitFactor": 0.8,
+     "avgR": -0.03,
+     "maxDrawdown10pct": 83.5
+    }
+   },
+   "exits": {
+    "signal": 7016,
+    "time": 52,
+    "stop": 582
+   },
+   "pct_5plus": 3,
+   "by_year": {
+    "2022": {
+     "trades": 184,
+     "winRate": 65.2,
+     "expectancy": 0.257,
+     "avgWin": 1.23,
+     "avgLoss": -1.57,
+     "profitFactor": 1.47,
+     "avgR": 0.037,
+     "maxDrawdown10pct": 2.5
+    },
+    "2023": {
+     "trades": 1925,
+     "winRate": 55.1,
+     "expectancy": -0.189,
+     "avgWin": 1.48,
+     "avgLoss": -2.24,
+     "profitFactor": 0.81,
+     "avgR": -0.027,
+     "maxDrawdown10pct": 39.4
+    },
+    "2024": {
+     "trades": 2088,
+     "winRate": 52.7,
+     "expectancy": -0.278,
+     "avgWin": 1.29,
+     "avgLoss": -2.03,
+     "profitFactor": 0.71,
+     "avgR": -0.04,
+     "maxDrawdown10pct": 44.5
+    },
+    "2025": {
+     "trades": 1721,
+     "winRate": 55.3,
+     "expectancy": -0.178,
+     "avgWin": 1.49,
+     "avgLoss": -2.24,
+     "profitFactor": 0.82,
+     "avgR": -0.025,
+     "maxDrawdown10pct": 33.3
+    },
+    "2026": {
+     "trades": 1732,
+     "winRate": 55.9,
+     "expectancy": -0.231,
+     "avgWin": 1.9,
+     "avgLoss": -2.93,
+     "profitFactor": 0.82,
+     "avgR": -0.033,
+     "maxDrawdown10pct": 38.3
+    }
+   },
+   "validation": {
+    "ok": false,
+    "why": "Out-of-sample expectancy is -0.228% per trade after costs: not positive, so no entries are shown."
+   }
+  },
+  "ibs_5pct": {
+   "all": {
+    "trades": 5637,
+    "winRate": 47.9,
+    "expectancy": -0.231,
+    "avgWin": 3.69,
+    "avgLoss": -3.84,
+    "profitFactor": 0.88,
+    "avgR": -0.058,
+    "maxDrawdown10pct": 76.7
+   },
+   "in_sample": {
+    "trades": 2913,
+    "winRate": 48.6,
+    "expectancy": -0.165,
+    "avgWin": 3.54,
+    "avgLoss": -3.67,
+    "profitFactor": 0.91,
+    "avgR": -0.041,
+    "maxDrawdown10pct": 48.7
+   },
+   "out_of_sample": {
+    "trades": 2724,
+    "winRate": 47.1,
+    "expectancy": -0.303,
+    "avgWin": 3.87,
+    "avgLoss": -4.02,
+    "profitFactor": 0.86,
+    "avgR": -0.076,
+    "maxDrawdown10pct": 57.8
+   },
+   "baseline": {
+    "trades": 4517,
+    "winRate": 50,
+    "expectancy": 0.306,
+    "avgWin": 5.42,
+    "avgLoss": -4.81,
+    "profitFactor": 1.13,
+    "avgR": null,
+    "maxDrawdown10pct": 63.5
+   },
+   "by_setup": {
+    "ibs": {
+     "trades": 5637,
+     "winRate": 47.9,
+     "expectancy": -0.231,
+     "avgWin": 3.69,
+     "avgLoss": -3.84,
+     "profitFactor": 0.88,
+     "avgR": -0.058,
+     "maxDrawdown10pct": 76.7
+    }
+   },
+   "exits": {
+    "time": 1577,
+    "target": 1862,
+    "stop": 2198
+   },
+   "pct_5plus": 33,
+   "by_year": {
+    "2022": {
+     "trades": 132,
+     "winRate": 41.7,
+     "expectancy": -0.316,
+     "avgWin": 3.34,
+     "avgLoss": -2.93,
+     "profitFactor": 0.82,
+     "avgR": -0.079,
+     "maxDrawdown10pct": 7.8
+    },
+    "2023": {
+     "trades": 1423,
+     "winRate": 47.6,
+     "expectancy": -0.243,
+     "avgWin": 3.64,
+     "avgLoss": -3.76,
+     "profitFactor": 0.88,
+     "avgR": -0.061,
+     "maxDrawdown10pct": 47.4
+    },
+    "2024": {
+     "trades": 1474,
+     "winRate": 49,
+     "expectancy": -0.178,
+     "avgWin": 3.43,
+     "avgLoss": -3.65,
+     "profitFactor": 0.9,
+     "avgR": -0.045,
+     "maxDrawdown10pct": 40.9
+    },
+    "2025": {
+     "trades": 1264,
+     "winRate": 49.4,
+     "expectancy": -0.133,
+     "avgWin": 3.71,
+     "avgLoss": -3.88,
+     "profitFactor": 0.93,
+     "avgR": -0.033,
+     "maxDrawdown10pct": 38.6
+    },
+    "2026": {
+     "trades": 1344,
+     "winRate": 46.3,
+     "expectancy": -0.362,
+     "avgWin": 4.07,
+     "avgLoss": -4.18,
+     "profitFactor": 0.84,
+     "avgR": -0.091,
+     "maxDrawdown10pct": 50.4
+    }
+   },
+   "validation": {
+    "ok": false,
+    "why": "Out-of-sample expectancy is -0.303% per trade after costs: not positive, so no entries are shown."
+   }
+  },
+  "grail_natural": {
+   "all": {
+    "trades": 453,
+    "winRate": 32.9,
+    "expectancy": -0.139,
+    "avgWin": 3.74,
+    "avgLoss": -2.04,
+    "profitFactor": 0.9,
+    "avgR": -0.02,
+    "maxDrawdown10pct": 18.8
+   },
+   "in_sample": {
+    "trades": 264,
+    "winRate": 36,
+    "expectancy": 0.28,
+    "avgWin": 4.06,
+    "avgLoss": -1.84,
+    "profitFactor": 1.24,
+    "avgR": 0.04,
+    "maxDrawdown10pct": 7.7
+   },
+   "out_of_sample": {
+    "trades": 189,
+    "winRate": 28.6,
+    "expectancy": -0.723,
+    "avgWin": 3.18,
+    "avgLoss": -2.28,
+    "profitFactor": 0.56,
+    "avgR": -0.103,
+    "maxDrawdown10pct": 13.2
+   },
+   "baseline": {
+    "trades": 4517,
+    "winRate": 50,
+    "expectancy": 0.306,
+    "avgWin": 5.42,
+    "avgLoss": -4.81,
+    "profitFactor": 1.13,
+    "avgR": null,
+    "maxDrawdown10pct": 63.5
+   },
+   "by_setup": {
+    "grail": {
+     "trades": 453,
+     "winRate": 32.9,
+     "expectancy": -0.139,
+     "avgWin": 3.74,
+     "avgLoss": -2.04,
+     "profitFactor": 0.9,
+     "avgR": -0.02,
+     "maxDrawdown10pct": 18.8
+    }
+   },
+   "exits": {
+    "signal": 360,
+    "time": 74,
+    "stop": 19
+   },
+   "pct_5plus": 9.7,
+   "by_year": {
+    "2022": {
+     "trades": 14,
+     "winRate": 14.3,
+     "expectancy": -0.99,
+     "avgWin": 0.11,
+     "avgLoss": -1.17,
+     "profitFactor": 0.02,
+     "avgR": -0.141,
+     "maxDrawdown10pct": 1.4
+    },
+    "2023": {
+     "trades": 110,
+     "winRate": 44.5,
+     "expectancy": 0.843,
+     "avgWin": 4.34,
+     "avgLoss": -1.97,
+     "profitFactor": 1.77,
+     "avgR": 0.12,
+     "maxDrawdown10pct": 2.8
+    },
+    "2024": {
+     "trades": 149,
+     "winRate": 29.5,
+     "expectancy": -0.135,
+     "avgWin": 3.91,
+     "avgLoss": -1.83,
+     "profitFactor": 0.9,
+     "avgR": -0.019,
+     "maxDrawdown10pct": 7.9
+    },
+    "2025": {
+     "trades": 76,
+     "winRate": 19.7,
+     "expectancy": -1.086,
+     "avgWin": 4.33,
+     "avgLoss": -2.42,
+     "profitFactor": 0.44,
+     "avgR": -0.155,
+     "maxDrawdown10pct": 8.4
+    },
+    "2026": {
+     "trades": 104,
+     "winRate": 37.5,
+     "expectancy": -0.376,
+     "avgWin": 2.74,
+     "avgLoss": -2.24,
+     "profitFactor": 0.73,
+     "avgR": -0.054,
+     "maxDrawdown10pct": 5.4
+    }
+   },
+   "validation": {
+    "ok": false,
+    "why": "Out-of-sample expectancy is -0.723% per trade after costs: not positive, so no entries are shown."
+   }
+  },
+  "grail_5pct": {
+   "all": {
+    "trades": 399,
+    "winRate": 48.4,
+    "expectancy": -0.143,
+    "avgWin": 3.62,
+    "avgLoss": -3.67,
+    "profitFactor": 0.92,
+    "avgR": -0.036,
+    "maxDrawdown10pct": 15.7
+   },
+   "in_sample": {
+    "trades": 229,
+    "winRate": 52.8,
+    "expectancy": 0.281,
+    "avgWin": 3.62,
+    "avgLoss": -3.47,
+    "profitFactor": 1.17,
+    "avgR": 0.07,
+    "maxDrawdown10pct": 6.1
+   },
+   "out_of_sample": {
+    "trades": 170,
+    "winRate": 42.4,
+    "expectancy": -0.713,
+    "avgWin": 3.62,
+    "avgLoss": -3.9,
+    "profitFactor": 0.68,
+    "avgR": -0.178,
+    "maxDrawdown10pct": 12.6
+   },
+   "baseline": {
+    "trades": 4517,
+    "winRate": 50,
+    "expectancy": 0.306,
+    "avgWin": 5.42,
+    "avgLoss": -4.81,
+    "profitFactor": 1.13,
+    "avgR": null,
+    "maxDrawdown10pct": 63.5
+   },
+   "by_setup": {
+    "grail": {
+     "trades": 399,
+     "winRate": 48.4,
+     "expectancy": -0.143,
+     "avgWin": 3.62,
+     "avgLoss": -3.67,
+     "profitFactor": 0.92,
+     "avgR": -0.036,
+     "maxDrawdown10pct": 15.7
+    }
+   },
+   "exits": {
+    "time": 130,
+    "stop": 146,
+    "target": 123
+   },
+   "pct_5plus": 30.8,
+   "by_year": {
+    "2022": {
+     "trades": 12,
+     "winRate": 41.7,
+     "expectancy": -0.58,
+     "avgWin": 3.6,
+     "avgLoss": -3.57,
+     "profitFactor": 0.72,
+     "avgR": -0.145,
+     "maxDrawdown10pct": 1.3
+    },
+    "2023": {
+     "trades": 99,
+     "winRate": 54.5,
+     "expectancy": 0.402,
+     "avgWin": 3.58,
+     "avgLoss": -3.42,
+     "profitFactor": 1.26,
+     "avgR": 0.1,
+     "maxDrawdown10pct": 4.2
+    },
+    "2024": {
+     "trades": 126,
+     "winRate": 50.8,
+     "expectancy": 0.133,
+     "avgWin": 3.58,
+     "avgLoss": -3.43,
+     "profitFactor": 1.08,
+     "avgR": 0.033,
+     "maxDrawdown10pct": 6.1
+    },
+    "2025": {
+     "trades": 72,
+     "winRate": 44.4,
+     "expectancy": -0.865,
+     "avgWin": 3.19,
+     "avgLoss": -4.11,
+     "profitFactor": 0.62,
+     "avgR": -0.216,
+     "maxDrawdown10pct": 7.4
+    },
+    "2026": {
+     "trades": 90,
+     "winRate": 42.2,
+     "expectancy": -0.492,
+     "avgWin": 4.11,
+     "avgLoss": -3.85,
+     "profitFactor": 0.78,
+     "avgR": -0.123,
+     "maxDrawdown10pct": 8.1
+    }
+   },
+   "validation": {
+    "ok": false,
+    "why": "Out-of-sample expectancy is -0.713% per trade after costs: not positive, so no entries are shown."
+   }
+  },
+  "minervini_natural": {
+   "all": {
+    "trades": 513,
+    "winRate": 42.5,
+    "expectancy": 0.429,
+    "avgWin": 5.82,
+    "avgLoss": -3.56,
+    "profitFactor": 1.21,
+    "avgR": 0.061,
+    "maxDrawdown10pct": 10.7
+   },
+   "in_sample": {
+    "trades": 273,
+    "winRate": 41.8,
+    "expectancy": 0.218,
+    "avgWin": 5.13,
+    "avgLoss": -3.31,
+    "profitFactor": 1.11,
+    "avgR": 0.031,
+    "maxDrawdown10pct": 10.7
+   },
+   "out_of_sample": {
+    "trades": 240,
+    "winRate": 43.3,
+    "expectancy": 0.67,
+    "avgWin": 6.58,
+    "avgLoss": -3.85,
+    "profitFactor": 1.31,
+    "avgR": 0.096,
+    "maxDrawdown10pct": 8.7
+   },
+   "baseline": {
+    "trades": 4517,
+    "winRate": 50,
+    "expectancy": 0.306,
+    "avgWin": 5.42,
+    "avgLoss": -4.81,
+    "profitFactor": 1.13,
+    "avgR": null,
+    "maxDrawdown10pct": 63.5
+   },
+   "by_setup": {
+    "minervini": {
+     "trades": 513,
+     "winRate": 42.5,
+     "expectancy": 0.429,
+     "avgWin": 5.82,
+     "avgLoss": -3.56,
+     "profitFactor": 1.21,
+     "avgR": 0.061,
+     "maxDrawdown10pct": 10.7
+    }
+   },
+   "exits": {
+    "signal": 303,
+    "time": 171,
+    "stop": 39
+   },
+   "pct_5plus": 21.2,
+   "by_year": {
+    "2022": {
+     "trades": 2,
+     "winRate": 0,
+     "expectancy": -2.683,
+     "avgWin": 0,
+     "avgLoss": -2.68,
+     "profitFactor": 0,
+     "avgR": -0.383,
+     "maxDrawdown10pct": 0.5
+    },
+    "2023": {
+     "trades": 126,
+     "winRate": 40.5,
+     "expectancy": 0.297,
+     "avgWin": 5.59,
+     "avgLoss": -3.31,
+     "profitFactor": 1.15,
+     "avgR": 0.042,
+     "maxDrawdown10pct": 10.7
+    },
+    "2024": {
+     "trades": 156,
+     "winRate": 41.7,
+     "expectancy": 0.312,
+     "avgWin": 5.22,
+     "avgLoss": -3.19,
+     "profitFactor": 1.17,
+     "avgR": 0.045,
+     "maxDrawdown10pct": 7
+    },
+    "2025": {
+     "trades": 121,
+     "winRate": 45.5,
+     "expectancy": 0.42,
+     "avgWin": 5.06,
+     "avgLoss": -3.45,
+     "profitFactor": 1.22,
+     "avgR": 0.06,
+     "maxDrawdown10pct": 6.6
+    },
+    "2026": {
+     "trades": 108,
+     "winRate": 43.5,
+     "expectancy": 0.822,
+     "avgWin": 7.8,
+     "avgLoss": -4.56,
+     "profitFactor": 1.32,
+     "avgR": 0.117,
+     "maxDrawdown10pct": 8.7
+    }
+   },
+   "validation": {
+    "ok": true,
+    "why": ""
+   }
+  },
+  "minervini_5pct": {
+   "all": {
+    "trades": 589,
+    "winRate": 46.5,
+    "expectancy": -0.271,
+    "avgWin": 3.97,
+    "avgLoss": -3.96,
+    "profitFactor": 0.87,
+    "avgR": -0.068,
+    "maxDrawdown10pct": 15.3
+   },
+   "in_sample": {
+    "trades": 320,
+    "winRate": 48.4,
+    "expectancy": -0.135,
+    "avgWin": 3.89,
+    "avgLoss": -3.91,
+    "profitFactor": 0.93,
+    "avgR": -0.034,
+    "maxDrawdown10pct": 12.4
+   },
+   "out_of_sample": {
+    "trades": 269,
+    "winRate": 44.2,
+    "expectancy": -0.433,
+    "avgWin": 4.09,
+    "avgLoss": -4.02,
+    "profitFactor": 0.81,
+    "avgR": -0.108,
+    "maxDrawdown10pct": 11.8
+   },
+   "baseline": {
+    "trades": 4517,
+    "winRate": 50,
+    "expectancy": 0.306,
+    "avgWin": 5.42,
+    "avgLoss": -4.81,
+    "profitFactor": 1.13,
+    "avgR": null,
+    "maxDrawdown10pct": 63.5
+   },
+   "by_setup": {
+    "minervini": {
+     "trades": 589,
+     "winRate": 46.5,
+     "expectancy": -0.271,
+     "avgWin": 3.97,
+     "avgLoss": -3.96,
+     "profitFactor": 0.87,
+     "avgR": -0.068,
+     "maxDrawdown10pct": 15.3
+    }
+   },
+   "exits": {
+    "time": 140,
+    "stop": 238,
+    "target": 211
+   },
+   "pct_5plus": 35.8,
+   "by_year": {
+    "2022": {
+     "trades": 2,
+     "winRate": 50,
+     "expectancy": -1.58,
+     "avgWin": 1.24,
+     "avgLoss": -4.4,
+     "profitFactor": 0.28,
+     "avgR": -0.395,
+     "maxDrawdown10pct": 0.4
+    },
+    "2023": {
+     "trades": 151,
+     "winRate": 46.4,
+     "expectancy": -0.308,
+     "avgWin": 4.06,
+     "avgLoss": -4.08,
+     "profitFactor": 0.86,
+     "avgR": -0.077,
+     "maxDrawdown10pct": 12.4
+    },
+    "2024": {
+     "trades": 180,
+     "winRate": 47.8,
+     "expectancy": -0.138,
+     "avgWin": 3.79,
+     "avgLoss": -3.74,
+     "profitFactor": 0.93,
+     "avgR": -0.034,
+     "maxDrawdown10pct": 6.4
+    },
+    "2025": {
+     "trades": 129,
+     "winRate": 47.3,
+     "expectancy": -0.168,
+     "avgWin": 3.96,
+     "avgLoss": -3.87,
+     "profitFactor": 0.92,
+     "avgR": -0.042,
+     "maxDrawdown10pct": 8
+    },
+    "2026": {
+     "trades": 127,
+     "winRate": 44.1,
+     "expectancy": -0.5,
+     "avgWin": 4.22,
+     "avgLoss": -4.22,
+     "profitFactor": 0.79,
+     "avgR": -0.125,
+     "maxDrawdown10pct": 7.1
+    }
+   },
+   "validation": {
+    "ok": false,
+    "why": "Out-of-sample expectancy is -0.433% per trade after costs: not positive, so no entries are shown."
+   }
   }
  },
- "caveat": "Today’s surviving stocks only (survivorship bias), the quality screen and earnings dates are not in the test, and fills at the stop are assumed with no extra slippage on gaps beyond the open price. Four rule sets were tried and the one with the best in-sample result was kept, so the out-of-sample figure is the one to trust.",
+ "caveat": "Today’s surviving stocks only (survivorship bias), the quality screen and earnings dates are not in the test, and fills at the stop are assumed with no extra slippage on gaps beyond the open price. Twelve rule sets were tried and the one with the best in-sample result was kept, so the out-of-sample figure is the one to trust.",
  "validation": {
   "ok": false,
-  "why": "Out-of-sample expectancy is -0.4% per trade after costs: not positive, so no entries are shown."
+  "why": "Out-of-sample expectancy is -0.713% per trade after costs: not positive, so no entries are shown."
  }
 }
