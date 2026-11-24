@@ -8,7 +8,7 @@ const require = createRequire(import.meta.url);
 const SWG = require('../docs/js/swing.js');
 const args = process.argv.slice(2), arg = (k, d) => { const i = args.indexOf(k); return i >= 0 ? args[i + 1] : d; };
 const OUT = arg('--out', 'docs/data/swing_backtest.json'), YEARS = +arg('--years', 5), RANGE = YEARS > 5 ? '10y' : YEARS > 2 ? '5y' : '2y';
-const U = JSON.parse(fs.readFileSync(new URL('../config/swing_universe.json', import.meta.url), 'utf8')).symbols;
+const U = JSON.parse(fs.readFileSync(new URL('../config/' + arg('--universe', 'swing_universe.json'), import.meta.url), 'utf8')).symbols, ONLY = arg('--only', null);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 const SUB = { GBp: 0.01, GBX: 0.01 };
 
@@ -35,6 +35,7 @@ const VARIANTS = { original: {}, wide_stop: { stopAtr: 2.5 }, market_up: { regim
   ibs_natural: { strat: 'ibs', exit: 'natural' }, ibs_5pct: { strat: 'ibs', exit: 'target5' },
   grail_natural: { strat: 'grail', exit: 'natural' }, grail_5pct: { strat: 'grail', exit: 'target5' },
   minervini_natural: { strat: 'minervini', exit: 'natural' }, minervini_5pct: { strat: 'minervini', exit: 'target5' } };
+if (ONLY) for (const k of Object.keys(VARIANTS)) if (!ONLY.split(',').includes(k)) delete VARIANTS[k];   // confirmation run: only the strategy chosen beforehand, on stocks it has never seen
 const V = Object.fromEntries(Object.keys(VARIANTS).map(k => [k, []])); const base = [], times = []; let ok = 0; const failed = [];
 for (const sym of U) {
   const cs = await candles(sym); await sleep(250);
@@ -65,7 +66,7 @@ const rep = {
   generated: new Date().toISOString(), symbols: ok, requested: U.length, failed, years: YEARS, cost: SWG.SW.cost, cut: new Date(cut * 1000).toISOString().slice(0, 10),
   variants_tried: Object.keys(variants).length, chosen, config: Object.fromEntries(Object.entries(VARIANTS[chosen]).filter(([k]) => k !== 'ctx')),
   all: C.all, in_sample: C.in_sample, out_of_sample: C.out_of_sample, baseline, by_setup: C.by_setup, variants,
-  caveat: 'Today\u2019s surviving stocks only (survivorship bias), the quality screen and earnings dates are not in the test, and fills at the stop are assumed with no extra slippage on gaps beyond the open price. Twelve rule sets were tried and the one with the best in-sample result was kept, so the out-of-sample figure is the one to trust.'
+  caveat: 'Today\u2019s surviving stocks only (survivorship bias), the quality screen and earnings dates are not in the test, and fills at the stop are assumed with no extra slippage on gaps beyond the open price. ' + (ONLY ? 'Confirmation run: only ' + ONLY + ' was tested here, on stocks it was not chosen on.' : 'Twelve rule sets were tried and the one with the best in-sample result was kept, so the out-of-sample figure is the one to trust.')
 };
 rep.validation = SWG.swValidated(rep);
 fs.mkdirSync(OUT.replace(/[^/]*$/, '') || '.', { recursive: true }); fs.writeFileSync(OUT, JSON.stringify(rep, null, 1) + '\n');
