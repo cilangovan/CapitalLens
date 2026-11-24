@@ -109,6 +109,7 @@ python3 - <<'PYEOF'
 ```
 node tests/zk_swing_test.mjs
 node scripts/swing_backtest.mjs --out docs/data/swing_backtest.json
+node scripts/swing_backtest.mjs --universe swing_universe_b.json --only minervini_natural --out docs/data/swing_confirm.json
 ```
 
 ## T212 History Sync
