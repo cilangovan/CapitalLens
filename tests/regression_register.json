@@ -705,5 +705,17 @@
   "guard": "mood_layout_test.py",
   "marker": "incl. Italy",
   "commits": []
+ },
+ {
+  "id": "A4fc9848",
+  "date": "2026-11-24",
+  "area": "mood",
+  "bug": "fix(mood): every country tab fetches its own index data; add Italy",
+  "guard": "mood_layout_test.py",
+  "marker": "",
+  "commits": [
+   "4fc9848"
+  ],
+  "auto": true
  }
 ]
