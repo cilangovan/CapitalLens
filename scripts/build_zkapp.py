@@ -10,7 +10,7 @@ s = (root / "docs/demo/index.html").read_text()
 s = s.replace("<title>CapitalLens Demo</title>", "<title>CapitalLens (private)</title>")
 s = s.replace("script-src 'self' 'unsafe-inline';", "script-src 'self';")      # no inline script: handlers run through docs/zk/handlers.js (no eval)
 assert "script-src 'self';" in s
-s = s.replace("connect-src 'self' https://ggprfdetivzekjxlpvyq.supabase.co https://api.alternative.me;", "connect-src 'self' https://ggprfdetivzekjxlpvyq.supabase.co https://api.alternative.me https://capitallens-relay.itsme-daf.workers.dev https://ntfy.sh;")
+s = s.replace("connect-src 'self' https://ggprfdetivzekjxlpvyq.supabase.co https://api.alternative.me https://capitallens-help.itsme-daf.workers.dev;", "connect-src 'self' https://ggprfdetivzekjxlpvyq.supabase.co https://api.alternative.me https://capitallens-help.itsme-daf.workers.dev https://capitallens-relay.itsme-daf.workers.dev https://ntfy.sh;")
 s = s.replace("<h2>🌐 CapitalLens Demo</h2>", "<h2>🔒 CapitalLens</h2>").replace("Demo portfolio — synthetic data", "Private portfolio dashboard — end-to-end encrypted")
 s = s.replace('value="demo@capitallens.test" ', "")
 # The temporary demo login (epic #32) exists only on the demo page: strip every piece of it from the private app.

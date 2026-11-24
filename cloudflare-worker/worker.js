@@ -10,6 +10,7 @@
  *   /watchlist/remove      POST {token, symbol} → {ok}  (stops tracking, deletes analysis)
  *   /watchlist/order       POST {token, category, order:[tickers]} → {ok}  (card order; [] = back to automatic)
  *   /chart                 POST {token, symbol, range} → {meta, points}  live Yahoo chart (1d|5d|1mo|6mo|1y|5y)
+ *   /session/check         GET  Bearer token → {ok} or 401  (lets the Help assistant worker confirm a legacy sign-in)
  *   /alerts/action         POST {token, ids:[..], action} → {ok, updated}  (read|unread|archive|dismiss|restore)
  *   /[table]               → proxy to Supabase (existing behaviour)
  *
@@ -526,6 +527,7 @@ async function route(request, env) {
     if (path === '/watchlist/remove' && request.method === 'POST') return handleWatchlist(request, env, 'remove').catch(e => { console.error(e); return json({ error: 'Server error' }, 500); });
     if (path === '/watchlist/order' && request.method === 'POST')  return handleWatchlistOrder(request, env).catch(e => { console.error(e); return json({ error: 'Server error' }, 500); });
     if (path === '/chart' && request.method === 'POST')            return handleChart(request, env).catch(e => { console.error(e); return json({ error: 'Server error' }, 500); });
+    if (path === '/session/check' && request.method === 'GET') return (await verifySession(env, bearer(request))) ? json({ ok: true }, 200) : json({ error: 'Sign in required' }, 401);   // used by the Help assistant worker
     if (path === '/alerts/action' && request.method === 'POST') return handleAlertAction(request, env).catch(e => { console.error(e); return json({ error: 'Server error' }, 500); });
 
     // ── Read-only Supabase proxy (signed-in only, allowlisted tables) ─────────

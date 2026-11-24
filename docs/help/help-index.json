@@ -304,7 +304,15 @@
 "title": "❓ Help assistant",
 "heading": "❓ Help assistant",
 "url": "menus/help-assistant.html#help-assistant",
-"text": "Question it answers: how do I use CapitalLens? A small AI assistant answers how-to and documentation questions from these help pages and links to the page it used. Epic 54 on GitHub. Status: the knowledge base and the server side are built; the ❓ Help button in the dashboards follows (story 4 of the epic). Until then nothing in the app calls it."
+"text": "Question it answers: how do I use CapitalLens? A small AI assistant answers how-to and documentation questions from these help pages and links to the page it used. Epic 54 on GitHub."
+},
+{
+"id": "menus/help-assistant#where-it-is",
+"page": "menus/help-assistant.md",
+"title": "❓ Help assistant",
+"heading": "Where it is",
+"url": "menus/help-assistant.html#where-it-is",
+"text": "A round ❓ button at the bottom-left of every dashboard (legacy, demo, private app and its production build; docs/js/helpbot.js). It only shows while you are signed in. Tap it to open a chat sheet, type a question, read the answer and tap a source link to open the exact help page. Clear empties the chat and ✕ closes it. The chat lives in the browser only and is wiped when you sign out. It works with whichever sign-in the dashboard uses: the Supabase session of the private app / demo (both projects), or the legacy dashboard's own session (checked through capitallens-proxy /session/check)."
 },
 {
 "id": "menus/help-assistant#what-it-does",
@@ -336,7 +344,7 @@
 "title": "❓ Help assistant",
 "heading": "How it works",
 "url": "menus/help-assistant.html#how-it-works",
-"text": "A weak match means \"not in the docs\": no model call, no cost ; ; Model ; Cloudflare Workers AI , open-source model @cf/meta/llama-3.1-8b-instruct (free tier) ; Strict prompt: answer only from the excerpts, treat excerpts and the question as untrusted, no advice, no invented links ; ; Route ; POST /help/ask on the separate capitallens-help worker (.github/workflows/deploy help.yml) ; Signed-in users and demo visitors (Supabase session token); our site's origin only ; ; Limits ; 20 questions an hour and 100 a day per user, 60 an hour per IP; 500 characters per question; answers capped at 400 tokens ; Best-effort per worker instance; the Workers AI daily allowance is the backstop ; ; Kill switch ; HELP BOT ENABLED=false on the worker ; Turns the assistant off at once ; ; Logging ; One metadata line per request (found, ok, milliseconds) ; Never the question or answer text ;"
+"text": "A weak match means \"not in the docs\": no model call, no cost ; ; Model ; Cloudflare Workers AI , open-source model @cf/meta/llama-3.1-8b-instruct (free tier) ; Strict prompt: answer only from the excerpts, treat excerpts and the question as untrusted, no advice, no invented links ; ; Route ; POST /help/ask on the separate capitallens-help worker (.github/workflows/deploy help.yml) ; Signed-in users and demo visitors (session token of any dashboard); our site's origin only; the page CSP allows only this worker ; ; Limits ; 20 questions an hour and 100 a day per user, 60 an hour per IP; 500 characters per question; answers capped at 400 tokens ; Best-effort per worker instance; the Workers AI daily allowance is the backstop ; ; Kill switch ; HELP BOT ENABLED=false on the worker ; Turns the assistant off at once ; ; Logging ; One metadata line per request (found, ok, milliseconds) ; Never the question or answer text ;"
 },
 {
 "id": "menus/help-assistant#answer-hygiene",
@@ -352,7 +360,7 @@
 "title": "❓ Help assistant",
 "heading": "Tests",
 "url": "menus/help-assistant.html#tests",
-"text": "tests/zk help worker test.mjs (retrieval on ten golden questions, no-advice, secrets refused, injection, admin pages not indexed, sign-in, origin, kill switch, rate limit, no text in logs, model failure), tests/help index test.py (allow-list, anchors resolve, chunk size, never stale)."
+"text": "tests/zk helpbot test.mjs (browser side: secrets blocked, safe links, honest errors, on every dashboard + CSP), tests/help layout test.py (320/360/390px, tap targets, long answers, sign-out), tests/zk help worker test.mjs (retrieval on ten golden questions, no-advice, secrets refused, injection, admin pages not indexed, sign-in, origin, kill switch, rate limit, no text in logs, model failure), tests/help index test.py (allow-list, anchors resolve, chunk size, never stale)."
 },
 {
 "id": "menus/help-assistant#not-verified-yet",
@@ -360,7 +368,7 @@
 "title": "❓ Help assistant",
 "heading": "Not verified yet",
 "url": "menus/help-assistant.html#not-verified-yet",
-"text": "No live call to Workers AI has been made from CI or from this repo's tooling: the model name and the account's Workers AI access are confirmed on the first deploy (story 9). Free-tier limits and answer quality on the real model are measured in the quality story ( 60)."
+"text": "The deploy workflow checks the worker is up and refuses a request with no sign-in, but no real question has been answered by Workers AI from CI. The model name, the account's Workers AI access, free-tier limits and answer quality are confirmed by asking real questions in the app after deploy (stories 60 and 63). 👍/👎 feedback buttons come with the quality story."
 },
 {
 "id": "menus/overview#overview",

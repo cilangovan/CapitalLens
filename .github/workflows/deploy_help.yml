@@ -1,7 +1,7 @@
 name: Deploy Help assistant worker
 
-# Epic #54. A separate worker on purpose: no service key, no database. Only Workers AI (open-source model, free tier) and the
-# Supabase URL + anon key (to check "is this a signed-in user?"). Kill switch: set HELP_BOT_ENABLED to false and redeploy (or in the dashboard).
+# Epic #54. A separate worker on purpose: no service key, no database, no secrets. Only Workers AI (open-source model, free tier);
+# the sign-in check uses the public project URLs/publishable keys already in the pages, and capitallens-proxy /session/check for the legacy page. Kill switch: set HELP_BOT_ENABLED to false and redeploy (or in the dashboard).
 on:
   push:
     paths:
@@ -21,16 +21,20 @@ jobs:
         env:
           CF_API_TOKEN: ${{ secrets.CF_API_TOKEN }}
           CF_ACCOUNT_ID: ${{ secrets.CF_ACCOUNT_ID }}
-          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
-          SUPABASE_KEY: ${{ secrets.SUPABASE_KEY }}
         run: |
           NAME=capitallens-help
           curl -s -X PUT \
             "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/scripts/${NAME}" \
             -H "Authorization: Bearer ${CF_API_TOKEN}" \
-            -F "metadata={\"main_module\":\"help.js\",\"compatibility_date\":\"2025-01-01\",\"bindings\":[{\"type\":\"ai\",\"name\":\"AI\"},{\"type\":\"plain_text\",\"name\":\"SUPABASE_URL\",\"text\":\"${SUPABASE_URL}\"},{\"type\":\"plain_text\",\"name\":\"SUPABASE_ANON_KEY\",\"text\":\"${SUPABASE_KEY}\"},{\"type\":\"plain_text\",\"name\":\"HELP_BOT_ENABLED\",\"text\":\"true\"}]};type=application/json" \
+            -F "metadata={\"main_module\":\"help.js\",\"compatibility_date\":\"2025-01-01\",\"bindings\":[{\"type\":\"ai\",\"name\":\"AI\"},{\"type\":\"plain_text\",\"name\":\"HELP_BOT_ENABLED\",\"text\":\"true\"}]};type=application/json" \
             -F "help.js=@cloudflare-worker/help.js;type=application/javascript+module" \
             | python3 -c "import sys,json; d=json.load(sys.stdin); print('✓ Deployed' if d.get('success') else f'✗ Failed: {d}'); sys.exit(0 if d.get('success') else 1)"
           curl -s -X POST "https://api.cloudflare.com/client/v4/accounts/${CF_ACCOUNT_ID}/workers/scripts/${NAME}/subdomain" \
             -H "Authorization: Bearer ${CF_API_TOKEN}" -H "Content-Type: application/json" \
             -d '{"enabled":true}' | python3 -c "import sys,json; d=json.load(sys.stdin); print('subdomain enabled' if d.get('success') else f'subdomain: {d}')"
+      - name: Smoke test (worker is up, refuses a request with no sign-in)
+        run: |
+          sleep 8
+          code=$(curl -s -o /dev/null -w '%{http_code}' -X POST https://capitallens-help.itsme-daf.workers.dev/help/ask -H 'Origin: https://cilangovan.github.io' -H 'Content-Type: application/json' -d '{"question":"hello"}')
+          echo "unauthenticated request -> HTTP $code (expect 401)"
+          [ "$code" = "401" ]

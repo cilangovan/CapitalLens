@@ -223,6 +223,15 @@ check("Paper trading: on every dashboard, fake money only (no order or key code)
 check("Paper trading: unit tests, layout test (in CI) and the documentation exist",
       (ROOT / "tests/zk_paper_test.mjs").exists() and "paper_layout_test.py" in (ROOT / ".github/workflows/ui_tests.yml").read_text() and "Paper trading" in (ROOT / "documentation/menus/swing.md").read_text() and "never places real trades" in (ROOT / "CLAUDE.md").read_text())
 
+_hb = (ROOT / "docs/js/helpbot.js").read_text(); _hw = (ROOT / "cloudflare-worker/help.js").read_text()
+check("Help assistant: ❓ button on every dashboard, CSP allows only our help worker, chat never sends holdings/keys (client blocks secrets, no innerHTML)",
+      all("helpbot.js" in (ROOT / p).read_text() and "capitallens-help.itsme-daf.workers.dev" in (ROOT / p).read_text() for p in ("docs/index.html", "docs/demo/index.html", "docs/app/index.html", "docs/zkapp/index.html", "docs/zkapp-prod/index.html"))
+      and "hbLooksSensitive" in _hb and "innerHTML" not in _hb and "ZKCTX" not in _hb and "enc_rows" not in _hb and "localStorage" not in _hb)
+check("Help assistant: worker is docs-only (no database or service key), never logs question text, has a kill switch, tests + layout test (in CI) + docs exist",
+      "SERVICE_KEY" not in _hw and "enc_rows" not in _hw and "HELP_BOT_ENABLED" in _hw and "console.log(JSON.stringify({ event: 'help_ask', found, ok, ms" in _hw.replace("\n", " ")
+      and (ROOT / "tests/zk_help_worker_test.mjs").exists() and (ROOT / "tests/zk_helpbot_test.mjs").exists() and "help_layout_test.py" in (ROOT / ".github/workflows/ui_tests.yml").read_text()
+      and "buy/sell/price advice" in (ROOT / "CLAUDE.md").read_text() and (ROOT / "documentation/menus/help-assistant.md").exists())
+
 print("\nstandards: " + ("all good" if not bad else f"{bad} failed")); sys.exit(1 if bad else 0)
 
 # No fixed budget anywhere (owner decides the amount at decision time): engines, worker, shim, watchlist UI and demo seeds

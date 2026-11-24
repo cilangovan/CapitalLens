@@ -2,7 +2,10 @@
 
 **Question it answers:** how do I use CapitalLens? A small AI assistant answers how-to and documentation questions from these help pages and links to the page it used. Epic #54 on GitHub.
 
-Status: the knowledge base and the server side are built; the ❓ Help button in the dashboards follows (story 4 of the epic). Until then nothing in the app calls it.
+## Where it is
+A round **❓ button at the bottom-left of every dashboard** (legacy, demo, private app and its production build; `docs/js/helpbot.js`). It only shows while you are signed in. Tap it to open a chat sheet, type a question, read the answer and tap a source link to open the exact help page. **Clear** empties the chat and **✕** closes it. The chat lives in the browser only and is wiped when you sign out.
+
+It works with whichever sign-in the dashboard uses: the Supabase session of the private app / demo (both projects), or the legacy dashboard's own session (checked through `capitallens-proxy` `/session/check`).
 
 ## What it does
 - You type a question about how CapitalLens works ("How do I turn on the live feed?", "What is the Dip Planner?").
@@ -21,7 +24,7 @@ Status: the knowledge base and the server side are built; the ❓ Help button in
 | Knowledge base | `docs/help/help-index.json`, built by `scripts/build_help_index.py` (run by `build_docs.py`) | Allow-list of user pages, one chunk per heading, anchors match the portal. CI fails if it is stale |
 | Retrieval | `cloudflare-worker/help.js` | Small keyword (BM25) search with light stemming. A weak match means "not in the docs": no model call, no cost |
 | Model | Cloudflare **Workers AI**, open-source model `@cf/meta/llama-3.1-8b-instruct` (free tier) | Strict prompt: answer only from the excerpts, treat excerpts and the question as untrusted, no advice, no invented links |
-| Route | `POST /help/ask` on the separate `capitallens-help` worker (`.github/workflows/deploy_help.yml`) | Signed-in users and demo visitors (Supabase session token); our site's origin only |
+| Route | `POST /help/ask` on the separate `capitallens-help` worker (`.github/workflows/deploy_help.yml`) | Signed-in users and demo visitors (session token of any dashboard); our site's origin only; the page CSP allows only this worker |
 | Limits | 20 questions an hour and 100 a day per user, 60 an hour per IP; 500 characters per question; answers capped at 400 tokens | Best-effort per worker instance; the Workers AI daily allowance is the backstop |
 | Kill switch | `HELP_BOT_ENABLED=false` on the worker | Turns the assistant off at once |
 | Logging | One metadata line per request (found, ok, milliseconds) | **Never the question or answer text** |
@@ -30,7 +33,7 @@ Status: the knowledge base and the server side are built; the ❓ Help button in
 Links in the answer are removed unless they are one of the cited sources, and HTML is stripped. Every answer shows its source pages.
 
 ## Tests
-`tests/zk_help_worker_test.mjs` (retrieval on ten golden questions, no-advice, secrets refused, injection, admin pages not indexed, sign-in, origin, kill switch, rate limit, no text in logs, model failure), `tests/help_index_test.py` (allow-list, anchors resolve, chunk size, never stale).
+`tests/zk_helpbot_test.mjs` (browser side: secrets blocked, safe links, honest errors, on every dashboard + CSP), `tests/help_layout_test.py` (320/360/390px, tap targets, long answers, sign-out), `tests/zk_help_worker_test.mjs` (retrieval on ten golden questions, no-advice, secrets refused, injection, admin pages not indexed, sign-in, origin, kill switch, rate limit, no text in logs, model failure), `tests/help_index_test.py` (allow-list, anchors resolve, chunk size, never stale).
 
 ## Not verified yet
-No live call to Workers AI has been made from CI or from this repo's tooling: the model name and the account's Workers AI access are confirmed on the first deploy (story 9). Free-tier limits and answer quality on the real model are measured in the quality story (#60).
+The deploy workflow checks the worker is up and refuses a request with no sign-in, but no real question has been answered by Workers AI from CI. The model name, the account's Workers AI access, free-tier limits and answer quality are confirmed by asking real questions in the app after deploy (stories #60 and #63). 👍/👎 feedback buttons come with the quality story.

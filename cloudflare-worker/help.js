@@ -5,8 +5,9 @@
  *         -> {answer, sources:[{title,url}], found}
  *
  * Deliberately separate from capitallens-proxy and capitallens-relay. What it can and cannot do (keep it auditable):
- *   - bindings: Workers AI (open-source model, free tier), SUPABASE_URL + SUPABASE_ANON_KEY (only to ask "is this token a signed-in user?"),
- *     optional HELP_BOT_ENABLED / HELP_MODEL / HELP_INDEX_URL. No service key, no database, no storage.
+ *   - bindings: Workers AI (open-source model, free tier); optional HELP_BOT_ENABLED / HELP_MODEL / HELP_INDEX_URL. No service key, no database, no storage.
+ *   - sign-in check ("is this a signed-in user?") with the token the dashboard already has: a Supabase session token is checked against the demo/private-app
+ *     project (public URL + publishable key, the same ones the pages ship), and the legacy dashboard's own session token against capitallens-proxy /session/check.
  *   - it only ever sees the question typed into the help box and the public help index (docs/help/help-index.json, user-facing pages only).
  *     It never receives holdings, ciphertext, keys or Trading 212 credentials, and it refuses messages that look like a key, password or card number.
  *   - it never logs question or answer text: one metadata line per request (found / ok / ms), nothing else.
@@ -21,6 +22,12 @@ const NOT_FOUND = "I couldn't find that in the CapitalLens help pages. Try rephr
 const NO_ADVICE = "I can't tell you what to buy or sell, or where a price is going. I can explain how CapitalLens reads its signals, for example how the Dip Planner and Strategy tab work. You decide the amount and the trade.";
 const UNAVAILABLE = 'The help assistant is unavailable right now. Please use the Documentation pages (footer link).';
 
+// Public values (the pages ship them; publishable keys are meant for browsers). tests/zk_help_worker_test.mjs checks they match the dashboards.
+const PROJECTS = [
+  { url: 'https://ggprfdetivzekjxlpvyq.supabase.co', key: 'sb_publishable_hghWk6EbuQPe2nYDgvmU2w_XPgajsHK' },   // demo + private app (test)
+  { url: 'https://kloqkcxchstfoljpqcbq.supabase.co', key: 'sb_publishable_XXLlyHUZpaiCZkAb6u5NWQ_bePWcmGf' },   // private app (production)
+];
+const LEGACY_PROXY = 'https://capitallens-proxy.itsme-daf.workers.dev';
 const SECURITY_HEADERS = { 'X-Content-Type-Options': 'nosniff', 'Cache-Control': 'no-store', 'Referrer-Policy': 'no-referrer' };
 const cors = (origin) => ({ 'Access-Control-Allow-Origin': origin, 'Access-Control-Allow-Methods': 'POST,OPTIONS', 'Access-Control-Allow-Headers': 'Content-Type,Authorization', 'Access-Control-Max-Age': '600', Vary: 'Origin' });
 const allowedOrigins = (env) => (env.ALLOWED_ORIGINS ? String(env.ALLOWED_ORIGINS).split(',').map(s => s.trim()).filter(Boolean) : ORIGINS);
@@ -78,13 +85,22 @@ function retrieve(idx, question) {
 // ── sign-in check + rate limits (best-effort, per isolate; Workers AI's own daily cap is the backstop) ──
 const SESSIONS = new Map(), HITS = new Map();
 async function sha(s) { return [...new Uint8Array(await crypto.subtle.digest('SHA-256', new TextEncoder().encode(s)))].map(b => b.toString(16).padStart(2, '0')).join(''); }
-async function whoIs(env, token) {                                  // any signed-in Supabase user (customers and demo visitors alike); returns a stable id or null
-  if (!token || token.length > 4000 || !env.SUPABASE_URL || !env.SUPABASE_ANON_KEY) return null;
+async function whoIs(env, token) {                                  // any signed-in user of any dashboard; returns a stable id or null
+  if (!token || token.length > 4000) return null;
   const h = await sha(token), hit = SESSIONS.get(h); if (hit && hit.exp > Date.now()) return hit.id;
-  const r = await fetch(`${env.SUPABASE_URL}/auth/v1/user`, { headers: { apikey: env.SUPABASE_ANON_KEY, Authorization: 'Bearer ' + token } });
-  if (!r.ok) return null; const u = await r.json().catch(() => null); if (!u || !u.id) return null;
-  SESSIONS.set(h, { id: u.id, exp: Date.now() + 60_000 }); if (SESSIONS.size > 200) SESSIONS.delete(SESSIONS.keys().next().value);
-  return u.id;
+  let id = null;
+  if (token.split('.').length === 3) {                               // Supabase JWT: ask the project (customers, demo visitors)
+    for (const p of PROJECTS) {
+      const r = await fetch(`${p.url}/auth/v1/user`, { headers: { apikey: p.key, Authorization: 'Bearer ' + token } }).catch(() => null);
+      const u = r && r.ok ? await r.json().catch(() => null) : null; if (u && u.id) { id = u.id; break; }
+    }
+  } else {                                                           // legacy dashboard: its own session token, verified by its worker (single owner)
+    const r = await fetch(`${env.LEGACY_PROXY_URL || LEGACY_PROXY}/session/check`, { headers: { Authorization: 'Bearer ' + token } }).catch(() => null);
+    if (r && r.ok) id = 'legacy-owner';
+  }
+  if (!id) return null;
+  SESSIONS.set(h, { id, exp: Date.now() + 60_000 }); if (SESSIONS.size > 200) SESSIONS.delete(SESSIONS.keys().next().value);
+  return id;
 }
 function over(key, limit, windowMs) {                              // true = over the limit; counts this call otherwise
   const now = Date.now(), arr = (HITS.get(key) || []).filter(t => now - t < windowMs);
