@@ -1,0 +1,194 @@
+{
+ "generated": "2026-11-24T04:17:16.590Z",
+ "symbols": 111,
+ "requested": 114,
+ "failed": [
+  "BK",
+  "BDEV.L",
+  "CRH.L"
+ ],
+ "years": 5,
+ "cost": 0.004,
+ "cut": "2024-11-21",
+ "variants_tried": 1,
+ "chosen": "minervini_natural",
+ "config": {
+  "strat": "minervini",
+  "exit": "natural"
+ },
+ "all": {
+  "trades": 550,
+  "winRate": 40.4,
+  "expectancy": 0.066,
+  "avgWin": 5.12,
+  "avgLoss": -3.36,
+  "profitFactor": 1.03,
+  "avgR": 0.009,
+  "maxDrawdown10pct": 12.6
+ },
+ "in_sample": {
+  "trades": 297,
+  "winRate": 42.1,
+  "expectancy": 0.25,
+  "avgWin": 4.77,
+  "avgLoss": -3.04,
+  "profitFactor": 1.14,
+  "avgR": 0.036,
+  "maxDrawdown10pct": 7.8
+ },
+ "out_of_sample": {
+  "trades": 253,
+  "winRate": 38.3,
+  "expectancy": -0.151,
+  "avgWin": 5.57,
+  "avgLoss": -3.71,
+  "profitFactor": 0.93,
+  "avgR": -0.022,
+  "maxDrawdown10pct": 12.6
+ },
+ "baseline": {
+  "trades": 5459,
+  "winRate": 49.7,
+  "expectancy": 0.042,
+  "avgWin": 5.24,
+  "avgLoss": -5.1,
+  "profitFactor": 1.02,
+  "avgR": null,
+  "maxDrawdown10pct": 78.1
+ },
+ "by_setup": {
+  "minervini": {
+   "trades": 550,
+   "winRate": 40.4,
+   "expectancy": 0.066,
+   "avgWin": 5.12,
+   "avgLoss": -3.36,
+   "profitFactor": 1.03,
+   "avgR": 0.009,
+   "maxDrawdown10pct": 12.6
+  }
+ },
+ "variants": {
+  "minervini_natural": {
+   "all": {
+    "trades": 550,
+    "winRate": 40.4,
+    "expectancy": 0.066,
+    "avgWin": 5.12,
+    "avgLoss": -3.36,
+    "profitFactor": 1.03,
+    "avgR": 0.009,
+    "maxDrawdown10pct": 12.6
+   },
+   "in_sample": {
+    "trades": 297,
+    "winRate": 42.1,
+    "expectancy": 0.25,
+    "avgWin": 4.77,
+    "avgLoss": -3.04,
+    "profitFactor": 1.14,
+    "avgR": 0.036,
+    "maxDrawdown10pct": 7.8
+   },
+   "out_of_sample": {
+    "trades": 253,
+    "winRate": 38.3,
+    "expectancy": -0.151,
+    "avgWin": 5.57,
+    "avgLoss": -3.71,
+    "profitFactor": 0.93,
+    "avgR": -0.022,
+    "maxDrawdown10pct": 12.6
+   },
+   "baseline": {
+    "trades": 5459,
+    "winRate": 49.7,
+    "expectancy": 0.042,
+    "avgWin": 5.24,
+    "avgLoss": -5.1,
+    "profitFactor": 1.02,
+    "avgR": null,
+    "maxDrawdown10pct": 78.1
+   },
+   "by_setup": {
+    "minervini": {
+     "trades": 550,
+     "winRate": 40.4,
+     "expectancy": 0.066,
+     "avgWin": 5.12,
+     "avgLoss": -3.36,
+     "profitFactor": 1.03,
+     "avgR": 0.009,
+     "maxDrawdown10pct": 12.6
+    }
+   },
+   "exits": {
+    "time": 173,
+    "signal": 332,
+    "stop": 45
+   },
+   "pct_5plus": 16,
+   "by_year": {
+    "2022": {
+     "trades": 3,
+     "winRate": 33.3,
+     "expectancy": -2.388,
+     "avgWin": 2.05,
+     "avgLoss": -4.61,
+     "profitFactor": 0.22,
+     "avgR": -0.341,
+     "maxDrawdown10pct": 0.7
+    },
+    "2023": {
+     "trades": 135,
+     "winRate": 43,
+     "expectancy": 0.307,
+     "avgWin": 4.54,
+     "avgLoss": -2.89,
+     "profitFactor": 1.19,
+     "avgR": 0.044,
+     "maxDrawdown10pct": 7.8
+    },
+    "2024": {
+     "trades": 173,
+     "winRate": 41.6,
+     "expectancy": 0.346,
+     "avgWin": 5.23,
+     "avgLoss": -3.13,
+     "profitFactor": 1.19,
+     "avgR": 0.049,
+     "maxDrawdown10pct": 5.5
+    },
+    "2025": {
+     "trades": 136,
+     "winRate": 41.2,
+     "expectancy": 0.417,
+     "avgWin": 5.76,
+     "avgLoss": -3.32,
+     "profitFactor": 1.21,
+     "avgR": 0.06,
+     "maxDrawdown10pct": 3.8
+    },
+    "2026": {
+     "trades": 103,
+     "winRate": 34,
+     "expectancy": -1.114,
+     "avgWin": 4.94,
+     "avgLoss": -4.23,
+     "profitFactor": 0.6,
+     "avgR": -0.159,
+     "maxDrawdown10pct": 12.5
+    }
+   },
+   "validation": {
+    "ok": false,
+    "why": "Out-of-sample expectancy is -0.151% per trade after costs: not positive, so no entries are shown."
+   }
+  }
+ },
+ "caveat": "Today’s surviving stocks only (survivorship bias), the quality screen and earnings dates are not in the test, and fills at the stop are assumed with no extra slippage on gaps beyond the open price. Confirmation run: only minervini_natural was tested here, on stocks it was not chosen on.",
+ "validation": {
+  "ok": false,
+  "why": "Out-of-sample expectancy is -0.151% per trade after costs: not positive, so no entries are shown."
+ }
+}
