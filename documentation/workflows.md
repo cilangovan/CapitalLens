@@ -52,6 +52,7 @@ The refresh runs in the browser, so a reload, a closed tab or lost signal kills 
 | **Security checks** | Daily static checks (`tests/security_check.py`): policy, secrets, headers |
 | **Deploy Cloudflare Worker** (`deploy_worker.yml`) | Publishes `cloudflare-worker/worker.js` when it changes |
 | **Deploy Cloudflare Relay** (`deploy_relay.yml`) | Publishes the stateless `cloudflare-worker/relay.js` when it changes |
+| **Deploy Help assistant worker** (`deploy_help.yml`) | Runs `tests/zk_help_worker_test.mjs`, then publishes `cloudflare-worker/help.js` (Workers AI binding, no database) when it changes. See `menus/help-assistant.md` |
 | **Vendor front-end libraries** | Keeps the vendored chart library pinned |
 | **Cleanup old workflow runs** | Weekly housekeeping |
 

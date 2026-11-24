@@ -1,0 +1,1166 @@
+{
+"version": 1,
+"pages": [
+"README.md",
+"product-overview.md",
+"menus/alerts.md",
+"menus/analyst.md",
+"menus/app-shell.md",
+"menus/help-assistant.md",
+"menus/overview.md",
+"menus/pnl-bubbles.md",
+"menus/positions.md",
+"menus/profit-booking.md",
+"menus/returns.md",
+"menus/settings-and-account.md",
+"menus/strategy.md",
+"menus/swing.md",
+"menus/watchlist.md"
+],
+"chunks": [
+{
+"id": "README#capitallens-documentation",
+"page": "README.md",
+"title": "CapitalLens documentation",
+"heading": "CapitalLens documentation",
+"url": "index.html#capitallens-documentation",
+"text": "CapitalLens is a portfolio dashboard for Trading 212 investors: positions, pies, analyst views, strategy and profit-booking guidance, returns, a watchlist with IPO Watch, and an alert inbox. This is the complete product documentation. It lives in git next to the code (documentation/), is published as this portal (/help/) and is linked from the footer of every dashboard."
+},
+{
+"id": "README#where-to-look",
+"page": "README.md",
+"title": "CapitalLens documentation",
+"heading": "Where to look",
+"url": "index.html#where-to-look",
+"text": "; I want to know… ; Read ; ; What the product is, who it is for, the plans ; Product overview ; ; What each menu does, what each card shows, which data it uses ; Menus — one page per menu ; ; Colours, type, components, mobile rules, how cards collapse ; UI & style guide ; ; What is in the database, who writes each table, how data flows ; Database & data flows · Table reference ; ; What runs when, and on what schedule ; Workflows & schedules · Workflow reference ; ; Keys, encryption, what the server can and cannot see ; Architecture & security ; ; How to add a feature or fix a bug the project's way ; Engineering guide ;"
+},
+{
+"id": "README#the-menus",
+"page": "README.md",
+"title": "CapitalLens documentation",
+"heading": "The menus",
+"url": "index.html#the-menus",
+"text": "; Menu ; Purpose in one line ; ; 📊 Overview ; Account totals, gain by position, split by pie, sector and country maps, active alerts ; ; 🫧 P&L Bubbles ; Every holding as a bubble sized and coloured by profit or loss over 1D / 1W / 1M ; ; 📋 Positions ; Holdings grouped by pie, plus an Untagged group; tap any pie for its value chart ; ; 🔬 Analyst ; Analyst ratings per holding and Peter Lynch buckets ; ; 🎯 Strategy ; Institutional money flow, holding decisions, entry analysis, weekly allocation ; ; 💰 Profit Booking ; Staged profit-booking and capital-protection guidance with a rulebook ; ; 📈 Returns ; Real returns from your Trading 212 cash flows: money in, profit, charts ; ; ⭐ Watchlist & IPO Watch ; Stocks, commodities and crypto you track, plus IPOs across all markets ; ; 🔔 Alerts ; Review reports that behave like an inbox: read, archive, clear, restore ;"
+},
+{
+"id": "README#how-this-documentation-is-kept-true",
+"page": "README.md",
+"title": "CapitalLens documentation",
+"heading": "How this documentation is kept true",
+"url": "index.html#how-this-documentation-is-kept-true",
+"text": "- It is in git and changes in the same commit as the feature (standing rule in CLAUDE.md). - The table, workflow and menu references are generated from the code , so they cannot drift. - tests/standards test.py fails the build if a menu has no page, a page is missing from the portal, the generated pages are stale, or a dashboard lacks the footer link. - Every dashboard footer links here: 📘 Documentation . Honest-data rule: where a number cannot be verified the app says so. These pages name the source of every figure and call out what is estimated."
+},
+{
+"id": "product-overview#what-it-is",
+"page": "product-overview.md",
+"title": "Product overview",
+"heading": "What it is",
+"url": "product-overview.html#what-it-is",
+"text": "CapitalLens turns a Trading 212 account into a decision dashboard: where the money is, how it is performing, what the data says about each holding, and when to buy, hold, trim or review. It is built phone-first and shows its working: every figure names its source, and anything that cannot be verified is labelled rather than guessed."
+},
+{
+"id": "product-overview#who-it-is-for",
+"page": "product-overview.md",
+"title": "Product overview",
+"heading": "Who it is for",
+"url": "product-overview.html#who-it-is-for",
+"text": "Self-directed Trading 212 investors who use pies and want one place for allocation, performance, alerts and a weekly plan. The product is heading to a public multi-user service: self-service sign-up, Trading 212 connected first (Zerodha later) by read-only API key, and a demo user with mock data. Today one real user (the owner) and the demo user are testing."
+},
+{
+"id": "product-overview#the-dashboards-variants",
+"page": "product-overview.md",
+"title": "Product overview",
+"heading": "The dashboards (variants)",
+"url": "product-overview.html#the-dashboards-variants",
+"text": "All variants share the same dashboard code; they differ only in how they sign in and where data comes from. ; Variant ; Path ; Data and sign-in ; Use ; ; Private (zero-knowledge) ; /zkapp-prod/ ; Production project; data encrypted in the browser with a key only the user holds ; The real product ; ; Private (test) ; /zkapp/ ; Demo project, same encrypted shell ; Testing the private shell ; ; Multi-user ; /app/ ; Production project, ordinary sign-in ; Earlier multi-user build ; ; Demo ; /demo/ ; Demo project, synthetic data ; Showing the product ; ; Legacy ; / ; Cloudflare worker proxy, single owner ; Original dashboard, kept until results match ; Account creation, recovery and upgrade live on the account page (/zk-prod/). See App shell."
+},
+{
+"id": "product-overview#investing-approach-it-supports",
+"page": "product-overview.md",
+"title": "Product overview",
+"heading": "Investing approach it supports",
+"url": "product-overview.html#investing-approach-it-supports",
+"text": "- Base-case growth about 10% a year , optimistic 15% . - Aggressive mode: the monthly maximum budget is paid in weekly across pies, weighted by performance, market fear and news. Weightings are calibrated to a recurring £30 contribution on the Trading 212 pies (Defence, Atomic Resources, Cloud Empire, speculative tech, emerging markets). - Dip alerts, when to sell or buy more, rebalancing advice, and phone notifications. These are screening aids and rule-based estimates, not financial advice ."
+},
+{
+"id": "product-overview#principles",
+"page": "product-overview.md",
+"title": "Product overview",
+"heading": "Principles",
+"url": "product-overview.html#principles",
+"text": "1. Zero knowledge: the server never sees plaintext holdings; per-user data is encrypted in the browser. Only public data (instruments, market cache, IPO calendar) is shared. See Architecture & security. 2. Honest data: no fake \"all clear\"; ratings and prices carry their source; missing data is said to be missing. 3. Mobile first: every section fits 360px and 390px with no sideways scroll; tap targets are at least 40px. 4. Everything collapses, and the open/closed state is remembered per user. 5. One rollout: a feature reaches every dashboard variant, built from the same sources. 6. Nothing runs while the app is closed: the owner opens the app each morning and presses Refresh; sync, alerts and phone push happen then."
+},
+{
+"id": "product-overview#notifications",
+"page": "product-overview.md",
+"title": "Product overview",
+"heading": "Notifications",
+"url": "product-overview.html#notifications",
+"text": "In-app alerts and phone push through ntfy. Email alerts for multiple users are deferred until a sending domain exists."
+},
+{
+"id": "menus/alerts#alerts",
+"page": "menus/alerts.md",
+"title": "🔔 Alerts",
+"heading": "🔔 Alerts",
+"url": "menus/alerts.html#alerts",
+"text": "Question it answers: is any holding outside its plan, and what should I review? Tab id alerts · loader loadAlerts() · docs/js/alerts.js; text built by services/alert service.py / services/alert format.py and, in the private app, docs/zk/alertreport.js / alertfmt.js."
+},
+{
+"id": "menus/alerts#market-signals-live-pre-market-post-market",
+"page": "menus/alerts.md",
+"title": "🔔 Alerts",
+"heading": "Market signals: Live · Pre Market · Post Market",
+"url": "menus/alerts.html#market-signals-live-pre-market-post-market",
+"text": "The Alerts tab opens on three market views, in a card style that groups the signals; the existing 📥 Inbox (below) is one more tab, top right, with its unread badge. ; Card ; What it lists ; ; Major Movement · SMA Crossover ; 100 SMA triggered and 200 SMA triggered : stocks whose close moved from one side of the 100- / 200-day average to the other since the session before (▲ up through it, ▼ down through it, with the average level it crossed) ; ; Major Movement · 52 Week Breakout ; 52 Week High : the close is above every close of the previous year (with the new high) ; Covers your holdings plus your watchlist (a stock in both shows once, tagged Holding ). Each row shows ▲/▼, the name, a Holding / Watchlist tag and the level in the stock's own currency. Three rows show, the rest sit behind View more (N) . The three views, using each stock's own exchange clock (UK and US sessions differ): - ☀️ Live : today's session while it is running (price as of when you opened the tab; UK 08:00–16:30, US 14:30–21:00 UK time)."
+},
+{
+"id": "menus/alerts#market-signals-live-pre-market-post-market.2",
+"page": "menus/alerts.md",
+"title": "🔔 Alerts",
+"heading": "Market signals: Live · Pre Market · Post Market",
+"url": "menus/alerts.html#market-signals-live-pre-market-post-market",
+"text": "- 🌤️ Pre Market : what was already true at today's open = the last completed daily close before today's session. - 🌙 Post Market : today's completed session, once that market has closed. Honest about data: the signals are computed from Yahoo daily closes (one year) fetched when you open the tab , with up to 5 fetches in parallel, cached for 10 minutes, Rescan at the bottom. It is not a real-time feed and nothing is pushed while the app is closed . A 100-day cross needs 101+ sessions, a 200-day cross 201+, a 52-week high 200+ prior sessions; a stock with less history simply gets no such signal. A stock whose chart cannot be read is listed as \"could not be read\" , never shown as clear. Empty views say why (e.g. no market open right now). A screening aid, not advice. Code: engine and cards docs/js/signals.js (analyse, scan, group, html); tabs, scan wiring and Inbox in docs/js/alerts.js; the scan starts only once the Alerts tab is open (alertsShown() from the router). The demo serves its stored mock 1-year charts through demo-shim.js."
+},
+{
+"id": "menus/alerts#market-signals-live-pre-market-post-market.3",
+"page": "menus/alerts.md",
+"title": "🔔 Alerts",
+"heading": "Market signals: Live · Pre Market · Post Market",
+"url": "menus/alerts.html#market-signals-live-pre-market-post-market",
+"text": "Guarded by tests/zk signals test.mjs and tests/signals layout test.py (320/360/390px, every theme)."
+},
+{
+"id": "menus/alerts#alerts-are-review-reports",
+"page": "menus/alerts.md",
+"title": "🔔 Alerts",
+"heading": "Alerts are review reports",
+"url": "menus/alerts.html#alerts-are-review-reports",
+"text": "One house style for every alert (dashboard, phone push, email). Each report contains: 1. Holding weight vs strategic target , with the difference. 2. Threshold check: latest GBP price, daily change, 20-day closing high, drawdown. 3. A review flag. 4. A data-coverage note saying what could and could not be checked. No alert and no \"clear\" status is produced for a holding whose data cannot be verified ; the report says so instead."
+},
+{
+"id": "menus/alerts#support-zone-alerts-private-app-issue-51",
+"page": "menus/alerts.md",
+"title": "🔔 Alerts",
+"heading": "Support-zone alerts (private app, issue #51)",
+"url": "menus/alerts.html#support-zone-alerts-private-app-issue-51",
+"text": "Raised on the morning Refresh (nothing runs while the app is closed) for stocks you hold that have a level in support levels (see Strategy › Support Levels). Type support, in the same review-report style: live price, the zone, distance, your average cost, the source and capture date , a review flag, and \"an external view, not our calculation\". - Transitions only: 🛡️ reached its support zone (from above or approaching; default priority) and 🔻 below its support zone (high priority). The first time a stock is seen its status is only recorded, so stocks already in or below a zone do not flood the inbox. Back above or reclaiming the zone raises nothing. The same alert is not repeated within 24 hours. - Honest about data: the Trading 212 quote currency must equal the zone's currency; if it is unknown or different, nothing is compared and no alert is raised. - Code: analyse() in docs/zk/monitor.js (levels passed in by docs/zkapp/zkapp-tools.js / docs/zk/zk.js); status stored in the encrypted monitor state (support status). Test: tests/zk support alert test.mjs."
+},
+{
+"id": "menus/alerts#inbox-behaviour",
+"page": "menus/alerts.md",
+"title": "🔔 Alerts",
+"heading": "Inbox behaviour",
+"url": "menus/alerts.html#inbox-behaviour",
+"text": "Like email: ; View ; Contents ; ; 📥 Inbox (with unread badge) ; Active alerts ; ; 🗄 Archived ; Kept and dated; retrievable ; ; 🧹 Cleared ; Dismissed; deleted automatically after 30 days ; Actions: ✓ mark read (or tap to open), 🗄 archive , ✕ clear (swipe left on a phone, with an undo toast), ↩ restore from Archived or Cleared back to the Inbox, checkboxes for bulk actions, Clear all read . The 🔔 menu button shows the unread count."
+},
+{
+"id": "menus/alerts#notifications",
+"page": "menus/alerts.md",
+"title": "🔔 Alerts",
+"heading": "Notifications",
+"url": "menus/alerts.html#notifications",
+"text": "- In-app inbox (above). - Phone push through ntfy: save your ntfy topic under ⚙ Settings. Push is sent when you press Refresh, because nothing runs while the app is closed. - Email alerts for multiple users are deferred until a sending domain exists."
+},
+{
+"id": "menus/alerts#data",
+"page": "menus/alerts.md",
+"title": "🔔 Alerts",
+"heading": "Data",
+"url": "menus/alerts.html#data",
+"text": "alerts (columns include read at, archived at, dismissed at). Writes go through the authenticated /alerts/action route (worker or shim). Archived history follows the 45-day live / archive rule in Database & data flows."
+},
+{
+"id": "menus/alerts#tests",
+"page": "menus/alerts.md",
+"title": "🔔 Alerts",
+"heading": "Tests",
+"url": "menus/alerts.html#tests",
+"text": "tests/zk alertreport test.mjs, tests/zk notify test.mjs, tests/ui layout test.py."
+},
+{
+"id": "menus/analyst#analyst",
+"page": "menus/analyst.md",
+"title": "🔬 Analyst",
+"heading": "🔬 Analyst",
+"url": "menus/analyst.html#analyst",
+"text": "Question it answers: what do analysts think of what I hold, and what kind of stock is each one? Tab id analyst · loader loadAnalyst() · docs/js/analyst.js"
+},
+{
+"id": "menus/analyst#cards",
+"page": "menus/analyst.md",
+"title": "🔬 Analyst",
+"heading": "Cards",
+"url": "menus/analyst.html#cards",
+"text": "; Card ; What it shows ; ; Pie rating cards ( pie-ratings) ; One card per pie summarising the analyst consensus of its holdings ; ; Peter Lynch buckets ; Holdings grouped by Lynch's six categories, per pie, with a colour legend ; ; Full Analyst Ratings ( analyst-table-wrap) ; Table: every current holding with rating, target and the Lynch badge ; Only current holdings are listed (ratings are filtered to the latest snapshot's tickers)."
+},
+{
+"id": "menus/analyst#peter-lynch-buckets",
+"page": "menus/analyst.md",
+"title": "🔬 Analyst",
+"heading": "Peter Lynch buckets",
+"url": "menus/analyst.html#peter-lynch-buckets",
+"text": "; Bucket ; Meaning ; ; Fund / ETF ; Not classified as a company ; ; 1 Fast Grower ; High growth ; ; 2 Stalwart ; Large, steady ; ; 3 Cyclical ; Moves with the economic cycle ; ; 4 Slow Grower ; Low growth, often dividends ; ; 5 Turnaround ; Recovering ; ; 6 Asset Play ; Value in assets ; The badge is a rule-based estimate from public fundamentals (growth, profit margin, book value, sector). Hover the badge for the reason and the confidence. A screening aid, not advice . — means \"run Refresh to classify\"; ? means no data, and the hover says why."
+},
+{
+"id": "menus/analyst#data",
+"page": "menus/analyst.md",
+"title": "🔬 Analyst",
+"heading": "Data",
+"url": "menus/analyst.html#data",
+"text": "- analyst ratings (Yahoo Finance via services/analyst service.py; in the private app docs/zk/analystratings.js), with Lynch columns added by db/tenant/14 lynch columns.sql. - The Lynch rules exist twice and are kept in step by a parity test: services/lynch service.py and docs/zk/lynch.js (tests/zk lynch parity test.mjs)."
+},
+{
+"id": "menus/analyst#behaviour",
+"page": "menus/analyst.md",
+"title": "🔬 Analyst",
+"heading": "Behaviour",
+"url": "menus/analyst.html#behaviour",
+"text": "Guest mode shows \"🔒 Sign in to view analyst ratings\". Missing ratings show as missing, never as a neutral rating."
+},
+{
+"id": "menus/analyst#tests",
+"page": "menus/analyst.md",
+"title": "🔬 Analyst",
+"heading": "Tests",
+"url": "menus/analyst.html#tests",
+"text": "tests/zk analystratings test.mjs, tests/zk lynch test.mjs, tests/zk lynch parity test.mjs."
+},
+{
+"id": "menus/app-shell#app-shell-sign-in-header-menu-bar-footer",
+"page": "menus/app-shell.md",
+"title": "App shell: sign-in, header, menu bar, footer",
+"heading": "App shell: sign-in, header, menu bar, footer",
+"url": "menus/app-shell.html#app-shell-sign-in-header-menu-bar-footer",
+"text": "The shell is everything around the nine menus. It is the same in every variant except the sign-in module."
+},
+{
+"id": "menus/app-shell#sign-in-login-screen",
+"page": "menus/app-shell.md",
+"title": "App shell: sign-in, header, menu bar, footer",
+"heading": "Sign-in (#login-screen)",
+"url": "menus/app-shell.html#sign-in-login-screen",
+"text": "; Variant ; How you sign in ; ; Private (/zkapp-prod/) ; Email + password. The password unlocks your encryption key in the browser; nothing readable is sent to the server. Forgotten password: recovery key (see Settings & account). ; ; Multi-user (/app/) ; Email + password (Supabase auth), or create an account. ; ; Demo ; Pre-filled demo user. ; ; Legacy (/) ; Username + password through the Cloudflare worker; master (full view) or guest (values masked). ; No login flash on refresh. The sign-in box is hidden by CSS ( login-screen:not(.show){visibility:hidden}) until the saved-session check finishes. If a session is restored the dashboard appears directly; only if not is the box shown. Guarded by tests/login flash browser test.py and tests/zk login flash test.mjs. Loading state."
+},
+{
+"id": "menus/app-shell#sign-in-login-screen.2",
+"page": "menus/app-shell.md",
+"title": "App shell: sign-in, header, menu bar, footer",
+"heading": "Sign-in (#login-screen)",
+"url": "menus/app-shell.html#sign-in-login-screen",
+"text": "While the saved-session check runs (the key unlock takes a moment) the private app shows a full-screen boot splash : 🔒 CapitalLens, a gold coin that spins and changes between £, $ and € (the symbol changes while the coin is edge-on; with \"reduce motion\" on it stays still and only the symbol changes) and \"Unlocking your private dashboard…\" (after 12 seconds it adds \"Taking longer than usual. Check your connection, then reload.\"). The splash disappears the moment the sign-in box or the dashboard shows, so the screen is never blank. It is pure CSS ( boot-splash in scripts/build zkapp.py). Inside the dashboard every card that is still fetching shows a small spinner beside \"Loading…\" (.loading.busy)."
+},
+{
+"id": "menus/app-shell#header",
+"page": "menus/app-shell.md",
+"title": "App shell: sign-in, header, menu bar, footer",
+"heading": "Header",
+"url": "menus/app-shell.html#header",
+"text": "- Pill: LIVE (legacy), BETA (multi-user), DEMO, PRIVATE (zero-knowledge). - Last updated: age of the newest snapshot. A snapshot older than 12 hours shows a warning so stale numbers never look live. - Guest badge (legacy): values are masked. - ⚙ Settings (private) or 🔑 Password (legacy), and Sign out ."
+},
+{
+"id": "menus/app-shell#menu-bar-nav",
+"page": "menus/app-shell.md",
+"title": "App shell: sign-in, header, menu bar, footer",
+"heading": "Menu bar (nav)",
+"url": "menus/app-shell.html#menu-bar-nav",
+"text": "Nine buttons call showTab(id, button) (router). A tab loads its data the first time it is opened and is cached for the session. The 🔔 Alerts button shows an unread badge. ; Button ; Tab id ; ; 📊 Overview ; overview ; ; 🫧 P&L Bubbles ; heatmap ; ; 📋 Positions ; positions ; ; 🔬 Analyst ; analyst ; ; 🎯 Strategy ; strategy ; ; 💰 Profit Booking ; profit ; ; 📈 Returns ; returns ; ; ⭐ Watchlist ; watchlist (also loads IPO Watch) ; ; 🔔 Alerts ; alerts ;"
+},
+{
+"id": "menus/app-shell#footer",
+"page": "menus/app-shell.md",
+"title": "App shell: sign-in, header, menu bar, footer",
+"heading": "Footer",
+"url": "menus/app-shell.html#footer",
+"text": "Every dashboard ends with a footer containing 📘 Documentation , a link to this portal (/help/). It is a standing requirement: tests/standards test.py fails if a dashboard page lacks the link. The link is at least 40px tall on a phone."
+},
+{
+"id": "menus/app-shell#cards-and-collapsing",
+"page": "menus/app-shell.md",
+"title": "App shell: sign-in, header, menu bar, footer",
+"heading": "Cards and collapsing",
+"url": "menus/app-shell.html#cards-and-collapsing",
+"text": "Any .card with an <h3 collapses when its heading is tapped. The open/closed state is stored per user in user ui prefs and restored on the next login (docs/js/collapse.js). See the UI & style guide."
+},
+{
+"id": "menus/app-shell#guest-and-demo-behaviour",
+"page": "menus/app-shell.md",
+"title": "App shell: sign-in, header, menu bar, footer",
+"heading": "Guest and demo behaviour",
+"url": "menus/app-shell.html#guest-and-demo-behaviour",
+"text": "Legacy guest mode masks money values and replaces most cards with a \"🔒 Sign in\" message. The demo shows synthetic data only; nothing in it is a real holding."
+},
+{
+"id": "menus/app-shell#source",
+"page": "menus/app-shell.md",
+"title": "App shell: sign-in, header, menu bar, footer",
+"heading": "Source",
+"url": "menus/app-shell.html#source",
+"text": "docs/index.html (legacy shell), docs/demo/index.html (demo shell), docs/js/auth.js (legacy sign-in), docs/zkapp/zkapp-auth.js (private sign-in), docs/js/router.js, docs/js/collapse.js. The other variants are generated from these by scripts/build app.py and scripts/build zkapp.py."
+},
+{
+"id": "menus/help-assistant#help-assistant",
+"page": "menus/help-assistant.md",
+"title": "❓ Help assistant",
+"heading": "❓ Help assistant",
+"url": "menus/help-assistant.html#help-assistant",
+"text": "Question it answers: how do I use CapitalLens? A small AI assistant answers how-to and documentation questions from these help pages and links to the page it used. Epic 54 on GitHub. Status: the knowledge base and the server side are built; the ❓ Help button in the dashboards follows (story 4 of the epic). Until then nothing in the app calls it."
+},
+{
+"id": "menus/help-assistant#what-it-does",
+"page": "menus/help-assistant.md",
+"title": "❓ Help assistant",
+"heading": "What it does",
+"url": "menus/help-assistant.html#what-it-does",
+"text": "- You type a question about how CapitalLens works (\"How do I turn on the live feed?\", \"What is the Dip Planner?\"). - It finds the matching help sections and writes a short answer from them, with up to three links to the exact page. - If the help pages do not cover the question it says so and points to the Documentation. It does not guess."
+},
+{
+"id": "menus/help-assistant#what-it-never-does",
+"page": "menus/help-assistant.md",
+"title": "❓ Help assistant",
+"heading": "What it never does",
+"url": "menus/help-assistant.html#what-it-never-does",
+"text": "- No financial advice. It will not say what to buy or sell, or where a price is going. It can explain how the Dip Planner and Strategy tab read their signals; you decide the amount and the trade. - No access to your portfolio. It only sees the question you type. It never receives holdings, encrypted data, keys or Trading 212 credentials, and CapitalLens stays zero-knowledge. - No secrets. A message that looks like an API key, password or card number is refused before it is sent anywhere. - No internals. It only knows the user-facing pages (home, product overview, one page per menu). Security, architecture, operations, engineering and database pages are never indexed."
+},
+{
+"id": "menus/help-assistant#how-it-works",
+"page": "menus/help-assistant.md",
+"title": "❓ Help assistant",
+"heading": "How it works",
+"url": "menus/help-assistant.html#how-it-works",
+"text": "; Piece ; Where ; Notes ; ; Knowledge base ; docs/help/help-index.json, built by scripts/build help index.py (run by build docs.py) ; Allow-list of user pages, one chunk per heading, anchors match the portal. CI fails if it is stale ; ; Retrieval ; cloudflare-worker/help.js ; Small keyword (BM25) search with light stemming."
+},
+{
+"id": "menus/help-assistant#how-it-works.2",
+"page": "menus/help-assistant.md",
+"title": "❓ Help assistant",
+"heading": "How it works",
+"url": "menus/help-assistant.html#how-it-works",
+"text": "A weak match means \"not in the docs\": no model call, no cost ; ; Model ; Cloudflare Workers AI , open-source model @cf/meta/llama-3.1-8b-instruct (free tier) ; Strict prompt: answer only from the excerpts, treat excerpts and the question as untrusted, no advice, no invented links ; ; Route ; POST /help/ask on the separate capitallens-help worker (.github/workflows/deploy help.yml) ; Signed-in users and demo visitors (Supabase session token); our site's origin only ; ; Limits ; 20 questions an hour and 100 a day per user, 60 an hour per IP; 500 characters per question; answers capped at 400 tokens ; Best-effort per worker instance; the Workers AI daily allowance is the backstop ; ; Kill switch ; HELP BOT ENABLED=false on the worker ; Turns the assistant off at once ; ; Logging ; One metadata line per request (found, ok, milliseconds) ; Never the question or answer text ;"
+},
+{
+"id": "menus/help-assistant#answer-hygiene",
+"page": "menus/help-assistant.md",
+"title": "❓ Help assistant",
+"heading": "Answer hygiene",
+"url": "menus/help-assistant.html#answer-hygiene",
+"text": "Links in the answer are removed unless they are one of the cited sources, and HTML is stripped. Every answer shows its source pages."
+},
+{
+"id": "menus/help-assistant#tests",
+"page": "menus/help-assistant.md",
+"title": "❓ Help assistant",
+"heading": "Tests",
+"url": "menus/help-assistant.html#tests",
+"text": "tests/zk help worker test.mjs (retrieval on ten golden questions, no-advice, secrets refused, injection, admin pages not indexed, sign-in, origin, kill switch, rate limit, no text in logs, model failure), tests/help index test.py (allow-list, anchors resolve, chunk size, never stale)."
+},
+{
+"id": "menus/help-assistant#not-verified-yet",
+"page": "menus/help-assistant.md",
+"title": "❓ Help assistant",
+"heading": "Not verified yet",
+"url": "menus/help-assistant.html#not-verified-yet",
+"text": "No live call to Workers AI has been made from CI or from this repo's tooling: the model name and the account's Workers AI access are confirmed on the first deploy (story 9). Free-tier limits and answer quality on the real model are measured in the quality story ( 60)."
+},
+{
+"id": "menus/overview#overview",
+"page": "menus/overview.md",
+"title": "📊 Overview",
+"heading": "📊 Overview",
+"url": "menus/overview.html#overview",
+"text": "Question it answers: how is the whole account doing right now, and what needs attention? Tab id overview · loader loadOverview() · docs/js/overview.js Market Mood ( mood-section, top of Overview only; stats strip below it): a gauge per market. Tap 📊 Markets to open the chip strip: Crypto, US, UK, EU/DE, Japan, India, China, Italy, Spain, NL, Taiwan. Each tab fetches its own index (Yahoo daily closes via the relay, cached 15 minutes), so it works for countries you do not hold; a failed fetch says so for a minute instead of spinning. Open, the chips wrap onto as many rows as needed so every market is reachable on a 360px phone (they were clipped after Germany before); picking one closes the strip. Guarded by tests/mood layout test.py (CI: ui tests). No alert list on Overview: alerts are shown only on the 🔔 Alerts dashboard; Overview keeps just the Alerts count tile in the stats strip."
+},
+{
+"id": "menus/overview#cards",
+"page": "menus/overview.md",
+"title": "📊 Overview",
+"heading": "Cards",
+"url": "menus/overview.html#cards",
+"text": "; Card ; What it shows ; Data ; ; Stats strip ( stats-strip) ; Total Value (whole account incl. cash), Investments (value of your shares = cost basis + unrealised result), Cost basis (money put into the shares you hold), Cash (free cash), Reserved (cash held for pending limit orders plus pie cash; shown only when above zero), Unrealised P&L (£ and % of cost basis ), Winners, Losers, Positions, Alerts ; The snapshot's own Trading 212 account figures (raw.account: invested, ppl, total, free, blocked, pieCash) so the numbers match the Trading 212 app; per-position counts from positions ; ; Gain % by Position ; Bar chart of each holding's gain. Period buttons 1D · 1W · 1M · 3M · 6M · 9M · 1Y · All . Holdings with no data for a period show \"No data yet for this period\" instead of a zero bar ; positions of the latest snapshot compared with the snapshot nearest the period start ; ; Portfolio by Pie ; Doughnut of value per pie."
+},
+{
+"id": "menus/overview#cards.2",
+"page": "menus/overview.md",
+"title": "📊 Overview",
+"heading": "Cards",
+"url": "menus/overview.html#cards",
+"text": "Pie colours are derived from the pie name, so no user pie names are stored in code ; positions.pie ; ; 📐 Sector Map ; Value by sector, looking through ETFs to their underlying sectors ; instrument sector weights + instruments; row-level security returns only instruments you hold ; ; 🌍 Country Exposure ; Value by country, looking through ETFs ; instrument country weights ;"
+},
+{
+"id": "menus/overview#behaviour",
+"page": "menus/overview.md",
+"title": "📊 Overview",
+"heading": "Behaviour",
+"url": "menus/overview.html#behaviour",
+"text": "- Definitions match Trading 212 (Investments value, Unrealised result, Cost basis). Older snapshots that lack the account figures fall back to total − free cash, labelled \"estimate\", with no Cost basis tile. - Why a figure can still differ from the Trading 212 app: the dashboard shows the snapshot taken at the time shown in the header (\"Updated … ago\"), while the app is live; Total Value includes cash, the app's Investments screen does not. - Stale data warning: a snapshot older than 12 hours is flagged beside the \"updated\" time. - All-time period uses Trading 212's own profit figure; shorter periods difference two snapshots. - Guest mode masks values with . - All sector, country, name and flag data comes from the database, never from a list in JavaScript."
+},
+{
+"id": "menus/overview#html-style",
+"page": "menus/overview.md",
+"title": "📊 Overview",
+"heading": "HTML / style",
+"url": "menus/overview.html#html-style",
+"text": "overview.tab stats-strip.stats-strip then a .grid2 of two .cards (one column below 700px), then full-width cards. Period buttons are .period-btn (min height 40px). Colours: gains var(--green), losses var(--red). Charts use the vendored chart.umd.min.js."
+},
+{
+"id": "menus/overview#tests",
+"page": "menus/overview.md",
+"title": "📊 Overview",
+"heading": "Tests",
+"url": "menus/overview.html#tests",
+"text": "tests/ui layout test.py (360/390px, no sideways scroll), tests/zk overview stale test.mjs (stale-data warning)."
+},
+{
+"id": "menus/overview#how-the-numbers-add-up-card",
+"page": "menus/overview.md",
+"title": "📊 Overview",
+"heading": "How the numbers add up (card)",
+"url": "menus/overview.html#how-the-numbers-add-up-card",
+"text": "A collapsible card under the stats strip with one bar and the formulas, using the snapshot's Trading 212 account figures: Total Value = Investments + Cash + Reserved (+ Other, only if something is left unexplained); Investments = cost basis + unrealised result; Unrealised % = result ÷ cost basis. If the snapshot has no account breakdown it says so instead of drawing numbers. Its open/closed state is remembered per user like every card."
+},
+{
+"id": "menus/overview#snapshot-columns",
+"page": "menus/overview.md",
+"title": "📊 Overview",
+"heading": "Snapshot columns",
+"url": "menus/overview.html#snapshot-columns",
+"text": "New snapshots store invested = cost basis + unrealised result and total ppl = Trading 212's unrealised result (both from the account figures), not total minus free cash. Older snapshots keep the old values and are labelled as estimates."
+},
+{
+"id": "menus/overview#market-decline-by-country-card",
+"page": "menus/overview.md",
+"title": "📊 Overview",
+"heading": "Market decline by country (card)",
+"url": "menus/overview.html#market-decline-by-country-card",
+"text": "A collapsible card with 1D / 1W / 1M / 3M / 6M / 9M / 1Y buttons and one horizontal bar per country (red for a decline, green for a gain, worst first). It is your holdings by country , not index data: each holding's price change between the latest saved snapshot and an older one, weighted by its value at the start. Funds are split by their country weights (instrument country weights); holdings with no country data are grouped as Unclassified , never hidden. A holding with no price at both dates is left out. A span longer than the saved history says \"not enough saved history yet\" instead of showing a made-up bar. The older snapshot is the newest one that is at least about 80% of the span old, and its date is shown. Source: the portfolio snapshots and positions tables. Guarded by tests/zk overview stale test.mjs."
+},
+{
+"id": "menus/overview#investments-value-over-time-card",
+"page": "menus/overview.md",
+"title": "📊 Overview",
+"heading": "Investments value over time (card)",
+"url": "menus/overview.html#investments-value-over-time-card",
+"text": "A collapsible line chart with 1D / 1W / 1M / 3M / 6M / 9M / 1Y buttons, like the Trading 212 home screen. Each point is a saved snapshot's investments value as Trading 212 defines it (cost basis + unrealised result, from the snapshot's account data). Snapshots saved before that data was kept are left out so the line never mixes two definitions; the card says how many points it has and how many days they cover, and draws no line with fewer than two points. The change shown is first to last point in the span, and the card notes that buying or selling moves the value, so a rise is not always performance. Points exist only for days you pressed Refresh (\"nothing runs while the app is closed\"), so it is sparser than Trading 212's own chart. Source: portfolio snapshots. Guarded by tests/zk overview stale test.mjs and tests/zk invest line test.mjs. How the line is drawn (so a small move never looks like a crash): - The vertical axis has labelled min / mid / max lines in pounds and is never tighter than 2% of the value : a £45 move on £4,800 stays a wobble, not a cliff."
+},
+{
+"id": "menus/overview#investments-value-over-time-card.2",
+"page": "menus/overview.md",
+"title": "📊 Overview",
+"heading": "Investments value over time (card)",
+"url": "menus/overview.html#investments-value-over-time-card",
+"text": "The start and end of the span are labelled underneath (times for a day, dates for longer). - Every snapshot is a dot (the latest is larger). A gap with no snapshots (overnight, or the app was not refreshed) is drawn dashed , never as a steep solid slope. - A change in cost basis of £5 or more (and 0.2%) is marked ▲ buy / ▼ sell with a dotted line, because buying or selling moves the line without being performance. Under the figure the card splits the change into cost basis (buys/sells) and unrealised result ; both are Trading 212's own figures. Rebuilt history (below) has no cost basis, so it shows no markers. - Touch or hover the chart to read a point: time, investments value, cost basis, unrealised result and, on a marker, the buy/sell amount."
+},
+{
+"id": "menus/overview#longer-spans-rebuilt-history",
+"page": "menus/overview.md",
+"title": "📊 Overview",
+"heading": "Longer spans (rebuilt history)",
+"url": "menus/overview.html#longer-spans-rebuilt-history",
+"text": "Saved snapshots only exist for days you pressed Refresh. When a span has too few snapshots, both the line chart and the decline-by-country card fall back to pie history (the same data as the Positions drill-down: holdings rebuilt from your Trading 212 order history, valued at daily closes) and say so on the card (\"rebuilt from your Trading 212 order history\"). The decline card uses each holding's price (value ÷ quantity) at both dates, only for holdings you owned at both. Snapshots win when they cover the span. Guarded by tests/zk overview stale test.mjs."
+},
+{
+"id": "menus/overview#markets-i-hold-card",
+"page": "menus/overview.md",
+"title": "📊 Overview",
+"heading": "Markets I hold (card)",
+"url": "menus/overview.html#markets-i-hold-card",
+"text": "Index moves for the markets behind your holdings: 1D / 1W / 1M / 3M / 1Y change in the table and how far each index is below its highest close of the past year (\"from 1Y high\"). Nifty 50, Sensex and FTSE 100 are always shown; other indices (S&P 500, Nasdaq 100, DAX, Nikkei 225, SSE Composite, TAIEX, FTSE MIB, IBEX 35, AEX, WIG20) appear when that country is in your holdings' country weights (instrument country weights), marked \"you hold\". Source: Yahoo Finance daily closes through the same /chart route as the watchlist (1y range, one call per index, cached 15 minutes). The card has three views: Trend (a line per selected index, up to 4, each starting at 0% at the start of the chosen range (1D · 1W · 1M · 3M · 6M · 9M · 1Y) so different markets can be compared; 1D is today's intraday move vs the previous close; touch the chart to read a day), Weekly change (a histogram of one index's % move (day-by-day up to 1M, week-by-week beyond; not shown for 1D), with down weeks, worst/best week, longest losing run and average), and Table (the figures above)."
+},
+{
+"id": "menus/overview#markets-i-hold-card.2",
+"page": "menus/overview.md",
+"title": "📊 Overview",
+"heading": "Markets I hold (card)",
+"url": "menus/overview.html#markets-i-hold-card",
+"text": "Line colours are the reference categorical palette, one fixed colour per selected index. A span the data does not reach shows \"–\", and an index Yahoo does not return shows \"no data\"; nothing is guessed. These are the indices' own moves, not your holdings'."
+},
+{
+"id": "menus/overview#market-decline-by-country-what-counts-as-a-country",
+"page": "menus/overview.md",
+"title": "📊 Overview",
+"heading": "Market decline by country: what counts as a country",
+"url": "menus/overview.html#market-decline-by-country-what-counts-as-a-country",
+"text": "The decline-by-country card lists only real countries in its main list. Commodity funds (Silver, Gold), \"Other\" and \"Unclassified\" are shown under their own \"Not countries\" heading. Guarded by tests/zk overview stale test.mjs."
+},
+{
+"id": "menus/pnl-bubbles#pl-bubbles",
+"page": "menus/pnl-bubbles.md",
+"title": "🫧 P&amp;L Bubbles",
+"heading": "🫧 P&amp;L Bubbles",
+"url": "menus/pnl-bubbles.html#pl-bubbles",
+"text": "Question it answers: which holdings moved the most today, this week, this month? Tab id heatmap · loader loadHeatmap() · docs/js/heatmap.js"
+},
+{
+"id": "menus/pnl-bubbles#what-you-see",
+"page": "menus/pnl-bubbles.md",
+"title": "🫧 P&amp;L Bubbles",
+"heading": "What you see",
+"url": "menus/pnl-bubbles.html#what-you-see",
+"text": "A radial chart (\"bubbles\"): one bubble per holding, sized and coloured by its profit or loss over a chosen window — daily, weekly, monthly . - Tooltip / tap: shows the holding's full name and country flag (standing rule). Names and flags come from instrument exposure in the database; if it cannot be read, the tooltip still shows the ticker and P&L. - Honest look-back: history may be shorter than the period name says (for example fewer than 30 days stored). The chart uses the actual look-back it has for each period and says so. - The \"updated\" stamp beside the heading shows the snapshot it was built from."
+},
+{
+"id": "menus/pnl-bubbles#data",
+"page": "menus/pnl-bubbles.md",
+"title": "🫧 P&amp;L Bubbles",
+"heading": "Data",
+"url": "menus/pnl-bubbles.html#data",
+"text": "- portfolio snapshots (the 60 most recent, to find the snapshot nearest 1, 7 and 30 days before the latest) and the matching positions. - instrument exposure for display names and flags (shared reference data, read-only for signed-in users)."
+},
+{
+"id": "menus/pnl-bubbles#behaviour",
+"page": "menus/pnl-bubbles.md",
+"title": "🫧 P&amp;L Bubbles",
+"heading": "Behaviour",
+"url": "menus/pnl-bubbles.html#behaviour",
+"text": "- Guest mode: \"🔒 Sign in to view radial P&L\". - No snapshots yet: \"No snapshot data yet.\" - Period P&L = latest P&L − P&L at the nearest earlier snapshot."
+},
+{
+"id": "menus/pnl-bubbles#html-style",
+"page": "menus/pnl-bubbles.md",
+"title": "🫧 P&amp;L Bubbles",
+"heading": "HTML / style",
+"url": "menus/pnl-bubbles.html#html-style",
+"text": "heatmap.tab .card h3 + heatmap-grid. The chart is drawn into heatmap-grid and scales to the card width, so it fits 360px with no sideways scroll. Tooltips are shared with the rest of the app (tickertips.js)."
+},
+{
+"id": "menus/pnl-bubbles#tests",
+"page": "menus/pnl-bubbles.md",
+"title": "🫧 P&amp;L Bubbles",
+"heading": "Tests",
+"url": "menus/pnl-bubbles.html#tests",
+"text": "tests/ui layout test.py (layout). Tooltip data rule is covered by the standards in CLAUDE.md (no holdings data in JS)."
+},
+{
+"id": "menus/positions#positions",
+"page": "menus/positions.md",
+"title": "📋 Positions",
+"heading": "📋 Positions",
+"url": "menus/positions.html#positions",
+"text": "Question it answers: what exactly do I hold, in which pie, and how is each line doing? Tab id positions · loader loadPositions() · docs/js/positions.js, docs/js/pie drill.js"
+},
+{
+"id": "menus/positions#what-you-see",
+"page": "menus/positions.md",
+"title": "📋 Positions",
+"heading": "What you see",
+"url": "menus/positions.html#what-you-see",
+"text": "1. ALL POSITIONS card at the top: account value, rate of return, result in £. Tap it for the whole-account chart. 2. One group per pie (Defence, Atomic Resources, Cloud Empire, and so on, from the data): pie value and P&L, then one row per holding with quantity, price, value and P&L. 3. Untagged group: shares held outside any pie (for example NVIDIA, SpaceX, SGLN, or shares moved out of a pie). They are always listed, never dropped. The Emerging Markets pie is included like any other."
+},
+{
+"id": "menus/positions#prices",
+"page": "menus/positions.md",
+"title": "📋 Positions",
+"heading": "Prices",
+"url": "menus/positions.html#prices",
+"text": "Trading 212 quotes in the instrument's own currency. Pence-quoted lines (GBX) are shown in pence (p), not as £. USD and EUR show $ and €."
+},
+{
+"id": "menus/positions#drill-down-pop-up-tap-a-pie-the-whole-account-or-a-holding",
+"page": "menus/positions.md",
+"title": "📋 Positions",
+"heading": "Drill-down pop-up (tap a pie, the whole account, or a holding)",
+"url": "menus/positions.html#drill-down-pop-up-tap-a-pie-the-whole-account-or-a-holding",
+"text": "Modelled on the Trading 212 pie screen: value · last 24h · rate of return · chart · holdings . Chart ranges 1D 1W 1M 3M 6M 9M 1Y MAX : ; Range ; Source ; ; 1D ; Your intraday portfolio snapshots (actual Trading 212 values) ; ; 1W … MAX ; pie history: holdings rebuilt from your Trading 212 trade history, valued at daily closes ; - Rate of return (all-time) = Trading 212 return ÷ invested, exactly as the Trading 212 app shows it. - Last 24h is the change in profit; deposits do not count. - Holdings = invested + P&L (not total minus free cash, which would also count blocked and pie cash). - History is Trading 212's own data stored in the database (rebuilt by services/pie history service.py or the browser equivalent docs/zk/piehistory.js)."
+},
+{
+"id": "menus/positions#tooltips",
+"page": "menus/positions.md",
+"title": "📋 Positions",
+"heading": "Tooltips",
+"url": "menus/positions.html#tooltips",
+"text": "Hover or tap any ticker for the flag, full name and what it is (tickertips.js, data from instrument exposure)."
+},
+{
+"id": "menus/positions#collapsing",
+"page": "menus/positions.md",
+"title": "📋 Positions",
+"heading": "Collapsing",
+"url": "menus/positions.html#collapsing",
+"text": "Each pie group is collapsible; state is remembered per user."
+},
+{
+"id": "menus/positions#html-style",
+"page": "menus/positions.md",
+"title": "📋 Positions",
+"heading": "HTML / style",
+"url": "menus/positions.html#html-style",
+"text": "positions positions-list containing .card.pd-allcard and .pie-group blocks; the drill-down is an overlay (pd- classes). Rows wrap on narrow screens; tap targets ≥ 40px."
+},
+{
+"id": "menus/positions#tests",
+"page": "menus/positions.md",
+"title": "📋 Positions",
+"heading": "Tests",
+"url": "menus/positions.html#tests",
+"text": "tests/ui layout test.py, tests/zk piehistory test.mjs."
+},
+{
+"id": "menus/positions#recent-purchases-last-7-days",
+"page": "menus/positions.md",
+"title": "📋 Positions",
+"heading": "Recent purchases (last 7 days)",
+"url": "menus/positions.html#recent-purchases-last-7-days",
+"text": "A card at the top of Positions tracks what you bought in the last 7 days, so a new investment can be followed without hunting for it. One row per ticker (several fills are combined at their weighted fill price) showing when it was bought, what you paid, your fill price, the latest price and the move since purchase (% and an estimated £). Source: your filled Trading 212 BUY orders against the latest price at your last Refresh, so it is an estimate (FX moves are not included) and only as fresh as the last Refresh. A purchase shows \"N days left\" and drops off by itself 7 days after it was filled; when nothing is left the card is not shown at all. If a holding has no latest price, or was sold, the row says \"price n/a\" / \"not held now\" instead of inventing a number. Collapsible like every card. Code: docs/js/recent.js (the private app reads orders through the encrypted store; the demo seeds two mock buys daily via seed demo recent buys, db/tenant/27 demo recent buys.sql). Guarded by tests/zk recent test.mjs and tests/recent layout test.py (320/360/390px)."
+},
+{
+"id": "menus/positions#purchases-outside-pies",
+"page": "menus/positions.md",
+"title": "📋 Positions",
+"heading": "Purchases outside pies",
+"url": "menus/positions.html#purchases-outside-pies",
+"text": "A card under the untagged holdings lists one short line per stock you hold outside a pie: name, number of buys, shares, total return (% and an estimated £). Tap a stock and a pop-up opens with its buys as a table (Bought · Shares · Paid · Return · £, oldest first, with an \"All buys\" total). Tap a column heading to sort by it (tap again to reverse; buys without a price always go last). Tap a buy for its detail: a −5% and −10% stop-loss price (with the £ at risk, flagged if the price is already below it), +10 / +20 / +30% sell steps , a copy-ready line such as SELL 1 NVDA limit 130.00, and the stops measured from today's price. ‹ All buys goes back; Close , the ✕ or Esc closes the pop-up. Sells are matched oldest buy first (FIFO) ; a stock you have sold completely, or that sits only inside pies, is not listed . Stocks are sorted by £ gain. Honest limits: it is an estimate from your filled Trading 212 orders (FX moves and fees are not included, and the price is as of the last Refresh)."
+},
+{
+"id": "menus/positions#purchases-outside-pies.2",
+"page": "menus/positions.md",
+"title": "📋 Positions",
+"heading": "Purchases outside pies",
+"url": "menus/positions.html#purchases-outside-pies",
+"text": "If the synced order history holds fewer shares than you own outside pies (older buys) the pop-up says \"not in the synced order history\" and the row shows \"incomplete history\"; if it holds more (shares moved into a pie) it says so. Missing prices show \"n/a\", never zero. CapitalLens never places orders: you set any limit or stop order yourself in Trading 212. Code: docs/js/lots.js; the demo seeds mock buys via seed demo lots (db/tenant/28 demo lots.sql). Guarded by tests/zk lots test.mjs and tests/lots layout test.py (320/360/390px, every theme, keyboard)."
+},
+{
+"id": "menus/profit-booking#profit-booking-capital-protection",
+"page": "menus/profit-booking.md",
+"title": "💰 Profit Booking &amp; Capital Protection",
+"heading": "💰 Profit Booking &amp; Capital Protection",
+"url": "menus/profit-booking.html#profit-booking-capital-protection",
+"text": "Question it answers: which winners should I trim, which positions are too big, and where must I re-check why I own something? Tab id profit · loader loadProfit() · docs/js/profit.js"
+},
+{
+"id": "menus/profit-booking#header-tiles",
+"page": "menus/profit-booking.md",
+"title": "💰 Profit Booking &amp; Capital Protection",
+"heading": "Header tiles",
+"url": "menus/profit-booking.html#header-tiles",
+"text": "Tap a tile for a pop-up that explains the number and lists the stocks behind it. ; Tile ; Meaning ; ; 1% risk per trade ; The rule: never lose more than 1% of holdings on one trade. The pop-up lists each stock's max size (risk £ ÷ its risk distance) and exit price (trailing stop = 3× its average daily move (ATR) below its 3-month high), and flags oversized positions ; ; Profit to book ; The sum suggested by the ladder for steps already reached. Single stocks only , each judged on its own gain against its own average buy price (first step +20%); funds (ETFs) are never auto-trimmed. Tap it: it lists what is due, or when £0, the stocks closest to +20% and any holdings flagged \"Book profit\" by score (50–64) that carry no £ amount . A rising pie does not move this tile; see card ⑥ ; ; Actions ; Counts per action level ;"
+},
+{
+"id": "menus/profit-booking#action-levels",
+"page": "menus/profit-booking.md",
+"title": "💰 Profit Booking &amp; Capital Protection",
+"heading": "Action levels",
+"url": "menus/profit-booking.html#action-levels",
+"text": "Reassess (something broke: trend, stop or fundamentals — re-check why you own it) → Rebalance → Book profit → Let it run → Hold. Listed in that urgency order."
+},
+{
+"id": "menus/profit-booking#sections",
+"page": "menus/profit-booking.md",
+"title": "💰 Profit Booking &amp; Capital Protection",
+"heading": "Sections",
+"url": "menus/profit-booking.html#sections",
+"text": "1. Market conditions — the regime used by the scoring. 2. Sector exposure (look-through) — with a cap (maxSec%) per sector. 3. Holdings — weekly score & action — each holding's score and action. 4. Pie-level view. 5. ⑥ Pie profit check (own card): for each funded pie, biggest gain first: gain % and £ (Trading 212's pie value against what was invested; \"≈\" when worked back from the rounded %), value, invested, share of holdings, stock/fund mix, what the rules say at that gain (<0 loss: nothing to book · <5% too early · 5–10% hold · 10–20% review allocation · 20%+ trim only if overweight and check which stocks passed +20%) and the best stock's gain against the +20% ladder start. Guidance only; nothing is sold automatically. 6. ⚠️ Watch-outs. 7."
+},
+{
+"id": "menus/profit-booking#sections.2",
+"page": "menus/profit-booking.md",
+"title": "💰 Profit Booking &amp; Capital Protection",
+"heading": "Sections",
+"url": "menus/profit-booking.html#sections",
+"text": "📘 Rulebook (always shown): ; Individual stocks — staged booking ; ; ; +10% ; Hold; review valuation ; ; +15% ; Check momentum, volume, fundamentals ; ; +20% ; Trim 10–15% ; ; +30% ; Trim another 15–20% ; ; +40–50% ; Recover initial capital ; ; Trend break ; Trailing exit 3× ATR below the 3-month high ; Score ≥ 80 lowers the trim % (let winners run). ETFs are hold-and-rebalance: +5–10% means hold with no automatic selling."
+},
+{
+"id": "menus/profit-booking#score",
+"page": "menus/profit-booking.md",
+"title": "💰 Profit Booking &amp; Capital Protection",
+"heading": "Score",
+"url": "menus/profit-booking.html#score",
+"text": "Six factors, weighted: Market trend 20 · Sector strength 20 · Price momentum 15 · Relative volume 15 · Fundamentals 20 · Concentration 10 (total 100). Colour: ≥80 green, ≥65 blue, ≥50 amber, below red."
+},
+{
+"id": "menus/profit-booking#live-data-vs-snapshot",
+"page": "menus/profit-booking.md",
+"title": "💰 Profit Booking &amp; Capital Protection",
+"heading": "Live data vs snapshot",
+"url": "menus/profit-booking.html#live-data-vs-snapshot",
+"text": "; Card / field ; Source ; Live? ; ; Market regime chip, VIX, DMA table ; ^GSPC, ACWI, ^VIX via relay (/chart POST, 1y daily) ; ✅ Live — pbPatchLiveRegime() runs after render, 15-min client cache ; ; 50/200 DMA ✓/✗ per holding ; r.yahoo ticker via relay ; ✅ Live — pbPatchLiveHoldingDMAs() batch-fetches 4 at a time ; ; Watch-outs note, Execute panel badge ; Derived from live regime ; ✅ Live — patched alongside regime ; ; Sector exposure bars ; ETF look-through % from pipeline ; 📸 Snapshot — needs full pipeline run; labelled with run date ; ; Pie-level view ; Pie flags, avg score from pipeline ; 📸 Snapshot — labelled ; ; Holding scores, signals, notes ; Pipeline factors (momentum, volume, fundamentals) ; 📸 Snapshot — labelled ; ; Breadth % ; % of holdings above 50 DMA — from pipeline ; 📸 Snapshot value used in regime scoring ; Sector look-through cannot be recomputed live — it requires ETF constituent sector weights that are only available during the full pipeline run."
+},
+{
+"id": "menus/profit-booking#live-data-architecture",
+"page": "menus/profit-booking.md",
+"title": "💰 Profit Booking &amp; Capital Protection",
+"heading": "Live data architecture",
+"url": "menus/profit-booking.html#live-data-architecture",
+"text": "pbFetchPtsOrdered(sym) — POST to PROXY/chart with {symbol, range:'1y'}. Returns sorted array of daily closes. No server-side KV cache (Cloudflare does not cache POST requests). pbComputeRegimeLive(storedBreadth) — always fetches ^GSPC, ACWI, ^VIX in parallel (never reuses ovMk, which may be hours old). 15-min client-side result cache pbLiveRegCache. pbPatchLiveHoldingDMAs(rows) — iterates rows, groups unique yahoo ticker values, batch-fetches 4 at a time, patches id=\"pb-dma-{sym}\" spans in-place. 15-min per-symbol client cache pbDmaCache."
+},
+{
+"id": "menus/profit-booking#known-limitation-breadth",
+"page": "menus/profit-booking.md",
+"title": "💰 Profit Booking &amp; Capital Protection",
+"heading": "Known limitation — breadth %",
+"url": "menus/profit-booking.html#known-limitation-breadth",
+"text": "The breadth signal (% of your holdings above their 50 DMA) is kept from the pipeline snapshot. Computing it live would require fetching 1y data for every holding — that is done by the DMA patch for tick display, but the breadth number feeds into the regime score. Future improvement: derive live breadth from pbDmaCache once it populates."
+},
+{
+"id": "menus/profit-booking#known-bugs-fixed",
+"page": "menus/profit-booking.md",
+"title": "💰 Profit Booking &amp; Capital Protection",
+"heading": "Known bugs / fixed",
+"url": "menus/profit-booking.html#known-bugs-fixed",
+"text": "; Date ; Bug ; Fix ; ; 2026-11-23 ; Live regime showed stale data (VIX 27.4, S&P ✗ DMA) despite green indicator — pbComputeRegimeLive reused ovMk.m['^GSPC'].pts without an age check; ovMk could be hours old from an earlier Overview tab fetch ; Removed ovMk reuse entirely; always fetch ^GSPC fresh from relay ;"
+},
+{
+"id": "menus/profit-booking#data",
+"page": "menus/profit-booking.md",
+"title": "💰 Profit Booking &amp; Capital Protection",
+"heading": "Data",
+"url": "menus/profit-booking.html#data",
+"text": "profit booking (per holding) and profit booking summary (totals, limits, regime), from services/profit booking service.py; in the private app from docs/zk/profitbooking.js."
+},
+{
+"id": "menus/profit-booking#tests",
+"page": "menus/profit-booking.md",
+"title": "💰 Profit Booking &amp; Capital Protection",
+"heading": "Tests",
+"url": "menus/profit-booking.html#tests",
+"text": "tests/zk profitbooking test.mjs (incl. pie invested gbp/gain gbp, JS = Python), tests/profit pies layout test.py (Pie profit check card and the Profit to book explanation, 320/360/390px), tests/ui layout test.py."
+},
+{
+"id": "menus/returns#returns",
+"page": "menus/returns.md",
+"title": "📈 Returns",
+"heading": "📈 Returns",
+"url": "menus/returns.html#returns",
+"text": "Question it answers: how much have I really made, after counting every deposit and withdrawal? Tab id returns · loader loadReturns() · docs/js/returns.js"
+},
+{
+"id": "menus/returns#definition",
+"page": "menus/returns.md",
+"title": "📈 Returns",
+"heading": "Definition",
+"url": "menus/returns.html#definition",
+"text": "Built from your real Trading 212 money flows (every deposit, withdrawal, trade, dividend and interest payment): profit = account value − money you have put in (deposits − withdrawals). Rate of return and XIRR are computed from the same flows by services/returns service.py (private app: docs/zk/returns.js)."
+},
+{
+"id": "menus/returns#cards",
+"page": "menus/returns.md",
+"title": "📈 Returns",
+"heading": "Cards",
+"url": "menus/returns.html#cards",
+"text": "; Card ; What it shows ; ; Profit by period ; Period buttons with profit for each ; ; Profit over time / value chart ; Switch between profit and value ; ranges 1D · 1W · 1M · 3M · 6M · 9M · YTD · 1Y · All ; ; Money in ; Deposits and withdrawals ; ; Monthly profit ; Month-by-month profit ; ; Year by year ; Annual summary ; ; Where the profit came from ; Split across trading, dividends and interest ; ; Recent closed trades ; Last 100 realised trades ; ; Recent dividends ; Last 100 dividends ;"
+},
+{
+"id": "menus/returns#data",
+"page": "menus/returns.md",
+"title": "📈 Returns",
+"heading": "Data",
+"url": "menus/returns.html#data",
+"text": "returns summary, realised pnl, dividends (from the raw t212 orders, t212 dividends, t212 transactions history kept lossless by services/t212 sync service.py)."
+},
+{
+"id": "menus/returns#behaviour",
+"page": "menus/returns.md",
+"title": "📈 Returns",
+"heading": "Behaviour",
+"url": "menus/returns.html#behaviour",
+"text": "If the history is incomplete the card says so; no extrapolated numbers are shown as fact."
+},
+{
+"id": "menus/returns#tests",
+"page": "menus/returns.md",
+"title": "📈 Returns",
+"heading": "Tests",
+"url": "menus/returns.html#tests",
+"text": "tests/zk returns test.mjs, tests/zk t212sync test.mjs."
+},
+{
+"id": "menus/settings-and-account#settings-account",
+"page": "menus/settings-and-account.md",
+"title": "⚙ Settings &amp; account",
+"heading": "⚙ Settings &amp; account",
+"url": "menus/settings-and-account.html#settings-account",
+"text": "Private app: the ⚙ Settings button in the header opens a panel; account creation, recovery and upgrade live on the account page (/zk-prod/)."
+},
+{
+"id": "menus/settings-and-account#settings-panel-private-app",
+"page": "menus/settings-and-account.md",
+"title": "⚙ Settings &amp; account",
+"heading": "Settings panel (private app)",
+"url": "menus/settings-and-account.html#settings-panel-private-app",
+"text": "The window has two header dots (red Close , yellow Minimise ) and a ? help button. Neither Close nor Minimise stops a refresh in progress. ; Section ; What it does ; ; 🔑 Check your recovery key ; Type the key to confirm it still works. Checked in this browser only; not sent or saved. Do it about once a week ; ; Lost your recovery key? ; Create a new recovery key while signed in. Nothing changes until you confirm you saved the new one; then the old key stops working ; ; 🧪 Compare / duplicates ; Health checks for stored data. Scan only reads; use Fix only if Scan reports extra rows ; ; 🔄 Refresh your data ; Pulls your latest Trading 212 data and updates every dashboard. Paste a read-only Trading 212 API key (and secret); it is used once and never saved. Leave empty to re-analyse what is stored. The window shrinks to a progress chip; keep the tab open until ✅ ; ; Phone alerts ; Save your ntfy topic ; Automatic re-analysis: on login, stored data is re-analysed if older than 6 hours or if the app was updated, so new features appear without pressing anything."
+},
+{
+"id": "menus/settings-and-account#settings-panel-private-app.2",
+"page": "menus/settings-and-account.md",
+"title": "⚙ Settings &amp; account",
+"heading": "Settings panel (private app)",
+"url": "menus/settings-and-account.html#settings-panel-private-app",
+"text": "Only the Trading 212 sync needs your key. Trading 212 allows 6 requests a minute, so a first full sync takes a while."
+},
+{
+"id": "menus/settings-and-account#appearance-every-dashboard",
+"page": "menus/settings-and-account.md",
+"title": "⚙ Settings &amp; account",
+"heading": "🎨 Appearance (every dashboard)",
+"url": "menus/settings-and-account.html#appearance-every-dashboard",
+"text": "The 🎨 Appearance button in the header (next to Sign out) opens a window with three choices; each applies instantly and is remembered per user. ; Choice ; Options ; ; Theme ; Midnight (default) · Daylight · AMOLED black · High contrast (AAA text, thick borders) · Forest · Sepia · Match my device (Daylight by day, Midnight by night, as the phone is set) ; ; Font ; System (default) · Inter · IBM Plex Sans · Atkinson Hyperlegible · Serif · Monospace ; ; Text size ; Small 13 · Normal 14 · Large 16 · Extra large 18 px (body text; small fixed-size labels stay small) ; - Only System and Inter are bundled (self-hosted, docs/fonts/). IBM Plex Sans, Atkinson Hyperlegible, Serif (Source Serif) and Monospace (JetBrains Mono) use a copy already installed on your device ; if there is none the fallback named on the tile shows (Verdana, Georgia, the system monospace). Nothing is downloaded from another site. - Reset to defaults restores Midnight · System · Normal."
+},
+{
+"id": "menus/settings-and-account#appearance-every-dashboard.2",
+"page": "menus/settings-and-account.md",
+"title": "⚙ Settings &amp; account",
+"heading": "🎨 Appearance (every dashboard)",
+"url": "menus/settings-and-account.html#appearance-every-dashboard",
+"text": "- Remembered on this device (so the sign-in screen and the first paint are right, no flash) and saved to your account with your other screen preferences (user ui prefs, own row only, not financial data) so it follows you to other devices. The account copy wins after sign-in. - Code: docs/js/appearance.js, loaded first on every dashboard. Tests: tests/zk appearance test.mjs (palette contrast computed), tests/appearance layout test.py (320/360/390px, every text size, every theme and font, reload, reset). Requirements: Epic: Personalisation. - Language, region and currency (the rest of the epic) are not built yet ."
+},
+{
+"id": "menus/settings-and-account#account-page-zk-prod",
+"page": "menus/settings-and-account.md",
+"title": "⚙ Settings &amp; account",
+"heading": "Account page (/zk-prod/)",
+"url": "menus/settings-and-account.html#account-page-zk-prod",
+"text": "Create account · log in · password reset with the recovery key · upgrade an existing account · Trading 212 sync (snapshot, sync history, full re-sync; runs in your browser through a stateless relay) · change password · \"what is stored\" (decrypted counts per table). The page also shows what the database holds for you (ciphertext only)."
+},
+{
+"id": "menus/settings-and-account#connecting-trading-212-step-by-step",
+"page": "menus/settings-and-account.md",
+"title": "⚙ Settings &amp; account",
+"heading": "Connecting Trading 212 (step by step)",
+"url": "menus/settings-and-account.html#connecting-trading-212-step-by-step",
+"text": "1. In Trading 212: Settings → API , create a key with read-only permissions (never one that can trade). 2. Open ⚙ Settings → Refresh your data (or the account page's sync box). 3. Paste the key and secret; press Refresh now . It syncs, re-analyses and turns the live feed on (one button): the headline numbers (total value, P&L, cash) then update every 5 minutes while the tab stays open. The key is never sent to or stored in the database or localStorage. A page reload does not switch live off: while you stay signed in, the key is kept in this tab's sessionStorage, encrypted under your data key (never plaintext), and the live feed resumes by itself after a reload with no re-entry. It is removed when you log out , on the 45-minute inactivity logout , when you press ⏹ Stop live feed , or when the tab/browser closes (then you sign in and press Refresh now again). Guarded by tests/zk live persist test.mjs. A ⏹ Stop live feed button appears while live; there is no separate Start button. The automatic re-analysis at login never starts the feed (it has no key)."
+},
+{
+"id": "menus/settings-and-account#connecting-trading-212-step-by-step.2",
+"page": "menus/settings-and-account.md",
+"title": "⚙ Settings &amp; account",
+"heading": "Connecting Trading 212 (step by step)",
+"url": "menus/settings-and-account.html#connecting-trading-212-step-by-step",
+"text": "Guarded by tests/zk refresh live test.mjs. 4. Keep the tab open until it shows ✅. The first sync is slow because of Trading 212's rate limit. 5. The key needs at least these read-only permissions: Account data , Portfolio , Orders history (and Dividends/Transactions history for Returns). A key without Portfolio is refused by Trading 212 and no positions can be saved."
+},
+{
+"id": "menus/settings-and-account#what-the-refresh-tells-you-issue-53",
+"page": "menus/settings-and-account.md",
+"title": "⚙ Settings &amp; account",
+"heading": "What the refresh tells you (issue #53)",
+"url": "menus/settings-and-account.html#what-the-refresh-tells-you-issue-53",
+"text": "After every refresh a box under the button lists, in plain words: - What changed : \"Portfolio snapshot saved: 33 positions\", \"New positions: …\", \"Quantity changed: AAAl 10 → 12\", \"No longer held: …\", \"New orders from Trading 212: 2 (2 buys, 0 sells): …\", or \"No new orders since the previous refresh\" / \"No change in holdings\". A pie purchase shows up as new orders plus new or larger positions. - Every problem and its fix : a key Trading 212 refuses (HTTP 401/403: check live key and Portfolio / Account data permissions), a rate limit (wait a minute, refresh again), an unreadable balance or pie list. A failed call is never silent : the refresh is marked \"Finished with problems\", nothing wrong is saved (no zero-value snapshot; no snapshot without positions), and the box says the analyses (ratings, strategy, entry, holdings, alerts) used the previous snapshot from <date so they do not include anything bought since. - If only the pie list could not be read, positions are still saved and you are warned that pie grouping may be incomplete."
+},
+{
+"id": "menus/settings-and-account#what-the-refresh-tells-you-issue-53.2",
+"page": "menus/settings-and-account.md",
+"title": "⚙ Settings &amp; account",
+"heading": "What the refresh tells you (issue #53)",
+"url": "menus/settings-and-account.html#what-the-refresh-tells-you-issue-53",
+"text": "Support levels are read with one shared helper (ZKMonitor.fetchSupportLevels); an earlier version threw \"x.json is not a function\" on the app's own call() reply and silently skipped support-zone alerts on every refresh (fixed, tested). On the legacy page (server pipeline) the same failures make the GitHub Action fail and send a push \"CapitalLens refresh failed\" with the reason, instead of finishing green on old data. The demo has no live refresh."
+},
+{
+"id": "menus/settings-and-account#legacy-dashboard",
+"page": "menus/settings-and-account.md",
+"title": "⚙ Settings &amp; account",
+"heading": "Legacy dashboard",
+"url": "menus/settings-and-account.html#legacy-dashboard",
+"text": "Master users can 🔑 Password (change), and reset by email through the send reset email workflow."
+},
+{
+"id": "menus/settings-and-account#source",
+"page": "menus/settings-and-account.md",
+"title": "⚙ Settings &amp; account",
+"heading": "Source",
+"url": "menus/settings-and-account.html#source",
+"text": "docs/zkapp/zkapp-auth.js, docs/zk/zk.js, docs/zk/t212sync.js, docs/zk/migrate.js, docs/zk/dedupe.js, docs/zk/notify.js, panel markup in scripts/build zkapp.py."
+},
+{
+"id": "menus/settings-and-account#tests",
+"page": "menus/settings-and-account.md",
+"title": "⚙ Settings &amp; account",
+"heading": "Tests",
+"url": "menus/settings-and-account.html#tests",
+"text": "tests/zk zkapp page test.mjs, tests/zk prod pages test.mjs, tests/zk crypto test.mjs, tests/zk autorefresh test.mjs, tests/zk notify test.mjs, tests/zk purchase e2e test.mjs (buy between two refreshes with the real modules: positions, orders, analyst, value-buy, holding decisions, strategy, \"what changed\", refused key / rate limit / balance / pies), tests/legacy interrupt test.py (legacy failure paths)."
+},
+{
+"id": "menus/strategy#strategy",
+"page": "menus/strategy.md",
+"title": "🎯 Strategy",
+"heading": "🎯 Strategy",
+"url": "menus/strategy.html#strategy",
+"text": "Question it answers: where is institutional money moving, what should I do with each holding, where is a good entry, and — when the market dips — where should the amount I choose go? Tab id strategy · loader loadStrategy() · docs/js/strategy.js The tab stacks six sections (each a collapsible card). The 💧 Dip Planner sits at the top; there is no fixed budget anywhere on this tab."
+},
+{
+"id": "menus/strategy#1-global-institutional-capital-inst-flow-content",
+"page": "menus/strategy.md",
+"title": "🎯 Strategy",
+"heading": "1. 🌍 Global Institutional Capital (#inst-flow-content)",
+"url": "menus/strategy.html#1-global-institutional-capital-inst-flow-content",
+"text": "A weekly money-flow report: market score cards (score → label: ≥80 Strong Accumulation, ≥65 Positive, ≥45 Neutral, otherwise Weak), sector rotation , opportunities , cautions and portfolio actions . - Data: institutional flow reports (public, shared), built weekly by services/institutional flow service.py (Saturday, see Workflows) and in the browser by docs/zk/flow.js. - Empty state: \"No data yet — runs every Sunday.\" (the message is shown until the first report exists)."
+},
+{
+"id": "menus/strategy#2-holding-decisions-holding-dec-content",
+"page": "menus/strategy.md",
+"title": "🎯 Strategy",
+"heading": "2. 📊 Holding Decisions (#holding-dec-content)",
+"url": "menus/strategy.html#2-holding-decisions-holding-dec-content",
+"text": "A weekly per-stock / per-ETF decision score , newest report first, lowest score first so the weakest holdings surface at the top. - Data: holding decisions (services/holding decision service.py, browser: docs/zk/holdingdecision.js)."
+},
+{
+"id": "menus/strategy#3-entry-analysis",
+"page": "menus/strategy.md",
+"title": "🎯 Strategy",
+"heading": "3. 🎯 Entry Analysis",
+"url": "menus/strategy.html#3-entry-analysis",
+"text": "Live analysis per stock, grouped by pie: PWI Scout · RSI · moving averages · 52-week range · average cost . Tap a stock for its entry zones, this-week target price and risk scorecard . - Data: value buy scores (services/value buy service.py, browser: docs/zk/valuebuy.js). The JSON columns entry zones, scorecard, earnings, this week are parsed before defuse() (which swaps quotes); the zero-knowledge shim does this in parseJsonCols (regression test in tests/zk shim test.mjs). - Rating chips: 🟢 Strong Buy, 🟡 Accumulate, ⚪ Hold/Wait. Action chips: 🚀 BUY NOW, 📈 DCA — ADD, 🔵 ACCUMULATE, ⏳ WAIT FOR DIP, 🛑 HOLD / AVOID."
+},
+{
+"id": "menus/strategy#5-check-review-in-every-stocks-expanded-card-here-in-holding-decisions-and-in-the-watchlist",
+"page": "menus/strategy.md",
+"title": "🎯 Strategy",
+"heading": "🧪 5-check review (in every stock's expanded card: here, in Holding Decisions and in the Watchlist)",
+"url": "menus/strategy.html#5-check-review-in-every-stocks-expanded-card-here-in-holding-decisions-and-in-the-watchlist",
+"text": "Each stock's card ends with a 5-check review box: your own prompt (how the company makes money · why people keep buying and what is hard to copy · is the price fair against growth and profit · the 3 biggest risks · would a long-term holder still hold after a 30% fall, then bull case, bear case and a one-line verdict; no buy/sell call, \"say so if you are not sure of a number\") with only the stock name and ticker filled in . - Buttons: 📋 Copy prompt (clipboard, stays in the browser) and ChatGPT · Claude · Grok , each with a small letter badge (not the company's logo) that opens that assistant's own page (chatgpt.com, claude.ai, grok.com) with the prompt already in the box. Nothing leaves the page until you tap one. Show the prompt previews the exact text. - CapitalLens does not run the prompt and adds no figures of its own: the answer is Claude's general knowledge, not live data, and the box says so, so check any number it gives."
+},
+{
+"id": "menus/strategy#5-check-review-in-every-stocks-expanded-card-here-in-holding-decisions-and-in-the-watchlist.2",
+"page": "menus/strategy.md",
+"title": "🎯 Strategy",
+"heading": "🧪 5-check review (in every stock's expanded card: here, in Holding Decisions and in the Watchlist)",
+"url": "menus/strategy.html#5-check-review-in-every-stocks-expanded-card-here-in-holding-decisions-and-in-the-watchlist",
+"text": "- The text is fixed in docs/js/fivecheck.js (one place); the name and ticker are escaped and newlines stripped so a stock name can never add lines to the prompt. No inline handlers (one delegated click listener). Rolled out to every dashboard. If an assistant ignores the pre-filled text, Copy prompt and paste. - Tests: tests/zk fivecheck test.mjs (prompt verbatim, escaping, copy and fallback, wiring on all five dashboards), tests/fivecheck layout test.py (320/360/390px, buttons ≥ 40px, copy + link carry the prompt), tests/standards test.py."
+},
+{
+"id": "menus/strategy#3b-support-levels-support-levels-content-directly-under-entry-analysis",
+"page": "menus/strategy.md",
+"title": "🎯 Strategy",
+"heading": "3b. 🛡️ Support Levels (#support-levels-content, directly under Entry Analysis)",
+"url": "menus/strategy.html#3b-support-levels-support-levels-content-directly-under-entry-analysis",
+"text": "Stocks you hold only. For each held stock that has a support level on file: a card with the zone (e.g. META $550–560), the source's tags (\"Crucial support zone\", \"200-week EMA\", \"Previous breakout\"…), the live price and how far it is from the zone , the 52-week drawdown, and a short commentary ; a summary table (stock · zone · live · status) closes the section. Cards are sorted most urgent first: below the zone, in the zone, approaching, above, no live price. - Type filter: chips All · Stocks · ETFs · Commodities (with how many of each you hold) sit at the top of the section. Stocks is the default , so the section looks as before. The type comes from your Profit Booking row (stock, ETF, or an ETF whose sector or name is metals/commodities such as gold, silver, copper, oil, uranium; no row counts as a stock). Analyst levels exist for stocks only, so ETFs and commodity funds get the computed 200-week EMA (labelled computed), fetched the first time you pick that type (a spinner shows meanwhile) and cached for the page's life."
+},
+{
+"id": "menus/strategy#3b-support-levels-support-levels-content-directly-under-entry-analysis.2",
+"page": "menus/strategy.md",
+"title": "🎯 Strategy",
+"heading": "3b. 🛡️ Support Levels (#support-levels-content, directly under Entry Analysis)",
+"url": "menus/strategy.html#3b-support-levels-support-levels-content-directly-under-entry-analysis",
+"text": "A fund with under 200 weeks of price history shows no level and the section says how many had none. Listings on the London exchange are quoted in pence (shown as 2,500p, never as pounds); Xetra and Amsterdam in euros; the quote currency from the price history decides, and the live price comes from the same series so level and price are always in the same unit. Not mapped: other exchanges. - Status compares the live price with the zone: Below the zone , In the zone , Approaching the zone (within 3% above), Above the zone , or Live price unavailable . A single-number level (\"wait for $150\") counts as \"in\" within 1.5%. - Live price comes from the Entry Analysis rows (value buy scores, native currency, so it is comparable with a USD zone). If it is missing, or in another currency, the card says so; it never guesses. The price the source showed when captured is labelled as a snapshot. - Commentary is generated from the numbers only (distance to the zone, your average cost against the zone, the source's tags). It describes and never instructs; nothing here is advice."
+},
+{
+"id": "menus/strategy#3b-support-levels-support-levels-content-directly-under-entry-analysis.3",
+"page": "menus/strategy.md",
+"title": "🎯 Strategy",
+"heading": "3b. 🛡️ Support Levels (#support-levels-content, directly under Entry Analysis)",
+"url": "menus/strategy.html#3b-support-levels-support-levels-content-directly-under-entry-analysis",
+"text": "- Stale levels (issue 52): a level older than 14 days gets a \"Captured N days ago\" chip and a \"may have moved\" note; the section header always names the oldest capture date. - Computed levels (issue 50): a held US stock with no level on file gets one computed in the browser: the 200-week EMA of ~5 years of price history (last close of each week, seeded with the simple average of the first 200 weekly closes, smoothing 2/201; needs at least 200 weeks, otherwise nothing is shown). It is labelled \"CapitalLens (computed)\" and \"not an analyst view\", is never marked stale, and uses the dashboard's existing /chart route (same price source as the charts, so it is covered by the market-data licence research in 11/ 12). - Alerts (issue 51): the morning Refresh raises an alert when a held stock reaches or breaks its zone; see Alerts. - Held = your latest positions snapshot (Trading 212 tickers mapped to symbols, e.g. FB US EQ → META). The match happens in your browser. Levels for stocks you do not hold are not shown; if none of your holdings has a level the section says so."
+},
+{
+"id": "menus/strategy#3b-support-levels-support-levels-content-directly-under-entry-analysis.4",
+"page": "menus/strategy.md",
+"title": "🎯 Strategy",
+"heading": "3b. 🛡️ Support Levels (#support-levels-content, directly under Entry Analysis)",
+"url": "menus/strategy.html#3b-support-levels-support-levels-content-directly-under-entry-analysis",
+"text": "- Data: public shared table support levels (db/tenant/23 support levels.sql): an external analyst view (every row names its source and capture date), not our calculation. Seeded from KwickScan.com \"Support levels to watch\" captured 20 Nov 2026: META, BE, HOOD, INTC, NVDA, QCOM, CRM, NOW with detail, and ORCL, AMZN, TSLA from the summary table only. Updating levels is a data change (an upsert in a migration), not a code change. - Demo: demo support levels, rebuilt by the daily demo refresh from the demo holdings' mock prices and labelled \"Illustrative demo level / Demo data\" (see Demo). - Module docs/js/support.js (loadSupportLevels), rolled out to every dashboard. Requirements and rollout: Epic: Support Levels."
+},
+{
+"id": "menus/strategy#0-dip-planner-dip-planner-content-top-of-the-tab",
+"page": "menus/strategy.md",
+"title": "🎯 Strategy",
+"heading": "0. 💧 Dip Planner (#dip-planner-content, top of the tab)",
+"url": "menus/strategy.html#0-dip-planner-dip-planner-content-top-of-the-tab",
+"text": "No fixed budget. You type what you want to invest (or tap £50 / £100 / £200 / £500) and press Plan it . The plan is worked out in the browser from the Entry Analysis rows, your pies and the market mood saved by the last Refresh; nothing is sent anywhere. Module docs/js/dipplan.js (loadDipPlanner, dipPlanRun, pure dpPlanCompute), rolled out to every dashboard. 1. Is it a dip? Strong (full amount used): market mood is Fear or Extreme fear (VIX 20+) or the S&P 500 is 8%+ below its high. Moderate (half used, half kept back): S&P 4–8% down, or 40%+ of your holdings 8%+ below their own highs. Otherwise no dip: the cash is held and the card says so. Tick Plan it even if there is no market dip to see where it would go anyway (labelled as not a dip signal). 2. Score every stock 0–100 from seven signals: RSI 18, Momentum 12, Volume 10, Entry point 20, Dip depth 10, PE ratio 12, Quality score (Entry Analysis) 18. A signal with no data (for example no PE on an ETF) is left out and the rest re-weighted; the stock's chips show \"n/a\". 3."
+},
+{
+"id": "menus/strategy#0-dip-planner-dip-planner-content-top-of-the-tab.2",
+"page": "menus/strategy.md",
+"title": "🎯 Strategy",
+"heading": "0. 💧 Dip Planner (#dip-planner-content, top of the tab)",
+"url": "menus/strategy.html#0-dip-planner-dip-planner-content-top-of-the-tab",
+"text": "Decide per stock: 80+ strong buy, 72+ buy, 58+ accumulate, otherwise hold. Overbought (RSI 70+, or RSI 65+ at the 52-week high, or Entry Analysis \"hold / avoid\") is always hold: no new money. 4. Decide per pie: a pie is INVEST if at least one stock passes and its average score is 50+, otherwise HOLD with the reason. The money is split by buy strength; no pie gets more than 50% (65% when only two pies qualify). Holdings outside any pie are listed as \"Not in a pie\" and bought directly. 5. Whole pie or custom balance: if the signal-based split is within 15 points of the pie's own target weights, the card says invest in the whole pie ; otherwise custom balance and names the stocks to favour and to skip. Each stock shows its target and current weight in the pie and both amounts (whole-pie £ and custom £). Amounts add up to the penny. 6. Each pie opens to its stocks with signal chips (green / amber / red), the score and the reason. Honesty: prices, RSI, volume, momentum and PE are Yahoo daily data from the last Refresh (the card shows when, and warns after 3 days)."
+},
+{
+"id": "menus/strategy#0-dip-planner-dip-planner-content-top-of-the-tab.3",
+"page": "menus/strategy.md",
+"title": "🎯 Strategy",
+"heading": "0. 💧 Dip Planner (#dip-planner-content, top of the tab)",
+"url": "menus/strategy.html#0-dip-planner-dip-planner-content-top-of-the-tab",
+"text": "Fear & Greed is CapitalLens' own reading (VIX, S&P drawdown and news headlines), not CNN's index. Pie weights come from your Trading 212 pies; if they cannot be found, equal weights are assumed and the card says so. It is a rule-based screen, not advice. Data: value buy scores.this week (now also carries pe, fwd pe, vol ratio, mom 4w, mom 1w, t212; written by services/value buy service.py and docs/zk/valuebuy.js, parity-tested), portfolio snapshots.raw.pies (target and current weights), strategy recommendations.market mood."
+},
+{
+"id": "menus/strategy#4-market-mood-and-pace-strategy-content",
+"page": "menus/strategy.md",
+"title": "🎯 Strategy",
+"heading": "4. Market mood and pace (#strategy-content)",
+"url": "menus/strategy.html#4-market-mood-and-pace-strategy-content",
+"text": "- Stats: Market mood (😎 🙂 😨 😱 with VIX) and Annualised return versus the 10% base case / 15% optimistic case. - No fixed budget anywhere: the allocator (services/strategy service.py, browser docs/zk/strategy.js) only ranks pies, giving each a share in % of whatever amount you decide to invest (it feeds market mood to the Dip Planner). Nothing in the app assumes £300 a month or any other amount. - If there is no row yet the Dip Planner still works from the Entry Analysis rows and says there is no market reading yet."
+},
+{
+"id": "menus/strategy#behaviour",
+"page": "menus/strategy.md",
+"title": "🎯 Strategy",
+"heading": "Behaviour",
+"url": "menus/strategy.html#behaviour",
+"text": "- Guest mode hides all the sections and shows \"🔒 Sign in to view strategy recommendations\". - Nothing here is advice; each section states its basis."
+},
+{
+"id": "menus/strategy#tests",
+"page": "menus/strategy.md",
+"title": "🎯 Strategy",
+"heading": "Tests",
+"url": "menus/strategy.html#tests",
+"text": "tests/zk strategy test.mjs, tests/zk flow test.mjs, tests/zk holding value test.mjs, tests/zk shim test.mjs (Entry Analysis JSON regression), tests/zk support levels test.mjs (Support Levels logic, stale warning, 200-week EMA, escaping, placement), tests/zk support alert test.mjs (zone alerts), tests/support layout test.py (fits 320/360/390px, live and demo pages), tests/zk dipplan test.mjs (Dip Planner: signals, dip rules, pie/stock split to the penny, whole vs custom, escaping), tests/dipplan layout test.py (Dip Planner fits 320/360/390px, tap targets ≥ 40px)."
+},
+{
+"id": "menus/strategy#bought-so-far-this-week-stored-no-longer-shown-here",
+"page": "menus/strategy.md",
+"title": "🎯 Strategy",
+"heading": "Bought so far this week (stored, no longer shown here)",
+"url": "menus/strategy.html#bought-so-far-this-week-stored-no-longer-shown-here",
+"text": "The allocator still counts filled (and partly filled) Trading 212 BUY orders from Monday to today and from the 1st (net value, the cash that left the account) into strategy recommendations.invested (legacy/demo) or the encrypted row (private app), guarded by tests/zk strategy test.mjs. With the fixed budget gone the Strategy tab no longer compares it with a suggested amount; the purchases themselves are on the Positions tab under Recent purchases."
+},
+{
+"id": "menus/swing#swing-110-day-trades",
+"page": "menus/swing.md",
+"title": "⚡ Swing (1–10 day trades)",
+"heading": "⚡ Swing (1–10 day trades)",
+"url": "menus/swing.html#swing-110-day-trades",
+"text": "Question it answers: is there a stock outside my pies with a valid entry today , where do I get out, and has this method actually been tested? Tab id swing · loader loadSwing() · docs/js/swing.js · back-test scripts/swing backtest.mjs · result docs/data/swing backtest.json"
+},
+{
+"id": "menus/swing#the-one-rule-that-matters",
+"page": "menus/swing.md",
+"title": "⚡ Swing (1–10 day trades)",
+"heading": "The one rule that matters",
+"url": "menus/swing.html#the-one-rule-that-matters",
+"text": "No valid entry = no recommendation. The card says “No entry today” . Nothing is shown as “watch”, “almost” or “wait for”, and doing nothing is a valid answer. Nothing is recommended until the rules have been back-tested : with no passing back-test the tab shows no entries at all, only the reason."
+},
+{
+"id": "menus/swing#universe-what-is-scanned",
+"page": "menus/swing.md",
+"title": "⚡ Swing (1–10 day trades)",
+"heading": "Universe (what is scanned)",
+"url": "menus/swing.html#universe-what-is-scanned",
+"text": "- Your holdings that are not inside a pie (Untagged / Individual) with an Entry Analysis score of 60+ . - Watchlist stocks whose quality label is Good . ETFs, crypto and commodities are left out. - Anything below the quality bar is listed under Not checked , with the reason. Pie holdings are never scanned."
+},
+{
+"id": "menus/swing#entry-rules-fixed-not-tuned-on-the-data",
+"page": "menus/swing.md",
+"title": "⚡ Swing (1–10 day trades)",
+"heading": "Entry rules (fixed, not tuned on the data)",
+"url": "menus/swing.html#entry-rules-fixed-not-tuned-on-the-data",
+"text": "All must be true: price above a rising 50-day average · RSI 70 or lower · not stretched far above the 20-day average · average daily turnover over 1 million · daily range 1–6% of price · volume data present (no volume = “cannot verify”, never an entry) · at least 60 daily bars. Then one of two setups: ; Setup ; Needs ; ; Pullback bounce ; RSI fell from 58+ to 35–55 · price at the 20/50-day zone · a green day back up on at least normal volume · room below the recent high for 1.5× the risk ; ; Breakout ; Close above the 20-day high on 1.5× volume , not already more than 1 ATR past the level ;"
+},
+{
+"id": "menus/swing#exit-plan-shown-with-every-entry",
+"page": "menus/swing.md",
+"title": "⚡ Swing (1–10 day trades)",
+"heading": "Exit plan (shown with every entry)",
+"url": "menus/swing.html#exit-plan-shown-with-every-entry",
+"text": "- Stop: under the last 3 lows (never more than 3 ATR below the price; if it would be, there is no entry). - Target: 2× the risk (2R). - Time exit: the close of day 10 if neither is hit. Entry is skipped if the live price has already run more than half an ATR past the signal, or is through the stop. - Type an amount per trade (no fixed budget) to see shares and the £ at risk to the stop."
+},
+{
+"id": "menus/swing#validation-box",
+"page": "menus/swing.md",
+"title": "⚡ Swing (1–10 day trades)",
+"heading": "Validation box",
+"url": "menus/swing.html#validation-box",
+"text": "Shows the latest back-test: all trades, out-of-sample (most recent 40% of dates, never tuned on) and a random 10-day entry baseline, after a 0.4% round-trip cost, next-day-open entries and stop-before-target. The tab opens its gate only if out-of-sample expectancy is positive , profit factor ≥ 1.2 , there are 150+ trades (40+ out of sample) and it beats the random entry . Re-run weekly and on any rule change by the Swing back-test workflow."
+},
+{
+"id": "menus/swing#what-it-does-not-do-and-says-so",
+"page": "menus/swing.md",
+"title": "⚡ Swing (1–10 day trades)",
+"heading": "What it does not do (and says so)",
+"url": "menus/swing.html#what-it-does-not-do-and-says-so",
+"text": "Earnings dates are not checked (avoid holding through results) · the back-test uses today's liquid stocks, so survivorship bias flatters it · the quality screen has no history, so it is not in the back-test · live prices come from Yahoo daily data, refreshed on Scan now ."
+},
+{
+"id": "menus/swing#data",
+"page": "menus/swing.md",
+"title": "⚡ Swing (1–10 day trades)",
+"heading": "Data",
+"url": "menus/swing.html#data",
+"text": "Daily candles [time, open, high, low, close, volume] come from the dashboard's /chart route (private app: the relay via watchlistops.chart; legacy: the worker's /chart). The demo has no volume candles, so every stock shows “data unverified” there. Tests: tests/zk swing test.mjs (rules, exits, costs, no look-ahead, the gate) · tests/swing layout test.py (360/390px, gate closed / open / no entry)."
+},
+{
+"id": "menus/swing#paper-trading-fake-money-under-the-swing-tab",
+"page": "menus/swing.md",
+"title": "⚡ Swing (1–10 day trades)",
+"heading": "🧪 Paper trading (fake money, under the Swing tab)",
+"url": "menus/swing.html#paper-trading-fake-money-under-the-swing-tab",
+"text": "A forward test , not a recommendation. You type a weekly amount (there is no default) and two fake accounts get the same deposit every Monday-week: ; Account ; What it does ; ; Trend account ; Buys that amount of a stock when the Minervini trend template + 20-day breakout on 1.5× volume fires on a completed day, filled at the next session's open , up to 5 at a time. Sells at the next open after a close under the 50-day average , at once on a 15% fall , or after 120 days ; ; World ETF (VWRP.L) ; Puts the same deposit into the ETF each week (the bar the trend account must beat) ; - Honest fills: signals use completed bars only; an order is cancelled if the open is above the entry ceiling (price ran away) or through the stop; every buy and sell pays 0.2% . No real money, no orders are ever sent. - Catches up when opened: nothing runs while the app is closed. Missed weeks are credited and the ETF is bought at that week's real open. - Universe: the stocks the Swing tab scans (holdings outside pies and Good-quality watchlist stocks), so it only trades names you have."
+},
+{
+"id": "menus/swing#paper-trading-fake-money-under-the-swing-tab.2",
+"page": "menus/swing.md",
+"title": "⚡ Swing (1–10 day trades)",
+"heading": "🧪 Paper trading (fake money, under the Swing tab)",
+"url": "menus/swing.html#paper-trading-fake-money-under-the-swing-tab",
+"text": "The demo has no volume candles, so the trend side shows no data there. - Why it exists: the back-test of this strategy did not hold up on stocks it had not seen (docs/data/swing confirm.json), so it is tested on real future prices first. Judge after 8–12 weeks and 20+ closed trades . - Stored in the database: the whole account is one JSON value under the key paper in your user ui prefs row (per user, follows your login on the private app; browser-only on the legacy page, like the demo). Reset deletes it. Tests: tests/zk paper test.mjs (deposits, next-open fills, fees, stop / 50-day / time exits, cancels, idempotent re-runs) · tests/paper layout test.py."
+},
+{
+"id": "menus/watchlist#watchlist-ipo-watch",
+"page": "menus/watchlist.md",
+"title": "⭐ Watchlist &amp; IPO Watch",
+"heading": "⭐ Watchlist &amp; IPO Watch",
+"url": "menus/watchlist.html#watchlist-ipo-watch",
+"text": "Question it answers: what should I buy this week from the things I am tracking, and what is about to list? Tab id watchlist · loaders loadWatchlist() and loadIpo() · docs/js/watchlist.js, docs/js/drilldown.js, docs/js/ipo.js"
+},
+{
+"id": "menus/watchlist#watchlist",
+"page": "menus/watchlist.md",
+"title": "⭐ Watchlist &amp; IPO Watch",
+"heading": "Watchlist",
+"url": "menus/watchlist.html#watchlist",
+"text": "Three sections (tabs .w-cats): 📈 Stocks · 🛢 Commodities · ₿ Crypto . - Search (any stock or ETF worldwide, e.g. Toyota, 0700.HK; crypto via Yahoo and Trading 212 ETPs; commodities via Trading 212 ETCs and market futures). Quick picks for commodities (Gold, Silver, Brent, WTI, Natural gas, Copper, Platinum, Wheat) and crypto (Bitcoin, Ethereum, Solana, XRP, Cardano). - ☆ Bookmark an item to put it on the weekly plan. Each bookmarked item shows this week's call : ; Call ; Meaning ; ; 🟢 ENTER ; Buy this week ; ; 🔵 ACCUMULATE ; Buy in steps ; ; 🟡 HOLD ; Wait for the price points ; ; 🔴 AVOID ; Not this week ; together with price points with £ per step, how much to buy (worked out from the amount you type for that section: there is no fixed budget; with no amount entered the steps show \"—\"), RSI , volume and quality and an analyst chip (Yahoo Finance recommendation and number of analysts, or \"no coverage\"; never an invented rating). - ✕ Remove stops all tracking of that item. - Drag to reorder : every card has a ⠿ handle on its left."
+},
+{
+"id": "menus/watchlist#watchlist.2",
+"page": "menus/watchlist.md",
+"title": "⭐ Watchlist &amp; IPO Watch",
+"heading": "Watchlist",
+"url": "menus/watchlist.html#watchlist",
+"text": "Press it, drag the card up or down and let go (mouse or finger; the handle stops the page scrolling under your finger, and the list scrolls itself near the screen edge). While you drag, all cards fold to their headline so a long list is easy to cross. The new order is saved exactly like ▲ ▼ below. - ⇅ Arrange : tap it to move the cards of the current section (Stocks, Commodities or Crypto each have their own order). Cards turn into compact rows with big ▲ ▼ buttons (40 px, the first can't go up and the last can't go down); ✓ Done returns to the normal view and ↺ Automatic order puts the section back to this week's call."
+},
+{
+"id": "menus/watchlist#watchlist.3",
+"page": "menus/watchlist.md",
+"title": "⭐ Watchlist &amp; IPO Watch",
+"heading": "Watchlist",
+"url": "menus/watchlist.html#watchlist",
+"text": "The order is saved to your login (a few taps in a row save once): in the private app it is a sort order number inside your encrypted watchlist row , so the server never sees which tickers you watch or in what order (POST /watchlist/order is answered in the browser by docs/zk/shim.js); on the legacy page it is watchlist.sort order (migration db/tenant/24 watchlist order.sql, worker route /watchlist/order); the demo has no writable store, so the demo order is kept in that browser only. Cards you never arranged, including newly bookmarked ones, follow the arranged ones in the automatic order. Re-adding a ticker keeps its place. A failed save says so. - Tap a name for the full detail page: live chart (1D · 1W · 1M · 3M · 6M · 9M · 1Y · 5Y with 50/200-day moving averages; 3M and 9M are the last 63 / 189 daily closes of the 1-year chart), day and 52-week range, key stats, analyst rating and target, trading / profitability / leverage, company profile, insights and score radar, and this week's plan. Live prices use the /chart route (Yahoo Finance)."
+},
+{
+"id": "menus/watchlist#watchlist.4",
+"page": "menus/watchlist.md",
+"title": "⭐ Watchlist &amp; IPO Watch",
+"heading": "Watchlist",
+"url": "menus/watchlist.html#watchlist",
+"text": "- Prices from London lines quoted in pence are shown in pence. - Data: watchlist and watchlist analysis (services/watchlist service.py; private app: docs/zk/watchlist.js, watchlistops.js). There are no budget settings: the engines store only relative shares (weight.share per name, share per price point) and the dashboard multiplies them by the amount you enter above the list (Stocks, Commodities and Crypto each have their own box; it is not saved). 5-check review: every expanded stock card (analysed or \"data unverified\") ends with the same 🧪 5-check review box as the Strategy tab: your prompt with the stock's name and ticker filled in, buttons Copy prompt and ChatGPT · Claude · Grok (each opens that assistant's page with the prompt in the box), and Show the prompt . It is not run by CapitalLens and is not live data; see Strategy."
+},
+{
+"id": "menus/watchlist#ipo-watch-card-under-the-watchlist",
+"page": "menus/watchlist.md",
+"title": "⭐ Watchlist &amp; IPO Watch",
+"heading": "🚀 IPO Watch (card under the watchlist)",
+"url": "menus/watchlist.html#ipo-watch-card-under-the-watchlist",
+"text": "Works like the stock watchlist: nothing is listed until you bookmark it. The IPO calendar is only the thing you search. 1. Search the calendar by company, ticker, sector, exchange or country name (for example Anthropic, Nasdaq, India). Several words narrow the result. 2. Filter by country (chips: All countries, US, UK, India, HK, Other) and by exchange (dropdown built from the calendar). A filter on its own lists everything that matches. 3. ☆ Bookmark a result. It appears under ⭐ My IPO list (and the result reads ★ In my list). Drag to reorder : with two or more IPOs each card has a ⠿ strip on its left edge (40 px wide, full card height). Press it and drag the card up or down (mouse or finger; the strip stops the page scrolling under your finger); the other cards fold to their headline while you drag and the list scrolls itself near the screen edge. Saved exactly like ▲ ▼ below."
+},
+{
+"id": "menus/watchlist#ipo-watch-card-under-the-watchlist.2",
+"page": "menus/watchlist.md",
+"title": "⭐ Watchlist &amp; IPO Watch",
+"heading": "🚀 IPO Watch (card under the watchlist)",
+"url": "menus/watchlist.html#ipo-watch-card-under-the-watchlist",
+"text": "⇅ Arrange (shown when the list has two or more IPOs) turns the list into compact numbered rows with big ▲ ▼ buttons (40 px; the first can't go up, the last can't go down); ✓ Done returns to the full cards and ↺ Automatic order goes back to phase-then-date. The order is saved to your login : a sort order number inside your encrypted ipo watch row (POST /ipo/order, answered in the browser by docs/zk/shim.js), so the server never sees which IPOs you follow or in what order. A few taps in a row save once; a failed save says so. IPOs you never arranged, including newly bookmarked ones, follow the arranged ones in the automatic order. 4. ✕ on a card in My IPO list removes it (same ✕ as the stock watchlist, top right, 40px). ; Element ; Detail ; ; My IPO list ; Empty by default (\"Nothing here yet. Search above, then tap ☆ Bookmark…\")."
+},
+{
+"id": "menus/watchlist#ipo-watch-card-under-the-watchlist.3",
+"page": "menus/watchlist.md",
+"title": "⭐ Watchlist &amp; IPO Watch",
+"heading": "🚀 IPO Watch (card under the watchlist)",
+"url": "menus/watchlist.html#ipo-watch-card-under-the-watchlist",
+"text": "Per-user, stored encrypted in the private app (ipo watch) ; ; Search results ; Shown only while a query or a filter is set, with a count; hidden when cleared ; ; Each card ; Name, ticker, exchange, sector, status, rating pill (hover for source), Opens / Closes / Lists , price range or price, deal size, note, source link ; ; Status (phase) ; open · closed · upcoming · priced · filed · rumoured · listed · postponed · withdrawn, derived from the dates ; ; Legacy and demo dashboards ; Search and filters work; there is no per-user list, so no Bookmark buttons ; - Honest ratings: a rating other than Not rated must carry a rating source; ratings are never invented. Today all rows are Not rated until a rating source is chosen. - Honest dates: an IPO whose price is not final says so in its note (for example \"final price not confirmed\"). - Data: shared public table ipo calendar (the searchable catalogue, nothing about any customer), upserted from config/ipo calendar.json by services/ipo service.py (workflow IPO Calendar, weekdays 06:15 UTC)."
+},
+{
+"id": "menus/watchlist#ipo-watch-card-under-the-watchlist.4",
+"page": "menus/watchlist.md",
+"title": "⭐ Watchlist &amp; IPO Watch",
+"heading": "🚀 IPO Watch (card under the watchlist)",
+"url": "menus/watchlist.html#ipo-watch-card-under-the-watchlist",
+"text": "There is no live exchange feed; the catalogue is curated JSON with a named source on every row. - Per-user list: routes POST ipo/watch and ipo/unwatch are answered in the browser by docs/zk/shim.js into the encrypted store (no database migration needed; enc rows.kind = 'ipo watch')."
+},
+{
+"id": "menus/watchlist#tests",
+"page": "menus/watchlist.md",
+"title": "⭐ Watchlist &amp; IPO Watch",
+"heading": "Tests",
+"url": "menus/watchlist.html#tests",
+"text": "5-check box: tests/zk fivecheck test.mjs, tests/fivecheck layout test.py. tests/zk watchlist order test.mjs and tests/zk ipo order test.mjs (arranging, drag strip markup, saving, encrypted rows), tests/ipo watch browser test.py (real mouse drag, cancelled drag, touch drag, reload restores the order), tests/watchlist order layout test.py (320/360/390px, buttons and handles ≥ 40 px, real taps, mouse and touch drags, cancelled drag), tests/zk watchlist test.mjs, tests/zk watchlistops test.mjs, tests/zk ipo test.mjs, tests/ipo service test.py, tests/ipo layout test.py (320/360/390px, every filter), tests/ipo watch browser test.py (real typing, filters, bookmark, ✕)."
+}
+]
+}

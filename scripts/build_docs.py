@@ -13,6 +13,8 @@ Run:  python3 scripts/build_docs.py          rebuild
 """
 import html, pathlib, re, sys
 import markdown
+sys.path.insert(0, str(pathlib.Path(__file__).resolve().parent))
+import build_help_index   # knowledge base of the Help assistant, rebuilt with the portal so it can never be stale
 
 ROOT = pathlib.Path(__file__).resolve().parent.parent
 SRC = ROOT / "documentation"
@@ -29,7 +31,7 @@ NAV = [
         ("menus/positions.md", "📋 Positions"), ("menus/analyst.md", "🔬 Analyst"),
         ("menus/strategy.md", "🎯 Strategy"), ("menus/profit-booking.md", "💰 Profit Booking"), ("menus/swing.md", "⚡ Swing"),
         ("menus/returns.md", "📈 Returns"), ("menus/watchlist.md", "⭐ Watchlist & IPO Watch"),
-        ("menus/alerts.md", "🔔 Alerts"), ("menus/settings-and-account.md", "⚙ Settings & account"),
+        ("menus/alerts.md", "🔔 Alerts"), ("menus/settings-and-account.md", "⚙ Settings & account"), ("menus/help-assistant.md", "❓ Help assistant"),
     ]),
     ("Requirements", [("requirements/README.md", "Requirements pack: index"), ("requirements/prd.md", "Product requirements"),
                       ("requirements/ui-requirements.md", "UI requirements and wireframes"), ("requirements/chart-requirements.md", "Chart requirements"),
@@ -208,6 +210,7 @@ def build(check=False):
             stale.append(f"documentation/{page} (missing)"); continue
         out = OUT / ("index.html" if page == "README.md" else page[:-3] + ".html")
         put(out, render(page, f.read_text()))
+    put(OUT / "help-index.json", build_help_index.index_text())
     return stale
 
 if __name__ == "__main__":

@@ -3,7 +3,7 @@
 > **Generated** by `scripts/build_docs.py` from `.github/workflows/*.yml`. Do not edit by hand.
 > What each pipeline is for, and the order data moves, is in [Workflows & schedules](../workflows.md).
 
-19 workflows. Times are UTC. Per the standing rule, the owner's own morning Refresh is what runs analysis for the private app; these workflows cover shared/public data, the legacy dashboard, tests and maintenance.
+20 workflows. Times are UTC. Per the standing rule, the owner's own morning Refresh is what runs analysis for the private app; these workflows cover shared/public data, the legacy dashboard, tests and maintenance.
 
 | Workflow | File | Runs when | Schedule (UTC) |
 |---|---|---|---|
@@ -11,6 +11,7 @@
 | Daily Portfolio Services | `daily_services.yml` | manual | `20 8 * * 1-5` 08:20 UTC Mon–Fri — after the 08:00 monitor snapshot lands |
 | Database Backup | `db_backup.yml` | manual | `17 3 * * 0` Sundays 03:17 UTC — schema snapshot<br>`41 3 * * *` daily 03:41 UTC — encrypted data backup → R2 |
 | Database Maintenance | `db_maintenance.yml` | manual | `23 2 * * *` 02:23 UTC daily |
+| Deploy Help assistant worker | `deploy_help.yml` | push, manual | — |
 | Deploy Cloudflare Relay | `deploy_relay.yml` | push, manual | — |
 | Deploy Cloudflare Worker | `deploy_worker.yml` | push, manual | — |
 | IPO Calendar | `ipo_calendar.yml` | push, manual | `15 6 * * 1-5` weekdays 06:15 UTC |
@@ -40,6 +41,14 @@ python -m services.value_buy_service
 python -m services.strategy_service
 python -m services.holding_decision_service
 python -m services.profit_booking_service
+```
+
+## Deploy Help assistant worker
+
+`.github/workflows/deploy_help.yml`
+
+```
+node tests/zk_help_worker_test.mjs
 ```
 
 ## IPO Calendar
