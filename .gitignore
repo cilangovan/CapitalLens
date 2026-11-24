@@ -16,3 +16,4 @@ build/
 venv/
 node_modules/
 !tests/regression_register.json
+!docs/data/swing_backtest.json

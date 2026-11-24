@@ -19,4 +19,5 @@ check("R13 no Worker / browser script uses fetch redirect:'error' (Workers rejec
 tracked = set(subprocess.run(["git", "ls-files", "config", "tests"], cwd=ROOT, capture_output=True, text=True).stdout.split())
 on_disk = {str(p.relative_to(ROOT)) for d in ("config", "tests") for p in (ROOT / d).glob("*") if p.is_file() and "__pycache__" not in str(p)}
 check("R14 every file under config/ and tests/ is tracked by git (an ignore rule must not hide it from CI)", on_disk <= tracked, str(sorted(on_disk - tracked)))
+check("R14 the Swing back-test result docs/data/swing_backtest.json is not hidden by .gitignore (the workflow could not commit it, so the tab never saw a result)", subprocess.run(["git", "check-ignore", "-q", "docs/data/swing_backtest.json"], cwd=ROOT).returncode == 1)
 print("FAIL" if bad else "PASS"); raise SystemExit(1 if bad else 0)
