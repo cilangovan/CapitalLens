@@ -726,5 +726,29 @@
   "guard": "zk_refresh_live_test.mjs",
   "marker": "one button",
   "commits": []
+ },
+ {
+  "id": "A10aa228",
+  "date": "2026-11-24",
+  "area": "general",
+  "bug": "fix: register-sync bot job rebases before pushing (lost a push race with the back-test bot commit); guard: tests/standards_test.py",
+  "guard": "standards_test.py",
+  "marker": "",
+  "commits": [
+   "10aa228"
+  ],
+  "auto": true
+ },
+ {
+  "id": "Ab9be161",
+  "date": "2026-11-24",
+  "area": "general",
+  "bug": "fix: let the Swing back-test result be committed (.gitignore hid docs/data/swing_backtest.json); guard: tests/regression_guards_test.py R14",
+  "guard": "regression_guards_test.py",
+  "marker": "",
+  "commits": [
+   "b9be161"
+  ],
+  "auto": true
  }
 ]

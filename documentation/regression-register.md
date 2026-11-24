@@ -49,7 +49,9 @@ Every bug that was fixed has a row here: what broke and the test that fails if i
 | Ab24f8ed | 2026-11-23 | security | security: daily email digest + GitHub issue sync + JSON findings export | `tests/security_email.py` | b24f8ed |
 | R10 | 2026-11-23 | security | 9 stored-XSS paths (database text in innerHTML without esc) | `tests/security_scan.py` | dde640c, 1cd6f92 |
 | R22 | 2026-11-23 | mobile | Profit-tab layout test harness lacked esc() after the XSS fix, so the test was red in CI | `tests/profit_pies_layout_test.py` | dde640c |
+| A10aa228 | 2026-11-24 | general | fix: register-sync bot job rebases before pushing (lost a push race with the back-test bot commit); guard: tests/standards_test.py | `tests/standards_test.py` | 10aa228 |
 | A4fc9848 | 2026-11-24 | mood | fix(mood): every country tab fetches its own index data; add Italy | `tests/mood_layout_test.py` | 4fc9848 |
+| Ab9be161 | 2026-11-24 | general | fix: let the Swing back-test result be committed (.gitignore hid docs/data/swing_backtest.json); guard: tests/regression_guards_test.py R14 | `tests/regression_guards_test.py` | b9be161 |
 | R11 | 2026-11-24 | mobile | Market Mood chip strip was clipped at 360px: nothing past Germany could be tapped | `tests/mood_layout_test.py` | 6e86efd |
 | R12 | 2026-11-24 | ui | Active Alerts list on Overview (owner wants alerts only on the Alerts dashboard) | `tests/standards_test.py` | 7afcaf6 |
 | R23 | 2026-11-24 | mood | Market Mood showed no data for any country you do not hold (it read the Markets-I-hold cache, which only loads held countries) | `tests/mood_layout_test.py` |  |
