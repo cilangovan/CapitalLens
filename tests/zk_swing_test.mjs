@@ -94,4 +94,15 @@ ok('negative out-of-sample expectancy closes the gate', SWG.swValidated(Object.a
 ok('profit factor under 1.2 closes the gate', SWG.swValidated(Object.assign({}, good, { all: { trades: 400, profitFactor: 1.05 } })).ok === false);
 ok('not beating a random entry closes the gate', SWG.swValidated(Object.assign({}, good, { baseline: { trades: 900, expectancy: 0.9 } })).ok === false);
 ok('too small an out-of-sample part closes the gate', SWG.swValidated(Object.assign({}, good, { out_of_sample: { trades: 10, expectancy: 1 } })).ok === false);
+// ── variants (declared in advance; default rules unchanged) ──
+const up = Array.from({ length: 200 }, (_, i) => 100 + i), dn = Array.from({ length: 200 }, (_, i) => 300 - i), T = Array.from({ length: 200 }, (_, i) => 86400 * (i - 50));
+const wide = SWG.swingSignal(X, undefined, { stopAtr: 2.5 });
+ok('wide-stop variant puts the stop 2.5 ATR below the price', wide.entry && Math.abs((wide.trigger - wide.stop) - 2.5 * wide.atr) < 1e-9);
+ok('market-trend variant: no entry when the S&P is falling, with the reason', /Market is not in an uptrend/.test((SWG.swingSignal(X, undefined, { regime: true, ctx: { idx: { t: T, c: dn } } }).reasons || [''])[0]));
+ok('market-trend variant: entry allowed when the S&P is rising', SWG.swingSignal(X, undefined, { regime: true, ctx: { idx: { t: T, c: up } } }).entry === true);
+ok('market-trend variant: no market data = no entry (never assumed fine)', /Market data/.test((SWG.swingSignal(X, undefined, { regime: true }).reasons || [''])[0]));
+ok('leaders variant: a stock lagging the market is refused', /market leader/.test((SWG.swingSignal(X, undefined, { rs: 5, ctx: { idx: { t: T, c: up.map(x => x * 3) } } }).reasons || [''])[0]) || SWG.swingSignal(X, undefined, { rs: 5, ctx: { idx: { t: T, c: up.map(x => x * 3) } } }).entry === false);
+ok('leaders variant: a stock ahead of a flat market passes', SWG.swingSignal(X, undefined, { rs: 0.05, ctx: { idx: { t: T, c: Array(200).fill(100) } } }).entry === true);
+ok('default rules are untouched by the variants', JSON.stringify(SWG.swingSignal(X)) === JSON.stringify(SWG.swingSignal(X, undefined, {})));
+
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

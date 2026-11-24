@@ -45,7 +45,9 @@ function swPrep(candles) {
 }
 
 // Evaluate bar i (a COMPLETED daily bar). Returns { entry:false, reasons:[…] } or { entry:true, setup, trigger, stop, target, … }.
-function swingSignal(X, i) {
+// cfg (all optional, default = the original rules): { stopAtr: n  wider stop of n ATR instead of under the last 3 lows, ctx: { idx: {t:[],c:[]} }, regime: true  needs the market above a rising 50-day average, rs: n  needs a 63-day return at least n ahead of the market }
+function swingSignal(X, i, cfg) {
+  cfg = cfg || {};
   const no = (...reasons) => ({ entry: false, reasons });
   if (i === undefined) i = X.c.length - 1;
   if (i < SW.minBars - 1) return no(`Only ${i + 1} daily bars (need ${SW.minBars}): data unverified`);
@@ -61,6 +63,13 @@ function swingSignal(X, i) {
   if (!(c > s50 && s20 > s50 && s50 > s50b)) return no('Not in an uptrend (needs price above a rising 50-day average)');
   if (rsi > 70) return no(`Overbought (RSI ${swR(rsi, 0)}): no new money`);
   if (c > s20 + 2.5 * atr) return no('Stretched far above its 20-day average: wait for a pullback');
+  if (cfg.regime || cfg.rs) {
+    const I = cfg.ctx && cfg.ctx.idx; if (!I || I.c.length < 70) return no('Market data unavailable: cannot check the market trend');
+    let k = -1; for (let a = 0, b = I.t.length - 1; a <= b;) { const m = (a + b) >> 1; if (I.t[m] <= X.t[i]) { k = m; a = m + 1; } else b = m - 1; }
+    if (k < 63) return no('Market data does not reach this date');
+    if (cfg.regime) { const m50 = swSma(I.c, 50, k + 1), m50b = swSma(I.c, 50, k - 9); if (!(I.c[k] > m50 && m50 > m50b)) return no('Market is not in an uptrend (S&P 500 below a rising 50-day average): no new entries'); }
+    if (cfg.rs) { const r = c / X.c[i - 63] - 1, rm = I.c[k] / I.c[k - 63] - 1; if (!(r - rm >= cfg.rs)) return no('Not a market leader: 3-month return is not ahead of the market'); }
+  }
   const volX = v / avgV;
   let hi20 = -Infinity; for (let j = i - 20; j < i; j++) hi20 = Math.max(hi20, X.h[j]);
   let setup = null, why = [];
@@ -78,11 +87,11 @@ function swingSignal(X, i) {
     else return no(`No setup: volume only ${swR(volX, 1)}× normal on the bounce (needs 1.0×)`);
   }
   // Risk: stop under the last 3 lows, never further than 3 ATR; target 2R; pullbacks also need room below the recent high
-  const stop = Math.min(X.l[i], X.l[i - 1], X.l[i - 2]) - 0.25 * atr, risk = c - stop;
+  const stop = cfg.stopAtr ? c - cfg.stopAtr * atr : Math.min(X.l[i], X.l[i - 1], X.l[i - 2]) - 0.25 * atr, risk = c - stop;
   if (!(risk > 0)) return no('Stop is not below the price');
   if (risk > SW.maxRiskAtr * atr) return no(`Stop too far away (${swR(risk / atr, 1)} ATR): risk not worth taking`);
   const target = c + SW.rr * risk;
-  if (setup === 'Pullback bounce') { let top = -Infinity; for (let j = i - 20; j <= i; j++) top = Math.max(top, X.h[j]); if (top < c + 1.5 * risk) return no('No room to run: recent high is too close to the entry'); }
+  if (setup === 'Pullback bounce' && !cfg.stopAtr) { let top = -Infinity; for (let j = i - 20; j <= i; j++) top = Math.max(top, X.h[j]); if (top < c + 1.5 * risk) return no('No room to run: recent high is too close to the entry'); }
   // quality of the setup, 0-100, only used to rank the ones that already passed every gate
   const score = Math.round(Math.min(100, 50 + Math.min(25, (volX - 1) * 20) + (setup === 'Breakout' ? 5 : 10) + Math.min(10, (s20 / s50 - 1) * 200)));
   return { entry: true, setup, trigger: c, ceiling: c + 0.5 * atr, stop, target, risk, riskPct: risk / c, rr: SW.rr, atr, rsi, volX, avgVol: avgV, holdDays: SW.holdDays, score, why, bar: i, t: X.t[i] };
@@ -104,10 +113,10 @@ function swSimulate(X, sig, cost) {
 }
 
 // Back-test one stock: after a trade closes the next signal is taken from the bar after the exit (no overlapping trades)
-function swBacktestOne(candles, cost) {
+function swBacktestOne(candles, cost, cfg) {
   const X = swPrep(candles), trades = []; let i = SW.minBars - 1;
   while (i < X.c.length - 1) {
-    const s = swingSignal(X, i); if (!s.entry) { i++; continue; }
+    const s = swingSignal(X, i, cfg); if (!s.entry) { i++; continue; }
     const tr = swSimulate(X, s, cost); if (!tr) break; if (tr.skipped) { i++; continue; }
     trades.push(Object.assign({ setup: s.setup }, tr)); i = tr.exitBar;
   }

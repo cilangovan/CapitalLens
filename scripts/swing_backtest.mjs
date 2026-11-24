@@ -26,12 +26,16 @@ async function candles(sym) {
   return null;
 }
 
-const all = [], base = [], times = []; let ok = 0; const failed = [];
+// Three variants declared BEFORE looking at any result (plus the original). Nothing is tuned: each is one idea, run once.
+const idxC = await candles('^GSPC'); if (!idxC || idxC.length < 200) { console.error('No S&P 500 data: cannot test the market-trend variants'); process.exit(2); }
+const IDX = { t: idxC.map(b => b[0]), c: idxC.map(b => b[4]) };
+const VARIANTS = { original: {}, wide_stop: { stopAtr: 2.5 }, market_up: { regime: true, ctx: { idx: IDX } }, leaders: { rs: 0.05, ctx: { idx: IDX } } };
+const V = Object.fromEntries(Object.keys(VARIANTS).map(k => [k, []])); const base = [], times = []; let ok = 0; const failed = [];
 for (const sym of U) {
   const cs = await candles(sym); await sleep(250);
   if (!cs || cs.length < 120) { failed.push(sym); continue; }
   ok++; cs.forEach(b => times.push(b[0]));
-  for (const t of SWG.swBacktestOne(cs)) all.push(Object.assign({ sym }, t));
+  for (const [k, cfg] of Object.entries(VARIANTS)) for (const t of SWG.swBacktestOne(cs, undefined, cfg)) V[k].push(Object.assign({ sym }, t));
   // baseline: enter at the next open on every 10th bar, same cost, hold 10 bars (no signal, no stop)
   const X = SWG.swPrep(cs);
   for (let i = SWG.SW.minBars; i + 1 + SWG.SW.holdDays <= X.c.length; i += SWG.SW.holdDays) {
@@ -40,14 +44,22 @@ for (const sym of U) {
 }
 if (ok < 40) { console.error(`Only ${ok} of ${U.length} symbols returned data: not writing a report`); process.exit(2); }
 times.sort((a, b) => a - b); const cut = times[Math.floor(times.length * 0.6)];
-const ins = all.filter(t => t.t < cut), oos = all.filter(t => t.t >= cut), boos = base.filter(t => t.t >= cut);
-const by = f => { const m = {}; all.forEach(t => (m[f(t)] = m[f(t)] || []).push(t)); return Object.fromEntries(Object.entries(m).map(([k, v]) => [k, SWG.swStats(v)])); };
+const boos = base.filter(t => t.t >= cut), baseline = SWG.swStats(boos);
+const variants = {};
+for (const [k, tr] of Object.entries(V)) {
+  const r = { all: SWG.swStats(tr), in_sample: SWG.swStats(tr.filter(t => t.t < cut)), out_of_sample: SWG.swStats(tr.filter(t => t.t >= cut)), baseline,
+    by_setup: Object.fromEntries(['Pullback bounce', 'Breakout'].map(n => [n, SWG.swStats(tr.filter(t => t.setup === n))])) };
+  r.validation = SWG.swValidated(r); variants[k] = r;
+}
+// Choose by IN-SAMPLE expectancy only (needs 100+ in-sample trades); the out-of-sample part then confirms or rejects it. 4 variants were tried.
+const eligible = Object.entries(variants).filter(([, r]) => r.in_sample.trades >= 100).sort((a, b) => b[1].in_sample.expectancy - a[1].in_sample.expectancy);
+const chosen = eligible.length ? eligible[0][0] : 'original', C = variants[chosen];
 const rep = {
   generated: new Date().toISOString(), symbols: ok, requested: U.length, failed, years: YEARS, cost: SWG.SW.cost, cut: new Date(cut * 1000).toISOString().slice(0, 10),
-  all: SWG.swStats(all), in_sample: SWG.swStats(ins), out_of_sample: SWG.swStats(oos), baseline: SWG.swStats(boos),
-  by_setup: by(t => t.setup), by_exit: by(t => t.why), by_year: by(t => new Date(t.t * 1000).getUTCFullYear()),
-  caveat: 'Today’s surviving stocks only (survivorship bias), the quality screen and earnings dates are not in the test, and fills at the stop are assumed with no extra slippage on gaps beyond the open price.'
+  variants_tried: Object.keys(variants).length, chosen, config: Object.fromEntries(Object.entries(VARIANTS[chosen]).filter(([k]) => k !== 'ctx')),
+  all: C.all, in_sample: C.in_sample, out_of_sample: C.out_of_sample, baseline, by_setup: C.by_setup, variants,
+  caveat: 'Today\u2019s surviving stocks only (survivorship bias), the quality screen and earnings dates are not in the test, and fills at the stop are assumed with no extra slippage on gaps beyond the open price. Four rule sets were tried and the one with the best in-sample result was kept, so the out-of-sample figure is the one to trust.'
 };
 rep.validation = SWG.swValidated(rep);
 fs.mkdirSync(OUT.replace(/[^/]*$/, '') || '.', { recursive: true }); fs.writeFileSync(OUT, JSON.stringify(rep, null, 1) + '\n');
-console.log(JSON.stringify({ symbols: ok, all: rep.all, in_sample: rep.in_sample, out_of_sample: rep.out_of_sample, baseline: rep.baseline, by_setup: rep.by_setup, validation: rep.validation }, null, 1));
+console.log(JSON.stringify({ symbols: ok, chosen, baseline, summary: Object.fromEntries(Object.entries(variants).map(([k, r]) => [k, { all: [r.all.trades, r.all.expectancy, r.all.profitFactor], in: [r.in_sample.trades, r.in_sample.expectancy, r.in_sample.profitFactor], oos: [r.out_of_sample.trades, r.out_of_sample.expectancy, r.out_of_sample.profitFactor], ok: r.validation.ok }])), validation: rep.validation }, null, 1));
