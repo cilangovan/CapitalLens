@@ -81,7 +81,7 @@
 <ol>
 <li>In Trading 212: <strong>Settings → API</strong>, create a key with <strong>read-only</strong> permissions (never one that can trade).</li>
 <li>Open ⚙ Settings → <strong>Refresh your data</strong> (or the account page's sync box).</li>
-<li>Paste the key and secret; press <strong>Refresh now</strong>.</li>
+<li>Paste the key and secret; press <strong>Refresh now</strong>. It syncs, re-analyses <strong>and turns the live feed on</strong> (one button): the headline numbers (total value, P&amp;L, cash) then update every 5 minutes while the tab stays open. The key stays in browser memory only. A <strong>⏹ Stop live feed</strong> button appears while live; there is no separate Start button. The automatic re-analysis at login never starts the feed (it has no key). Guarded by <code>tests/zk_refresh_live_test.mjs</code>.</li>
 <li>Keep the tab open until it shows ✅. The first sync is slow because of Trading 212's rate limit.</li>
 <li>The key needs at least these <strong>read-only</strong> permissions: <strong>Account data</strong>, <strong>Portfolio</strong>, <strong>Orders history</strong> (and <strong>Dividends/Transactions history</strong> for Returns). A key without <em>Portfolio</em> is refused by Trading 212 and no positions can be saved.</li>
 </ol>

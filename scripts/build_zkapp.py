@@ -53,8 +53,8 @@ panel = """
       <b style="color:var(--text)">What is on this page</b><br>
       <b>🔑 Recovery key:</b> the only way back in if you forget your password. Press <i>Check my key</i> about once a week to confirm yours still works. Lost it? <i>Create a new recovery key</i> while you are signed in.<br>
       <b>🧪 Compare / duplicates:</b> health checks for your stored data. <i>Scan</i> only reads. Use <i>Fix</i> only if Scan reports extra rows.<br>
-      <b>🔄 Refresh your data:</b> pulls your latest Trading 212 data and updates every dashboard. Paste your <u>read-only</u> Trading 212 key (Settings &gt; API in Trading 212). It is used once and never saved. Leave the fields empty to just re-analyse what is already stored. When you press <i>Refresh now</i> this window shrinks to a small progress chip; keep the tab open until it shows ✅.<br>
-      <b>🟢 Live feed:</b> keeps your headline numbers (total value, P&amp;L, cash) updating every 5 minutes while this tab stays open. Enter your key &amp; secret and press <i>Start live feed</i>. Credentials are held in browser memory only and cleared the moment you stop the feed or sign out — never saved anywhere.<br>
+      <b>🔄 Refresh your data:</b> pulls your latest Trading 212 data, updates every dashboard <u>and turns the live feed on</u> (one button). Paste your <u>read-only</u> Trading 212 key (Settings &gt; API in Trading 212). It is used once and never saved. Leave the fields empty to just re-analyse what is already stored. When you press <i>Refresh now</i> this window shrinks to a small progress chip; keep the tab open until it shows ✅.<br>
+      <b>🟢 Live feed:</b> starts by itself when you press <i>Refresh now</i> with your key: your headline numbers (total value, P&amp;L, cash) then update every 5 minutes while this tab stays open. Press <i>Stop live feed</i> to turn it off. Credentials are held in browser memory only and cleared the moment you stop the feed or sign out — never saved anywhere.<br>
       <b>Buttons:</b> <i>Minimise</i> hides this window but keeps anything running; <i>Close</i> hides it too. Neither stops a refresh in progress.<br>
       <b>Automatic:</b> when you log in, your stored data is re-analysed by itself if it is more than 6 hours old or the app was updated, so new features appear without you pressing anything. Only the Trading 212 sync needs your key.<br>
       <b>Phone alerts:</b> save your ntfy topic at the bottom to get alerts on your phone.
@@ -93,8 +93,8 @@ panel = """
     <pre id="zk-log" style="font-size:11px;max-height:200px;overflow:auto;background:#0004;padding:8px;border-radius:6px;white-space:pre-wrap"></pre>
     <hr style="border-color:var(--border)">
     <h3 style="margin:0 0 6px;font-size:15px">🟢 Live feed</h3>
-    <p style="font-size:12px;color:var(--muted);margin:0 0 10px">Updates your headline numbers every 5 min while this tab is open. Enter your key &amp; secret above, then press Start. Credentials stay in browser memory only — never saved — and are cleared when you stop the feed or sign out.</p>
-    <button id="zk-live-btn" onclick="zkLiveToggle()">▶ Start live feed</button> <span id="zk-live-status" style="font-size:12px;margin-left:8px;color:var(--muted)"></span>
+    <p style="font-size:12px;color:var(--muted);margin:0 0 10px"><b>Refresh now</b> also turns this on: your headline numbers update every 5 min while this tab is open. Credentials stay in browser memory only — never saved — and are cleared when you stop the feed or sign out.</p>
+    <button id="zk-live-btn" onclick="zkLiveToggle()" style="display:none">⏹ Stop live feed</button> <span id="zk-live-status" style="font-size:12px;color:var(--muted)">Live is off. Press Refresh now (with your key) to turn it on.</span>
     <hr style="border-color:var(--border)">
     <p style="font-size:12px;color:var(--muted);margin:6px 0">Phone alerts (ntfy topic, kept encrypted; treat it like a password):</p>
     <input id="zk-topic" type="password" placeholder="ntfy topic" autocomplete="off" style="width:70%"> <button onclick="zkToolsSaveTopic()">Save</button> <span id="zk-topic-msg" style="font-size:12px"></span>

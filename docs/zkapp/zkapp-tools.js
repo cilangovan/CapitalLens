@@ -89,7 +89,7 @@ function zkLiveStart(key, sec) {
   // Update UI state in the Tools panel
   const btn = document.getElementById('zk-live-btn');
   const status = document.getElementById('zk-live-status');
-  if (btn) btn.textContent = '⏹ Stop live feed';
+  if (btn) { btn.textContent = '⏹ Stop live feed'; btn.style.display = ''; }
   if (status) status.textContent = 'Live — updating every 5 min';
 }
 
@@ -100,20 +100,14 @@ function zkLiveStop() {
   const strip = document.getElementById('zk-live-strip'); if (strip) strip.remove();
   const btn = document.getElementById('zk-live-btn');
   const status = document.getElementById('zk-live-status');
-  if (btn) btn.textContent = '▶ Start live feed';
-  if (status) status.textContent = '';
+  if (btn) { btn.textContent = '⏹ Stop live feed'; btn.style.display = 'none'; }
+  if (status) status.textContent = 'Live is off. Press Refresh now (with your key) to turn it on.';
 }
 
 function zkLiveToggle() {
   if (_liveKey) { zkLiveStop(); return; }
-  const key = document.getElementById('zk-key').value.trim(), sec = document.getElementById('zk-sec').value.trim();
-  if (!key || !sec) {
-    const status = document.getElementById('zk-live-status');
-    if (status) status.textContent = 'Enter your T212 key & secret above first';
-    return;
-  }
-  zkLiveStart(key, sec);
-  document.getElementById('zk-key').value = ''; document.getElementById('zk-sec').value = '';
+  const status = document.getElementById('zk-live-status');             // not live: the only way on is Refresh now (one button, one key entry)
+  if (status) status.textContent = 'Press Refresh now above with your key: it refreshes and turns live on.';
 }
 function zkChip() {            // small progress chip: the refresh keeps running while the panel is hidden and you use the dashboard
   let c = document.getElementById('zk-chip');
@@ -154,6 +148,7 @@ async function zkAutoRefresh() {            // re-analyse stored data (no Tradin
 async function zkToolsRun(auto) {
   if (!ZKCTX) return;
   const key = document.getElementById('zk-key').value.trim(), sec = document.getElementById('zk-sec').value.trim(), full = document.getElementById('zk-full').checked;
+  const keepKey = key, keepSec = sec;                                                           // kept in memory ONLY, for the live feed that follows a manual refresh
   const logEl = document.getElementById('zk-log'), btn = document.getElementById('zk-run'), status = document.getElementById('zk-status');
   logEl.textContent = ''; btn.disabled = true; status.textContent = 'Working…'; { const ch = document.getElementById('zk-changes'); if (ch) { ch.textContent = ''; ch.style.display = 'none'; } }
   document.getElementById('zk-key').value = ''; document.getElementById('zk-sec').value = '';      // credentials leave the page the moment they are read
@@ -169,6 +164,8 @@ async function zkToolsRun(auto) {
     if (r.ok) { try { await ZKCTX.store.put('settings', [{ key: 'last_analysis', at: new Date().toISOString(), version: ZK_ANALYSIS_VERSION }], x => x.key); } catch (e) {} }
     status.textContent = r.ok ? (auto === true ? 'Data re-analysed automatically.' : 'Done — everything refreshed.') : 'Finished with problems: ' + r.results.filter(x => !x.ok).map(x => x.name).join(', ');
     zkShowChanges(r);
+    // One button: Refresh now = sync + analyse + go live. A manual refresh with a key keeps the headline numbers updating every 5 minutes (the key stays in memory only).
+    if (auto !== true && keepKey && keepSec && typeof zkLiveStart === 'function') { zkLiveStart(keepKey, keepSec); status.textContent += ' Live: on (every 5 min).'; }
   } catch (e) { status.textContent = 'Failed: ' + (e.message || e); }
   ZK_RUN.running = false; clearInterval(ZK_RUN.timer); window.removeEventListener('beforeunload', beforeUnload);
   document.getElementById('zk-key').value = ''; document.getElementById('zk-sec').value = ''; btn.disabled = false; btn.textContent = 'Refresh now';

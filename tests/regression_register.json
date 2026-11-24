@@ -717,5 +717,14 @@
    "4fc9848"
   ],
   "auto": true
+ },
+ {
+  "id": "R25",
+  "date": "2026-11-24",
+  "area": "ui",
+  "bug": "Two buttons (Refresh now and Start live feed) confused the owner: Refresh now should refresh and make data live",
+  "guard": "zk_refresh_live_test.mjs",
+  "marker": "one button",
+  "commits": []
  }
 ]

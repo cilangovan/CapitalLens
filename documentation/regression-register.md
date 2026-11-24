@@ -54,6 +54,7 @@ Every bug that was fixed has a row here: what broke and the test that fails if i
 | R12 | 2026-11-24 | ui | Active Alerts list on Overview (owner wants alerts only on the Alerts dashboard) | `tests/standards_test.py` | 7afcaf6 |
 | R23 | 2026-11-24 | mood | Market Mood showed no data for any country you do not hold (it read the Markets-I-hold cache, which only loads held countries) | `tests/mood_layout_test.py` |  |
 | R24 | 2026-11-24 | mood | Italy (FTSE MIB) had no Market Mood tab | `tests/mood_layout_test.py` |  |
+| R25 | 2026-11-24 | ui | Two buttons (Refresh now and Start live feed) confused the owner: Refresh now should refresh and make data live | `tests/zk_refresh_live_test.mjs` |  |
 
 ## Known gaps (fixed, no automated test yet)
 
