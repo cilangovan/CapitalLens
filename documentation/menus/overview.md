@@ -6,6 +6,8 @@ Tab id `overview` · loader `loadOverview()` · `docs/js/overview.js`
 
 **Market Mood** (`#mood-section`, top of Overview only; stats strip below it): a gauge per market. Tap **📊 Markets** to open the chip strip: Crypto, US, UK, EU/DE, Japan, India, China, Spain, NL, Taiwan. Open, the chips **wrap onto as many rows as needed** so every market is reachable on a 360px phone (they were clipped after Germany before); picking one closes the strip. Guarded by `tests/mood_layout_test.py` (CI: ui_tests).
 
+**No alert list on Overview:** alerts are shown only on the 🔔 Alerts dashboard; Overview keeps just the *Alerts* count tile in the stats strip.
+
 ## Cards
 
 | Card | What it shows | Data |
@@ -13,7 +15,6 @@ Tab id `overview` · loader `loadOverview()` · `docs/js/overview.js`
 | **Stats strip** (`#stats-strip`) | **Total Value** (whole account incl. cash), **Investments** (value of your shares = cost basis + unrealised result), **Cost basis** (money put into the shares you hold), **Cash** (free cash), **Reserved** (cash held for pending limit orders plus pie cash; shown only when above zero), **Unrealised P&L** (£ and % **of cost basis**), Winners, Losers, Positions, Alerts | The snapshot's own Trading 212 account figures (`raw.account`: `invested`, `ppl`, `total`, `free`, `blocked`, `pieCash`) so the numbers match the Trading 212 app; per-position counts from `positions` |
 | **Gain % by Position** | Bar chart of each holding's gain. Period buttons **1D · 1W · 1M · 3M · 6M · 9M · 1Y · All**. Holdings with no data for a period show "No data yet for this period" instead of a zero bar | `positions` of the latest snapshot compared with the snapshot nearest the period start |
 | **Portfolio by Pie** | Doughnut of value per pie. Pie colours are derived from the pie name, so no user pie names are stored in code | `positions.pie` |
-| **Active Alerts** | The unread inbox alerts, newest first | `alerts` |
 | **📐 Sector Map** | Value by sector, looking through ETFs to their underlying sectors | `instrument_sector_weights` + `instruments`; row-level security returns only instruments you hold |
 | **🌍 Country Exposure** | Value by country, looking through ETFs | `instrument_country_weights` |
 

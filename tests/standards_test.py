@@ -229,3 +229,7 @@ check("dashboard scripts use the theme variables, not the old dark palette hex c
 check("Profit tab: separate Pie profit check card, Profit to book explains a £0 total, guarded by a layout test wired into CI",
       "pbPieCard" in (ROOT / "docs/js/profit.js").read_text() and "pbClosest" in (ROOT / "docs/js/profit.js").read_text() and "gain_gbp" in (ROOT / "services/profit_booking_service.py").read_text()
       and "gain_gbp" in (ROOT / "docs/zk/profitbooking.js").read_text() and "profit_pies_layout_test.py" in (ROOT / ".github/workflows/ui_tests.yml").read_text())
+
+# Alerts list lives only on the Alerts dashboard: no Active Alerts card on Overview (any dashboard), no leftover renderer
+check("Overview has no Active Alerts card or renderer on any dashboard (alerts only on the Alerts tab)",
+      all("active-alerts" not in (ROOT / f).read_text() for f in ("docs/index.html", "docs/demo/index.html", "docs/app/index.html", "docs/zkapp/index.html", "docs/zkapp-prod/index.html", "docs/js/overview.js")))

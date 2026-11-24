@@ -114,13 +114,7 @@ async function loadOverview() {
   if (!fx) { strip.insertAdjacentHTML('afterend', '<div class="card" id="ov-formula"><h3>How the numbers add up</h3><div id="ov-formula-body"></div></div>'); fx = document.getElementById('ov-formula'); }
   document.getElementById('ov-formula-body').innerHTML = ovFormulaHtml(H);
 
-  const alertsHtml = alerts.length
-    ? alerts.map(a => {
-        const cls = (a.alert_type||a.type) === 'buy' ? 'buy' : (a.alert_type||a.type) === 'sell' ? 'sell' : '';
-        return `<div class="alert-item ${cls}"><div class="a-title">${a.title||''}</div><div class="a-body">${a.body||''}</div><div class="a-time">${a.created_at ? new Date(a.created_at).toLocaleString('en-GB') : ''}</div></div>`;
-      }).join('')
-    : '<div class="loading">No recent alerts</div>';
-  document.getElementById('active-alerts').innerHTML = alertsHtml;
+  // Alert list lives only on the Alerts dashboard; Overview keeps just the count tile.
 
   await loadOverviewCharts();
   loadMarketMood().catch(e => { const el = document.getElementById('mood-body'); if (el) el.innerHTML = '<div style="color:var(--red);font-size:12px">Mood error: ' + esc(e.message) + '</div>'; });
