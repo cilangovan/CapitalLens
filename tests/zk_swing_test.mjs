@@ -140,4 +140,9 @@ ok("natural exit leaves on the first close above the 5-day average (the book's r
 q2 = sm([[100, 100, 100, 100], [100, 101, 99.2, 100], ...fake(12, () => [100, 101, 99.2, 100])], sg({ stopPct: 0.07, exitSma: { n: 5, below: false } }));
 ok('with no exit signal the trade still ends at day 10', q2 && (q2.why === 'time' || q2.why === 'signal') && q2.exitBar - q2.bar <= 9);
 
+// long-hold exits (not swing trades): hold limit comes from the exit mode, not the 10-day constant
+const hs = SWG.swStratSignal(SWG.swPrep(mkc(upLong.concat([upLong[269] * 1.05]))), 270, 'minervini', 'hold200');
+ok('hold200 / hold50 exit modes carry a 250 / 120 day limit and an SMA exit', SWG.SW_EXITS.hold200.maxHold === 250 && SWG.SW_EXITS.hold50.maxHold === 120 && SWG.SW_EXITS.hold50.sma === 50);
+q2 = sm([[100, 100, 100, 100], ...fake(30, () => [100, 101, 99.5, 100.5])], sg({ stopPct: 0.15, exitSma: { n: 5, below: true }, maxHold: 20 }));
+ok('a long-hold trade can run past day 10 and ends at its own limit', q2 && q2.why === 'time' && q2.exitBar - q2.bar === 19);
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

@@ -124,7 +124,9 @@ function swAdx(h, l, c, n) {
   return { adx, pdi, mdi };
 }
 const SW_STRATS = ['connors', 'ibs', 'grail', 'minervini'];
-const SW_EXITS = { natural: { disaster: 0.07 }, target5: { targetPct: 0.05, stopPct: 0.04 } };
+const SW_EXITS = { natural: { disaster: 0.07 }, target5: { targetPct: 0.05, stopPct: 0.04 },
+  // longer holds (NOT swing trades): the template's source found the edge only with slow exits, so these are tested separately
+  hold50: { disaster: 0.15, sma: 50, maxHold: 120 }, hold200: { disaster: 0.25, sma: 200, maxHold: 250 } };
 function swPrepStrat(X) { if (!X.rsi2) { X.rsi2 = swRsiN(X.c, 2); X.ema20 = swEma(X.c, 20); X.dm = swAdx(X.h, X.l, X.c, 14); } return X; }
 function swStratSignal(X, i, name, exitMode) {
   const no = (...reasons) => ({ entry: false, reasons }); swPrepStrat(X);
@@ -149,7 +151,7 @@ function swStratSignal(X, i, name, exitMode) {
   const ex = SW_EXITS[exitMode] || SW_EXITS.natural, stopPct = ex.stopPct || ex.disaster;
   const stop = c * (1 - stopPct), target = ex.targetPct ? c * (1 + ex.targetPct) : null;
   return { entry: true, setup: name, strat: name, exitMode, trigger: c, ceiling: c + atr, stop, target, risk: c - stop, riskPct: stopPct, rr: target ? ex.targetPct / stopPct : null, atr, holdDays: SW.holdDays,
-    stopPct, targetPct: ex.targetPct || null, exitSma: ex.targetPct ? null : (trend ? { n: 10, below: true } : { n: 5, below: false }), score: 50, why, bar: i, t: X.t[i], volX: v / avgV };
+    stopPct, targetPct: ex.targetPct || null, exitSma: ex.targetPct ? null : (ex.sma ? { n: ex.sma, below: true } : (trend ? { n: 10, below: true } : { n: 5, below: false })), maxHold: ex.maxHold || null, score: 50, why, bar: i, t: X.t[i], volX: v / avgV };
 }
 
 // Walk one trade forward from the NEXT bar's open. Stop first if both are touched in one bar (the cautious assumption).
@@ -157,14 +159,14 @@ function swSimulate(X, sig, cost) {
   const j0 = sig.bar + 1; if (j0 >= X.c.length) return null;
   const open = X.o[j0]; if (open > sig.ceiling || open <= sig.stop) return { skipped: true };
   const entry = open; let exit = null, why = 'time', xb = null;
-  const stopP = sig.stopPct ? entry * (1 - sig.stopPct) : sig.stop, stopD = entry - stopP;
+  const H = sig.maxHold || SW.holdDays, stopP = sig.stopPct ? entry * (1 - sig.stopPct) : sig.stop, stopD = entry - stopP;
   const tgt = sig.targetPct ? entry * (1 + sig.targetPct) : (sig.strat && !sig.rr ? null : entry + SW.rr * stopD);
-  for (let j = j0; j < Math.min(X.c.length, j0 + SW.holdDays); j++) {
+  for (let j = j0; j < Math.min(X.c.length, j0 + H); j++) {
     if (X.l[j] <= stopP) { exit = X.o[j] < stopP ? X.o[j] : stopP; why = 'stop'; xb = j; break; }
     if (tgt !== null && X.h[j] >= tgt) { exit = tgt; why = 'target'; xb = j; break; }
     if (sig.exitSma) { const m = swSma(X.c, sig.exitSma.n, j + 1); if (m !== null && (sig.exitSma.below ? X.c[j] < m : X.c[j] > m)) { exit = X.c[j]; why = 'signal'; xb = j; break; } }
   }
-  if (exit === null) { const jl = Math.min(X.c.length, j0 + SW.holdDays) - 1; if (jl - j0 + 1 < SW.holdDays) return null; exit = X.c[jl]; xb = jl; }   // trade still open at the end of the data: not counted
+  if (exit === null) { const jl = Math.min(X.c.length, j0 + H) - 1; if (jl - j0 + 1 < H) return null; exit = X.c[jl]; xb = jl; }   // trade still open at the end of the data: not counted
   const ret = exit / entry - 1 - (cost === undefined ? SW.cost : cost);
   return { entry, exit, ret, r: ret / (stopD / entry), why, bar: j0, exitBar: xb, t: X.t[j0] };
 }

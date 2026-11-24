@@ -35,7 +35,9 @@ const VARIANTS = { original: {}, wide_stop: { stopAtr: 2.5 }, market_up: { regim
   ibs_natural: { strat: 'ibs', exit: 'natural' }, ibs_5pct: { strat: 'ibs', exit: 'target5' },
   grail_natural: { strat: 'grail', exit: 'natural' }, grail_5pct: { strat: 'grail', exit: 'target5' },
   minervini_natural: { strat: 'minervini', exit: 'natural' }, minervini_5pct: { strat: 'minervini', exit: 'target5' } };
-if (ONLY) for (const k of Object.keys(VARIANTS)) if (!ONLY.split(',').includes(k)) delete VARIANTS[k];   // confirmation run: only the strategy chosen beforehand, on stocks it has never seen
+const LONGV = { minervini_hold50: { strat: 'minervini', exit: 'hold50' }, minervini_hold200: { strat: 'minervini', exit: 'hold200' } };   // slow exits: tested on their own, not part of the weekly swing run
+if (ONLY) { Object.assign(VARIANTS, LONGV); for (const k of Object.keys(VARIANTS)) if (!ONLY.split(',').includes(k)) delete VARIANTS[k]; }   // confirmation run: only the strategy chosen beforehand, on stocks it has never seen
+const HOLDS = [10, 60, 120, 250], BASE = Object.fromEntries(HOLDS.map(h => [h, []]));
 const V = Object.fromEntries(Object.keys(VARIANTS).map(k => [k, []])); const base = [], times = []; let ok = 0; const failed = [];
 for (const sym of U) {
   const cs = await candles(sym); await sleep(250);
@@ -44,17 +46,16 @@ for (const sym of U) {
   for (const [k, cfg] of Object.entries(VARIANTS)) for (const t of SWG.swBacktestOne(cs, undefined, cfg)) V[k].push(Object.assign({ sym }, t));
   // baseline: enter at the next open on every 10th bar, same cost, hold 10 bars (no signal, no stop)
   const X = SWG.swPrep(cs);
-  for (let i = SWG.SW.minBars; i + 1 + SWG.SW.holdDays <= X.c.length; i += SWG.SW.holdDays) {
-    const e = X.o[i + 1], x = X.c[i + SWG.SW.holdDays]; base.push({ ret: x / e - 1 - SWG.SW.cost, t: X.t[i + 1] });
-  }
+  for (const h of HOLDS) for (let i = SWG.SW.minBars; i + 1 + h <= X.c.length; i += h) { const e = X.o[i + 1], x = X.c[i + h]; BASE[h].push({ ret: x / e - 1 - SWG.SW.cost, t: X.t[i + 1] }); }
 }
 if (ok < 40) { console.error(`Only ${ok} of ${U.length} symbols returned data: not writing a report`); process.exit(2); }
 times.sort((a, b) => a - b); const cut = times[Math.floor(times.length * 0.6)];
-const boos = base.filter(t => t.t >= cut), baseline = SWG.swStats(boos);
+const baseFor = h => SWG.swStats(BASE[h].filter(t => t.t >= cut)), baseline = baseFor(10);
+const HOLD_OF = { minervini_hold50: 120, minervini_hold200: 250 }; for (const k of Object.keys(V)) HOLD_OF[k] = HOLD_OF[k] || 10;   // the random-entry bar uses the same holding length
 const variants = {};
 for (const [k, tr] of Object.entries(V)) {
-  const r = { all: SWG.swStats(tr), in_sample: SWG.swStats(tr.filter(t => t.t < cut)), out_of_sample: SWG.swStats(tr.filter(t => t.t >= cut)), baseline,
-    by_setup: Object.fromEntries([...new Set(tr.map(t => t.setup))].map(n => [n, SWG.swStats(tr.filter(t => t.setup === n))])),
+  const r = { baseline: baseFor(HOLD_OF[k]), all: SWG.swStats(tr), in_sample: SWG.swStats(tr.filter(t => t.t < cut)), out_of_sample: SWG.swStats(tr.filter(t => t.t >= cut)),
+    baseline_hold_days: HOLD_OF[k], by_setup: Object.fromEntries([...new Set(tr.map(t => t.setup))].map(n => [n, SWG.swStats(tr.filter(t => t.setup === n))])),
     exits: tr.reduce((m, t) => (m[t.why] = (m[t.why] || 0) + 1, m), {}), pct_5plus: tr.length ? SWG.swR(tr.filter(t => t.ret >= 0.045).length / tr.length * 100, 1) : 0,
     by_year: Object.fromEntries(Object.entries(tr.reduce((m, t) => ((m[new Date(t.t * 1000).getUTCFullYear()] = m[new Date(t.t * 1000).getUTCFullYear()] || []).push(t), m), {})).map(([y, v]) => [y, SWG.swStats(v)])) };
   r.validation = SWG.swValidated(r); variants[k] = r;

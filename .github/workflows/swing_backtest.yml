@@ -33,12 +33,14 @@ jobs:
         run: node scripts/swing_backtest.mjs --out docs/data/swing_backtest.json
       - name: Confirm the one book strategy that cleared the gate, on 100 stocks it was not chosen on
         run: node scripts/swing_backtest.mjs --universe swing_universe_b.json --only minervini_natural --out docs/data/swing_confirm.json
+      - name: Longer-hold version of the trend template (not a swing trade), tested on its own
+        run: node scripts/swing_backtest.mjs --only minervini_hold50,minervini_hold200 --out docs/data/swing_long.json
       - name: Commit the result
         run: |
           if [ -n "$(git status --porcelain docs/data)" ]; then
             git config user.name cilangovan
             git config user.email 7702527+cilangovan@users.noreply.github.com
-            git add docs/data/swing_backtest.json docs/data/swing_confirm.json
+            git add docs/data/swing_backtest.json docs/data/swing_confirm.json docs/data/swing_long.json
             git commit -m "data: swing back-test result"
             git pull --rebase origin main
             git push origin HEAD:main
