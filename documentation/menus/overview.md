@@ -4,7 +4,7 @@
 
 Tab id `overview` · loader `loadOverview()` · `docs/js/overview.js`
 
-**Market Mood** (`#mood-section`, top of Overview only; stats strip below it): a gauge per market. Tap **📊 Markets** to open the chip strip: Crypto, US, UK, EU/DE, Japan, India, China, Spain, NL, Taiwan. Open, the chips **wrap onto as many rows as needed** so every market is reachable on a 360px phone (they were clipped after Germany before); picking one closes the strip. Guarded by `tests/mood_layout_test.py` (CI: ui_tests).
+**Market Mood** (`#mood-section`, top of Overview only; stats strip below it): a gauge per market. Tap **📊 Markets** to open the chip strip: Crypto, US, UK, EU/DE, Japan, India, China, Italy, Spain, NL, Taiwan. Each tab **fetches its own index** (Yahoo daily closes via the relay, cached 15 minutes), so it works for countries you do not hold; a failed fetch says so for a minute instead of spinning. Open, the chips **wrap onto as many rows as needed** so every market is reachable on a 360px phone (they were clipped after Germany before); picking one closes the strip. Guarded by `tests/mood_layout_test.py` (CI: ui_tests).
 
 **No alert list on Overview:** alerts are shown only on the 🔔 Alerts dashboard; Overview keeps just the *Alerts* count tile in the stats strip.
 

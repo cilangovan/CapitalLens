@@ -687,5 +687,23 @@
    "b24f8ed"
   ],
   "auto": true
+ },
+ {
+  "id": "R23",
+  "date": "2026-11-24",
+  "area": "mood",
+  "bug": "Market Mood showed no data for any country you do not hold (it read the Markets-I-hold cache, which only loads held countries)",
+  "guard": "mood_layout_test.py",
+  "marker": "fetches its own index",
+  "commits": []
+ },
+ {
+  "id": "R24",
+  "date": "2026-11-24",
+  "area": "mood",
+  "bug": "Italy (FTSE MIB) had no Market Mood tab",
+  "guard": "mood_layout_test.py",
+  "marker": "incl. Italy",
+  "commits": []
  }
 ]

@@ -745,6 +745,7 @@ const MM_TABS = [
   { key: 'JP',     label: '🇯🇵 Japan', flag: '🇯🇵', sym: '^N225',    name: 'Japan (Nikkei 225)' },
   { key: 'IN',     label: '🇮🇳 India', flag: '🇮🇳', sym: '^NSEI',    name: 'India (Nifty 50)' },
   { key: 'CN',     label: '🇨🇳 China', flag: '🇨🇳', sym: '000001.SS', name: 'China (SSE Composite)' },
+  { key: 'IT',     label: '🇮🇹 Italy', flag: '🇮🇹', sym: 'FTSEMIB.MI', name: 'Italy (FTSE MIB)' },
   { key: 'ES',     label: '🇪🇸 Spain', flag: '🇪🇸', sym: '^IBEX',    name: 'Spain (IBEX 35)' },
   { key: 'NL',     label: '🇳🇱 NL',    flag: '🇳🇱', sym: '^AEX',     name: 'Netherlands (AEX)' },
   { key: 'TW',     label: '🇹🇼 Taiwan',flag: '🇹🇼', sym: '^TWII',    name: 'Taiwan (TAIEX)' },
@@ -815,6 +816,24 @@ function mmFromIndex(pts) {
 }
 
 let _mmCrypto = null, _mmCryptoAt = 0, _mmTab = 'Crypto';
+
+// Market Mood fetches its OWN index history (1y daily closes via the relay), so every tab works whether or not you hold that country
+// (the Markets-I-hold card only loads countries you hold). Cached 15 minutes; a failure is remembered for 60 seconds so a tab is not re-fetched in a loop.
+const _mmIdx = {};
+function mmIdxPts(sym) {
+  const hit = typeof _ovMk !== 'undefined' && _ovMk && _ovMk.m && _ovMk.m[sym];
+  if (hit && hit.pts) return hit.pts;
+  const c = _mmIdx[sym]; return c && c.pts && Date.now() - c.at < 9e5 ? c.pts : null;
+}
+async function mmFetchIdx(sym) {
+  try {
+    const r = await fetch(`${PROXY}/chart`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: typeof SESSION_TOKEN !== 'undefined' ? SESSION_TOKEN : undefined, symbol: sym, range: '1y' }) });
+    const d = await r.json().catch(() => ({}));
+    if (!r.ok) throw new Error('HTTP ' + r.status);
+    if (!d.points || !d.points.length) throw new Error('no prices returned');
+    _mmIdx[sym] = { at: Date.now(), pts: d.points };
+  } catch (e) { _mmIdx[sym] = { at: Date.now(), err: e.message || 'network error' }; }
+}
 
 async function loadMarketMood() {
   const card = document.getElementById('mood-section'); if (!card) return;
@@ -908,17 +927,23 @@ function renderMoodTab() {
     if (_mmCrypto && _mmCrypto.length) data = { days: _mmCrypto };
     sourceNote = 'Source: Alternative.me Fear & Greed Index';
   } else {
-    // All non-crypto tabs: derive mood from index pts in _ovMk
-    const sym = tabDef.sym;
-    const mk = _ovMk && _ovMk.m && sym && (_ovMk.m[sym] || (_mmTab === 'US' && _ovMk.m['^NDX']));
-    if (mk && mk.pts) data = mmFromIndex(mk.pts);
+    // All non-crypto tabs: mood from the index's own closes (fetched here on demand, see mmFetchIdx)
+    const sym = tabDef.sym, pts = sym && (mmIdxPts(sym) || (_mmTab === 'US' && mmIdxPts('^NDX')));
+    if (pts) data = mmFromIndex(pts);
+    else if (sym) {
+      const c = _mmIdx[sym];
+      if (c && c.err && Date.now() - c.at < 6e4) { body.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:12px 0;text-align:center">⚠ Could not load ' + esc(tabDef.name) + ' prices (' + esc(c.err) + ') — tap the market again in a minute.</div>'; return; }
+      body.innerHTML = '<div class="loading busy" style="padding:12px 0;text-align:center">Loading ' + esc(tabDef.name) + '…</div>';
+      const want = _mmTab; mmFetchIdx(sym).then(function() { if (_mmTab === want) renderMoodTab(); });
+      return;
+    }
     sourceNote = 'CapitalLens reading: ' + tabDef.name + ' momentum vs 20-day avg';
   }
 
   if (!data || !data.days || !data.days.length) {
     const msg = _mmTab === 'Crypto'
       ? (_mmCrypto === null ? '⚠ Could not reach Alternative.me — try refreshing.' : '⏳ Loading crypto sentiment…')
-      : '⏳ Markets data loading — open the app and press Refresh to populate index history.';
+      : 'Not enough price history for ' + esc(tabDef.name) + ' (needs about 22 trading days of closes) — source: Yahoo via the relay.';
     body.innerHTML = '<div style="color:var(--muted);font-size:13px;padding:12px 0;text-align:center">' + msg + '</div>';
     return;
   }
