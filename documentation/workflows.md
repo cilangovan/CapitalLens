@@ -17,6 +17,18 @@ The exact triggers and commands of every GitHub Actions workflow are in the gene
 | **Public market cache** (`public_market.yml`) | Central cache of public market data for a popular subset (scheduled trigger currently disabled; the private app uses it plus the relay fallback) | `market_cache` |
 | **Send Password Reset Email** (`send_reset_email.yml`) | Legacy reset flow, triggered by the worker | — |
 
+## How the private-app Refresh stays fast (`docs/zk/pipeline.js`)
+
+The refresh is one browser-side pipeline. To keep it quick without changing any result:
+
+- **Parallel waves.** After the Trading 212 sync and the portfolio snapshot, wave 1 runs analyst ratings, returns and the market-flow report together; wave 2 runs pie history, profit booking, strategy, holding decisions, value-buy scores and the watchlist together; the alert report runs last. The order follows the data: strategy reads `returns_summary` (so after returns), profit booking and strategy use the ratings, holding decisions use the flow report. Each step is still isolated: one failure is reported and the rest run.
+- **Read cache for one refresh.** `store.cache(true)` (set by the pipeline, cleared in a `finally`) makes each encrypted kind (positions, snapshots, orders…) be fetched and decrypted once and shared; `put`/`remove` of a kind drops it, and every reader gets its own copy. Outside a refresh the cache is off, so normal reads are always fresh. Nothing is kept between refreshes.
+- **Market data.** Up to 5 relay requests in flight (was 3), each aborted after 15 s so one hung ticker cannot stall the whole run (that lookup is reported as missing). The shared `market_cache` is still tried first.
+- **Faster writes.** Encrypted rows of a batch are encrypted in parallel.
+- **Timings.** Every step's duration is shown in the refresh log and stored as `ms` on its result, so the slowest step is visible.
+
+Guarded by `tests/zk_pipeline_test.mjs` (dependencies, overlap, cache switched on/off), `tests/zk_store_cache_test.mjs` and `tests/zk_market_test.mjs` (timeout).
+
 ## If the page is reloaded or closed while a refresh is running (private app)
 
 The refresh runs in the browser, so a reload, a closed tab or lost signal kills it part-way. Nothing is left corrupt, and the next **Refresh now** finishes the job:

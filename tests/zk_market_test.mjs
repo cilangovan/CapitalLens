@@ -40,4 +40,10 @@ ok('crumb sent with the session cookie, slash decoded', qsAuth[0].cookie === 'A3
 ok('relay rejects bad symbol on /yahoo-info', (await r('/yahoo-info?s=' + encodeURIComponent('X/../y'))).status === 400);
 const nw = await m.headlines('SPY'); ok('news: titles only (no quotes/ids), through the relay', nw.join('|') === 'Stocks rally|Fed holds');
 ok('relay rejects bad symbol on /yahoo-news', (await r('/yahoo-news?s=' + encodeURIComponent('A?x=1'))).status === 400);
+{ // a hung relay call is aborted after timeoutMs, so one slow ticker cannot stall a whole refresh
+  const hang = (url, o) => new Promise((res, rej) => { o && o.signal && o.signal.addEventListener('abort', () => rej(new Error('aborted'))); });
+  const mh = M.create({ relayUrl: 'https://relay.test', fetchImpl: hang, timeoutMs: 30, retryMs: 1 }); const t0 = Date.now();
+  const r = await mh.chart('HANG', '1y'), inf = await mh.info('HANG');
+  ok('hung relay request is aborted (chart -> null, info -> {}) instead of hanging', r === null && inf && typeof inf === 'object' && Date.now() - t0 < 2000);
+}
 console.log(`\n${pass} passed · ${fail} failed`); process.exit(fail ? 1 : 0);

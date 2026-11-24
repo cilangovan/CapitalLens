@@ -28,32 +28,43 @@
     const M = Object.assign({ T212: root.ZKT212, Monitor: root.ZKMonitor, Analyst: root.ZKAnalystRatings, Returns: root.ZKReturns, PieHistory: root.ZKPieHistory, Profit: root.ZKProfitBooking,
       Strategy: root.ZKStrategy, Flow: root.ZKFlow, Holding: root.ZKHoldingDecision, ValueBuy: root.ZKValueBuy, Watchlist: root.ZKWatchlist, Alerts: root.ZKAlertReport, Notify: root.ZKNotify, Client: root.ZKT212 }, deps.mods || {});
     const { store, market } = deps, log = deps.log || (() => {}), now = () => (deps.nowDate ? deps.nowDate() : new Date());
+    // Reads are cached for the length of one refresh (store.cache) so positions/snapshots/orders are fetched + decrypted once, not once per step.
     async function run(key, secret, opts) {
+      if (store.cache) store.cache(true);
+      try { return await runSteps(key, secret, opts); } finally { if (store.cache) store.cache(false); }
+    }
+    async function runSteps(key, secret, opts) {
       opts = opts || {}; const results = [], warnings = [];
       const view = async () => { const snaps = (await store.load('portfolio_snapshots').catch(() => [])).sort((x, y) => String(y.created_at).localeCompare(String(x.created_at))); const s = snaps[0]; if (!s) return null;
         const pos = {}; for (const p of (await store.load('positions').catch(() => [])).filter(p => p.snapshot_id === s.id)) pos[p.ticker] = Number(p.quantity) || 0; return { id: s.id, at: s.created_at, pos }; };
       const orderIds = async () => new Set((await store.load('t212_orders').catch(() => [])).map(o => o.id));
       const before = key && secret ? await view() : null, ordersBefore = key && secret ? await orderIds() : null;
       let snapshotSaved = false;
+      // The slot is reserved when the step starts, so results keep the pipeline order even when steps finish out of order. ms = how long it took.
       async function step(name, fn) {
-        try { const r = await fn(); const err = r && r.error; results.push({ name, ok: !err, note: err || '' }); log(`${err ? '✗' : '✓'} ${name}${err ? ': ' + err : ''}`); return r; }
-        catch (e) { results.push({ name, ok: false, note: String(e.message || e) }); log(`✗ ${name}: ${e.message || e}`); return null; }
+        const slot = { name, ok: false, note: '' }, t0 = Date.now(); results.push(slot); const secs = () => ((Date.now() - t0) / 1000).toFixed(1) + 's';
+        try { const r = await fn(); const err = r && r.error; slot.ok = !err; slot.note = err || ''; slot.ms = Date.now() - t0; log(`${err ? '✗' : '✓'} ${name}${err ? ': ' + err : ''} (${secs()})`); return r; }
+        catch (e) { slot.note = String(e.message || e); slot.ms = Date.now() - t0; log(`✗ ${name}: ${e.message || e} (${secs()})`); return null; }
       }
       if (key && secret) {
         await step('Trading 212 history', async () => { const r = await M.T212.create({ store, relayUrl: deps.relayUrl, log }).run(key, secret, { full: !!opts.full }); return r && r.failed && r.failed.length ? { error: 'incomplete for ' + r.failed.join(', ') } : r; });
         await step('Portfolio snapshot', async () => { const r = await M.Monitor.create({ store, log, client: M.Client.client({ relayUrl: deps.relayUrl, log }), supportLevels: deps.supportLevels }).run(key, secret); if (r && r.saved === false) return { error: r.reason }; snapshotSaved = true; for (const w of (r && r.warnings) || []) warnings.push(w); return r; });
       } else log('No Trading 212 credentials entered: re-analysing the data already stored');
-      await step('Analyst ratings', () => M.Analyst.run({ store, market }, now()));
-      const ratings = await store.load('analyst_ratings').catch(() => []);
-      await step('Returns', () => M.Returns.run(store, now()));
-      await step('Pie history', () => M.PieHistory.run({ store, market }, now()));
-      await step('Profit booking', () => M.Profit.run({ store, market, ratings }, now()));
-      await step('Strategy', () => M.Strategy.run({ store, market, ratings }, now()));
-      let flowReport = null;
-      await step('Market flow report', async () => { const pos = await store.load('positions'); flowReport = await M.Flow.latest(deps.call, deps.token, pos); return flowReport ? {} : { error: 'no shared report published yet (scores default to neutral)' }; });
-      await step('Holding decisions', () => M.Holding.run({ store, market, flowReport }, now()));
-      await step('Value-buy scores', () => M.ValueBuy.run({ store, market }, now()));
-      await step('Watchlist', () => M.Watchlist.run({ store, market }, now()));
+      // Wave 1 (independent): ratings, returns, market-flow report. Wave 2 (needs wave 1: ratings -> profit/strategy, returns -> strategy, flow -> holdings): the rest in parallel.
+      let ratings = [], flowReport = null;
+      await Promise.all([
+        step('Analyst ratings', async () => { const r = await M.Analyst.run({ store, market }, now()); ratings = await store.load('analyst_ratings').catch(() => []); return r; }),
+        step('Returns', () => M.Returns.run(store, now())),
+        step('Market flow report', async () => { const pos = await store.load('positions'); flowReport = await M.Flow.latest(deps.call, deps.token, pos); return flowReport ? {} : { error: 'no shared report published yet (scores default to neutral)' }; }),
+      ]);
+      await Promise.all([
+        step('Pie history', () => M.PieHistory.run({ store, market }, now())),
+        step('Profit booking', () => M.Profit.run({ store, market, ratings }, now())),
+        step('Strategy', () => M.Strategy.run({ store, market, ratings }, now())),
+        step('Holding decisions', () => M.Holding.run({ store, market, flowReport }, now())),
+        step('Value-buy scores', () => M.ValueBuy.run({ store, market }, now())),
+        step('Watchlist', () => M.Watchlist.run({ store, market }, now())),
+      ]);
       let notify = null; try { const n = await M.Notify.fromStore(store, (...a) => fetch(...a)); notify = n && n.notify; } catch (e) { log('Phone alerts not configured: ' + e.message); }
       await step('Alert report' + (notify ? ' + phone push' : ''), () => M.Alerts.run({ store, market, ratings, notify }, now()));
       let changes = null;

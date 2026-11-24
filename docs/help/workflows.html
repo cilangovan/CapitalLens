@@ -66,6 +66,16 @@
 </tr>
 </tbody>
 </table></div>
+<h2 id="how-the-private-app-refresh-stays-fast-docszkpipelinejs">How the private-app Refresh stays fast (<code>docs/zk/pipeline.js</code>)</h2>
+<p>The refresh is one browser-side pipeline. To keep it quick without changing any result:</p>
+<ul>
+<li><strong>Parallel waves.</strong> After the Trading 212 sync and the portfolio snapshot, wave 1 runs analyst ratings, returns and the market-flow report together; wave 2 runs pie history, profit booking, strategy, holding decisions, value-buy scores and the watchlist together; the alert report runs last. The order follows the data: strategy reads <code>returns_summary</code> (so after returns), profit booking and strategy use the ratings, holding decisions use the flow report. Each step is still isolated: one failure is reported and the rest run.</li>
+<li><strong>Read cache for one refresh.</strong> <code>store.cache(true)</code> (set by the pipeline, cleared in a <code>finally</code>) makes each encrypted kind (positions, snapshots, orders…) be fetched and decrypted once and shared; <code>put</code>/<code>remove</code> of a kind drops it, and every reader gets its own copy. Outside a refresh the cache is off, so normal reads are always fresh. Nothing is kept between refreshes.</li>
+<li><strong>Market data.</strong> Up to 5 relay requests in flight (was 3), each aborted after 15 s so one hung ticker cannot stall the whole run (that lookup is reported as missing). The shared <code>market_cache</code> is still tried first.</li>
+<li><strong>Faster writes.</strong> Encrypted rows of a batch are encrypted in parallel.</li>
+<li><strong>Timings.</strong> Every step's duration is shown in the refresh log and stored as <code>ms</code> on its result, so the slowest step is visible.</li>
+</ul>
+<p>Guarded by <code>tests/zk_pipeline_test.mjs</code> (dependencies, overlap, cache switched on/off), <code>tests/zk_store_cache_test.mjs</code> and <code>tests/zk_market_test.mjs</code> (timeout).</p>
 <h2 id="if-the-page-is-reloaded-or-closed-while-a-refresh-is-running-private-app">If the page is reloaded or closed while a refresh is running (private app)</h2>
 <p>The refresh runs in the browser, so a reload, a closed tab or lost signal kills it part-way. Nothing is left corrupt, and the next <strong>Refresh now</strong> finishes the job:</p>
 <ul>

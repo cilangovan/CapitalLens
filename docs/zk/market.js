@@ -28,8 +28,10 @@
   }
   // opts: { relayUrl, fetchImpl, concurrency, shared(key)->payload|null }
   function create(opts) {
-    const f = opts.fetchImpl || ((...a) => fetch(...a)), cache = new Map(), conc = opts.concurrency || 3; let active = 0; const queue = [];
+    const f = opts.fetchImpl || ((...a) => fetch(...a)), cache = new Map(), conc = opts.concurrency || 5, tmo = opts.timeoutMs === undefined ? 15000 : opts.timeoutMs; let active = 0; const queue = [];
     const pump = () => { while (active < conc && queue.length) { active++; const job = queue.shift(); job().finally(() => { active--; pump(); }); } };
+    // A hung relay/Yahoo call must not stall the whole refresh: abort after timeoutMs (a failed lookup is null/{} and the step says so).
+    const fetchT = url => { if (!tmo || typeof AbortController === 'undefined') return f(url); const ac = new AbortController(), t = setTimeout(() => ac.abort(), tmo); return Promise.resolve(f(url, { signal: ac.signal })).finally(() => clearTimeout(t)); };
     const limited = fn => new Promise((res, rej) => { queue.push(() => fn().then(res, rej)); pump(); });
     async function chart(sym, range) {
       const key = sym + '|' + (range || '1y');
@@ -37,7 +39,7 @@
         if (opts.shared) { const sh = await opts.shared(`chart:${sym}:${range || '1y'}`); const p = sh && parse(sh); if (p) return p; }
         return limited(async () => {
         for (let a = 0; a < 3; a++) {
-          const r = await f(`${opts.relayUrl}/yahoo?s=${encodeURIComponent(sym)}&range=${range || '1y'}`);
+          let r; try { r = await fetchT(`${opts.relayUrl}/yahoo?s=${encodeURIComponent(sym)}&range=${range || '1y'}`); } catch (e) { if (a < 2) continue; return null; }
           if (r.status === 429 || r.status >= 500) { await new Promise(x => setTimeout(x, (opts.retryMs || 2000) * (a + 1))); continue; }
           if (!r.ok) return null;
           return parse(await r.json());
@@ -48,17 +50,17 @@
     }
     const infos = new Map();
     async function info(sym) {
-      if (!infos.has(sym)) infos.set(sym, (async () => { const sh = opts.shared && await opts.shared(`info:${sym}`); if (sh) return sh; return limited(async () => { try { const r = await f(`${opts.relayUrl}/yahoo-info?s=${encodeURIComponent(sym)}`); return r.ok ? await r.json() : {}; } catch (e) { return {}; } }); })());
+      if (!infos.has(sym)) infos.set(sym, (async () => { const sh = opts.shared && await opts.shared(`info:${sym}`); if (sh) return sh; return limited(async () => { try { const r = await fetchT(`${opts.relayUrl}/yahoo-info?s=${encodeURIComponent(sym)}`); return r.ok ? await r.json() : {}; } catch (e) { return {}; } }); })());
       return infos.get(sym);
     }
     const details = new Map();
     async function detail(sym) {
-      if (!details.has(sym)) details.set(sym, (async () => { const sh = opts.shared && await opts.shared(`detail:${sym}`); if (sh) return sh; return limited(async () => { try { const r = await f(`${opts.relayUrl}/yahoo-detail?s=${encodeURIComponent(sym)}`); return r.ok ? await r.json() : { info: {}, rec_counts: null }; } catch (e) { return { info: {}, rec_counts: null }; } }); })());
+      if (!details.has(sym)) details.set(sym, (async () => { const sh = opts.shared && await opts.shared(`detail:${sym}`); if (sh) return sh; return limited(async () => { try { const r = await fetchT(`${opts.relayUrl}/yahoo-detail?s=${encodeURIComponent(sym)}`); return r.ok ? await r.json() : { info: {}, rec_counts: null }; } catch (e) { return { info: {}, rec_counts: null }; } }); })());
       return details.get(sym);
     }
     const news = new Map();
     async function headlines(sym) {
-      if (!news.has(sym)) news.set(sym, limited(async () => { try { const r = await f(`${opts.relayUrl}/yahoo-news?s=${encodeURIComponent(sym)}`); return r.ok ? ((await r.json()).titles || []) : []; } catch (e) { return []; } }));
+      if (!news.has(sym)) news.set(sym, limited(async () => { try { const r = await fetchT(`${opts.relayUrl}/yahoo-news?s=${encodeURIComponent(sym)}`); return r.ok ? ((await r.json()).titles || []) : []; } catch (e) { return []; } }));
       return news.get(sym);
     }
     return { chart, info, detail, headlines };
