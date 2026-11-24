@@ -8,7 +8,7 @@
   const CRYPTO_RE = /\b(bitcoin|ethereum|ether|solana|xrp|ripple|cardano|polkadot|litecoin|crypto\w*|digital assets?|blockchain)\b/i;
   const LEVERAGED_RE = /\b(\d+x|leveraged|short|inverse|daily)\b/i, MINERS_RE = /\b(min(ing|ers?)|producers?|equit(y|ies))\b/i;
   const SYMBOL_RE = /^[A-Za-z0-9.\-^=&]{1,24}$/, SUBUNIT = { GBp: ['GBP', 0.01], GBX: ['GBP', 0.01], ZAc: ['ZAR', 0.01], ILA: ['ILS', 0.01] };
-  const TYPE_NAME = { EQUITY: 'Stock', ETF: 'ETF', CRYPTOCURRENCY: 'Crypto', FUTURE: 'Futures' }, RANGES = new Set(['1d', '5d', '1mo', '6mo', '1y', '5y']);
+  const TYPE_NAME = { EQUITY: 'Stock', ETF: 'ETF', CRYPTOCURRENCY: 'Crypto', FUTURE: 'Futures' }, RANGES = new Set(['1d', '5d', '1mo', '6mo', '1y', '2y', '5y']);
   const fail = (status, error) => Object.assign(new Error(error), { status });
 
   function t212Candidates(sym) {
@@ -95,7 +95,7 @@
       // daily candles (open/high/low/close/volume) so the Swing tab can read volume and true ranges; null bars are dropped
       const candles = (c.timestamp || []).map((t, i) => closes[i] == null || qo[i] == null || qh[i] == null || ql[i] == null ? null : [t, +(qo[i] * k).toFixed(6), +(qh[i] * k).toFixed(6), +(ql[i] * k).toFixed(6), +(closes[i] * k).toFixed(6), qv[i] != null ? qv[i] : null]).filter(Boolean);
       const n = v => typeof v === 'number' ? +(v * k).toFixed(6) : null, reg = (m.currentTradingPeriod || {}).regular;
-      return { symbol, range, interval: { '1d': '5m', '5d': '30m', '1mo': '1d', '6mo': '1d', '1y': '1d', '5y': '1wk' }[range], points, candles,
+      return { symbol, range, interval: { '1d': '5m', '5d': '30m', '1mo': '1d', '6mo': '1d', '1y': '1d', '2y': '1d', '5y': '1wk' }[range], points, candles,
         meta: { currency: ccy, quote_currency: m.currency, exchange: m.fullExchangeName || m.exchangeName, timezone: m.exchangeTimezoneName, gmtoffset: m.gmtoffset, price: n(m.regularMarketPrice),
           prev_close: n(m.chartPreviousClose != null ? m.chartPreviousClose : m.previousClose), day_high: n(m.regularMarketDayHigh), day_low: n(m.regularMarketDayLow), high52: n(m.fiftyTwoWeekHigh), low52: n(m.fiftyTwoWeekLow),
           volume: m.regularMarketVolume != null ? m.regularMarketVolume : null, market_time: m.regularMarketTime != null ? m.regularMarketTime : null, session: reg ? { start: reg.start, end: reg.end } : null } };

@@ -42,6 +42,8 @@ jobs:
         run: python -u tests/support_layout_test.py
       - name: Dip Planner fits phone screens
         run: python -u tests/dipplan_layout_test.py
+      - name: Paper trading card fits phone screens
+        run: python -u tests/paper_layout_test.py
       - name: Swing tab fits phone screens and never shows an entry without a passing back-test
         run: python -u tests/swing_layout_test.py
       - name: Profit tab pie check and £0 explanation fit phone screens

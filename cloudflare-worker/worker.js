@@ -465,7 +465,7 @@ async function handleWatchlist(req, env, op) {
 }
 
 // ── Live chart for the watchlist drill-down (authenticated) ─────────────────
-const CHART_RANGES = { '1d': '5m', '5d': '30m', '1mo': '1d', '6mo': '1d', '1y': '1d', '5y': '1wk' };
+const CHART_RANGES = { '1d': '5m', '5d': '30m', '1mo': '1d', '6mo': '1d', '1y': '1d', '2y': '1d', '5y': '1wk' };
 const SUBUNIT = { GBp: ['GBP', 0.01], GBX: ['GBP', 0.01], ZAc: ['ZAR', 0.01], ILA: ['ILS', 0.01] };
 
 async function handleChart(req, env) {

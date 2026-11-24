@@ -45,3 +45,20 @@ Earnings dates are not checked (avoid holding through results) · the back-test 
 Daily candles `[time, open, high, low, close, volume]` come from the dashboard's `/chart` route (private app: the relay via `watchlistops.chart`; legacy: the worker's `/chart`). The **demo** has no volume candles, so every stock shows “data unverified” there.
 
 Tests: `tests/zk_swing_test.mjs` (rules, exits, costs, no look-ahead, the gate) · `tests/swing_layout_test.py` (360/390px, gate closed / open / no entry).
+
+## 🧪 Paper trading (fake money, under the Swing tab)
+
+A **forward test**, not a recommendation. You type a **weekly amount** (there is no default) and two fake accounts get the same deposit every Monday-week:
+
+| Account | What it does |
+|---|---|
+| **Trend account** | Buys that amount of a stock when the **Minervini trend template + 20-day breakout on 1.5× volume** fires on a completed day, **filled at the next session's open**, up to 5 at a time. Sells at the next open after a close under the **50-day average**, at once on a **15% fall**, or after 120 days |
+| **World ETF** (`VWRP.L`) | Puts the same deposit into the ETF each week (the bar the trend account must beat) |
+
+- **Honest fills:** signals use completed bars only; an order is cancelled if the open is above the entry ceiling (price ran away) or through the stop; every buy and sell pays **0.2%**. No real money, no orders are ever sent.
+- **Catches up when opened:** nothing runs while the app is closed. Missed weeks are credited and the ETF is bought at that week's real open.
+- **Universe:** the stocks the Swing tab scans (holdings outside pies and Good-quality watchlist stocks), so it only trades names you have. The demo has no volume candles, so the trend side shows no data there.
+- **Why it exists:** the back-test of this strategy did **not** hold up on stocks it had not seen (`docs/data/swing_confirm.json`), so it is tested on real future prices first. Judge after **8–12 weeks and 20+ closed trades**.
+- **Stored in the database:** the whole account is one JSON value under the key `__paper` in your `user_ui_prefs` row (per user, follows your login on the private app; browser-only on the legacy page, like the demo). Reset deletes it.
+
+Tests: `tests/zk_paper_test.mjs` (deposits, next-open fills, fees, stop / 50-day / time exits, cancels, idempotent re-runs) · `tests/paper_layout_test.py`.

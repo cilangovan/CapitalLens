@@ -54,6 +54,34 @@
 <p>Earnings dates are not checked (avoid holding through results) · the back-test uses today's liquid stocks, so survivorship bias flatters it · the quality screen has no history, so it is not in the back-test · live prices come from Yahoo daily data, refreshed on <strong>Scan now</strong>.</p>
 <h2 id="data">Data</h2>
 <p>Daily candles <code>[time, open, high, low, close, volume]</code> come from the dashboard's <code>/chart</code> route (private app: the relay via <code>watchlistops.chart</code>; legacy: the worker's <code>/chart</code>). The <strong>demo</strong> has no volume candles, so every stock shows “data unverified” there.</p>
-<p>Tests: <code>tests/zk_swing_test.mjs</code> (rules, exits, costs, no look-ahead, the gate) · <code>tests/swing_layout_test.py</code> (360/390px, gate closed / open / no entry).</p></article>
+<p>Tests: <code>tests/zk_swing_test.mjs</code> (rules, exits, costs, no look-ahead, the gate) · <code>tests/swing_layout_test.py</code> (360/390px, gate closed / open / no entry).</p>
+<h2 id="paper-trading-fake-money-under-the-swing-tab">🧪 Paper trading (fake money, under the Swing tab)</h2>
+<p>A <strong>forward test</strong>, not a recommendation. You type a <strong>weekly amount</strong> (there is no default) and two fake accounts get the same deposit every Monday-week:</p>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>Account</th>
+<th>What it does</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Trend account</strong></td>
+<td>Buys that amount of a stock when the <strong>Minervini trend template + 20-day breakout on 1.5× volume</strong> fires on a completed day, <strong>filled at the next session's open</strong>, up to 5 at a time. Sells at the next open after a close under the <strong>50-day average</strong>, at once on a <strong>15% fall</strong>, or after 120 days</td>
+</tr>
+<tr>
+<td><strong>World ETF</strong> (<code>VWRP.L</code>)</td>
+<td>Puts the same deposit into the ETF each week (the bar the trend account must beat)</td>
+</tr>
+</tbody>
+</table></div>
+<ul>
+<li><strong>Honest fills:</strong> signals use completed bars only; an order is cancelled if the open is above the entry ceiling (price ran away) or through the stop; every buy and sell pays <strong>0.2%</strong>. No real money, no orders are ever sent.</li>
+<li><strong>Catches up when opened:</strong> nothing runs while the app is closed. Missed weeks are credited and the ETF is bought at that week's real open.</li>
+<li><strong>Universe:</strong> the stocks the Swing tab scans (holdings outside pies and Good-quality watchlist stocks), so it only trades names you have. The demo has no volume candles, so the trend side shows no data there.</li>
+<li><strong>Why it exists:</strong> the back-test of this strategy did <strong>not</strong> hold up on stocks it had not seen (<code>docs/data/swing_confirm.json</code>), so it is tested on real future prices first. Judge after <strong>8–12 weeks and 20+ closed trades</strong>.</li>
+<li><strong>Stored in the database:</strong> the whole account is one JSON value under the key <code>__paper</code> in your <code>user_ui_prefs</code> row (per user, follows your login on the private app; browser-only on the legacy page, like the demo). Reset deletes it.</li>
+</ul>
+<p>Tests: <code>tests/zk_paper_test.mjs</code> (deposits, next-open fills, fees, stop / 50-day / time exits, cancels, idempotent re-runs) · <code>tests/paper_layout_test.py</code>.</p></article>
 <footer class="foot"><a href="https://github.com/cilangovan/CapitalLens/blob/main/documentation/menus/swing.md">Edit this page on GitHub</a> · <a href="../../">Back to the dashboard</a> · <a href="../index.html">Documentation home</a></footer></main></div>
 </body></html>

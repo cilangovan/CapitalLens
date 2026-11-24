@@ -204,8 +204,8 @@ function swValidated(rep) {
 // ── The card ──────────────────────────────────────────────────
 const _sw = { rows: [], report: null, amount: '', busy: false, at: null, skipped: [] };
 
-async function swFetchCandles(symbol) {
-  const r = await fetch(`${PROXY}/chart`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: typeof SESSION_TOKEN !== 'undefined' ? SESSION_TOKEN : undefined, symbol, range: '1y' }) });
+async function swFetchCandles(symbol, range) {
+  const r = await fetch(`${PROXY}/chart`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ token: typeof SESSION_TOKEN !== 'undefined' ? SESSION_TOKEN : undefined, symbol, range: range || '1y' }) });
   const d = await r.json().catch(() => ({})); if (!r.ok) throw new Error(d.error || `HTTP ${r.status}`);
   if (!Array.isArray(d.candles) || !d.candles.length) throw new Error('no volume candles from this data route');
   return d;
@@ -235,6 +235,7 @@ async function loadSwing() {
   for (const base of ['data/', '../data/']) { try { const r = await fetch(base + 'swing_backtest.json?_=' + Math.floor(Date.now() / 3600000)); if (r.ok) { const j = await r.json(); if (j && j.all) { _sw.report = j; break; } } } catch (e) {} }
   renderSwing();
   swScan(false);
+  if (typeof loadPaper === 'function') loadPaper().catch(() => {});
 }
 async function swScan(fresh) {
   if (_sw.busy) return; _sw.busy = true; renderSwing();

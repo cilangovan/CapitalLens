@@ -23,7 +23,7 @@ const ALLOWED = [
 
 // Public market data (no credentials). Chart endpoint only; symbol and range are strictly validated.
 const YAHOO = 'https://query1.finance.yahoo.com/v8/finance/chart/';
-const INTRADAY = { '1d': '5m', '5d': '30m', '1mo': '1d', '6mo': '1d', '1y': '1d', '5y': '1wk' };
+const INTRADAY = { '1d': '5m', '5d': '30m', '1mo': '1d', '6mo': '1d', '1y': '1d', '2y': '1d', '5y': '1wk' };
 const SYMBOL = /^[A-Za-z0-9.^=\-]{1,24}$/, RANGES = new Set(['5d', '1mo', '3mo', '6mo', '1y', '2y', '5y', 'max']);
 
 // Yahoo needs a session cookie + crumb for quoteSummary (same flow as services/analyst_service.py). Held in memory only, ~30 min.

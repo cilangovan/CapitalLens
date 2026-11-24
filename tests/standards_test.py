@@ -216,6 +216,13 @@ check("Swing tab: unit tests, layout test (in CI) and back-test workflow exist, 
 check("bot commits (register sync, swing back-test) rebase before pushing, so two bot jobs finishing together cannot fail each other",
       all("git pull --rebase origin main" in (ROOT / ".github/workflows" / f).read_text() for f in ("regression.yml", "swing_backtest.yml")))
 
+_pp = (ROOT / "docs/js/paper.js").read_text()
+check("Paper trading: on every dashboard, fake money only (no order or key code), weekly amount typed by the user (no default), stored in user_ui_prefs __paper",
+      all("paper.js" in (ROOT / p).read_text() and "paper-content" in (ROOT / p).read_text() for p in ("docs/index.html", "docs/demo/index.html", "docs/app/index.html", "docs/zkapp/index.html", "docs/zkapp-prod/index.html"))
+      and "__paper" in _pp and "paperInit(i ? i.value : 0" in _pp and "weekly: 30" not in _pp and "fetch(" not in _pp and "trading212" not in _pp.lower() and "api-key" not in _pp.lower())
+check("Paper trading: unit tests, layout test (in CI) and the documentation exist",
+      (ROOT / "tests/zk_paper_test.mjs").exists() and "paper_layout_test.py" in (ROOT / ".github/workflows/ui_tests.yml").read_text() and "Paper trading" in (ROOT / "documentation/menus/swing.md").read_text() and "never places real trades" in (ROOT / "CLAUDE.md").read_text())
+
 print("\nstandards: " + ("all good" if not bad else f"{bad} failed")); sys.exit(1 if bad else 0)
 
 # No fixed budget anywhere (owner decides the amount at decision time): engines, worker, shim, watchlist UI and demo seeds
