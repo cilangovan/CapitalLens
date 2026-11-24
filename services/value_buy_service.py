@@ -23,6 +23,8 @@ import urllib.request
 import urllib.error
 from datetime import datetime, timezone
 
+from services import orderflow
+
 try:
     import yfinance as yf
     import numpy as np
@@ -187,6 +189,7 @@ def fetch_yahoo_data(yahoo_ticker):
         vols = [float(x) if x == x else 0.0 for x in hist["Volume"].fillna(0).tolist()]
         prior = float(np.mean(vols[-20:-5])) if len(vols) >= 20 else 0.0
         vol_ratio = round(float(np.mean(vols[-5:])) / prior, 2) if prior > 0 else None
+        fl = orderflow.estimate(hist["High"].tolist() if "High" in hist else None, hist["Low"].tolist() if "Low" in hist else None, closes, vols)   # estimated from candles
         mom_4w = round((closes[-1] / closes[-20] - 1) * 100, 1) if len(closes) >= 20 else None
         mom_1w = round((closes[-1] / closes[-5] - 1) * 100, 1) if len(closes) >= 5 else None
 
@@ -208,6 +211,7 @@ def fetch_yahoo_data(yahoo_ticker):
             "rsi":            rsi,
             "vol_annual_pct": vol_annual,
             "vol_ratio":      vol_ratio,
+            "flow_state":     fl["state"], "flow_score": fl["score"], "flow_note": fl["note"],
             "mom_4w":         mom_4w,
             "mom_1w":         mom_1w,
             "pe_ratio":       info.get("trailingPE"),
@@ -496,6 +500,7 @@ def analyse_ticker(t212_ticker, yahoo, pie, cur, pos):
             "pe":         d.get("pe_ratio"),
             "fwd_pe":     d.get("forward_pe"),
             "vol_ratio":  d.get("vol_ratio"),
+            "flow_state": d.get("flow_state"), "flow_score": d.get("flow_score"), "flow_note": d.get("flow_note"),
             "mom_4w":     d.get("mom_4w"),
             "mom_1w":     d.get("mom_1w"),
             "t212":       t212_ticker,

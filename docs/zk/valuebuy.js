@@ -21,7 +21,8 @@
     const c = h.c, n = c.length; info = info || {};
     const returns = c.slice(1).map((x, i) => (x - c[i]) / c[i]), mu = mean(returns), vol = Math.sqrt(mean(returns.map(r => (r - mu) * (r - mu))));
     const v = h.v || [], volRatio = v.length >= 20 && mean(v.slice(-20, -5)) > 0 ? rnd(mean(v.slice(-5)) / mean(v.slice(-20, -5)), 2) : null;     // 5-day vs prior 15-day average volume (same as holding decisions)
-    return { vol_ratio: volRatio, mom_4w: n >= 20 ? rnd((c[n - 1] / c[n - 20] - 1) * 100, 1) : null, mom_1w: n >= 5 ? rnd((c[n - 1] / c[n - 5] - 1) * 100, 1) : null,
+    const fl = root.ZKOrderflow ? root.ZKOrderflow.estimate(h.h, h.l, c, v, null, false) : null;   // estimated from candles (docs/zk/orderflow.js)
+    return { vol_ratio: volRatio, flow_state: fl ? fl.state : null, flow_score: fl ? fl.score : null, flow_note: fl ? fl.note : null, mom_4w: n >= 20 ? rnd((c[n - 1] / c[n - 20] - 1) * 100, 1) : null, mom_1w: n >= 5 ? rnd((c[n - 1] / c[n - 5] - 1) * 100, 1) : null,
       current: rnd(c[n - 1], 4), week_high: rnd(Math.max(...h.h.slice(-5)), 4), week_low: rnd(Math.min(...h.l.slice(-5)), 4), high_52w: rnd(Math.max(...h.h), 4), low_52w: rnd(Math.min(...h.l), 4),
       ma20: n >= 20 ? rnd(mean(c.slice(-20)), 4) : null, ma50: n >= 50 ? rnd(mean(c.slice(-50)), 4) : null, rsi: calcRsi(c), vol_annual_pct: rnd(vol * Math.sqrt(252) * 100, 1),
       pe_ratio: info.trailingPE === undefined ? null : info.trailingPE, forward_pe: info.forwardPE === undefined ? null : info.forwardPE, target_mean: info.targetMeanPrice === undefined ? null : info.targetMeanPrice,
@@ -100,7 +101,7 @@
       const current = d.current, zones = entryZones(current, d.low_52w, d.high_52w, avgCost, cur), week = thisWeekTarget(current, d.ma20, d.ma50, d.rsi, avgCost), [score, verdict, card] = scorecard(d, avgCost);
       rows.push({ ticker: yahoo, display: d.short_name || pos.display || yahoo, pie, currency_symbol: cur, score, score_max: 100, verdict, entry_zones: JSON.stringify(zones), scorecard: JSON.stringify(card), earnings: JSON.stringify({}),
         this_week: JSON.stringify({ action: week.action, price: week.price, rationale: week.rationale, current, avg_cost: avgCost, quantity: 0, rsi: d.rsi, ma20: d.ma20, ma50: d.ma50, vol_pct: d.vol_annual_pct, high_52w: d.high_52w, low_52w: d.low_52w, week_high: d.week_high, week_low: d.week_low,
-          pe: d.pe_ratio === undefined ? null : d.pe_ratio, fwd_pe: d.forward_pe === undefined ? null : d.forward_pe, vol_ratio: d.vol_ratio, mom_4w: d.mom_4w, mom_1w: d.mom_1w, t212: pos.ticker }),   // signals for the Dip Planner (docs/js/dipplan.js)
+          pe: d.pe_ratio === undefined ? null : d.pe_ratio, fwd_pe: d.forward_pe === undefined ? null : d.forward_pe, vol_ratio: d.vol_ratio, flow_state: d.flow_state, flow_score: d.flow_score, flow_note: d.flow_note, mom_4w: d.mom_4w, mom_1w: d.mom_1w, t212: pos.ticker }),   // signals for the Dip Planner (docs/js/dipplan.js)
         warning: warning(d, avgCost), notes: null, updated_at: inp.nowIso });
     }
     return { rows, active };

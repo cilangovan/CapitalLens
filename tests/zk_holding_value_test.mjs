@@ -4,7 +4,7 @@ import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
 const require = createRequire(import.meta.url);
 require('../docs/zk/returns.js'); require('../docs/zk/symbols.js');
-const HD = require('../docs/zk/holdingdecision.js'), VB = require('../docs/zk/valuebuy.js');
+const HD = require('../docs/zk/holdingdecision.js'), VB = require('../docs/zk/valuebuy.js'); require('../docs/zk/orderflow.js');
 let pass = 0, fail = 0; const ok = (n, c) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + n); };
 let seed = 31337; const rnd = () => (seed = (seed * 1664525 + 1013904223) % 4294967296) / 4294967296;
 function series(n, shape, base = 100, noise = 0.012, volBase = 1000, volTail = 1000) {

@@ -341,6 +341,11 @@ function wlCard(i, pos, total) {
       <div class="w-dim" style="margin-top:6px">${_wesc(a.reason || 'Analysis failed')}. No verdict without verified prices.</div>${wlFiveCheck(i)}</div></div>`;
 
   const open = WL.open.has(i.ticker);
+  function wlFlowChip(a) {   // order flow is ESTIMATED from candles; unverified shows nothing rather than a fake neutral
+    const f = a.flow; if (!f || f.state === 'unverified') return '';
+    const m = { accumulation: ['g', 'Large buyer'], distribution: ['r', 'Large seller'], buyers: ['g', 'Buyers leaning'], sellers: ['y', 'Sellers leaning'], neutral: ['', 'Flow neutral'] }[f.state] || ['', f.state];
+    return `<span class="w-tag ${m[0]}" title="${_wesc(f.note)}">${m[1]} · est.</span>`;
+  }
   const q = a.quality || {}, vol = a.volume || {};
   const rsiCls = a.rsi < 40 ? 'g' : a.rsi > 70 ? 'r' : a.rsi > 60 ? 'y' : '';
   const volCls = vol.label === 'High' ? (a.daily_pct < 0 ? 'r' : 'g') : vol.label === 'Low' ? 'y' : '';
@@ -357,6 +362,7 @@ function wlCard(i, pos, total) {
         <span class="w-tag ${rsiCls}">RSI ${a.rsi ?? '—'} · ${_wesc(a.rsi_label)}</span>
         <span class="w-tag ${volCls}">Volume ${_wesc(vol.label)}${vol.ratio ? ` · ${vol.ratio}× avg` : ''}</span>
         <span class="w-tag ${qCls}">Quality ${_wesc(q.label)}</span>
+        ${wlFlowChip(a)}
         ${wlAnalystChip(a)}
       </div>
       <div class="w-why">${(a.why || []).map(w => `<div>• ${_wesc(w)}</div>`).join('')}</div>
@@ -369,6 +375,7 @@ function wlCard(i, pos, total) {
       <div class="w-actions-row"><span class="w-more" onclick="wlToggle('${_wesc(i.ticker)}')">${open ? '▲ Less' : '▼ Details: volume, quality, levels'}</span>
         <a class="w-more" href="#watch/${encodeURIComponent(i.ticker)}" onclick="wlOpenDetail(event,'${_wesc(i.ticker)}')">📈 Chart, profile & insights →</a></div>
       ${open ? `<div class="w-details">
+        ${a.flow ? `<div><b>Order flow (estimate):</b> ${_wesc(a.flow.note)}</div>` : ''}
         <div><b>Volume:</b> ${_wesc(vol.note)}${vol.partial_excluded ? ' <span class="w-dim">(today\'s unfinished session excluded)</span>' : ''}</div>
         <div><b>Quality checks</b>${(q.reasons || []).map(r => `<div class="w-dim">${_wesc(r)}</div>`).join('')}</div>
         <table class="w-table small"><tbody>

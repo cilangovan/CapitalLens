@@ -32,6 +32,7 @@ import numpy as np
 import yfinance as yf
 
 from services.value_buy_service import calc_rsi
+from services import orderflow
 
 SUPABASE_URL = os.environ["SUPABASE_URL"]
 SUPABASE_KEY = os.environ.get("SUPABASE_SERVICE_KEY") or os.environ["SUPABASE_KEY"]
@@ -131,6 +132,8 @@ def fetch(sym, now, category="stock"):
         return None, "inconsistent price units in history"
 
     vols = h["Volume"].astype(float).tolist() if "Volume" in h else []
+    highs = (h["High"].astype(float) * scale).tolist() if "High" in h else []        # for the order-flow estimate (candle shape)
+    lows = (h["Low"].astype(float) * scale).tolist() if "Low" in h else []
     # exclude today's unfinished session from volume stats while that market is open
     reg = (meta.get("currentTradingPeriod") or {}).get("regular") or {}
     def _epoch(x):   # yfinance gives epoch ints or pandas Timestamps depending on version
@@ -161,7 +164,7 @@ def fetch(sym, now, category="stock"):
     except Exception:
         pass
     return {"closes": closes, "dates": dates, "ccy": ccy_out, "quote_ccy": ccy, "last_date": last_date, "info": info, "scale": scale,
-            "volumes": vols,
+            "volumes": vols, "highs": highs, "lows": lows,
             "exchange": meta.get("fullExchangeName") or meta.get("exchangeName"),
             "vol_ratio": vol_ratio, "vol_last": vol_last, "vol_avg": vol_avg, "partial": partial}, None
 
@@ -260,6 +263,7 @@ def analyse(item, now):
     downtrend = bool(ma200 and price < ma200 and ma50 < ma200)
     overbought = (rsi or 50) > 70 or (range_pos > 0.9 and price > ma20 * 1.05)
     selling = vol_label == "High" and daily <= -1.5
+    flow = orderflow.estimate(d.get("highs"), d.get("lows"), c, d.get("volumes"), [x if isinstance(x, str) else x.isoformat() for x in d["dates"]], d["partial"])   # estimated from candles, never real order flow
 
     why = []
     trend_only = is_etf or category in ("commodity", "crypto")      # "quality" = trend/volatility, no fundamentals
@@ -292,6 +296,10 @@ def analyse(item, now):
         verdict = "HOLD"; why.append(f"RSI {rsi:.0f} — no edge at today's price; set alerts at the entry points.")
     if verdict == "ENTER" and selling:
         verdict = "ACCUMULATE"; why.append("Heavy selling volume today — stage the buys instead of all at once.")
+    elif verdict == "ENTER" and flow["state"] == "distribution":
+        verdict = "ACCUMULATE"; why.append("Large-seller footprint in the last 5 sessions (estimated from candles) — stage the buys instead of all at once.")
+    elif verdict in ("ENTER", "ACCUMULATE") and flow["state"] == "accumulation":
+        why.append("Large-buyer footprint in the last 5 sessions (estimated from candles) adds support — it does not change the call by itself.")
     if verdict in ("ENTER", "ACCUMULATE") and q_label == "Mixed":
         why.append("Quality is mixed — keep the position small.")
     alts = item.get("alternatives") or []
@@ -327,6 +335,7 @@ def analyse(item, now):
         "rsi": rsi, "rsi_label": rsi_label,
         "volume": {"ratio": round(d["vol_ratio"], 2) if d["vol_ratio"] else None,
                    "label": vol_label, "note": vol_note, "partial_excluded": d["partial"]},
+        "flow": flow,
         "ma20": rnd(ma20, ccy), "ma50": rnd(ma50, ccy), "ma200": rnd(ma200, ccy),
         "high52": rnd(high52, ccy), "low52": rnd(low52, ccy), "range_pos": round(range_pos * 100),
         "drawdown20": round((price / high20 - 1) * 100, 2),

@@ -4,7 +4,7 @@
 //   node scripts/analysis_fingerprint.mjs --update   record the new fingerprint (refuses unless the version was bumped)
 import { readFileSync, writeFileSync } from 'node:fs'; import { createHash } from 'node:crypto';
 const root = new URL('../', import.meta.url), R = p => readFileSync(new URL(p, root), 'utf8');
-export const FILES = ['pipeline', 'analystratings', 'lynch', 'returns', 'piehistory', 'profitbooking', 'strategy', 'holdingdecision', 'valuebuy', 'watchlist', 'flow', 'alertreport', 'alertfmt', 'monitor', 'symbols'].map(n => `docs/zk/${n}.js`);
+export const FILES = ['pipeline', 'orderflow', 'analystratings', 'lynch', 'returns', 'piehistory', 'profitbooking', 'strategy', 'holdingdecision', 'valuebuy', 'watchlist', 'flow', 'alertreport', 'alertfmt', 'monitor', 'symbols'].map(n => `docs/zk/${n}.js`);
 export const current = () => ({ version: R('docs/zkapp/zkapp-tools.js').match(/ZK_ANALYSIS_VERSION = '([^']+)'/)[1], hash: createHash('sha256').update(FILES.map(f => f + '\n' + R(f)).join('\n--\n')).digest('hex') });
 if (process.argv[1] && process.argv[1].endsWith('analysis_fingerprint.mjs')) {
   const cur = current(); let rec = null; try { rec = JSON.parse(R('config/analysis_fingerprint.json')); } catch (e) {}

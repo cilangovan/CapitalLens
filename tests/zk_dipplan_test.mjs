@@ -8,7 +8,7 @@ const sum = a => a.reduce((x, y) => x + y, 0), r2 = x => Math.round(x * 100) / 1
 
 // A stock row as the Entry Analysis saves it (this_week carries the signals)
 const S = (ticker, pie, score, w, extra = {}) => ({ ticker, t212: extra.t212 === undefined ? ticker + '_US_EQ' : extra.t212, display: extra.display || ticker, pie, score, verdict: score >= 75 ? 'Value Buy' : 'Accumulate', currency_symbol: '$',
-  w: Object.assign({ action: 'ACCUMULATE', price: 100, current: 100, high_52w: 130, low_52w: 80, rsi: 38, mom_4w: -6, mom_1w: 1.2, vol_ratio: 1.4, pe: 18, fwd_pe: 16 }, w) });
+  w: Object.assign({ action: 'ACCUMULATE', price: 100, current: 100, high_52w: 130, low_52w: 80, rsi: 38, mom_4w: -6, mom_1w: 1.2, vol_ratio: 1.4, flow_state: 'neutral', flow_score: 0.5, pe: 18, fwd_pe: 16 }, w) });
 const FEAR = { level: 3, label: 'Extreme fear', vix: 34, spx_drawdown: 11, news_net: -4, news_count: 20 };
 const CALM = { level: 1, label: 'Normal', vix: 16, spx_drawdown: 1, news_net: 0, news_count: 10 };
 const stocks = [
@@ -31,11 +31,12 @@ ok('RSI 28 is oversold (best), RSI 72 is overbought (worst, no new money)', one(
 ok('RSI 66 at the 52-week high counts as overbought too; RSI 66 well below the high does not', one({ rsi: 66, current: 129, high_52w: 130 }).overbought === true && one({ rsi: 66, current: 100, high_52w: 130 }).overbought === false);
 ok('Entry Analysis "hold / avoid" blocks a buy', one({ action: 'HOLD / AVOID', rsi: 40 }).decision === 'HOLD');
 ok('momentum: down and bouncing beats down and still falling hard', one({ mom_4w: -10, mom_1w: 2 }).signals.momentum.score > one({ mom_4w: -20, mom_1w: -3 }).signals.momentum.score);
+ok('order flow (estimated): a large-buyer footprint scores high, a large-seller footprint low, unverified is left out and re-weighted', one({ flow_state: 'accumulation', flow_score: 1 }).signals.flow.score === 1 && one({ flow_state: 'distribution', flow_score: 0.1 }).signals.flow.score === 0.1 && !one({ flow_state: 'unverified', flow_score: null }).signals.flow && /estimated/.test(one({ flow_state: 'buyers', flow_score: 0.7, flow_note: 'x' }).signals.flow.note));
 ok('volume: heavy volume on a bounce is bullish, heavy volume on a fall is not', one({ vol_ratio: 1.6, mom_1w: 2 }).signals.volume.score === 1 && one({ vol_ratio: 1.6, mom_1w: -2 }).signals.volume.score < 0.5);
 ok('PE: 14 cheap > 24 fair > 60 very expensive; no PE (ETF) means the signal is left out, not zero', one({ pe: 14 }).signals.pe.score > one({ pe: 24 }).signals.pe.score && one({ pe: 24 }).signals.pe.score > one({ pe: 60 }).signals.pe.score && one({ pe: null }).signals.pe === undefined);
 ok('entry point: at/below target in the lower 52-week range scores higher than 10% above target near the high', one({ current: 90, price: 92, high_52w: 130, low_52w: 80 }).signals.entry.score > one({ current: 125, price: 110, high_52w: 130, low_52w: 80 }).signals.entry.score);
 const full = DP.dpSignals(S('X', 'P', 70, {}), CALM), wsum = sum(Object.keys(full).map(k => DP.DP_WEIGHTS[k]));
-ok('weights add up to 100 and all seven signals are used when the data is there', wsum === 100 && Object.keys(full).length === 7);
+ok('weights add up to 100 and all eight signals are used when the data is there', wsum === 100 && Object.keys(full).length === 8);
 const noPe = one({ pe: null });
 ok('missing PE: score is re-weighted over the other signals (coverage 88), still a 0-100 number', noPe.coverage === 88 && noPe.buyScore >= 0 && noPe.buyScore <= 100);
 const bare = DP.dpScoreStock({ ticker: 'N', pie: 'P', score: null, w: {} }, CALM);

@@ -7,8 +7,8 @@
 // from the strategy row, all produced by Refresh. Nothing is invented: a signal with no data is left out and
 // the others are re-weighted, and the card says so.
 
-const DP_WEIGHTS = { rsi: 18, momentum: 12, volume: 10, entry: 20, dip: 10, pe: 12, quality: 18 };      // sums to 100
-const DP_LABELS  = { rsi: 'RSI', momentum: 'Momentum', volume: 'Volume', entry: 'Entry point', dip: 'Dip depth', pe: 'PE ratio', quality: 'Quality score' };
+const DP_WEIGHTS = { rsi: 18, momentum: 10, volume: 6, flow: 6, entry: 20, dip: 10, pe: 12, quality: 18 };      // sums to 100
+const DP_LABELS  = { rsi: 'RSI', momentum: 'Momentum', volume: 'Volume', flow: 'Order flow (est.)', entry: 'Entry point', dip: 'Dip depth', pe: 'PE ratio', quality: 'Quality score' };
 const DP_DIRECT_PIES = ['', 'individual', 'untagged', 'solo'];                                              // holdings that are not inside a Trading 212 pie
 const DP_FRACTION = { strong: 1, moderate: 0.5, none: 0 };                                                  // how much of the amount to deploy
 
@@ -33,7 +33,7 @@ function dpSplit(total, weights) {
 function dpKey(t) { t = String(t || '').toUpperCase(); return t.split('.')[0].split('_')[0]; }
 function dpKeyT212(t) { const b = String(t || '').split('_')[0]; return (/^[A-Z]{3,}[a-z]$/.test(b) ? b.slice(0, -1) : b).toUpperCase(); }
 
-// ── One stock: seven signals → a 0-100 buy score, an overbought flag and a decision ──
+// ── One stock: eight signals → a 0-100 buy score, an overbought flag and a decision ──
 function dpSignals(st, mood) {
   const w = st.w || {}, cur = dpNum(w.current), hi = dpNum(w.high_52w), lo = dpNum(w.low_52w), tgt = dpNum(w.price);
   const rsi = dpNum(w.rsi), m4 = dpNum(w.mom_4w), m1 = dpNum(w.mom_1w), vr = dpNum(w.vol_ratio), pe = dpNum(w.pe), fpe = dpNum(w.fwd_pe);
@@ -60,6 +60,9 @@ function dpSignals(st, mood) {
     S.volume = vr >= 1.3 ? { score: up ? 1 : 0.35, value: vr, note: up ? `Volume ${vr}× normal on a rise — buyers stepping in` : `Volume ${vr}× normal on a fall — selling pressure` }
       : vr >= 0.8 ? { score: 0.6, value: vr, note: `Volume ${vr}× normal — nothing unusual` } : { score: 0.4, value: vr, note: `Volume ${vr}× normal — thin, weak conviction` };
   }
+  // Order flow (ESTIMATED from candle volume and close position; not real orders). Only used when it could be verified.
+  const fs_ = w.flow_state, fsc = dpNum(w.flow_score);
+  if (fsc !== null && fs_ && fs_ !== 'unverified') S.flow = { score: fsc, value: fs_, note: 'Order flow (estimated): ' + (w.flow_note || fs_) };
   // Entry point: price vs this week's target entry (60%) and where it sits in the 52-week range (40%)
   let eT = null, eR = null, en = [];
   if (cur !== null && tgt !== null && tgt > 0) { const gap = (cur - tgt) / tgt * 100; eT = gap <= 0 ? 1 : gap <= 3 ? 0.75 : gap <= 8 ? 0.4 : 0.15; en.push(gap <= 0 ? 'at or below the target entry' : `${dpRound(gap, 1)}% above the target entry`); }

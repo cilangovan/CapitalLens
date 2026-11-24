@@ -3,7 +3,7 @@
 import { createRequire } from 'node:module';
 import { execFileSync } from 'node:child_process';
 const require = createRequire(import.meta.url);
-require('../docs/zk/returns.js'); require('../docs/zk/valuebuy.js');
+require('../docs/zk/returns.js'); require('../docs/zk/valuebuy.js'); require('../docs/zk/orderflow.js');
 const WL = require('../docs/zk/watchlist.js');
 let pass = 0, fail = 0; const ok = (n, c) => { c ? pass++ : fail++; console.log((c ? '  ✓ ' : '  ✗ ') + n); };
 const NOW = '2026-11-18T12:30:00Z', nowS = Date.parse(NOW) / 1000;

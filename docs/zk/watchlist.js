@@ -49,6 +49,7 @@
     const closes = idx.map(i => Number(chart.close[i]) * scale), window = closes.slice(-20), jumps = [];
     for (let i = 0; i < window.length - 1; i++) if (window[i] > 0) jumps.push(window[i + 1] / window[i]);
     if (Math.min(...window) <= 0 || jumps.some(j => j > 8 || j < 1 / 8)) return [null, 'inconsistent price units in history'];
+    const hl = k => idx.map(i => chart[k] && chart[k][i] !== null && chart[k][i] !== undefined ? Number(chart[k][i]) * scale : NaN), highs = hl('high'), lows = hl('low');
     const vols = idx.map(i => chart.volume && chart.volume[i] !== null && chart.volume[i] !== undefined ? Number(chart.volume[i]) : NaN);
     const st = chart.regularStart, en = chart.regularEnd, nowS = nowDate.getTime() / 1000;
     let partial = !!(st && en && st <= nowS && nowS < en);
@@ -58,7 +59,7 @@
     if (vser.length >= 21 && mean(vser.slice(-21, -1)) > 0) { volLast = vser[vser.length - 1]; volAvg = mean(vser.slice(-21, -1)); volRatio = volAvg ? volLast / volAvg : null; }
     const info = Object.assign({}, (det && det.info) || {}), rc = det && det.rec_counts;
     if (rc) info._rec_counts = { strongBuy: Math.trunc(rc.strongBuy || 0), buy: Math.trunc(rc.buy || 0), hold: Math.trunc(rc.hold || 0), sell: Math.trunc(rc.sell || 0), strongSell: Math.trunc(rc.strongSell || 0) };
-    return [{ closes, dates, ccy, quote_ccy: quote, last_date: lastDate, info, scale, volumes: vols, exchange: chart.exchange || null, vol_ratio: volRatio, vol_last: volLast, vol_avg: volAvg, partial }, null];
+    return [{ closes, dates, ccy, quote_ccy: quote, last_date: lastDate, info, scale, volumes: vols, highs, lows, exchange: chart.exchange || null, vol_ratio: volRatio, vol_last: volLast, vol_avg: volAvg, partial }, null];
   }
 
   function quality(info, price, ma200, closes, isEtf, category) {
@@ -179,6 +180,7 @@
     let tgt = info.targetMeanPrice; tgt = truthy(tgt) ? tgt * ((info.currency in SUBUNITS) ? 0.01 : 1) : null;
     let upside = tgt ? (tgt / price - 1) * 100 : null;
     if (upside !== null && !(-90 < upside && upside < 300)) { tgt = null; upside = null; }
+    const flow = root.ZKOrderflow ? root.ZKOrderflow.estimate(d.highs, d.lows, c, d.volumes, d.dates, d.partial) : null;   // estimated from candles, never real order flow
     const downtrend = !!(ma200 && price < ma200 && ma50 < ma200), r50 = rsi || 50, overbought = r50 > 70 || (rangePos > 0.9 && price > ma20 * 1.05), selling = volLabel === 'High' && daily <= -1.5;
     const why = [], trendOnly = isEtf || category === 'commodity' || category === 'crypto', smallCoin = category === 'crypto' && (info.marketCap || 0) < 1e9;
     let verdict;
@@ -191,6 +193,8 @@
     else if (rsi !== null && rsi < 60 && qLabel === 'Good' && !downtrend) { verdict = 'ACCUMULATE'; why.push(`Healthy uptrend, RSI ${fx(rsi, 0)} — small first buy, add on dips.`); }
     else { verdict = 'HOLD'; why.push(`RSI ${fx(rsi, 0)} — no edge at today's price; set alerts at the entry points.`); }
     if (verdict === 'ENTER' && selling) { verdict = 'ACCUMULATE'; why.push('Heavy selling volume today — stage the buys instead of all at once.'); }
+    else if (verdict === 'ENTER' && flow && flow.state === 'distribution') { verdict = 'ACCUMULATE'; why.push('Large-seller footprint in the last 5 sessions (estimated from candles) — stage the buys instead of all at once.'); }
+    else if ((verdict === 'ENTER' || verdict === 'ACCUMULATE') && flow && flow.state === 'accumulation') why.push('Large-buyer footprint in the last 5 sessions (estimated from candles) adds support — it does not change the call by itself.');
     if ((verdict === 'ENTER' || verdict === 'ACCUMULATE') && qLabel === 'Mixed') why.push('Quality is mixed — keep the position small.');
     const alts = item.alternatives || [];
     if (category === 'crypto') why.push('Crypto swings hard — keep it a small slice of the portfolio.');
@@ -208,6 +212,7 @@
     const invalidation = minOf(levels.map(l => l[1]).concat([price])) * 0.93, takeProfit = truthy(tgt) && tgt > price ? tgt : high52 > price * 1.03 ? high52 : null;
     const out = Object.assign({}, base, { type: isEtf ? 'ETF' : 'Stock', ccy, per_gbp: perGbp, price: rndPx(price), daily_pct: rnd(daily, 2), as_of: d.last_date, rsi, rsi_label: rsiLabel,
       volume: { ratio: truthy(d.vol_ratio) ? rnd(d.vol_ratio, 2) : null, label: volLabel, note: volNote, partial_excluded: d.partial },
+      flow,
       ma20: rndPx(ma20), ma50: rndPx(ma50), ma200: rndPx(ma200), high52: rndPx(high52), low52: rndPx(low52), range_pos: rnd(rangePos * 100, 0), drawdown20: rnd((price / high20 - 1) * 100, 2),
       quality: { label: qLabel, score: qScore, reasons: qReasons }, analyst: { rec, count: info.numberOfAnalystOpinions || 0, target: rndPx(tgt), upside: upside !== null ? rnd(upside, 1) : null },
       why, entries_raw: entries.map(([n, v]) => [n, rndPx(v)]), invalidation: rndPx(invalidation), take_profit: rndPx(takeProfit), sector: g(info, 'sector'), quote_ccy: d.quote_ccy }, buildDrilldown(d, price, ccy, isEtf, category));
