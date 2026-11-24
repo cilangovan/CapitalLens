@@ -213,6 +213,9 @@ check("Swing tab: unit tests, layout test (in CI) and back-test workflow exist, 
       (ROOT / "tests/zk_swing_test.mjs").exists() and "swing_layout_test.py" in (ROOT / ".github/workflows/ui_tests.yml").read_text()
       and "swing_backtest.mjs" in (ROOT / ".github/workflows/swing_backtest.yml").read_text() and (ROOT / "documentation/menus/swing.md").exists() and "Swing tab" in (ROOT / "CLAUDE.md").read_text())
 
+check("bot commits (register sync, swing back-test) rebase before pushing, so two bot jobs finishing together cannot fail each other",
+      all("git pull --rebase origin main" in (ROOT / ".github/workflows" / f).read_text() for f in ("regression.yml", "swing_backtest.yml")))
+
 print("\nstandards: " + ("all good" if not bad else f"{bad} failed")); sys.exit(1 if bad else 0)
 
 # No fixed budget anywhere (owner decides the amount at decision time): engines, worker, shim, watchlist UI and demo seeds
