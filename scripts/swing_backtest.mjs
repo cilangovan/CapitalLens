@@ -29,7 +29,12 @@ async function candles(sym) {
 // Three variants declared BEFORE looking at any result (plus the original). Nothing is tuned: each is one idea, run once.
 const idxC = await candles('^GSPC'); if (!idxC || idxC.length < 200) { console.error('No S&P 500 data: cannot test the market-trend variants'); process.exit(2); }
 const IDX = { t: idxC.map(b => b[0]), c: idxC.map(b => b[4]) };
-const VARIANTS = { original: {}, wide_stop: { stopAtr: 2.5 }, market_up: { regime: true, ctx: { idx: IDX } }, leaders: { rs: 0.05, ctx: { idx: IDX } } };
+const VARIANTS = { original: {}, wide_stop: { stopAtr: 2.5 }, market_up: { regime: true, ctx: { idx: IDX } }, leaders: { rs: 0.05, ctx: { idx: IDX } },
+  // published book strategies, each with the book's own exit and with a fixed +5% target (stop -4%), all declared before any result was seen
+  connors_natural: { strat: 'connors', exit: 'natural' }, connors_5pct: { strat: 'connors', exit: 'target5' },
+  ibs_natural: { strat: 'ibs', exit: 'natural' }, ibs_5pct: { strat: 'ibs', exit: 'target5' },
+  grail_natural: { strat: 'grail', exit: 'natural' }, grail_5pct: { strat: 'grail', exit: 'target5' },
+  minervini_natural: { strat: 'minervini', exit: 'natural' }, minervini_5pct: { strat: 'minervini', exit: 'target5' } };
 const V = Object.fromEntries(Object.keys(VARIANTS).map(k => [k, []])); const base = [], times = []; let ok = 0; const failed = [];
 for (const sym of U) {
   const cs = await candles(sym); await sleep(250);
@@ -48,18 +53,20 @@ const boos = base.filter(t => t.t >= cut), baseline = SWG.swStats(boos);
 const variants = {};
 for (const [k, tr] of Object.entries(V)) {
   const r = { all: SWG.swStats(tr), in_sample: SWG.swStats(tr.filter(t => t.t < cut)), out_of_sample: SWG.swStats(tr.filter(t => t.t >= cut)), baseline,
-    by_setup: Object.fromEntries(['Pullback bounce', 'Breakout'].map(n => [n, SWG.swStats(tr.filter(t => t.setup === n))])) };
+    by_setup: Object.fromEntries([...new Set(tr.map(t => t.setup))].map(n => [n, SWG.swStats(tr.filter(t => t.setup === n))])),
+    exits: tr.reduce((m, t) => (m[t.why] = (m[t.why] || 0) + 1, m), {}), pct_5plus: tr.length ? SWG.swR(tr.filter(t => t.ret >= 0.045).length / tr.length * 100, 1) : 0,
+    by_year: Object.fromEntries(Object.entries(tr.reduce((m, t) => ((m[new Date(t.t * 1000).getUTCFullYear()] = m[new Date(t.t * 1000).getUTCFullYear()] || []).push(t), m), {})).map(([y, v]) => [y, SWG.swStats(v)])) };
   r.validation = SWG.swValidated(r); variants[k] = r;
 }
-// Choose by IN-SAMPLE expectancy only (needs 100+ in-sample trades); the out-of-sample part then confirms or rejects it. 4 variants were tried.
+// Choose by IN-SAMPLE expectancy only (needs 100+ in-sample trades); the out-of-sample part then confirms or rejects it. 12 variants were tried.
 const eligible = Object.entries(variants).filter(([, r]) => r.in_sample.trades >= 100).sort((a, b) => b[1].in_sample.expectancy - a[1].in_sample.expectancy);
 const chosen = eligible.length ? eligible[0][0] : 'original', C = variants[chosen];
 const rep = {
   generated: new Date().toISOString(), symbols: ok, requested: U.length, failed, years: YEARS, cost: SWG.SW.cost, cut: new Date(cut * 1000).toISOString().slice(0, 10),
   variants_tried: Object.keys(variants).length, chosen, config: Object.fromEntries(Object.entries(VARIANTS[chosen]).filter(([k]) => k !== 'ctx')),
   all: C.all, in_sample: C.in_sample, out_of_sample: C.out_of_sample, baseline, by_setup: C.by_setup, variants,
-  caveat: 'Today\u2019s surviving stocks only (survivorship bias), the quality screen and earnings dates are not in the test, and fills at the stop are assumed with no extra slippage on gaps beyond the open price. Four rule sets were tried and the one with the best in-sample result was kept, so the out-of-sample figure is the one to trust.'
+  caveat: 'Today\u2019s surviving stocks only (survivorship bias), the quality screen and earnings dates are not in the test, and fills at the stop are assumed with no extra slippage on gaps beyond the open price. Twelve rule sets were tried and the one with the best in-sample result was kept, so the out-of-sample figure is the one to trust.'
 };
 rep.validation = SWG.swValidated(rep);
 fs.mkdirSync(OUT.replace(/[^/]*$/, '') || '.', { recursive: true }); fs.writeFileSync(OUT, JSON.stringify(rep, null, 1) + '\n');
-console.log(JSON.stringify({ symbols: ok, chosen, baseline, summary: Object.fromEntries(Object.entries(variants).map(([k, r]) => [k, { all: [r.all.trades, r.all.expectancy, r.all.profitFactor], in: [r.in_sample.trades, r.in_sample.expectancy, r.in_sample.profitFactor], oos: [r.out_of_sample.trades, r.out_of_sample.expectancy, r.out_of_sample.profitFactor], ok: r.validation.ok }])), validation: rep.validation }, null, 1));
+console.log(JSON.stringify({ symbols: ok, chosen, baseline, summary: Object.fromEntries(Object.entries(variants).map(([k, r]) => [k, { all: [r.all.trades, r.all.expectancy, r.all.profitFactor], in: [r.in_sample.trades, r.in_sample.expectancy, r.in_sample.profitFactor], oos: [r.out_of_sample.trades, r.out_of_sample.expectancy, r.out_of_sample.profitFactor], ok: r.validation.ok, p5: r.pct_5plus }])), validation: rep.validation }, null, 1));

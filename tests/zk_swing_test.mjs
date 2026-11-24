@@ -105,4 +105,39 @@ ok('leaders variant: a stock lagging the market is refused', /market leader/.tes
 ok('leaders variant: a stock ahead of a flat market passes', SWG.swingSignal(X, undefined, { rs: 0.05, ctx: { idx: { t: T, c: Array(200).fill(100) } } }).entry === true);
 ok('default rules are untouched by the variants', JSON.stringify(SWG.swingSignal(X)) === JSON.stringify(SWG.swingSignal(X, undefined, {})));
 
+// ── published strategies ──
+const upLong = []; { let q = 50; for (let i = 0; i < 270; i++) { q *= 1.0035; upLong.push(q); } }
+const mkc = (cl, over = {}) => build(cl, Object.assign({ vols: cl.map(() => 2e6) }, over));
+ok('RSI(2): three hard down days after a rise reads far below 10', (() => { const r = SWG.swRsiN([100, 101, 102, 103, 100, 96, 92], 2); return r[6] < 10; })());
+ok('RSI(2) of a straight rise is 100', SWG.swRsiN(Array.from({ length: 30 }, (_, i) => 100 + i), 2)[29] === 100);
+ok('EMA of a constant series is that constant', Math.abs(SWG.swEma(Array(40).fill(7), 20)[39] - 7) < 1e-12);
+const adxUp = SWG.swAdx(...(() => { const x = SWG.swCols(mkc(upLong.slice(0, 120))); return [x.h, x.l, x.c, 14]; })());
+ok('ADX of a steady rise is high with +DI over -DI', adxUp.adx[119] > 40 && adxUp.pdi[119] > adxUp.mdi[119]);
+const dip = upLong.slice(); for (let k = 0; k < 3; k++) dip.push(dip[dip.length - 1] * 0.975);
+const cs = SWG.swStratSignal(SWG.swPrep(mkc(dip)), dip.length - 1, 'connors', 'natural');
+ok('Connors: uptrend + 3 sharp down days (RSI(2) under 10) is an entry with a 7% disaster stop', cs.entry === true && Math.abs(cs.stopPct - 0.07) < 1e-12 && cs.exitSma.n === 5 && cs.exitSma.below === false);
+const cs5 = SWG.swStratSignal(SWG.swPrep(mkc(dip)), dip.length - 1, 'connors', 'target5');
+ok('+5% exit mode: target 5% above, stop 4% below', cs5.entry && Math.abs(cs5.target / cs5.trigger - 1.05) < 1e-12 && Math.abs(cs5.stop / cs5.trigger - 0.96) < 1e-12 && cs5.exitSma === null);
+const falling = Array.from({ length: 270 }, (_, i) => 300 - i * 0.5);
+ok('Connors: below the 200-day average is never an entry', /200-day/.test(SWG.swStratSignal(SWG.swPrep(mkc(falling)), 269, 'connors', 'natural').reasons[0]));
+ok('Connors: an uptrend with no dip is not an entry (RSI(2) not below 10)', /RSI\(2\)/.test(SWG.swStratSignal(SWG.swPrep(mkc(upLong)), 269, 'connors', 'natural').reasons[0]));
+ok('under 252 bars is data unverified for every published strategy', SWG.SW_STRATS.every(n => /data unverified/.test(SWG.swStratSignal(SWG.swPrep(mkc(upLong.slice(0, 150))), 149, n, 'natural').reasons[0])));
+ok('no volume = no entry for every published strategy', SWG.SW_STRATS.every(n => { const r = SWG.swStratSignal(SWG.swPrep(build(dip, { vol: null })), dip.length - 1, n, 'natural'); return r.entry === false && /volume/i.test(r.reasons[0]); }));
+const ibsC = upLong.slice(); const ibsCandles = mkc(ibsC); { const b = ibsCandles[ibsCandles.length - 1]; b[2] = b[4] * 1.05; b[3] = b[4] * 0.999; }
+ok('IBS: a close in the bottom 20% of the range inside an uptrend is an entry', SWG.swStratSignal(SWG.swPrep(ibsCandles), ibsC.length - 1, 'ibs', 'natural').entry === true);
+ok('IBS: a close near the top of the range is refused', /bottom 20%/.test(SWG.swStratSignal(SWG.swPrep(mkc(upLong)), 269, 'ibs', 'natural').reasons[0]) || SWG.swStratSignal(SWG.swPrep(mkc(upLong)), 269, 'ibs', 'natural').entry === false);
+ok('Minervini and Grail refuse a market with no setup, with a reason', ['minervini', 'grail'].every(n => { const r = SWG.swStratSignal(SWG.swPrep(mkc(falling)), 269, n, 'natural'); return r.entry === false && r.reasons[0].length > 5; }));
+ok('published strategies never look ahead (appending bars does not change an earlier signal)', (() => { const a = SWG.swStratSignal(SWG.swPrep(mkc(dip)), dip.length - 1, 'connors', 'natural'), ext = dip.concat([dip[dip.length - 1] * 1.1, dip[dip.length - 1] * 1.2]), b = SWG.swStratSignal(SWG.swPrep(mkc(ext)), dip.length - 1, 'connors', 'natural'); return a.entry === b.entry && a.stop === b.stop; })());
+// exits
+const sg = (extra) => Object.assign({ entry: true, bar: 0, ceiling: 105, stop: 96, trigger: 100, strat: 'connors' }, extra);
+const sm = (rows, sig, cost = 0) => SWG.swSimulate(SWG.swCols(rows.map((q, i) => [86400 * (i + 1), ...q, 1e6])), sig, cost);
+let q2 = sm([[100, 100, 100, 100], [100, 106, 99.5, 105], ...flatBars(11)], sg({ targetPct: 0.05, stopPct: 0.04, exitSma: null }));
+ok('+5% mode exits at exactly +5% when the high reaches it', q2 && q2.why === 'target' && Math.abs(q2.exit - 105) < 1e-9);
+q2 = sm([[100, 100, 100, 100], [100, 100.5, 95.5, 96], ...flatBars(11)], sg({ targetPct: 0.05, stopPct: 0.04, exitSma: null }));
+ok('+5% mode stops out at -4%', q2 && q2.why === 'stop' && Math.abs(q2.exit - 96) < 1e-9);
+q2 = sm([[100, 100, 100, 100], [99, 101, 98, 100], [100, 101, 99, 100], [100, 101, 99, 100], [100, 101, 99, 100], [100, 101, 99, 100], [100, 103, 100, 102.5], ...flatBars(8)], sg({ stopPct: 0.07, exitSma: { n: 5, below: false } }));
+ok("natural exit leaves on the first close above the 5-day average (the book's rule)", q2 && q2.why === 'signal');
+q2 = sm([[100, 100, 100, 100], [100, 101, 99.2, 100], ...fake(12, () => [100, 101, 99.2, 100])], sg({ stopPct: 0.07, exitSma: { n: 5, below: false } }));
+ok('with no exit signal the trade still ends at day 10', q2 && (q2.why === 'time' || q2.why === 'signal') && q2.exitBar - q2.bar <= 9);
+
 console.log(`\n${pass} passed, ${fail} failed`); process.exit(fail ? 1 : 0);

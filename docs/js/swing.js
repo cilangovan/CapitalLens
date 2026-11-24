@@ -97,15 +97,72 @@ function swingSignal(X, i, cfg) {
   return { entry: true, setup, trigger: c, ceiling: c + 0.5 * atr, stop, target, risk, riskPct: risk / c, rr: SW.rr, atr, rsi, volX, avgVol: avgV, holdDays: SW.holdDays, score, why, bar: i, t: X.t[i] };
 }
 
+
+// ── Published strategies (rules as printed; each tested on its own, never mixed or tuned) ──
+// connors   : Connors & Alvarez, "Short Term Trading Strategies That Work" (2008): close above the 200-day, RSI(2) below 10.
+// ibs       : Internal Bar Strength mean reversion: close in the bottom 20% of the day's range, inside a 200-day uptrend.
+// grail     : Raschke "Holy Grail" trend pullback: ADX(14) above 30 with +DI over -DI, a pullback bar that touched the 20-day EMA, then a close above that bar's high.
+// minervini : Minervini Trend Template (50>150>200-day, 200-day rising, within 25% of the 52-week high, 30%+ above the low) plus a 20-day breakout on 1.5x volume.
+// Exits: 'natural' = the book's own exit (mean reversion: first close above the 5-day average; trend: close below the 10-day average) with a 7% disaster stop and the 10-day limit;
+//        'target5' = take profit at +5%, stop at -4%, 10-day limit.
+function swRsiN(c, n) {
+  const out = new Array(c.length).fill(null); if (c.length <= n) return out;
+  let g = 0, l = 0; for (let i = 1; i <= n; i++) { const d = c[i] - c[i - 1]; if (d >= 0) g += d; else l -= d; } g /= n; l /= n; out[n] = l === 0 ? 100 : 100 - 100 / (1 + g / l);
+  for (let i = n + 1; i < c.length; i++) { const d = c[i] - c[i - 1]; g = (g * (n - 1) + (d > 0 ? d : 0)) / n; l = (l * (n - 1) + (d < 0 ? -d : 0)) / n; out[i] = l === 0 ? 100 : 100 - 100 / (1 + g / l); }
+  return out;
+}
+function swEma(c, n) { const out = new Array(c.length).fill(null); if (c.length < n) return out; let e = 0; for (let i = 0; i < n; i++) e += c[i]; e /= n; out[n - 1] = e; const k = 2 / (n + 1); for (let i = n; i < c.length; i++) { e = c[i] * k + e * (1 - k); out[i] = e; } return out; }
+function swAdx(h, l, c, n) {
+  n = n || 14; const N = c.length, adx = new Array(N).fill(null), pdi = new Array(N).fill(null), mdi = new Array(N).fill(null); if (N < 2 * n + 1) return { adx, pdi, mdi };
+  let tr = 0, pd = 0, md = 0; for (let i = 1; i <= n; i++) { const up = h[i] - h[i - 1], dn = l[i - 1] - l[i]; tr += Math.max(h[i] - l[i], Math.abs(h[i] - c[i - 1]), Math.abs(l[i] - c[i - 1])); pd += up > dn && up > 0 ? up : 0; md += dn > up && dn > 0 ? dn : 0; }
+  const dx = []; let ax = null;
+  for (let i = n; i < N; i++) {
+    if (i > n) { const up = h[i] - h[i - 1], dn = l[i - 1] - l[i], t = Math.max(h[i] - l[i], Math.abs(h[i] - c[i - 1]), Math.abs(l[i] - c[i - 1])); tr = tr - tr / n + t; pd = pd - pd / n + (up > dn && up > 0 ? up : 0); md = md - md / n + (dn > up && dn > 0 ? dn : 0); }
+    const p = 100 * pd / tr, m = 100 * md / tr; pdi[i] = p; mdi[i] = m; const d = p + m === 0 ? 0 : 100 * Math.abs(p - m) / (p + m); dx.push(d);
+    if (dx.length === n) { ax = dx.reduce((a, b) => a + b, 0) / n; adx[i] = ax; } else if (dx.length > n) { ax = (ax * (n - 1) + d) / n; adx[i] = ax; }
+  }
+  return { adx, pdi, mdi };
+}
+const SW_STRATS = ['connors', 'ibs', 'grail', 'minervini'];
+const SW_EXITS = { natural: { disaster: 0.07 }, target5: { targetPct: 0.05, stopPct: 0.04 } };
+function swPrepStrat(X) { if (!X.rsi2) { X.rsi2 = swRsiN(X.c, 2); X.ema20 = swEma(X.c, 20); X.dm = swAdx(X.h, X.l, X.c, 14); } return X; }
+function swStratSignal(X, i, name, exitMode) {
+  const no = (...reasons) => ({ entry: false, reasons }); swPrepStrat(X);
+  if (i < 251) return no(`Only ${i + 1} daily bars (need 252): data unverified`);
+  const c = X.c[i], atr = X.atr[i]; if (atr === null) return no('Indicators unavailable: data unverified');
+  let vs = 0; for (let j = i - 20; j < i; j++) { if (X.v[j] === null || X.v[j] === undefined) return no('No volume data: cannot verify entry volume'); vs += X.v[j]; }
+  const avgV = vs / 20, v = X.v[i]; if (v === null || v === undefined) return no('No volume data today: cannot verify entry volume');
+  if (avgV * c < SW.minTurnover) return no('Too thinly traded (average daily turnover under 1 million)');
+  if (atr / c < SW.atrMin) return no('Too quiet: moves too small to pay for costs'); if (atr / c > 0.08) return no('Too volatile: daily range over 8% of price');
+  const s5 = swSma(X.c, 5, i + 1), s10 = swSma(X.c, 10, i + 1), s50 = swSma(X.c, 50, i + 1), s150 = swSma(X.c, 150, i + 1), s200 = swSma(X.c, 200, i + 1), s200b = swSma(X.c, 200, i - 20);
+  let why = [], trend = false;
+  if (name === 'connors') { if (!(c > s200)) return no('Below the 200-day average'); const r2 = X.rsi2[i]; if (!(r2 < 10)) return no(`RSI(2) is ${swR(r2, 0)}: not below 10`); why = [`Above the 200-day, RSI(2) ${swR(r2, 1)} (below 10)`]; }
+  else if (name === 'ibs') { if (!(c > s200)) return no('Below the 200-day average'); const rg = X.h[i] - X.l[i]; if (!(rg > 0)) return no('No range today'); const ibs = (c - X.l[i]) / rg; if (!(ibs < 0.2)) return no(`Closed ${swR(ibs * 100, 0)}% up its range: not in the bottom 20%`); why = [`Closed in the bottom ${swR(ibs * 100, 0)}% of the day's range, inside a 200-day uptrend`]; }
+  else if (name === 'grail') { trend = true; const d = X.dm, p = i - 1; if (d.adx[i] === null) return no('ADX unavailable'); if (!(d.adx[i] > 30 && d.pdi[i] > d.mdi[i])) return no(`No strong uptrend (ADX ${swR(d.adx[i], 0)}, needs 30+ with +DI over -DI)`); if (!(X.l[p] <= X.ema20[p])) return no('Yesterday did not pull back to the 20-day EMA'); if (!(c > X.h[p] && c > X.ema20[i])) return no('No turn yet: price has not closed above the pullback bar high'); why = [`ADX ${swR(d.adx[i], 0)}, pulled back to the 20-day EMA and turned up`]; }
+  else if (name === 'minervini') {
+    trend = true; let hi = -Infinity, lo = Infinity; for (let j = i - 251; j <= i; j++) { hi = Math.max(hi, X.h[j]); lo = Math.min(lo, X.l[j]); }
+    if (!(c > s50 && s50 > s150 && s150 > s200 && s200 > s200b)) return no('Fails the trend template (needs price > 50 > 150 > 200-day, 200-day rising)');
+    if (!(c >= 0.75 * hi && c >= 1.3 * lo)) return no('Not within 25% of the 52-week high and 30%+ above the low');
+    let hi20 = -Infinity; for (let j = i - 20; j < i; j++) hi20 = Math.max(hi20, X.h[j]); const volX = v / avgV;
+    if (!(c > hi20 && volX >= 1.5)) return no('No breakout: needs a close above the 20-day high on 1.5x volume'); why = [`Trend template passed, broke the 20-day high on ${swR(volX, 1)}x volume`];
+  } else return no('Unknown strategy');
+  const ex = SW_EXITS[exitMode] || SW_EXITS.natural, stopPct = ex.stopPct || ex.disaster;
+  const stop = c * (1 - stopPct), target = ex.targetPct ? c * (1 + ex.targetPct) : null;
+  return { entry: true, setup: name, strat: name, exitMode, trigger: c, ceiling: c + atr, stop, target, risk: c - stop, riskPct: stopPct, rr: target ? ex.targetPct / stopPct : null, atr, holdDays: SW.holdDays,
+    stopPct, targetPct: ex.targetPct || null, exitSma: ex.targetPct ? null : (trend ? { n: 10, below: true } : { n: 5, below: false }), score: 50, why, bar: i, t: X.t[i], volX: v / avgV };
+}
+
 // Walk one trade forward from the NEXT bar's open. Stop first if both are touched in one bar (the cautious assumption).
 function swSimulate(X, sig, cost) {
   const j0 = sig.bar + 1; if (j0 >= X.c.length) return null;
   const open = X.o[j0]; if (open > sig.ceiling || open <= sig.stop) return { skipped: true };
   const entry = open; let exit = null, why = 'time', xb = null;
-  const stopD = entry - sig.stop, tgt = entry + SW.rr * stopD;
+  const stopP = sig.stopPct ? entry * (1 - sig.stopPct) : sig.stop, stopD = entry - stopP;
+  const tgt = sig.targetPct ? entry * (1 + sig.targetPct) : (sig.strat && !sig.rr ? null : entry + SW.rr * stopD);
   for (let j = j0; j < Math.min(X.c.length, j0 + SW.holdDays); j++) {
-    if (X.l[j] <= sig.stop) { exit = X.o[j] < sig.stop ? X.o[j] : sig.stop; why = 'stop'; xb = j; break; }
-    if (X.h[j] >= tgt) { exit = tgt; why = 'target'; xb = j; break; }
+    if (X.l[j] <= stopP) { exit = X.o[j] < stopP ? X.o[j] : stopP; why = 'stop'; xb = j; break; }
+    if (tgt !== null && X.h[j] >= tgt) { exit = tgt; why = 'target'; xb = j; break; }
+    if (sig.exitSma) { const m = swSma(X.c, sig.exitSma.n, j + 1); if (m !== null && (sig.exitSma.below ? X.c[j] < m : X.c[j] > m)) { exit = X.c[j]; why = 'signal'; xb = j; break; } }
   }
   if (exit === null) { const jl = Math.min(X.c.length, j0 + SW.holdDays) - 1; if (jl - j0 + 1 < SW.holdDays) return null; exit = X.c[jl]; xb = jl; }   // trade still open at the end of the data: not counted
   const ret = exit / entry - 1 - (cost === undefined ? SW.cost : cost);
@@ -116,7 +173,7 @@ function swSimulate(X, sig, cost) {
 function swBacktestOne(candles, cost, cfg) {
   const X = swPrep(candles), trades = []; let i = SW.minBars - 1;
   while (i < X.c.length - 1) {
-    const s = swingSignal(X, i, cfg); if (!s.entry) { i++; continue; }
+    const s = cfg && cfg.strat ? swStratSignal(X, i, cfg.strat, cfg.exit) : swingSignal(X, i, cfg); if (!s.entry) { i++; continue; }
     const tr = swSimulate(X, s, cost); if (!tr) break; if (tr.skipped) { i++; continue; }
     trades.push(Object.assign({ setup: s.setup }, tr)); i = tr.exitBar;
   }
@@ -241,4 +298,4 @@ function renderSwing(keepFocus) {
   if (keepFocus) { const i = document.getElementById('sw-amount'); if (i) { i.focus(); try { i.setSelectionRange(i.value.length, i.value.length); } catch (e) {} } }
 }
 
-if (typeof module !== 'undefined') module.exports = { SW, swingSignal, swSimulate, swBacktestOne, swStats, swValidated, swPrep, swRsiSeries, swAtrSeries, swSma, swCols };
+if (typeof module !== 'undefined') module.exports = { swR, SW_STRATS, SW_EXITS, swStratSignal, swRsiN, swEma, swAdx, SW, swingSignal, swSimulate, swBacktestOne, swStats, swValidated, swPrep, swRsiSeries, swAtrSeries, swSma, swCols };
