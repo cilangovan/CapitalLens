@@ -237,5 +237,5 @@ check("Overview has no Active Alerts card or renderer on any dashboard (alerts o
 # Regression register + data quality: every fixed bug has a guard, one workflow runs them all, and the rule is written down
 _rw = (ROOT / ".github/workflows/regression.yml").read_text() if (ROOT / ".github/workflows/regression.yml").exists() else ""
 check("regression register, guards and data-quality checks exist, run in the Regression & data quality workflow, and CLAUDE.md names the rule",
-      all(f in _rw for f in ("regression_register_test.py", "regression_guards_test.py", "data_quality_test.py", "tests/zk_*_test.mjs", "schedule:"))
+      all(f in _rw for f in ("regression_run.py", "regression_sync.py", "data_quality_test.py", "table_inventory_test.py", "schedule:"))
       and (ROOT / "tests/regression_register.json").exists() and "regression_register.json" in doc and "regression-gap" in doc)

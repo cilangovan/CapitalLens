@@ -74,10 +74,12 @@ python -m services.institutional_flow_service
 
 ```
 python -m playwright install --with-deps chromium
-python3 tests/regression_register_test.py
-python3 tests/regression_guards_test.py
-python3 tests/standards_test.py
+python3 scripts/regression_sync.py --check
+python3 scripts/regression_run.py --browser --log
+python3 scripts/regression_sync.py --write
+python3 scripts/build_docs.py
 python3 tests/data_quality_test.py --live 2>&1 | tee /tmp/dq.txt
+python3 tests/table_inventory_test.py --live 2>&1 | tee -a /tmp/dq.txt
 ```
 
 ## Security checks

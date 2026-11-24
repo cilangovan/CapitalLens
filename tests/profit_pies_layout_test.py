@@ -27,6 +27,7 @@ with sync_playwright() as p:
     for w in (320, 360, 390):
         pg = b.new_page(viewport={"width": w, "height": 800}); errs = []; pg.on("pageerror", lambda e: errs.append(str(e)))
         pg.set_content(doc); pg.evaluate("window.IS_GUEST = false")
+        pg.add_script_tag(content=re.search(r"^function esc\(.*$", api, re.M).group(0))   # the page gets esc() from api.js; profit.js now escapes with it (XSS fix dde640c/1cd6f92)
         pg.add_script_tag(path=str(ROOT / "docs/js/profit.js"))
         pg.evaluate("([s, rows]) => { window.api = async (t) => t === 'profit_booking_summary' ? [s] : rows; }", [summ, rows])
         pg.evaluate("() => loadProfit()"); pg.wait_for_selector(".pb-pie")

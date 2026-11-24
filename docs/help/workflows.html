@@ -136,7 +136,7 @@
 </tr>
 <tr>
 <td><strong>Regression &amp; data quality</strong> (<code>regression.yml</code>)</td>
-<td>Every fixed bug's guard test in one place (the register in <code>tests/regression_register.json</code>, shown in <em>Regression register</em>): static guards, sign-up/migration/IPO/interrupt Python tests, Market Mood, demo and appearance phone tests, all zero-knowledge suites. A second job checks data quality of the shared data (popular tickers, IPO calendar, Market Mood tabs) and, nightly, the live tables (market-cache freshness, IPO calendar rules); a nightly failure opens or updates one issue, "Data quality failing". Runs on push, pull requests, nightly and on demand</td>
+<td>Runs <code>scripts/regression_run.py</code>, which discovers and runs EVERY test file that needs no secrets (a new test is picked up automatically), records each check as pass or fail and logs the run to the database (<code>regression_runs</code>, <code>regression_results</code>). Also checks every fix commit ships a test (<code>scripts/regression_sync.py --check</code>), and after a green push to <code>main</code> (and nightly) <code>sync-register</code> adds a register row for each new fix commit found in git history and commits it. The register is <code>tests/regression_register.json</code>, shown in <em>Regression register</em>. A second job checks data quality of the shared data (popular tickers, IPO calendar, Market Mood tabs) and, nightly, the live tables (market-cache freshness, IPO calendar rules); a nightly failure opens or updates one issue, "Data quality failing". Runs on push, pull requests, nightly and on demand</td>
 </tr>
 </tbody>
 </table></div>

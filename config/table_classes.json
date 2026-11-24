@@ -1,0 +1,67 @@
+{
+  "note": "Every table in db/schema.sql and db/tenant/*.sql has exactly one class. customer = per-user data that MUST be in docs/zk/migrate.js TABLES (encrypted at cutover). A new table fails tests/table_inventory_test.py until it is classified here (CUTOVER_PLAN 'table inventory gate').",
+  "customer": [
+    "positions",
+    "positions_archive",
+    "portfolio_snapshots",
+    "portfolio_snapshots_archive",
+    "t212_orders",
+    "t212_transactions",
+    "t212_dividends",
+    "dividends",
+    "realised_pnl",
+    "watchlist",
+    "watchlist_analysis",
+    "pie_history",
+    "profit_booking",
+    "profit_booking_summary",
+    "returns_summary",
+    "holding_decisions",
+    "strategy_recommendations",
+    "value_buy_scores",
+    "alerts",
+    "analyst_ratings"
+  ],
+  "customer_meta": [
+    "t212_sync_state",
+    "profiles",
+    "user_ui_prefs"
+  ],
+  "shared": [
+    "instruments",
+    "instrument_exposure",
+    "instrument_country_weights",
+    "instrument_sector_weights",
+    "market_cache",
+    "ipo_calendar",
+    "support_levels",
+    "institutional_flow_reports"
+  ],
+  "zk_store": [
+    "enc_rows",
+    "user_keys",
+    "audit_log"
+  ],
+  "platform": [
+    "app_settings",
+    "sync_jobs",
+    "ops_daily",
+    "platform_admins",
+    "regression_runs",
+    "regression_results"
+  ],
+  "legacy": [
+    "dashboard_auth",
+    "broker_connections",
+    "broker_secrets"
+  ],
+  "demo": [
+    "demo_institutional_flow_reports",
+    "demo_ipo_calendar",
+    "demo_market_cache",
+    "demo_sessions",
+    "demo_settings",
+    "demo_support_levels",
+    "zk_probe"
+  ]
+}

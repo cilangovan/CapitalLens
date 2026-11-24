@@ -23,15 +23,145 @@
 <th>Area</th>
 <th>What broke</th>
 <th>Guard test</th>
+<th>Fix commit</th>
 </tr>
 </thead>
 <tbody>
+<tr>
+<td>L01</td>
+<td>2026-11-15</td>
+<td>ui</td>
+<td>Two scripts declared the same top-level name (_esc); the page failed to load</td>
+<td><code>tests/regression_history_test.py</code></td>
+<td>762729a</td>
+</tr>
+<tr>
+<td>L02</td>
+<td>2026-11-15</td>
+<td>cors</td>
+<td>CORS: upstream headers not stripped; pre-check reply lost Allow-Headers (sign-in 'Failed to fetch')</td>
+<td><code>tests/regression_history_test.py</code></td>
+<td>5282a13, 1c4f522</td>
+</tr>
+<tr>
+<td>L03</td>
+<td>2026-11-15</td>
+<td>auth</td>
+<td>PBKDF2 rounds over the Workers CPU limit made every sign-in fail</td>
+<td><code>tests/regression_history_test.py</code></td>
+<td>d523d18</td>
+</tr>
+<tr>
+<td>L04</td>
+<td>2026-11-15</td>
+<td>worker</td>
+<td>Worker did not fall back to SUPABASE_KEY</td>
+<td><code>tests/regression_history_test.py</code></td>
+<td>820083c</td>
+</tr>
+<tr>
+<td>L05</td>
+<td>2026-11-15</td>
+<td>csp</td>
+<td>api.alternative.me missing from CSP connect-src: crypto mood did not load</td>
+<td><code>tests/regression_history_test.py</code></td>
+<td>08f35af</td>
+</tr>
+<tr>
+<td>L06</td>
+<td>2026-11-15</td>
+<td>profit</td>
+<td>Profit tab reused a stale Overview ^GSPC cache</td>
+<td><code>tests/regression_history_test.py</code></td>
+<td>03d0a02</td>
+</tr>
+<tr>
+<td>L07</td>
+<td>2026-11-15</td>
+<td>overview</td>
+<td>Last 24H card missing; all-positions P&amp;L not labelled all-time</td>
+<td><code>tests/regression_history_test.py</code></td>
+<td>496cf9e, c837e06</td>
+</tr>
+<tr>
+<td>L09</td>
+<td>2026-11-15</td>
+<td>pies</td>
+<td>Pie value/drift used the wrong Trading 212 field (fractional shares)</td>
+<td><code>tests/regression_history_test.py</code></td>
+<td>a1d1204</td>
+</tr>
+<tr>
+<td>L10</td>
+<td>2026-11-15</td>
+<td>analyst</td>
+<td>yfinance too old for Yahoo's auth change</td>
+<td><code>tests/regression_history_test.py</code></td>
+<td>f28a6b0</td>
+</tr>
+<tr>
+<td>L11</td>
+<td>2026-11-15</td>
+<td>analyst</td>
+<td>Analyst upsert failed on a 409 duplicate key</td>
+<td><code>tests/regression_history_test.py</code></td>
+<td>6a8cdc8</td>
+</tr>
+<tr>
+<td>L12</td>
+<td>2026-11-15</td>
+<td>holding-decisions</td>
+<td>Duplicate positions were scored twice</td>
+<td><code>tests/regression_history_test.py</code></td>
+<td>13ccc4a</td>
+</tr>
+<tr>
+<td>L13</td>
+<td>2026-11-15</td>
+<td>holding-decisions</td>
+<td>Trading 212 LSE tickers (SSLNl) not converted to yfinance symbols</td>
+<td><code>tests/regression_history_test.py</code></td>
+<td>584f6bf</td>
+</tr>
+<tr>
+<td>L14</td>
+<td>2026-11-15</td>
+<td>returns</td>
+<td>XIRR could diverge / annualise short periods</td>
+<td><code>tests/regression_history_test.py</code></td>
+<td>fe1cbb1</td>
+</tr>
+<tr>
+<td>L15</td>
+<td>2026-11-15</td>
+<td>history</td>
+<td>History sync could not write (RLS) and used the wrong Trading 212 auth scheme</td>
+<td><code>tests/regression_history_test.py</code></td>
+<td>16cdf5b, d64ba80</td>
+</tr>
+<tr>
+<td>A1d71976</td>
+<td>2026-11-17</td>
+<td>security</td>
+<td>Security hardening: authenticated reads, no CDN scripts, CSP, central XSS sanitiser, PBKDF2 + lockout</td>
+<td><code>tests/security_check.py</code></td>
+<td>1d71976</td>
+</tr>
+<tr>
+<td>A89d249d</td>
+<td>2026-11-17</td>
+<td>security</td>
+<td>Security test: dashboard site can pass the sign-in pre-check and reach login</td>
+<td><code>tests/security_check.py</code></td>
+<td>89d249d</td>
+</tr>
 <tr>
 <td>R01</td>
 <td>2026-11-18</td>
 <td>migration</td>
 <td>Migrated rows stored under random ids, so a re-sync wrote a second copy of everything (750 duplicate orders)</td>
 <td><code>tests/zk_dedupe_test.mjs</code></td>
+<td>555f923</td>
 </tr>
 <tr>
 <td>R02</td>
@@ -39,6 +169,7 @@
 <td>migration</td>
 <td>analyst_ratings table was missing from the migration list (Analyst tab empty after upgrade)</td>
 <td><code>tests/zk_migrate_test.py</code></td>
+<td>1f8b1fd</td>
 </tr>
 <tr>
 <td>R03</td>
@@ -46,6 +177,7 @@
 <td>sync</td>
 <td>Migration did not carry sync_state, so Refresh walked ALL history (8+ minutes) and restarted from zero when interrupted</td>
 <td><code>tests/zk_t212sync_test.mjs</code></td>
+<td>1f3215d</td>
 </tr>
 <tr>
 <td>R04</td>
@@ -53,6 +185,7 @@
 <td>deploy</td>
 <td>GitHub Pages served new HTML with an old cached script; the integrity hash blocked the page (M.T212 is undefined)</td>
 <td><code>tests/zk_prod_pages_test.mjs</code></td>
+<td>71d8b4c</td>
 </tr>
 <tr>
 <td>R05</td>
@@ -60,6 +193,7 @@
 <td>auth</td>
 <td>Sign-up box showed a recovery key for an email that already existed, leaving several unusable keys</td>
 <td><code>tests/zk_flow_test.py</code></td>
+<td>6efc659</td>
 </tr>
 <tr>
 <td>R06</td>
@@ -67,6 +201,7 @@
 <td>data-quality</td>
 <td>Stale snapshot looked live (Overview showed the 04:05 snapshot as if current)</td>
 <td><code>tests/zk_overview_stale_test.mjs</code></td>
+<td>bd6be84</td>
 </tr>
 <tr>
 <td>R07</td>
@@ -74,6 +209,7 @@
 <td>analysis</td>
 <td>Analysis code changed without a ZK_ANALYSIS_VERSION bump, so stored results stayed old until a manual Refresh</td>
 <td><code>tests/zk_analysis_version_test.mjs</code></td>
+<td>6e177b6</td>
 </tr>
 <tr>
 <td>R08</td>
@@ -81,6 +217,7 @@
 <td>parity</td>
 <td>Python mirror added Unclassified Lynch rows when no fundamentals existed, breaking JS/Python analyst parity (10 failures)</td>
 <td><code>tests/zk_lynch_parity_test.mjs</code></td>
+<td>6b1802e</td>
 </tr>
 <tr>
 <td>R09</td>
@@ -88,27 +225,7 @@
 <td>mobile</td>
 <td>Header row too wide at 360px stretched the page, so fixed popups overflowed</td>
 <td><code>tests/ui_layout_test.py</code></td>
-</tr>
-<tr>
-<td>R10</td>
-<td>2026-11-23</td>
-<td>security</td>
-<td>9 stored-XSS paths (database text in innerHTML without esc)</td>
-<td><code>tests/security_scan.py</code></td>
-</tr>
-<tr>
-<td>R11</td>
-<td>2026-11-24</td>
-<td>mobile</td>
-<td>Market Mood chip strip was clipped at 360px: nothing past Germany could be tapped</td>
-<td><code>tests/mood_layout_test.py</code></td>
-</tr>
-<tr>
-<td>R12</td>
-<td>2026-11-24</td>
-<td>ui</td>
-<td>Active Alerts list on Overview (owner wants alerts only on the Alerts dashboard)</td>
-<td><code>tests/standards_test.py</code></td>
+<td>f17ba68</td>
 </tr>
 <tr>
 <td>R13</td>
@@ -116,6 +233,7 @@
 <td>relay</td>
 <td>Cloudflare Workers reject fetch redirect:'error', so every relay call failed at runtime (unit tests could not see it)</td>
 <td><code>tests/regression_guards_test.py</code></td>
+<td>1f75722, 2ea1127</td>
 </tr>
 <tr>
 <td>R14</td>
@@ -123,6 +241,7 @@
 <td>ci</td>
 <td>popular_tickers.json was hidden by an ignore rule, so CI could not see the file the code needs</td>
 <td><code>tests/regression_guards_test.py</code></td>
+<td></td>
 </tr>
 <tr>
 <td>R15</td>
@@ -130,6 +249,7 @@
 <td>strategy</td>
 <td>A fixed £ budget must never reappear on the Strategy tab or in any engine</td>
 <td><code>tests/zk_dipplan_test.mjs</code></td>
+<td></td>
 </tr>
 <tr>
 <td>R16</td>
@@ -137,6 +257,7 @@
 <td>auth</td>
 <td>Sign-in box flashed on refresh before the saved-session check finished</td>
 <td><code>tests/login_flash_browser_test.py</code></td>
+<td></td>
 </tr>
 <tr>
 <td>R17</td>
@@ -144,6 +265,7 @@
 <td>sync</td>
 <td>A cut-off pipeline run left half-written snapshots / restarted history from zero</td>
 <td><code>tests/legacy_interrupt_test.py</code></td>
+<td></td>
 </tr>
 <tr>
 <td>R18</td>
@@ -151,15 +273,246 @@
 <td>commits</td>
 <td>Claude / Anthropic / Co-Authored-By signature in commits (owner forbids it)</td>
 <td><code>tests/standards_test.py</code></td>
+<td></td>
+</tr>
+<tr>
+<td>R19</td>
+<td>2026-11-18</td>
+<td>parity</td>
+<td>Python rounds halves to even, JS away from zero: 8.5% showed as 8% in the old app and 9% in the private app</td>
+<td><code>tests/zk_lynch_parity_test.mjs</code></td>
+<td>919461f</td>
+</tr>
+<tr>
+<td>R20</td>
+<td>2026-11-18</td>
+<td>mobile</td>
+<td>Header too wide at 320/360/390px (also guarded without secrets, on the demo page)</td>
+<td><code>tests/demo_layout_test.py</code></td>
+<td></td>
+</tr>
+<tr>
+<td>R21</td>
+<td>2026-11-18</td>
+<td>migration</td>
+<td>A customer table missing from the migration list (table inventory gate): every table classified, customer class == migrate.js TABLES</td>
+<td><code>tests/table_inventory_test.py</code></td>
+<td>1f8b1fd</td>
+</tr>
+<tr>
+<td>A5dc96cd</td>
+<td>2026-11-19</td>
+<td>general</td>
+<td>Fix Entry Analysis blank cards in the private app: parse stored JSON columns before the quote-swapping sanitiser</td>
+<td><code>tests/zk_shim_test.mjs</code></td>
+<td>5dc96cd</td>
+</tr>
+<tr>
+<td>A5568678</td>
+<td>2026-11-20</td>
+<td>general</td>
+<td>Fix investments-value line: labelled axis (min 2% range), dashed gaps, buy/sell markers, tap read-out</td>
+<td><code>tests/zk_invest_line_test.mjs</code></td>
+<td>5568678</td>
+</tr>
+<tr>
+<td>Aa34fc9f</td>
+<td>2026-11-20</td>
+<td>general</td>
+<td>Fix support levels skipped on every refresh (x.json is not a function) (refs #53)</td>
+<td><code>tests/standards_test.py</code></td>
+<td>a34fc9f</td>
+</tr>
+<tr>
+<td>A4cdb49a</td>
+<td>2026-11-23</td>
+<td>security</td>
+<td>security: switch email digest from SendGrid to Gmail SMTP</td>
+<td><code>tests/security_email.py</code></td>
+<td>4cdb49a</td>
+</tr>
+<tr>
+<td>Ab24f8ed</td>
+<td>2026-11-23</td>
+<td>security</td>
+<td>security: daily email digest + GitHub issue sync + JSON findings export</td>
+<td><code>tests/security_email.py</code></td>
+<td>b24f8ed</td>
+</tr>
+<tr>
+<td>R10</td>
+<td>2026-11-23</td>
+<td>security</td>
+<td>9 stored-XSS paths (database text in innerHTML without esc)</td>
+<td><code>tests/security_scan.py</code></td>
+<td>dde640c, 1cd6f92</td>
+</tr>
+<tr>
+<td>R22</td>
+<td>2026-11-23</td>
+<td>mobile</td>
+<td>Profit-tab layout test harness lacked esc() after the XSS fix, so the test was red in CI</td>
+<td><code>tests/profit_pies_layout_test.py</code></td>
+<td>dde640c</td>
+</tr>
+<tr>
+<td>R11</td>
+<td>2026-11-24</td>
+<td>mobile</td>
+<td>Market Mood chip strip was clipped at 360px: nothing past Germany could be tapped</td>
+<td><code>tests/mood_layout_test.py</code></td>
+<td>6e86efd</td>
+</tr>
+<tr>
+<td>R12</td>
+<td>2026-11-24</td>
+<td>ui</td>
+<td>Active Alerts list on Overview (owner wants alerts only on the Alerts dashboard)</td>
+<td><code>tests/standards_test.py</code></td>
+<td>7afcaf6</td>
 </tr>
 </tbody>
 </table></div>
-<h2 id="known-gaps-fixed-not-fully-guarded-yet">Known gaps (fixed, not fully guarded yet)</h2>
-<ul>
-<li><strong>G1</strong> Python vs JS number formatting parity: Python rounds halves to even, JS rounds halves up (8.5% showed as 8% vs 9%). Parity tests compare values and buckets, not formatted text.</li>
-<li><strong>G2</strong> Table inventory gate is a manual SQL query: a customer table missing from migrate.js TABLES (analyst_ratings) is only caught by hand. Needs a nightly check; required before cutover step 7.</li>
-<li><strong>G3</strong> 360px header overflow is guarded only by ui_layout_test.py, which needs Supabase secrets. Needs a synthetic-data header test that runs everywhere.</li>
-<li><strong>G4</strong> Backfill older fix commits into this register; build the real-browser end-to-end test (login, Analyst, Lynch) from issue #9; run data_quality_test.py --live once with real secrets (not run offline).</li>
-</ul></article>
+<h2 id="known-gaps-fixed-no-automated-test-yet">Known gaps (fixed, no automated test yet)</h2>
+<p>Found automatically from git history by <code>scripts/regression_sync.py</code>. Most need a live service (Yahoo, Trading 212, Supabase) or a visual check that cannot run offline. Write the guard, then set <code>guard</code> on the row.</p>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>ID</th>
+<th>Date</th>
+<th>Area</th>
+<th>What broke</th>
+<th>Fix commit</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>A143e6ec</td>
+<td>2026-11-15</td>
+<td>analyst</td>
+<td>Fix analyst_service: switch Yahoo v8→v10 with crumb auth, v7 fallback</td>
+<td>143e6ec</td>
+</tr>
+<tr>
+<td>A38d9c54</td>
+<td>2026-11-15</td>
+<td>analyst</td>
+<td>Fix analyst_service: use yfinance library (handles Yahoo auth for ETFs)</td>
+<td>38d9c54</td>
+</tr>
+<tr>
+<td>A492f2f0</td>
+<td>2026-11-15</td>
+<td>history</td>
+<td>Fix history_service: correct nested API structure + dividend endpoint path</td>
+<td>492f2f0</td>
+</tr>
+<tr>
+<td>Aae3a17e</td>
+<td>2026-11-15</td>
+<td>analyst</td>
+<td>Fix analyst: skip ETFs (no Yahoo data), insert synthetic pie ratings</td>
+<td>ae3a17e</td>
+</tr>
+<tr>
+<td>Ab76471a</td>
+<td>2026-11-15</td>
+<td>history</td>
+<td>Fix history_service: correct T212 field names from API docs</td>
+<td>b76471a</td>
+</tr>
+<tr>
+<td>A24eb8a1</td>
+<td>2026-11-16</td>
+<td>value-buy</td>
+<td>fix(value-buy): fix snapshot table name and URL encoding issue</td>
+<td>24eb8a1</td>
+</tr>
+<tr>
+<td>A3bc341d</td>
+<td>2026-11-16</td>
+<td>analyst</td>
+<td>fix(analyst): filter ratings to current snapshot positions only</td>
+<td>3bc341d</td>
+</tr>
+<tr>
+<td>A4a3f3d9</td>
+<td>2026-11-16</td>
+<td>radial</td>
+<td>fix(radial): fix upside-down labels — consistent outward text, 13/11px fonts</td>
+<td>4a3f3d9</td>
+</tr>
+<tr>
+<td>A5e1796c</td>
+<td>2026-11-16</td>
+<td>value-buy</td>
+<td>fix(value-buy): drive analysis from live positions, not hardcoded map</td>
+<td>5e1796c</td>
+</tr>
+<tr>
+<td>A63a619d</td>
+<td>2026-11-16</td>
+<td>radial</td>
+<td>fix(radial): bigger canvas, vivid colours, larger readable labels</td>
+<td>63a619d</td>
+</tr>
+<tr>
+<td>A729f07d</td>
+<td>2026-11-16</td>
+<td>value-buy</td>
+<td>fix(value-buy): remove quantity from positions select (column does not exist)</td>
+<td>729f07d</td>
+</tr>
+<tr>
+<td>A9924afe</td>
+<td>2026-11-16</td>
+<td>value-buy</td>
+<td>fix(value-buy): fix upsert conflict resolution - add on_conflict to URL</td>
+<td>9924afe</td>
+</tr>
+<tr>
+<td>Aba97cd6</td>
+<td>2026-11-16</td>
+<td>sector-map</td>
+<td>fix(sector-map): catch errors + reuse cached positions fetch</td>
+<td>ba97cd6</td>
+</tr>
+<tr>
+<td>Abe36fb0</td>
+<td>2026-11-16</td>
+<td>analyst</td>
+<td>fix(analyst): keep ETF pie-level rows alongside stock ticker filter</td>
+<td>be36fb0</td>
+</tr>
+<tr>
+<td>Ade17070</td>
+<td>2026-11-16</td>
+<td>radial</td>
+<td>fix(radial): move legend below chart as horizontal gradient bar</td>
+<td>de17070</td>
+</tr>
+<tr>
+<td>Af2c58c8</td>
+<td>2026-11-16</td>
+<td>strategy</td>
+<td>Fix Global ETF missing from strategy dashboard</td>
+<td>f2c58c8</td>
+</tr>
+<tr>
+<td>Af3636ad</td>
+<td>2026-11-16</td>
+<td>worker</td>
+<td>Security: read-only public access (RLS), service key for all writers, read-only worker proxy</td>
+<td>f3636ad</td>
+</tr>
+<tr>
+<td>A1d21ab6</td>
+<td>2026-11-17</td>
+<td>general</td>
+<td>Fix: restoring a saved session on page refresh hung on 'Loading…' (startApp ran before router.js loaded)</td>
+<td>1d21ab6</td>
+</tr>
+</tbody>
+</table></div></article>
 <footer class="foot"><a href="https://github.com/cilangovan/CapitalLens/blob/main/documentation/regression-register.md">Edit this page on GitHub</a> · <a href="../">Back to the dashboard</a> · <a href="index.html">Documentation home</a></footer></main></div>
 </body></html>

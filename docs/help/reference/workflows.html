@@ -164,10 +164,12 @@ python -m services.institutional_flow_service
 <h2 id="regression-data-quality">Regression &amp; data quality</h2>
 <p><code>.github/workflows/regression.yml</code></p>
 <div class="code"><pre><code>python -m playwright install --with-deps chromium
-python3 tests/regression_register_test.py
-python3 tests/regression_guards_test.py
-python3 tests/standards_test.py
+python3 scripts/regression_sync.py --check
+python3 scripts/regression_run.py --browser --log
+python3 scripts/regression_sync.py --write
+python3 scripts/build_docs.py
 python3 tests/data_quality_test.py --live 2&gt;&amp;1 | tee /tmp/dq.txt
+python3 tests/table_inventory_test.py --live 2&gt;&amp;1 | tee -a /tmp/dq.txt
 </code></pre></div>
 <h2 id="security-checks">Security checks</h2>
 <p><code>.github/workflows/security.yml</code></p>

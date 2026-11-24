@@ -31,7 +31,7 @@ def stub(route):
 
 with sync_playwright() as p:
     b = p.chromium.launch()
-    for w in (360, 390):
+    for w in (320, 360, 390):
         print(f"{w}px")
         ctx = b.new_context(viewport={"width": w, "height": 740}, has_touch=True)
         pg = ctx.new_page(); pg.route("**/*", stub); errs = []

@@ -40,27 +40,48 @@ jobs:
             tests/requirements.txt
       - run: pip install -r requirements.txt -r tests/requirements.txt
       - run: python -m playwright install --with-deps chromium
-      - name: Register is complete (every bug has a guard that exists, mentions it and runs in CI)
-        run: python3 tests/regression_register_test.py
-      - name: Static guards (relay redirect, config files tracked)
-        run: python3 tests/regression_guards_test.py
-      - name: Standing requirements
-        run: python3 tests/standards_test.py
-      - name: Python guards (sign-up flow, migration, IPO service, interrupted runs)
+      - name: Every fix commit since the register began ships a test
+        run: python3 scripts/regression_sync.py --check
+      - name: Run every regression, data-quality and standards suite; log each check pass/fail to the database
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: python3 scripts/regression_run.py --browser --log
+      - name: Keep the report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: regression-report
+          path: regression_report.json
+          if-no-files-found: ignore
+
+  sync-register:
+    name: Keep the register up to date from git history
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main' || github.event_name == 'schedule'
+    needs: regression
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Add a row for every new fix commit and regenerate the register page
+        run: python3 scripts/regression_sync.py --write
+      - name: Commit if anything changed
         run: |
-          fail=0
-          for t in tests/zk_flow_test.py tests/zk_migrate_test.py tests/ipo_service_test.py tests/legacy_interrupt_test.py; do echo "== $t"; python3 "$t" || fail=1; done
-          exit $fail
-      - name: Browser guards that need no secrets (Market Mood on a phone, demo, appearance)
-        run: |
-          fail=0
-          for t in tests/mood_layout_test.py tests/demo_layout_test.py tests/appearance_layout_test.py; do echo "== $t"; python3 "$t" || fail=1; done
-          exit $fail
-      - name: JavaScript guards (zero-knowledge suites)
-        run: |
-          fail=0
-          for t in tests/zk_*_test.mjs; do echo "== $t"; node "$t" || fail=1; done
-          exit $fail
+          python3 scripts/build_docs.py
+          if [ -n "$(git status --porcelain)" ]; then
+            git config user.name cilangovan
+            git config user.email 7702527+cilangovan@users.noreply.github.com
+            git add -A
+            git commit -m "test: sync regression register from git history"
+            git push origin HEAD:main
+          fi
 
   data-quality:
     name: Data quality (shared data, not customer data)
@@ -82,6 +103,7 @@ jobs:
         run: |
           set -o pipefail
           python3 tests/data_quality_test.py --live 2>&1 | tee /tmp/dq.txt
+          python3 tests/table_inventory_test.py --live 2>&1 | tee -a /tmp/dq.txt
       - name: Open or update the "Data quality failing" issue
         if: failure() && steps.live.outcome == 'failure'
         env:

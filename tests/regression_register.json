@@ -1,20 +1,691 @@
 [
- {"id":"R01","date":"2026-11-18","area":"migration","bug":"Migrated rows stored under random ids, so a re-sync wrote a second copy of everything (750 duplicate orders)","guard":"zk_dedupe_test.mjs","marker":"abort"},
- {"id":"R02","date":"2026-11-18","area":"migration","bug":"analyst_ratings table was missing from the migration list (Analyst tab empty after upgrade)","guard":"zk_migrate_test.py","marker":"analyst_ratings"},
- {"id":"R03","date":"2026-11-18","area":"sync","bug":"Migration did not carry sync_state, so Refresh walked ALL history (8+ minutes) and restarted from zero when interrupted","guard":"zk_t212sync_test.mjs","marker":"walking"},
- {"id":"R04","date":"2026-11-18","area":"deploy","bug":"GitHub Pages served new HTML with an old cached script; the integrity hash blocked the page (M.T212 is undefined)","guard":"zk_prod_pages_test.mjs","marker":"\\?v="},
- {"id":"R05","date":"2026-11-18","area":"auth","bug":"Sign-up box showed a recovery key for an email that already existed, leaving several unusable keys","guard":"zk_flow_test.py","marker":"existing|already"},
- {"id":"R06","date":"2026-11-18","area":"data-quality","bug":"Stale snapshot looked live (Overview showed the 04:05 snapshot as if current)","guard":"zk_overview_stale_test.mjs","marker":"stale"},
- {"id":"R07","date":"2026-11-18","area":"analysis","bug":"Analysis code changed without a ZK_ANALYSIS_VERSION bump, so stored results stayed old until a manual Refresh","guard":"zk_analysis_version_test.mjs","marker":"ANALYSIS_VERSION"},
- {"id":"R08","date":"2026-11-18","area":"parity","bug":"Python mirror added Unclassified Lynch rows when no fundamentals existed, breaking JS/Python analyst parity (10 failures)","guard":"zk_lynch_parity_test.mjs","marker":"_hint"},
- {"id":"R09","date":"2026-11-18","area":"mobile","bug":"Header row too wide at 360px stretched the page, so fixed popups overflowed","guard":"ui_layout_test.py","marker":"360"},
- {"id":"R10","date":"2026-11-23","area":"security","bug":"9 stored-XSS paths (database text in innerHTML without esc)","guard":"security_scan.py","marker":"Stored XSS"},
- {"id":"R11","date":"2026-11-24","area":"mobile","bug":"Market Mood chip strip was clipped at 360px: nothing past Germany could be tapped","guard":"mood_layout_test.py","marker":"TW"},
- {"id":"R12","date":"2026-11-24","area":"ui","bug":"Active Alerts list on Overview (owner wants alerts only on the Alerts dashboard)","guard":"standards_test.py","marker":"active-alerts"},
- {"id":"R13","date":"2026-11-18","area":"relay","bug":"Cloudflare Workers reject fetch redirect:'error', so every relay call failed at runtime (unit tests could not see it)","guard":"regression_guards_test.py","marker":"redirect"},
- {"id":"R14","date":"2026-11-18","area":"ci","bug":"popular_tickers.json was hidden by an ignore rule, so CI could not see the file the code needs","guard":"regression_guards_test.py","marker":"ls-files"},
- {"id":"R15","date":"2026-11-18","area":"strategy","bug":"A fixed £ budget must never reappear on the Strategy tab or in any engine","guard":"zk_dipplan_test.mjs","marker":"budget"},
- {"id":"R16","date":"2026-11-18","area":"auth","bug":"Sign-in box flashed on refresh before the saved-session check finished","guard":"login_flash_browser_test.py","marker":"flash"},
- {"id":"R17","date":"2026-11-18","area":"sync","bug":"A cut-off pipeline run left half-written snapshots / restarted history from zero","guard":"legacy_interrupt_test.py","marker":"interrupt"},
- {"id":"R18","date":"2026-11-18","area":"commits","bug":"Claude / Anthropic / Co-Authored-By signature in commits (owner forbids it)","guard":"standards_test.py","marker":"co-authored-by"}
+ {
+  "id": "R01",
+  "date": "2026-11-18",
+  "area": "migration",
+  "bug": "Migrated rows stored under random ids, so a re-sync wrote a second copy of everything (750 duplicate orders)",
+  "guard": "zk_dedupe_test.mjs",
+  "marker": "abort",
+  "commits": [
+   "555f923"
+  ]
+ },
+ {
+  "id": "R02",
+  "date": "2026-11-18",
+  "area": "migration",
+  "bug": "analyst_ratings table was missing from the migration list (Analyst tab empty after upgrade)",
+  "guard": "zk_migrate_test.py",
+  "marker": "analyst_ratings",
+  "commits": [
+   "1f8b1fd"
+  ]
+ },
+ {
+  "id": "R03",
+  "date": "2026-11-18",
+  "area": "sync",
+  "bug": "Migration did not carry sync_state, so Refresh walked ALL history (8+ minutes) and restarted from zero when interrupted",
+  "guard": "zk_t212sync_test.mjs",
+  "marker": "walking",
+  "commits": [
+   "1f3215d"
+  ]
+ },
+ {
+  "id": "R04",
+  "date": "2026-11-18",
+  "area": "deploy",
+  "bug": "GitHub Pages served new HTML with an old cached script; the integrity hash blocked the page (M.T212 is undefined)",
+  "guard": "zk_prod_pages_test.mjs",
+  "marker": "\\?v=",
+  "commits": [
+   "71d8b4c"
+  ]
+ },
+ {
+  "id": "R05",
+  "date": "2026-11-18",
+  "area": "auth",
+  "bug": "Sign-up box showed a recovery key for an email that already existed, leaving several unusable keys",
+  "guard": "zk_flow_test.py",
+  "marker": "existing|already",
+  "commits": [
+   "6efc659"
+  ]
+ },
+ {
+  "id": "R06",
+  "date": "2026-11-18",
+  "area": "data-quality",
+  "bug": "Stale snapshot looked live (Overview showed the 04:05 snapshot as if current)",
+  "guard": "zk_overview_stale_test.mjs",
+  "marker": "stale",
+  "commits": [
+   "bd6be84"
+  ]
+ },
+ {
+  "id": "R07",
+  "date": "2026-11-18",
+  "area": "analysis",
+  "bug": "Analysis code changed without a ZK_ANALYSIS_VERSION bump, so stored results stayed old until a manual Refresh",
+  "guard": "zk_analysis_version_test.mjs",
+  "marker": "ANALYSIS_VERSION",
+  "commits": [
+   "6e177b6"
+  ]
+ },
+ {
+  "id": "R08",
+  "date": "2026-11-18",
+  "area": "parity",
+  "bug": "Python mirror added Unclassified Lynch rows when no fundamentals existed, breaking JS/Python analyst parity (10 failures)",
+  "guard": "zk_lynch_parity_test.mjs",
+  "marker": "_hint",
+  "commits": [
+   "6b1802e"
+  ]
+ },
+ {
+  "id": "R09",
+  "date": "2026-11-18",
+  "area": "mobile",
+  "bug": "Header row too wide at 360px stretched the page, so fixed popups overflowed",
+  "guard": "ui_layout_test.py",
+  "marker": "360",
+  "commits": [
+   "f17ba68"
+  ]
+ },
+ {
+  "id": "R10",
+  "date": "2026-11-23",
+  "area": "security",
+  "bug": "9 stored-XSS paths (database text in innerHTML without esc)",
+  "guard": "security_scan.py",
+  "marker": "Stored XSS",
+  "commits": [
+   "dde640c",
+   "1cd6f92"
+  ]
+ },
+ {
+  "id": "R11",
+  "date": "2026-11-24",
+  "area": "mobile",
+  "bug": "Market Mood chip strip was clipped at 360px: nothing past Germany could be tapped",
+  "guard": "mood_layout_test.py",
+  "marker": "TW",
+  "commits": [
+   "6e86efd"
+  ]
+ },
+ {
+  "id": "R12",
+  "date": "2026-11-24",
+  "area": "ui",
+  "bug": "Active Alerts list on Overview (owner wants alerts only on the Alerts dashboard)",
+  "guard": "standards_test.py",
+  "marker": "active-alerts",
+  "commits": [
+   "7afcaf6"
+  ]
+ },
+ {
+  "id": "R13",
+  "date": "2026-11-18",
+  "area": "relay",
+  "bug": "Cloudflare Workers reject fetch redirect:'error', so every relay call failed at runtime (unit tests could not see it)",
+  "guard": "regression_guards_test.py",
+  "marker": "redirect",
+  "commits": [
+   "1f75722",
+   "2ea1127"
+  ]
+ },
+ {
+  "id": "R14",
+  "date": "2026-11-18",
+  "area": "ci",
+  "bug": "popular_tickers.json was hidden by an ignore rule, so CI could not see the file the code needs",
+  "guard": "regression_guards_test.py",
+  "marker": "ls-files",
+  "commits": []
+ },
+ {
+  "id": "R15",
+  "date": "2026-11-18",
+  "area": "strategy",
+  "bug": "A fixed £ budget must never reappear on the Strategy tab or in any engine",
+  "guard": "zk_dipplan_test.mjs",
+  "marker": "budget",
+  "commits": []
+ },
+ {
+  "id": "R16",
+  "date": "2026-11-18",
+  "area": "auth",
+  "bug": "Sign-in box flashed on refresh before the saved-session check finished",
+  "guard": "login_flash_browser_test.py",
+  "marker": "flash",
+  "commits": []
+ },
+ {
+  "id": "R17",
+  "date": "2026-11-18",
+  "area": "sync",
+  "bug": "A cut-off pipeline run left half-written snapshots / restarted history from zero",
+  "guard": "legacy_interrupt_test.py",
+  "marker": "interrupt",
+  "commits": []
+ },
+ {
+  "id": "R18",
+  "date": "2026-11-18",
+  "area": "commits",
+  "bug": "Claude / Anthropic / Co-Authored-By signature in commits (owner forbids it)",
+  "guard": "standards_test.py",
+  "marker": "co-authored-by",
+  "commits": []
+ },
+ {
+  "id": "R19",
+  "date": "2026-11-18",
+  "area": "parity",
+  "bug": "Python rounds halves to even, JS away from zero: 8.5% showed as 8% in the old app and 9% in the private app",
+  "guard": "zk_lynch_parity_test.mjs",
+  "marker": "R19",
+  "commits": [
+   "919461f"
+  ]
+ },
+ {
+  "id": "R20",
+  "date": "2026-11-18",
+  "area": "mobile",
+  "bug": "Header too wide at 320/360/390px (also guarded without secrets, on the demo page)",
+  "guard": "demo_layout_test.py",
+  "marker": "header",
+  "commits": []
+ },
+ {
+  "id": "R21",
+  "date": "2026-11-18",
+  "area": "migration",
+  "bug": "A customer table missing from the migration list (table inventory gate): every table classified, customer class == migrate.js TABLES",
+  "guard": "table_inventory_test.py",
+  "marker": "customer class",
+  "commits": [
+   "1f8b1fd"
+  ]
+ },
+ {
+  "id": "R22",
+  "date": "2026-11-23",
+  "area": "mobile",
+  "bug": "Profit-tab layout test harness lacked esc() after the XSS fix, so the test was red in CI",
+  "guard": "profit_pies_layout_test.py",
+  "marker": "esc\\(",
+  "commits": [
+   "dde640c"
+  ]
+ },
+ {
+  "id": "L01",
+  "date": "2026-11-15",
+  "area": "ui",
+  "bug": "Two scripts declared the same top-level name (_esc); the page failed to load",
+  "guard": "regression_history_test.py",
+  "marker": "H01",
+  "commits": [
+   "762729a"
+  ]
+ },
+ {
+  "id": "L02",
+  "date": "2026-11-15",
+  "area": "cors",
+  "bug": "CORS: upstream headers not stripped; pre-check reply lost Allow-Headers (sign-in 'Failed to fetch')",
+  "guard": "regression_history_test.py",
+  "marker": "H02",
+  "commits": [
+   "5282a13",
+   "1c4f522"
+  ]
+ },
+ {
+  "id": "L03",
+  "date": "2026-11-15",
+  "area": "auth",
+  "bug": "PBKDF2 rounds over the Workers CPU limit made every sign-in fail",
+  "guard": "regression_history_test.py",
+  "marker": "H03",
+  "commits": [
+   "d523d18"
+  ]
+ },
+ {
+  "id": "L04",
+  "date": "2026-11-15",
+  "area": "worker",
+  "bug": "Worker did not fall back to SUPABASE_KEY",
+  "guard": "regression_history_test.py",
+  "marker": "H04",
+  "commits": [
+   "820083c"
+  ]
+ },
+ {
+  "id": "L05",
+  "date": "2026-11-15",
+  "area": "csp",
+  "bug": "api.alternative.me missing from CSP connect-src: crypto mood did not load",
+  "guard": "regression_history_test.py",
+  "marker": "H05",
+  "commits": [
+   "08f35af"
+  ]
+ },
+ {
+  "id": "L06",
+  "date": "2026-11-15",
+  "area": "profit",
+  "bug": "Profit tab reused a stale Overview ^GSPC cache",
+  "guard": "regression_history_test.py",
+  "marker": "H06",
+  "commits": [
+   "03d0a02"
+  ]
+ },
+ {
+  "id": "L07",
+  "date": "2026-11-15",
+  "area": "overview",
+  "bug": "Last 24H card missing; all-positions P&L not labelled all-time",
+  "guard": "regression_history_test.py",
+  "marker": "H07",
+  "commits": [
+   "496cf9e",
+   "c837e06"
+  ]
+ },
+ {
+  "id": "L09",
+  "date": "2026-11-15",
+  "area": "pies",
+  "bug": "Pie value/drift used the wrong Trading 212 field (fractional shares)",
+  "guard": "regression_history_test.py",
+  "marker": "H09",
+  "commits": [
+   "a1d1204"
+  ]
+ },
+ {
+  "id": "L10",
+  "date": "2026-11-15",
+  "area": "analyst",
+  "bug": "yfinance too old for Yahoo's auth change",
+  "guard": "regression_history_test.py",
+  "marker": "H10",
+  "commits": [
+   "f28a6b0"
+  ]
+ },
+ {
+  "id": "L11",
+  "date": "2026-11-15",
+  "area": "analyst",
+  "bug": "Analyst upsert failed on a 409 duplicate key",
+  "guard": "regression_history_test.py",
+  "marker": "H11",
+  "commits": [
+   "6a8cdc8"
+  ]
+ },
+ {
+  "id": "L12",
+  "date": "2026-11-15",
+  "area": "holding-decisions",
+  "bug": "Duplicate positions were scored twice",
+  "guard": "regression_history_test.py",
+  "marker": "H12",
+  "commits": [
+   "13ccc4a"
+  ]
+ },
+ {
+  "id": "L13",
+  "date": "2026-11-15",
+  "area": "holding-decisions",
+  "bug": "Trading 212 LSE tickers (SSLNl) not converted to yfinance symbols",
+  "guard": "regression_history_test.py",
+  "marker": "H13",
+  "commits": [
+   "584f6bf"
+  ]
+ },
+ {
+  "id": "L14",
+  "date": "2026-11-15",
+  "area": "returns",
+  "bug": "XIRR could diverge / annualise short periods",
+  "guard": "regression_history_test.py",
+  "marker": "H14",
+  "commits": [
+   "fe1cbb1"
+  ]
+ },
+ {
+  "id": "L15",
+  "date": "2026-11-15",
+  "area": "history",
+  "bug": "History sync could not write (RLS) and used the wrong Trading 212 auth scheme",
+  "guard": "regression_history_test.py",
+  "marker": "H15",
+  "commits": [
+   "16cdf5b",
+   "d64ba80"
+  ]
+ },
+ {
+  "id": "A492f2f0",
+  "date": "2026-11-15",
+  "area": "history",
+  "bug": "Fix history_service: correct nested API structure + dividend endpoint path",
+  "guard": "",
+  "marker": "",
+  "commits": [
+   "492f2f0"
+  ],
+  "auto": true
+ },
+ {
+  "id": "Ab76471a",
+  "date": "2026-11-15",
+  "area": "history",
+  "bug": "Fix history_service: correct T212 field names from API docs",
+  "guard": "",
+  "marker": "",
+  "commits": [
+   "b76471a"
+  ],
+  "auto": true
+ },
+ {
+  "id": "Aae3a17e",
+  "date": "2026-11-15",
+  "area": "analyst",
+  "bug": "Fix analyst: skip ETFs (no Yahoo data), insert synthetic pie ratings",
+  "guard": "",
+  "marker": "",
+  "commits": [
+   "ae3a17e"
+  ],
+  "auto": true
+ },
+ {
+  "id": "A38d9c54",
+  "date": "2026-11-15",
+  "area": "analyst",
+  "bug": "Fix analyst_service: use yfinance library (handles Yahoo auth for ETFs)",
+  "guard": "",
+  "marker": "",
+  "commits": [
+   "38d9c54"
+  ],
+  "auto": true
+ },
+ {
+  "id": "A143e6ec",
+  "date": "2026-11-15",
+  "area": "analyst",
+  "bug": "Fix analyst_service: switch Yahoo v8→v10 with crumb auth, v7 fallback",
+  "guard": "",
+  "marker": "",
+  "commits": [
+   "143e6ec"
+  ],
+  "auto": true
+ },
+ {
+  "id": "Af3636ad",
+  "date": "2026-11-16",
+  "area": "worker",
+  "bug": "Security: read-only public access (RLS), service key for all writers, read-only worker proxy",
+  "guard": "",
+  "marker": "",
+  "commits": [
+   "f3636ad"
+  ],
+  "auto": true
+ },
+ {
+  "id": "Af2c58c8",
+  "date": "2026-11-16",
+  "area": "strategy",
+  "bug": "Fix Global ETF missing from strategy dashboard",
+  "guard": "",
+  "marker": "",
+  "commits": [
+   "f2c58c8"
+  ],
+  "auto": true
+ },
+ {
+  "id": "Abe36fb0",
+  "date": "2026-11-16",
+  "area": "analyst",
+  "bug": "fix(analyst): keep ETF pie-level rows alongside stock ticker filter",
+  "guard": "",
+  "marker": "",
+  "commits": [
+   "be36fb0"
+  ],
+  "auto": true
+ },
+ {
+  "id": "A3bc341d",
+  "date": "2026-11-16",
+  "area": "analyst",
+  "bug": "fix(analyst): filter ratings to current snapshot positions only",
+  "guard": "",
+  "marker": "",
+  "commits": [
+   "3bc341d"
+  ],
+  "auto": true
+ },
+ {
+  "id": "Ade17070",
+  "date": "2026-11-16",
+  "area": "radial",
+  "bug": "fix(radial): move legend below chart as horizontal gradient bar",
+  "guard": "",
+  "marker": "",
+  "commits": [
+   "de17070"
+  ],
+  "auto": true
+ },
+ {
+  "id": "A4a3f3d9",
+  "date": "2026-11-16",
+  "area": "radial",
+  "bug": "fix(radial): fix upside-down labels — consistent outward text, 13/11px fonts",
+  "guard": "",
+  "marker": "",
+  "commits": [
+   "4a3f3d9"
+  ],
+  "auto": true
+ },
+ {
+  "id": "A63a619d",
+  "date": "2026-11-16",
+  "area": "radial",
+  "bug": "fix(radial): bigger canvas, vivid colours, larger readable labels",
+  "guard": "",
+  "marker": "",
+  "commits": [
+   "63a619d"
+  ],
+  "auto": true
+ },
+ {
+  "id": "Aba97cd6",
+  "date": "2026-11-16",
+  "area": "sector-map",
+  "bug": "fix(sector-map): catch errors + reuse cached positions fetch",
+  "guard": "",
+  "marker": "",
+  "commits": [
+   "ba97cd6"
+  ],
+  "auto": true
+ },
+ {
+  "id": "A9924afe",
+  "date": "2026-11-16",
+  "area": "value-buy",
+  "bug": "fix(value-buy): fix upsert conflict resolution - add on_conflict to URL",
+  "guard": "",
+  "marker": "",
+  "commits": [
+   "9924afe"
+  ],
+  "auto": true
+ },
+ {
+  "id": "A729f07d",
+  "date": "2026-11-16",
+  "area": "value-buy",
+  "bug": "fix(value-buy): remove quantity from positions select (column does not exist)",
+  "guard": "",
+  "marker": "",
+  "commits": [
+   "729f07d"
+  ],
+  "auto": true
+ },
+ {
+  "id": "A24eb8a1",
+  "date": "2026-11-16",
+  "area": "value-buy",
+  "bug": "fix(value-buy): fix snapshot table name and URL encoding issue",
+  "guard": "",
+  "marker": "",
+  "commits": [
+   "24eb8a1"
+  ],
+  "auto": true
+ },
+ {
+  "id": "A5e1796c",
+  "date": "2026-11-16",
+  "area": "value-buy",
+  "bug": "fix(value-buy): drive analysis from live positions, not hardcoded map",
+  "guard": "",
+  "marker": "",
+  "commits": [
+   "5e1796c"
+  ],
+  "auto": true
+ },
+ {
+  "id": "A89d249d",
+  "date": "2026-11-17",
+  "area": "security",
+  "bug": "Security test: dashboard site can pass the sign-in pre-check and reach login",
+  "guard": "security_check.py",
+  "marker": "",
+  "commits": [
+   "89d249d"
+  ],
+  "auto": true
+ },
+ {
+  "id": "A1d71976",
+  "date": "2026-11-17",
+  "area": "security",
+  "bug": "Security hardening: authenticated reads, no CDN scripts, CSP, central XSS sanitiser, PBKDF2 + lockout",
+  "guard": "security_check.py",
+  "marker": "",
+  "commits": [
+   "1d71976"
+  ],
+  "auto": true
+ },
+ {
+  "id": "A1d21ab6",
+  "date": "2026-11-17",
+  "area": "general",
+  "bug": "Fix: restoring a saved session on page refresh hung on 'Loading…' (startApp ran before router.js loaded)",
+  "guard": "",
+  "marker": "",
+  "commits": [
+   "1d21ab6"
+  ],
+  "auto": true
+ },
+ {
+  "id": "A5dc96cd",
+  "date": "2026-11-19",
+  "area": "general",
+  "bug": "Fix Entry Analysis blank cards in the private app: parse stored JSON columns before the quote-swapping sanitiser",
+  "guard": "zk_shim_test.mjs",
+  "marker": "",
+  "commits": [
+   "5dc96cd"
+  ],
+  "auto": true
+ },
+ {
+  "id": "Aa34fc9f",
+  "date": "2026-11-20",
+  "area": "general",
+  "bug": "Fix support levels skipped on every refresh (x.json is not a function) (refs #53)",
+  "guard": "standards_test.py",
+  "marker": "",
+  "commits": [
+   "a34fc9f"
+  ],
+  "auto": true
+ },
+ {
+  "id": "A5568678",
+  "date": "2026-11-20",
+  "area": "general",
+  "bug": "Fix investments-value line: labelled axis (min 2% range), dashed gaps, buy/sell markers, tap read-out",
+  "guard": "zk_invest_line_test.mjs",
+  "marker": "",
+  "commits": [
+   "5568678"
+  ],
+  "auto": true
+ },
+ {
+  "id": "A4cdb49a",
+  "date": "2026-11-23",
+  "area": "security",
+  "bug": "security: switch email digest from SendGrid to Gmail SMTP",
+  "guard": "security_email.py",
+  "marker": "",
+  "commits": [
+   "4cdb49a"
+  ],
+  "auto": true
+ },
+ {
+  "id": "Ab24f8ed",
+  "date": "2026-11-23",
+  "area": "security",
+  "bug": "security: daily email digest + GitHub issue sync + JSON findings export",
+  "guard": "security_email.py",
+  "marker": "",
+  "commits": [
+   "b24f8ed"
+  ],
+  "auto": true
+ }
 ]

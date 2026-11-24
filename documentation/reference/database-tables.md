@@ -3,7 +3,7 @@
 > **Generated** by `scripts/build_docs.py` from `db/schema.sql` and `db/tenant/*.sql`. Do not edit by hand; change the SQL and rebuild.
 > Concepts, data flows and who writes each table are in [Database & data flows](../database.md).
 
-42 tables in the `public` schema.
+44 tables in the `public` schema.
 
 | Table | Columns | Defined in |
 |---|---|---|
@@ -35,6 +35,8 @@
 | [`profit_booking`](#profit_booking) | 23 | `db/schema.sql`, `db/tenant/01_schema.sql` |
 | [`profit_booking_summary`](#profit_booking_summary) | 9 | `db/schema.sql`, `db/tenant/01_schema.sql` |
 | [`realised_pnl`](#realised_pnl) | 13 | `db/schema.sql`, `db/tenant/01_schema.sql` |
+| [`regression_results`](#regression_results) | 9 | `db/tenant/29_regression_runs.sql` |
+| [`regression_runs`](#regression_runs) | 10 | `db/tenant/29_regression_runs.sql` |
 | [`returns_summary`](#returns_summary) | 9 | `db/schema.sql`, `db/tenant/01_schema.sql` |
 | [`strategy_recommendations`](#strategy_recommendations) | 13 | `db/schema.sql`, `db/tenant/01_schema.sql` |
 | [`support_levels`](#support_levels) | 18 | `db/schema.sql`, `db/tenant/23_support_levels.sql` |
@@ -485,6 +487,35 @@ Positions of archived snapshots. Same columns as positions.
 | `side` | `text` |
 | `created_at` | `timestamp with time zone default now()` |
 | `user_id` | `uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null` |
+
+## regression_results
+
+| Column | Definition |
+|---|---|
+| `id` | `bigint generated always as identity primary key` |
+| `run_id` | `uuid not null references public.regression_runs(id) on delete cascade` |
+| `suite` | `text not null` |
+| `check_name` | `text not null` |
+| `status` | `text not null check (status in ('pass', 'fail'))` |
+| `detail` | `text` |
+| `bug_ids` | `text` |
+| `e.g.` | `'R01` |
+| `R12'` | `` |
+
+## regression_runs
+
+| Column | Definition |
+|---|---|
+| `id` | `uuid primary key default gen_random_uuid()` |
+| `run_at` | `timestamptz not null default now()` |
+| `commit_sha` | `text` |
+| `ref` | `text` |
+| `trigger` | `text` |
+| `total` | `integer not null` |
+| `passed` | `integer not null` |
+| `failed` | `integer not null` |
+| `duration_s` | `numeric` |
+| `run_url` | `text` |
 
 ## returns_summary
 

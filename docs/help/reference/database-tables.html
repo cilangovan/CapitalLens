@@ -14,7 +14,7 @@
 <p><strong>Generated</strong> by <code>scripts/build_docs.py</code> from <code>db/schema.sql</code> and <code>db/tenant/*.sql</code>. Do not edit by hand; change the SQL and rebuild.
 Concepts, data flows and who writes each table are in <a href="../database.html">Database &amp; data flows</a>.</p>
 </blockquote>
-<p>42 tables in the <code>public</code> schema.</p>
+<p>44 tables in the <code>public</code> schema.</p>
 <div class="tbl"><table>
 <thead>
 <tr>
@@ -163,6 +163,16 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 <td><a href="#realised_pnl"><code>realised_pnl</code></a></td>
 <td>13</td>
 <td><code>db/schema.sql</code>, <code>db/tenant/01_schema.sql</code></td>
+</tr>
+<tr>
+<td><a href="#regression_results"><code>regression_results</code></a></td>
+<td>9</td>
+<td><code>db/tenant/29_regression_runs.sql</code></td>
+</tr>
+<tr>
+<td><a href="#regression_runs"><code>regression_runs</code></a></td>
+<td>10</td>
+<td><code>db/tenant/29_regression_runs.sql</code></td>
 </tr>
 <tr>
 <td><a href="#returns_summary"><code>returns_summary</code></a></td>
@@ -1697,6 +1707,104 @@ Concepts, data flows and who writes each table are in <a href="../database.html"
 <tr>
 <td><code>user_id</code></td>
 <td><code>uuid default COALESCE(auth.uid(), 'b7b84a90-00ce-4eb7-a7f9-8a26bb213d97'::uuid) not null</code></td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="regression_results">regression_results</h2>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Definition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td><code>bigint generated always as identity primary key</code></td>
+</tr>
+<tr>
+<td><code>run_id</code></td>
+<td><code>uuid not null references public.regression_runs(id) on delete cascade</code></td>
+</tr>
+<tr>
+<td><code>suite</code></td>
+<td><code>text not null</code></td>
+</tr>
+<tr>
+<td><code>check_name</code></td>
+<td><code>text not null</code></td>
+</tr>
+<tr>
+<td><code>status</code></td>
+<td><code>text not null check (status in ('pass', 'fail'))</code></td>
+</tr>
+<tr>
+<td><code>detail</code></td>
+<td><code>text</code></td>
+</tr>
+<tr>
+<td><code>bug_ids</code></td>
+<td><code>text</code></td>
+</tr>
+<tr>
+<td><code>e.g.</code></td>
+<td><code>'R01</code></td>
+</tr>
+<tr>
+<td><code>R12'</code></td>
+<td>``</td>
+</tr>
+</tbody>
+</table></div>
+<h2 id="regression_runs">regression_runs</h2>
+<div class="tbl"><table>
+<thead>
+<tr>
+<th>Column</th>
+<th>Definition</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>id</code></td>
+<td><code>uuid primary key default gen_random_uuid()</code></td>
+</tr>
+<tr>
+<td><code>run_at</code></td>
+<td><code>timestamptz not null default now()</code></td>
+</tr>
+<tr>
+<td><code>commit_sha</code></td>
+<td><code>text</code></td>
+</tr>
+<tr>
+<td><code>ref</code></td>
+<td><code>text</code></td>
+</tr>
+<tr>
+<td><code>trigger</code></td>
+<td><code>text</code></td>
+</tr>
+<tr>
+<td><code>total</code></td>
+<td><code>integer not null</code></td>
+</tr>
+<tr>
+<td><code>passed</code></td>
+<td><code>integer not null</code></td>
+</tr>
+<tr>
+<td><code>failed</code></td>
+<td><code>integer not null</code></td>
+</tr>
+<tr>
+<td><code>duration_s</code></td>
+<td><code>numeric</code></td>
+</tr>
+<tr>
+<td><code>run_url</code></td>
+<td><code>text</code></td>
 </tr>
 </tbody>
 </table></div>
