@@ -3,7 +3,7 @@
 > **Generated** by `scripts/build_docs.py` from `.github/workflows/*.yml`. Do not edit by hand.
 > What each pipeline is for, and the order data moves, is in [Workflows & schedules](../workflows.md).
 
-17 workflows. Times are UTC. Per the standing rule, the owner's own morning Refresh is what runs analysis for the private app; these workflows cover shared/public data, the legacy dashboard, tests and maintenance.
+18 workflows. Times are UTC. Per the standing rule, the owner's own morning Refresh is what runs analysis for the private app; these workflows cover shared/public data, the legacy dashboard, tests and maintenance.
 
 | Workflow | File | Runs when | Schedule (UTC) |
 |---|---|---|---|
@@ -16,6 +16,7 @@
 | IPO Calendar | `ipo_calendar.yml` | push, manual | `15 6 * * 1-5` weekdays 06:15 UTC |
 | CapitalLens | `monitor.yml` | manual | `0,15,30 8 * * 1-5` NASDAQ open window: every 15 min 14:30–15:00 UTC<br>`30,45 14 * * 1-5`<br>`0 15 * * 1-5` LSE close window: every 15 min 16:00–16:30 UTC<br>`0,15,30 16 * * 1-5` NASDAQ close window: every 15 min 20:30–21:00 UTC<br>`30,45 20 * * 1-5`<br>`0 21 * * 1-5` Regular hours: every 45 min across full market day 07:00–21:00 UTC<br>`0,45 7 * * 1-5`<br>`0,45 9 * * 1-5`<br>`0,45 10 * * 1-5`<br>`0,45 11 * * 1-5`<br>`0,45 12 * * 1-5`<br>`0,45 13 * * 1-5`<br>`0,45 17 * * 1-5`<br>`0,45 18 * * 1-5`<br>`0,45 19 * * 1-5` 2hrs after NASDAQ close: 21:00–23:00 UTC (after-hours moves)<br>`0,45 22 * * 1-5`<br>`0 23 * * 1-5` |
 | Public market cache (zero-knowledge design) | `public_market.yml` | manual | `30 5 * * 1-5` weekdays 05:30 UTC (after the daily jobs' data is available) |
+| Regression & data quality | `regression.yml` | push, pull request, manual | `23 7 * * *` nightly, after the morning data refresh: live data-quality checks |
 | Security checks | `security.yml` | push, pull request, manual | `17 6 * * *` daily: static + live checks + issue sync + email<br>`0 3 * * 1` weekly Mon 03:00 UTC: XSS auto-fix cycle |
 | Send Password Reset Email | `send_reset_email.yml` | repository_dispatch | — |
 | T212 History Sync | `t212_sync.yml` | manual | — |
@@ -65,6 +66,18 @@ python monitor.py
 ```
 node scripts/public_market_job.mjs
 python -m services.institutional_flow_service
+```
+
+## Regression & data quality
+
+`.github/workflows/regression.yml`
+
+```
+python -m playwright install --with-deps chromium
+python3 tests/regression_register_test.py
+python3 tests/regression_guards_test.py
+python3 tests/standards_test.py
+python3 tests/data_quality_test.py --live 2>&1 | tee /tmp/dq.txt
 ```
 
 ## Security checks

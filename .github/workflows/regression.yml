@@ -1,0 +1,92 @@
+name: Regression & data quality
+
+# Every bug that was ever fixed has a guard test (tests/regression_register.json, documentation/regression-register.md).
+# This workflow runs ALL of them in one place on every push, on pull requests and nightly, plus the data-quality checks
+# on the shared (non-customer) data. Customer data is encrypted, so data quality never reads it.
+on:
+  push:
+    paths: ['docs/**', 'tests/**', 'scripts/**', 'cloudflare-worker/**', 'config/**', 'services/**', 'db/**', 'CLAUDE.md', 'documentation/**', '.github/workflows/**']
+  pull_request:
+  schedule:
+    - cron: '23 7 * * *'       # nightly, after the morning data refresh: live data-quality checks
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write                # nightly failure opens / updates ONE issue ("Data quality failing")
+
+concurrency:
+  group: regression-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  regression:
+    name: Regression guards (every fixed bug)
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0            # the standards test reads commit messages
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: |
+            requirements*.txt
+            tests/requirements.txt
+      - run: pip install -r requirements.txt -r tests/requirements.txt
+      - run: python -m playwright install --with-deps chromium
+      - name: Register is complete (every bug has a guard that exists, mentions it and runs in CI)
+        run: python3 tests/regression_register_test.py
+      - name: Static guards (relay redirect, config files tracked)
+        run: python3 tests/regression_guards_test.py
+      - name: Standing requirements
+        run: python3 tests/standards_test.py
+      - name: Python guards (sign-up flow, migration, IPO service, interrupted runs)
+        run: |
+          fail=0
+          for t in tests/zk_flow_test.py tests/zk_migrate_test.py tests/ipo_service_test.py tests/legacy_interrupt_test.py; do echo "== $t"; python3 "$t" || fail=1; done
+          exit $fail
+      - name: Browser guards that need no secrets (Market Mood on a phone, demo, appearance)
+        run: |
+          fail=0
+          for t in tests/mood_layout_test.py tests/demo_layout_test.py tests/appearance_layout_test.py; do echo "== $t"; python3 "$t" || fail=1; done
+          exit $fail
+      - name: JavaScript guards (zero-knowledge suites)
+        run: |
+          fail=0
+          for t in tests/zk_*_test.mjs; do echo "== $t"; node "$t" || fail=1; done
+          exit $fail
+
+  data-quality:
+    name: Data quality (shared data, not customer data)
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Data files in git (tickers, IPO calendar, Market Mood tabs)
+        run: python3 tests/data_quality_test.py
+      - name: Live shared tables (nightly or manual) - market cache freshness and IPO calendar rules
+        id: live
+        if: github.event_name == 'schedule' || github.event_name == 'workflow_dispatch'
+        env:
+          SUPABASE_URL: ${{ secrets.SUPABASE_URL }}
+          SUPABASE_SERVICE_KEY: ${{ secrets.SUPABASE_SERVICE_KEY }}
+        run: |
+          set -o pipefail
+          python3 tests/data_quality_test.py --live 2>&1 | tee /tmp/dq.txt
+      - name: Open or update the "Data quality failing" issue
+        if: failure() && steps.live.outcome == 'failure'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          body="Nightly data-quality check failed on $(date -u +%F). Failing checks:"$'\n\n```\n'"$(grep '✗' -A1 /tmp/dq.txt | head -40)"$'\n```\n'"Run: ${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+          n=$(gh issue list --state open --search '"Data quality failing" in:title' --json number --jq '.[0].number')
+          if [ -n "$n" ]; then gh issue comment "$n" --body "$body"; else gh issue create --title "Data quality failing" --label bug --body "$body" || gh issue create --title "Data quality failing" --body "$body"; fi

@@ -1,0 +1,20 @@
+[
+ {"id":"R01","date":"2026-11-18","area":"migration","bug":"Migrated rows stored under random ids, so a re-sync wrote a second copy of everything (750 duplicate orders)","guard":"zk_dedupe_test.mjs","marker":"abort"},
+ {"id":"R02","date":"2026-11-18","area":"migration","bug":"analyst_ratings table was missing from the migration list (Analyst tab empty after upgrade)","guard":"zk_migrate_test.py","marker":"analyst_ratings"},
+ {"id":"R03","date":"2026-11-18","area":"sync","bug":"Migration did not carry sync_state, so Refresh walked ALL history (8+ minutes) and restarted from zero when interrupted","guard":"zk_t212sync_test.mjs","marker":"walking"},
+ {"id":"R04","date":"2026-11-18","area":"deploy","bug":"GitHub Pages served new HTML with an old cached script; the integrity hash blocked the page (M.T212 is undefined)","guard":"zk_prod_pages_test.mjs","marker":"\\?v="},
+ {"id":"R05","date":"2026-11-18","area":"auth","bug":"Sign-up box showed a recovery key for an email that already existed, leaving several unusable keys","guard":"zk_flow_test.py","marker":"existing|already"},
+ {"id":"R06","date":"2026-11-18","area":"data-quality","bug":"Stale snapshot looked live (Overview showed the 04:05 snapshot as if current)","guard":"zk_overview_stale_test.mjs","marker":"stale"},
+ {"id":"R07","date":"2026-11-18","area":"analysis","bug":"Analysis code changed without a ZK_ANALYSIS_VERSION bump, so stored results stayed old until a manual Refresh","guard":"zk_analysis_version_test.mjs","marker":"ANALYSIS_VERSION"},
+ {"id":"R08","date":"2026-11-18","area":"parity","bug":"Python mirror added Unclassified Lynch rows when no fundamentals existed, breaking JS/Python analyst parity (10 failures)","guard":"zk_lynch_parity_test.mjs","marker":"_hint"},
+ {"id":"R09","date":"2026-11-18","area":"mobile","bug":"Header row too wide at 360px stretched the page, so fixed popups overflowed","guard":"ui_layout_test.py","marker":"360"},
+ {"id":"R10","date":"2026-11-23","area":"security","bug":"9 stored-XSS paths (database text in innerHTML without esc)","guard":"security_scan.py","marker":"Stored XSS"},
+ {"id":"R11","date":"2026-11-24","area":"mobile","bug":"Market Mood chip strip was clipped at 360px: nothing past Germany could be tapped","guard":"mood_layout_test.py","marker":"TW"},
+ {"id":"R12","date":"2026-11-24","area":"ui","bug":"Active Alerts list on Overview (owner wants alerts only on the Alerts dashboard)","guard":"standards_test.py","marker":"active-alerts"},
+ {"id":"R13","date":"2026-11-18","area":"relay","bug":"Cloudflare Workers reject fetch redirect:'error', so every relay call failed at runtime (unit tests could not see it)","guard":"regression_guards_test.py","marker":"redirect"},
+ {"id":"R14","date":"2026-11-18","area":"ci","bug":"popular_tickers.json was hidden by an ignore rule, so CI could not see the file the code needs","guard":"regression_guards_test.py","marker":"ls-files"},
+ {"id":"R15","date":"2026-11-18","area":"strategy","bug":"A fixed £ budget must never reappear on the Strategy tab or in any engine","guard":"zk_dipplan_test.mjs","marker":"budget"},
+ {"id":"R16","date":"2026-11-18","area":"auth","bug":"Sign-in box flashed on refresh before the saved-session check finished","guard":"login_flash_browser_test.py","marker":"flash"},
+ {"id":"R17","date":"2026-11-18","area":"sync","bug":"A cut-off pipeline run left half-written snapshots / restarted history from zero","guard":"legacy_interrupt_test.py","marker":"interrupt"},
+ {"id":"R18","date":"2026-11-18","area":"commits","bug":"Claude / Anthropic / Co-Authored-By signature in commits (owner forbids it)","guard":"standards_test.py","marker":"co-authored-by"}
+]

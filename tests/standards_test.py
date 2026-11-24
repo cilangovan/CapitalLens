@@ -233,3 +233,9 @@ check("Profit tab: separate Pie profit check card, Profit to book explains a £0
 # Alerts list lives only on the Alerts dashboard: no Active Alerts card on Overview (any dashboard), no leftover renderer
 check("Overview has no Active Alerts card or renderer on any dashboard (alerts only on the Alerts tab)",
       all("active-alerts" not in (ROOT / f).read_text() for f in ("docs/index.html", "docs/demo/index.html", "docs/app/index.html", "docs/zkapp/index.html", "docs/zkapp-prod/index.html", "docs/js/overview.js")))
+
+# Regression register + data quality: every fixed bug has a guard, one workflow runs them all, and the rule is written down
+_rw = (ROOT / ".github/workflows/regression.yml").read_text() if (ROOT / ".github/workflows/regression.yml").exists() else ""
+check("regression register, guards and data-quality checks exist, run in the Regression & data quality workflow, and CLAUDE.md names the rule",
+      all(f in _rw for f in ("regression_register_test.py", "regression_guards_test.py", "data_quality_test.py", "tests/zk_*_test.mjs", "schedule:"))
+      and (ROOT / "tests/regression_register.json").exists() and "regression_register.json" in doc and "regression-gap" in doc)

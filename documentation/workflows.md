@@ -48,6 +48,7 @@ The refresh runs in the browser, so a reload, a closed tab or lost signal kills 
 |---|---|
 | **Zero-knowledge tests** (`zk_tests.yml`) | Every `tests/zk_*_test.mjs`, Python tests, the **standards test** (`CLAUDE.md` rules), **documentation freshness**, generated pages not stale, worker syntax |
 | **UI tests (mobile layout)** (`ui_tests.yml`) | Playwright at 320/360/390px for every dashboard and the documentation portal: no sideways scroll; plus the login-flash and IPO-watch browser tests. Also runs weekday mornings after the data refresh |
+| **Regression & data quality** (`regression.yml`) | Every fixed bug's guard test in one place (the register in `tests/regression_register.json`, shown in *Regression register*): static guards, sign-up/migration/IPO/interrupt Python tests, Market Mood, demo and appearance phone tests, all zero-knowledge suites. A second job checks data quality of the shared data (popular tickers, IPO calendar, Market Mood tabs) and, nightly, the live tables (market-cache freshness, IPO calendar rules); a nightly failure opens or updates one issue, "Data quality failing". Runs on push, pull requests, nightly and on demand |
 
 ## Order on a weekday (UTC)
 

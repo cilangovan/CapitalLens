@@ -46,7 +46,7 @@ NAV = [
                     ("ops-dashboard.md", "Internal ops dashboard (planned)"),
                     ("demo.md", "Demo user (pre-sales)"),
                     ("demo-requirements.md", "Demo user: requirements and wireframes")]),
-    ("Engineering", [("engineering-guide.md", "Engineering guide"), ("reference/menu-map.md", "Menu map (generated)")]),
+    ("Engineering", [("engineering-guide.md", "Engineering guide"), ("regression-register.md", "Regression register (bug → guard test)"), ("reference/menu-map.md", "Menu map (generated)")]),
 ]
 PAGES = [p for _, items in NAV for p, _ in items]
 TITLES = {p: t for _, items in NAV for p, t in items}
