@@ -73,3 +73,5 @@ jobs:
           DEMO_SUPABASE_URL: ${{ secrets.DEMO_SUPABASE_URL }}
           DEMO_SERVICE_KEY: ${{ secrets.DEMO_SERVICE_KEY }}
         run: python -u tests/demo_parity_test.py
+      - name: Market Mood chips are all reachable on phone screens
+        run: python -u tests/mood_layout_test.py

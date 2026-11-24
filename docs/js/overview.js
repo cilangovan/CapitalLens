@@ -833,7 +833,8 @@ async function loadMarketMood() {
     // Collapsed by default — show trigger + active label; tap to fan out
     const trigStyle = 'flex:0 0 auto;min-height:36px;padding:0 12px;border-radius:20px;border:1px solid var(--accent);background:var(--accent);color:#fff;cursor:pointer;font-size:13px;font-weight:600;white-space:nowrap;display:flex;align-items:center;gap:5px';
     const chipStyle = 'flex:0 0 auto;min-height:36px;padding:0 11px;border-radius:20px;border:1px solid var(--border);background:var(--bg3);color:var(--muted);cursor:pointer;font-size:13px;white-space:nowrap;transition:opacity .18s,transform .18s;opacity:0;transform:translateX(-18px);pointer-events:none';
-    tabBar.style.cssText = 'display:flex;align-items:center;gap:6px;overflow:hidden;position:relative';
+    tabBar.style.cssText = 'display:flex;align-items:center;gap:6px;overflow:hidden;position:relative;min-width:0;max-width:100%';
+    if (tabBar.parentElement) tabBar.parentElement.style.flexWrap = 'wrap';      // open strip drops to its own row(s) so every market is reachable on a phone
     tabBar.innerHTML =
       '<button type="button" id="mood-trigger" style="' + trigStyle + '"><span id="mood-trigger-label">📊 Markets</span><span style="font-size:10px;opacity:.8">▸</span></button>'
       + MM_TABS.map(function(t) {
@@ -843,6 +844,11 @@ async function loadMarketMood() {
     let _expanded = false;
     function mmExpand(open) {
       _expanded = open;
+      // Open: chips WRAP onto as many rows as needed across the full card width (nothing clipped, no hidden scroll). Closed: one compact row.
+      tabBar.style.flexWrap = open ? 'wrap' : 'nowrap';
+      tabBar.style.flex = open ? '1 1 100%' : '0 1 auto';
+      tabBar.style.overflow = open ? 'visible' : 'hidden';
+      tabBar.style.marginTop = open ? '8px' : '0';
       const trig = document.getElementById('mood-trigger');
       const chips = tabBar.querySelectorAll('[data-mmt]');
       if (open) {

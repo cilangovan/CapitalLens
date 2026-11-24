@@ -12,6 +12,7 @@
 <main><article><h1 id="overview">📊 Overview</h1>
 <p><strong>Question it answers:</strong> how is the whole account doing right now, and what needs attention?</p>
 <p>Tab id <code>overview</code> · loader <code>loadOverview()</code> · <code>docs/js/overview.js</code></p>
+<p><strong>Market Mood</strong> (<code>#mood-section</code>, top of Overview only; stats strip below it): a gauge per market. Tap <strong>📊 Markets</strong> to open the chip strip: Crypto, US, UK, EU/DE, Japan, India, China, Spain, NL, Taiwan. Open, the chips <strong>wrap onto as many rows as needed</strong> so every market is reachable on a 360px phone (they were clipped after Germany before); picking one closes the strip. Guarded by <code>tests/mood_layout_test.py</code> (CI: ui_tests).</p>
 <h2 id="cards">Cards</h2>
 <div class="tbl"><table>
 <thead>

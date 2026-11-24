@@ -4,6 +4,8 @@
 
 Tab id `overview` · loader `loadOverview()` · `docs/js/overview.js`
 
+**Market Mood** (`#mood-section`, top of Overview only; stats strip below it): a gauge per market. Tap **📊 Markets** to open the chip strip: Crypto, US, UK, EU/DE, Japan, India, China, Spain, NL, Taiwan. Open, the chips **wrap onto as many rows as needed** so every market is reachable on a 360px phone (they were clipped after Germany before); picking one closes the strip. Guarded by `tests/mood_layout_test.py` (CI: ui_tests).
+
 ## Cards
 
 | Card | What it shows | Data |
