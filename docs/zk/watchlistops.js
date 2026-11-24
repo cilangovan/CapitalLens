@@ -90,10 +90,12 @@
       range = range || '1d'; if (!symbol || !SYMBOL_RE.test(symbol)) throw fail(400, 'Invalid symbol'); if (!RANGES.has(range)) throw fail(400, 'Invalid range');
       const r = await f(`${opts.relayUrl}/yahoo-intraday?s=${encodeURIComponent(symbol)}&range=${range}`); if (!r.ok) throw fail(502, `Yahoo chart ${r.status}`);
       const res = ((await r.json()).chart || {}).result; const c = res && res[0]; if (!c) throw fail(404, 'No chart data');
-      const m = c.meta || {}, [ccy, k] = SUBUNIT[m.currency] || [m.currency, 1], closes = ((c.indicators || {}).quote || [{}])[0].close || [];
+      const m = c.meta || {}, [ccy, k] = SUBUNIT[m.currency] || [m.currency, 1], q0 = ((c.indicators || {}).quote || [{}])[0], closes = q0.close || [], qo = q0.open || [], qh = q0.high || [], ql = q0.low || [], qv = q0.volume || [];
       const points = (c.timestamp || []).map((t, i) => closes[i] == null ? null : [t, +(closes[i] * k).toFixed(6)]).filter(Boolean);
+      // daily candles (open/high/low/close/volume) so the Swing tab can read volume and true ranges; null bars are dropped
+      const candles = (c.timestamp || []).map((t, i) => closes[i] == null || qo[i] == null || qh[i] == null || ql[i] == null ? null : [t, +(qo[i] * k).toFixed(6), +(qh[i] * k).toFixed(6), +(ql[i] * k).toFixed(6), +(closes[i] * k).toFixed(6), qv[i] != null ? qv[i] : null]).filter(Boolean);
       const n = v => typeof v === 'number' ? +(v * k).toFixed(6) : null, reg = (m.currentTradingPeriod || {}).regular;
-      return { symbol, range, interval: { '1d': '5m', '5d': '30m', '1mo': '1d', '6mo': '1d', '1y': '1d', '5y': '1wk' }[range], points,
+      return { symbol, range, interval: { '1d': '5m', '5d': '30m', '1mo': '1d', '6mo': '1d', '1y': '1d', '5y': '1wk' }[range], points, candles,
         meta: { currency: ccy, quote_currency: m.currency, exchange: m.fullExchangeName || m.exchangeName, timezone: m.exchangeTimezoneName, gmtoffset: m.gmtoffset, price: n(m.regularMarketPrice),
           prev_close: n(m.chartPreviousClose != null ? m.chartPreviousClose : m.previousClose), day_high: n(m.regularMarketDayHigh), day_low: n(m.regularMarketDayLow), high52: n(m.fiftyTwoWeekHigh), low52: n(m.fiftyTwoWeekLow),
           volume: m.regularMarketVolume != null ? m.regularMarketVolume : null, market_time: m.regularMarketTime != null ? m.regularMarketTime : null, session: reg ? { start: reg.start, end: reg.end } : null } };

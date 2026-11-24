@@ -27,7 +27,7 @@ NAV = [
         ("menus/app-shell.md", "App shell: sign-in, header, footer"),
         ("menus/overview.md", "📊 Overview"), ("menus/pnl-bubbles.md", "🫧 P&L Bubbles"),
         ("menus/positions.md", "📋 Positions"), ("menus/analyst.md", "🔬 Analyst"),
-        ("menus/strategy.md", "🎯 Strategy"), ("menus/profit-booking.md", "💰 Profit Booking"),
+        ("menus/strategy.md", "🎯 Strategy"), ("menus/profit-booking.md", "💰 Profit Booking"), ("menus/swing.md", "⚡ Swing"),
         ("menus/returns.md", "📈 Returns"), ("menus/watchlist.md", "⭐ Watchlist & IPO Watch"),
         ("menus/alerts.md", "🔔 Alerts"), ("menus/settings-and-account.md", "⚙ Settings & account"),
     ]),
@@ -150,7 +150,7 @@ def gen_menu_map():
         label = html.unescape(re.sub(r"<[^>]+>", "", label)).strip()
         page = next((p for p in PAGES if p.startswith("menus/") and p.split("/")[1].removesuffix(".md") in
                      {"overview": "overview", "heatmap": "pnl-bubbles", "positions": "positions", "analyst": "analyst", "strategy": "strategy",
-                      "profit": "profit-booking", "returns": "returns", "watchlist": "watchlist", "alerts": "alerts"}.get(tab, "?")), None)
+                      "profit": "profit-booking", "swing": "swing", "returns": "returns", "watchlist": "watchlist", "alerts": "alerts"}.get(tab, "?")), None)
         lines.append(f"| {label} | `{tab}` | `{loaders.get(tab, '?')}()` | {('[' + TITLES[page] + '](../' + page + ')') if page else '**missing**'} |")
     return "\n".join(lines) + "\n"
 

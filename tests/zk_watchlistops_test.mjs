@@ -14,7 +14,7 @@ let relayDown = false, hits = [];
 const fetchImpl = async u => {
   hits.push(u); const url = new URL(u);
   if (url.pathname === '/yahoo-search') return relayDown ? new Response('{}', { status: 502 }) : new Response(JSON.stringify({ quotes: yq }));
-  if (url.pathname === '/yahoo-intraday') return new Response(JSON.stringify({ chart: { result: [{ meta: { currency: 'GBp', regularMarketPrice: 250, chartPreviousClose: 240, fullExchangeName: 'LSE', currentTradingPeriod: { regular: { start: 1, end: 2 } } }, timestamp: [10, 20, 30], indicators: { quote: [{ close: [100, null, 120] }] } }] } }));
+  if (url.pathname === '/yahoo-intraday') return new Response(JSON.stringify({ chart: { result: [{ meta: { currency: 'GBp', regularMarketPrice: 250, chartPreviousClose: 240, fullExchangeName: 'LSE', currentTradingPeriod: { regular: { start: 1, end: 2 } } }, timestamp: [10, 20, 30], indicators: { quote: [{ close: [100, null, 120], open: [99, null, 110], high: [101, null, 125], low: [98, null, 108], volume: [5000, null, 7000] }] } }] } }));
   return new Response('{}', { status: 404 });
 };
 const call = async (path) => { const m = /^\/rest\/v1\/instruments\?(.*)$/.exec(path); if (!m) return { ok: false, status: 404 };
@@ -50,6 +50,7 @@ await post('watchlist/remove', { symbol: 'OLD' }); ok('remove clears analysis ro
 
 [st, d] = await post('chart', { symbol: 'VOD.L', range: '1d' });
 ok('chart: pence → pounds, null closes dropped, meta mapped', st === 200 && JSON.stringify(d.points) === '[[10,1],[30,1.2]]' && d.meta.currency === 'GBP' && d.meta.price === 2.5 && d.meta.prev_close === 2.4 && d.interval === '5m' && d.meta.session.end === 2);
+ok('chart: daily candles [t, o, h, l, c, volume] are returned for the Swing tab (pence → pounds, null bars dropped)', JSON.stringify(d.candles) === '[[10,0.99,1.01,0.98,1,5000],[30,1.1,1.25,1.08,1.2,7000]]');
 ok('chart: bad range / symbol rejected', (await post('chart', { symbol: 'VOD.L', range: '10y' }))[0] === 400 && (await post('chart', { symbol: '../x', range: '1d' }))[0] === 400);
 ok('GET on these routes is refused; without ops they say not available', (await sh.handle('/chart')).status === 405 && (await SH.create({ store, call, token: 'J', positions: async () => [] }).handle('/chart', { method: 'POST', body: '{}' })).status === 501);
 ok('every relay request used only the relay origin', hits.every(u => u.startsWith('https://relay/')));

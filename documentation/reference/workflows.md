@@ -3,7 +3,7 @@
 > **Generated** by `scripts/build_docs.py` from `.github/workflows/*.yml`. Do not edit by hand.
 > What each pipeline is for, and the order data moves, is in [Workflows & schedules](../workflows.md).
 
-18 workflows. Times are UTC. Per the standing rule, the owner's own morning Refresh is what runs analysis for the private app; these workflows cover shared/public data, the legacy dashboard, tests and maintenance.
+19 workflows. Times are UTC. Per the standing rule, the owner's own morning Refresh is what runs analysis for the private app; these workflows cover shared/public data, the legacy dashboard, tests and maintenance.
 
 | Workflow | File | Runs when | Schedule (UTC) |
 |---|---|---|---|
@@ -19,6 +19,7 @@
 | Regression & data quality | `regression.yml` | push, pull request, manual | `23 7 * * *` nightly, after the morning data refresh: live data-quality checks |
 | Security checks | `security.yml` | push, pull request, manual | `17 6 * * *` daily: static + live checks + issue sync + email<br>`0 3 * * 1` weekly Mon 03:00 UTC: XSS auto-fix cycle |
 | Send Password Reset Email | `send_reset_email.yml` | repository_dispatch | — |
+| Swing back-test | `swing_backtest.yml` | push, manual | `17 4 * * 0` |
 | T212 History Sync | `t212_sync.yml` | manual | — |
 | UI tests (mobile layout) | `ui_tests.yml` | push, pull request, manual | `47 7 * * 1-5` after the morning data refresh |
 | Vendor front-end libraries | `vendor_libs.yml` | manual | — |
@@ -101,6 +102,15 @@ python tests/security_issue_sync.py \
 python3 - <<'PYEOF'
 ```
 
+## Swing back-test
+
+`.github/workflows/swing_backtest.yml`
+
+```
+node tests/zk_swing_test.mjs
+node scripts/swing_backtest.mjs --out docs/data/swing_backtest.json
+```
+
 ## T212 History Sync
 
 `.github/workflows/t212_sync.yml`
@@ -119,9 +129,9 @@ python -u tests/ui_layout_test.py
 python -u tests/ipo_layout_test.py
 python -u tests/support_layout_test.py
 python -u tests/dipplan_layout_test.py
+python -u tests/swing_layout_test.py
 python -u tests/profit_pies_layout_test.py
 python -u tests/appearance_layout_test.py
-python -u tests/watchlist_amount_layout_test.py
 ```
 
 ## Watchlist Analysis

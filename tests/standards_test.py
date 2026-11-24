@@ -204,6 +204,15 @@ check("Dip Planner is tested (logic + phone layout, wired into CI) and documente
       and "Dip Planner" in (ROOT / "documentation/menus/strategy.md").read_text() and "Dip Planner" in doc and "no fixed budget" in doc.lower())
 check("Dip Planner handlers are only whitelisted calls (no inline code the CSP interpreter would refuse)", not re.search(r'on(?:click|change|input|keydown)="[^"]*(?:=>|===|function|\bif\b)', _dp))
 
+# Swing tab: loaded on every dashboard, gated by a back-test, tested, documented
+_sw = (ROOT / "docs/js/swing.js").read_text()
+check("Swing tab: on every dashboard, shows no entries without a passing back-test (swValidated), says 'No entry today', no fixed £ budget",
+      all("swing.js" in (ROOT / p).read_text() and "showTab('swing'" in (ROOT / p).read_text() for p in ("docs/index.html", "docs/demo/index.html", "docs/app/index.html", "docs/zkapp/index.html", "docs/zkapp-prod/index.html"))
+      and "swValidated" in _sw and "No entry today" in _sw and "swing_backtest.json" in _sw and "budget" not in _sw.lower())
+check("Swing tab: unit tests, layout test (in CI) and back-test workflow exist, and the menu page is documented",
+      (ROOT / "tests/zk_swing_test.mjs").exists() and "swing_layout_test.py" in (ROOT / ".github/workflows/ui_tests.yml").read_text()
+      and "swing_backtest.mjs" in (ROOT / ".github/workflows/swing_backtest.yml").read_text() and (ROOT / "documentation/menus/swing.md").exists() and "Swing tab" in (ROOT / "CLAUDE.md").read_text())
+
 print("\nstandards: " + ("all good" if not bad else f"{bad} failed")); sys.exit(1 if bad else 0)
 
 # No fixed budget anywhere (owner decides the amount at decision time): engines, worker, shim, watchlist UI and demo seeds

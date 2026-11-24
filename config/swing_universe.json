@@ -1,0 +1,4 @@
+{
+  "note": "Public, liquid stocks used ONLY to back-test the Swing rules. Not anyone's holdings. Today's survivors, so results carry survivorship bias (stated on the tab).",
+  "symbols": ["AAPL","MSFT","NVDA","AMZN","GOOGL","META","TSLA","AVGO","AMD","NFLX","ORCL","CRM","ADBE","INTC","QCOM","TXN","MU","AMAT","LRCX","KLAC","PANW","NOW","UBER","SHOP","PLTR","JPM","BAC","GS","MS","V","MA","UNH","LLY","JNJ","PFE","MRK","ABBV","TMO","ISRG","COST","WMT","HD","NKE","MCD","SBUX","DIS","KO","PEP","PG","XOM","CVX","COP","CAT","DE","GE","HON","LMT","RTX","NOC","BA","UPS","FDX","LIN","FCX","NEM","SPGI","BLK","SCHW","T","VZ","CMCSA","ABNB","BKNG","LULU","TGT","LOW","AZN.L","SHEL.L","HSBA.L","ULVR.L","BP.L","GSK.L","RR.L","BA.L","BARC.L","LLOY.L","REL.L","DGE.L","RIO.L","BATS.L","NG.L","VOD.L"]
+}

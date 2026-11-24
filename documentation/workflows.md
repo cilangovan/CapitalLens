@@ -36,6 +36,7 @@ The refresh runs in the browser, so a reload, a closed tab or lost signal kills 
 |---|---|
 | **Database Maintenance** | Daily: move history older than 45 days to archive tables (never delete), purge alerts cleared more than 30 days ago |
 | **Database Backup** | Weekly schema snapshot to git; **daily encrypted data backup to Cloudflare R2** (details in [Database & data flows](database.md)) |
+| **Swing back-test** (`swing_backtest.yml`) | Weekly, and whenever `docs/js/swing.js` / its universe changes: back-tests the Swing rules on ~5 years of daily data for ~90 liquid stocks and commits `docs/data/swing_backtest.json`. The Swing tab shows no entries unless that result clears its gate |
 | **Security checks** | Daily static checks (`tests/security_check.py`): policy, secrets, headers |
 | **Deploy Cloudflare Worker** (`deploy_worker.yml`) | Publishes `cloudflare-worker/worker.js` when it changes |
 | **Deploy Cloudflare Relay** (`deploy_relay.yml`) | Publishes the stateless `cloudflare-worker/relay.js` when it changes |

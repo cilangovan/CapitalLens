@@ -10,6 +10,7 @@
 | 🔬 Analyst | `analyst` | `loadAnalyst()` | [🔬 Analyst](../menus/analyst.md) |
 | 🎯 Strategy | `strategy` | `loadStrategy()` | [🎯 Strategy](../menus/strategy.md) |
 | 💰 Profit Booking | `profit` | `loadProfit()` | [💰 Profit Booking](../menus/profit-booking.md) |
+| ⚡ Swing | `swing` | `loadSwing()` | [⚡ Swing](../menus/swing.md) |
 | 📈 Returns | `returns` | `loadReturns()` | [📈 Returns](../menus/returns.md) |
 | ⭐ Watchlist | `watchlist` | `loadWatchlist()` | [⭐ Watchlist & IPO Watch](../menus/watchlist.md) |
 | 🔔 Alerts | `alerts` | `loadAlerts()` | [🔔 Alerts](../menus/alerts.md) |

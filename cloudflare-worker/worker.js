@@ -482,8 +482,10 @@ async function handleChart(req, env) {
   if (!res) return json({ error: 'No chart data' }, 404);
   const m = res.meta || {};
   const [ccy, k] = SUBUNIT[m.currency] || [m.currency, 1];
-  const closes = res.indicators?.quote?.[0]?.close || [];
+  const q0 = res.indicators?.quote?.[0] || {}, closes = q0.close || [];
   const points = (res.timestamp || []).map((t, i) => closes[i] == null ? null : [t, +(closes[i] * k).toFixed(6)]).filter(Boolean);
+  // daily candles [t, open, high, low, close, volume] for the Swing tab (null bars dropped)
+  const candles = (res.timestamp || []).map((t, i) => closes[i] == null || q0.open?.[i] == null || q0.high?.[i] == null || q0.low?.[i] == null ? null : [t, +(q0.open[i] * k).toFixed(6), +(q0.high[i] * k).toFixed(6), +(q0.low[i] * k).toFixed(6), +(closes[i] * k).toFixed(6), q0.volume?.[i] ?? null]).filter(Boolean);
   const n = v => (typeof v === 'number' ? +(v * k).toFixed(6) : null);
   return json({
     symbol, range, interval,
@@ -494,7 +496,7 @@ async function handleChart(req, env) {
             high52: n(m.fiftyTwoWeekHigh), low52: n(m.fiftyTwoWeekLow), volume: m.regularMarketVolume ?? null,
             market_time: m.regularMarketTime ?? null,
             session: m.currentTradingPeriod?.regular ? { start: m.currentTradingPeriod.regular.start, end: m.currentTradingPeriod.regular.end } : null },
-    points,
+    points, candles,
   });
 }
 
