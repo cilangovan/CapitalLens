@@ -226,7 +226,7 @@ check("Paper trading: unit tests, layout test (in CI) and the documentation exis
 _of = (ROOT / "docs/zk/orderflow.js").read_text(); _ofp = (ROOT / "services/orderflow.py").read_text()
 check("Order flow: estimator exists in JS and Python, is labelled an estimate, uses relative (not fixed-lot) thresholds, golden test + docs exist",
       "estimated: true" in _of and '"estimated": True' in _ofp and "EVENT_RVOL" in _of and "EVENT_RVOL" in _ofp and "20k" not in _ofp.replace("20k lots", "")
-      and (ROOT / "tests/zk_orderflow_test.mjs").exists() and (ROOT / "tests/data/orderflow_golden.json").exists() and "estimated" in (ROOT / "documentation/menus/watchlist.md").read_text())
+      and (ROOT / "tests/zk_orderflow_test.mjs").exists() and (ROOT / "tests/data/orderflow_golden.json").exists() and "!tests/data/*.json" in (ROOT / ".gitignore").read_text() and "estimated" in (ROOT / "documentation/menus/watchlist.md").read_text())
 import re as _re
 _shim = (ROOT / "docs/demo/demo-shim.js").read_text(); _grants = " ".join(f.read_text() for f in (ROOT / "supabase/migrations").glob("*.sql"))
 _demo_tabs = set(_re.findall(r"'/(demo_[a-z_]+)'", _shim))
