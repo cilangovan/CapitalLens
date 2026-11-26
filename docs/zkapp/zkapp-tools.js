@@ -89,8 +89,13 @@ async function zkLiveRemember(key, sec) {            // encrypted with the data 
 async function zkLiveResume() {                      // after a reload: signed-in session restored -> bring the live feed straight back
   if (_liveKey || !ZKCTX || !ZKCTX.dk) return false;
   let raw = null; try { raw = sessionStorage.getItem(ZK_LIVE_SS); } catch (e) {} if (!raw) return false;
-  try { const c = await ZK.decryptRow(ZKCTX.dk, JSON.parse(raw), 'live_creds', 'live', ZKCTX.uid); if (!c || !c.key || !c.sec) throw new Error('empty'); zkLiveStart(c.key, c.sec, true); return true; }
+  try { const c = await ZK.decryptRow(ZKCTX.dk, JSON.parse(raw), 'live_creds', 'live', ZKCTX.uid); if (!c || !c.key || !c.sec) throw new Error('empty'); zkLiveStart(c.key, c.sec, true); zkResumeInterrupted(c); return true; }
   catch (e) { try { sessionStorage.removeItem(ZK_LIVE_SS); } catch (x) {} return false; }
+}
+const ZK_PENDING_SS = 'zk_run_pending';
+function zkResumeInterrupted(c) {                    // the page was reloaded WHILE a refresh was running: finish it with the remembered key (no re-entry)
+  let p = null; try { p = sessionStorage.getItem(ZK_PENDING_SS); } catch (e) {} if (!p || ZK_RUN.running) return;
+  setTimeout(() => { if (!ZK_RUN.running) zkToolsRun(false, c); }, 800);
 }
 function zkLiveStart(key, sec, resumed) {
   _liveKey = key; _liveSec = sec; if (!resumed) zkLiveRemember(key, sec);
@@ -156,9 +161,11 @@ async function zkAutoRefresh() {            // re-analyse stored data (no Tradin
   if (rec && rec.version === ZK_ANALYSIS_VERSION && ageH < ZK_AUTO_MAX_HOURS) return;
   setTimeout(() => { if (!ZK_RUN.running) zkToolsRun(true); }, 1500);
 }
-async function zkToolsRun(auto) {
+async function zkToolsRun(auto, creds) {
   if (!ZKCTX) return;
-  const key = document.getElementById('zk-key').value.trim(), sec = document.getElementById('zk-sec').value.trim(), full = document.getElementById('zk-full').checked;
+  const key = creds ? creds.key : document.getElementById('zk-key').value.trim(), sec = creds ? creds.sec : document.getElementById('zk-sec').value.trim(), full = document.getElementById('zk-full').checked;
+  // Remember the key (encrypted, this tab only) the moment it is entered, not only when the refresh ends: a browser reload mid-refresh then resumes it instead of asking again.
+  if (auto !== true && key && sec) { await zkLiveRemember(key, sec); try { sessionStorage.setItem(ZK_PENDING_SS, '1'); } catch (e) {} }
   const keepKey = key, keepSec = sec;                                                           // kept in memory ONLY, for the live feed that follows a manual refresh
   const logEl = document.getElementById('zk-log'), btn = document.getElementById('zk-run'), status = document.getElementById('zk-status');
   logEl.textContent = ''; btn.disabled = true; status.textContent = 'Working…'; { const ch = document.getElementById('zk-changes'); if (ch) { ch.textContent = ''; ch.style.display = 'none'; } }
@@ -178,7 +185,8 @@ async function zkToolsRun(auto) {
     // One button: Refresh now = sync + analyse + go live. A manual refresh with a key keeps the headline numbers updating every 5 minutes (the key stays in memory only).
     if (auto !== true && keepKey && keepSec && typeof zkLiveStart === 'function') { zkLiveStart(keepKey, keepSec); status.textContent += ' Live: on (every 5 min).'; }
   } catch (e) { status.textContent = 'Failed: ' + (e.message || e); }
-  ZK_RUN.running = false; clearInterval(ZK_RUN.timer); window.removeEventListener('beforeunload', beforeUnload);
+  ZK_RUN.running = false; clearInterval(ZK_RUN.timer); window.removeEventListener('beforeunload', beforeUnload); try { sessionStorage.removeItem(ZK_PENDING_SS); } catch (e) {}
+  if (auto !== true && !_liveKey) { try { sessionStorage.removeItem(ZK_LIVE_SS); } catch (e) {} }   // refresh failed before live started: do not keep a key that never worked
   document.getElementById('zk-key').value = ''; document.getElementById('zk-sec').value = ''; btn.disabled = false; btn.textContent = 'Refresh now';
   if (document.getElementById('zk-tools').style.display !== 'flex') zkChipUpdate(true, '✅ ' + status.textContent); else zkChip().style.display = 'none';
   try { _cache = {}; } catch (e) {}

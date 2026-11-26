@@ -832,7 +832,7 @@
 "title": "⚙ Settings &amp; account",
 "heading": "Connecting Trading 212 (step by step)",
 "url": "menus/settings-and-account.html#connecting-trading-212-step-by-step",
-"text": "Guarded by tests/zk refresh live test.mjs. 4. Keep the tab open until it shows ✅. The first sync is slow because of Trading 212's rate limit. 5. The key needs at least these read-only permissions: Account data , Portfolio , Orders history (and Dividends/Transactions history for Returns). A key without Portfolio is refused by Trading 212 and no positions can be saved."
+"text": "Guarded by tests/zk refresh live test.mjs. The key is remembered (encrypted, this browser tab only) the moment you press Refresh now , so reloading the page, even in the middle of a refresh, does not ask for it again: the live feed comes back and an interrupted refresh is finished automatically. Logout, the 45-minute inactivity logout, Stop or closing the tab destroys it. Guard: tests/zk live persist test.mjs. 4. Keep the tab open until it shows ✅. The first sync is slow because of Trading 212's rate limit. 5. The key needs at least these read-only permissions: Account data , Portfolio , Orders history (and Dividends/Transactions history for Returns). A key without Portfolio is refused by Trading 212 and no positions can be saved."
 },
 {
 "id": "menus/settings-and-account#what-the-refresh-tells-you-issue-53",
