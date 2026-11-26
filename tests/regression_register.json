@@ -762,5 +762,53 @@
    "a513896"
   ],
   "auto": true
+ },
+ {
+  "id": "Ad2256f2",
+  "date": "2026-11-24",
+  "area": "general",
+  "bug": "fix: demo Global Institutional Capital card (SELECT grant on demo_* tables) (#66); guard: tests/standards_test.py",
+  "guard": "standards_test.py",
+  "marker": "",
+  "commits": [
+   "d2256f2"
+  ],
+  "auto": true
+ },
+ {
+  "id": "Ad3dad40",
+  "date": "2026-11-24",
+  "area": "returns",
+  "bug": "fix: demo Returns page crash on missing cash reconciliation (#65); guard: tests/zk_returns_footer_test.mjs",
+  "guard": "zk_returns_footer_test.mjs",
+  "marker": "",
+  "commits": [
+   "d3dad40"
+  ],
+  "auto": true
+ },
+ {
+  "id": "A440fff8",
+  "date": "2026-11-26",
+  "area": "general",
+  "bug": "fix: commit the order-flow golden vectors (.gitignore hid tests/data/*.json, CI standards + zk tests failed); guard: tests/standards_test.py",
+  "guard": "standards_test.py",
+  "marker": "",
+  "commits": [
+   "440fff8"
+  ],
+  "auto": true
+ },
+ {
+  "id": "Ac19b13b",
+  "date": "2026-11-26",
+  "area": "general",
+  "bug": "fix: the Trading 212 key survives a browser reload during Refresh (remembered when Refresh is pressed; an interrupted refresh resumes); guard: tests/zk_live_persist_test.mjs",
+  "guard": "zk_live_persist_test.mjs",
+  "marker": "",
+  "commits": [
+   "c19b13b"
+  ],
+  "auto": true
  }
 ]

@@ -53,11 +53,15 @@ Every bug that was fixed has a row here: what broke and the test that fails if i
 | A4fc9848 | 2026-11-24 | mood | fix(mood): every country tab fetches its own index data; add Italy | `tests/mood_layout_test.py` | 4fc9848 |
 | Aa513896 | 2026-11-24 | general | fix: LIVE feed survives a browser refresh until logout or inactivity timeout; guard: tests/zk_live_persist_test.mjs | `tests/zk_live_persist_test.mjs` | a513896 |
 | Ab9be161 | 2026-11-24 | general | fix: let the Swing back-test result be committed (.gitignore hid docs/data/swing_backtest.json); guard: tests/regression_guards_test.py R14 | `tests/regression_guards_test.py` | b9be161 |
+| Ad2256f2 | 2026-11-24 | general | fix: demo Global Institutional Capital card (SELECT grant on demo_* tables) (#66); guard: tests/standards_test.py | `tests/standards_test.py` | d2256f2 |
+| Ad3dad40 | 2026-11-24 | returns | fix: demo Returns page crash on missing cash reconciliation (#65); guard: tests/zk_returns_footer_test.mjs | `tests/zk_returns_footer_test.mjs` | d3dad40 |
 | R11 | 2026-11-24 | mobile | Market Mood chip strip was clipped at 360px: nothing past Germany could be tapped | `tests/mood_layout_test.py` | 6e86efd |
 | R12 | 2026-11-24 | ui | Active Alerts list on Overview (owner wants alerts only on the Alerts dashboard) | `tests/standards_test.py` | 7afcaf6 |
 | R23 | 2026-11-24 | mood | Market Mood showed no data for any country you do not hold (it read the Markets-I-hold cache, which only loads held countries) | `tests/mood_layout_test.py` |  |
 | R24 | 2026-11-24 | mood | Italy (FTSE MIB) had no Market Mood tab | `tests/mood_layout_test.py` |  |
 | R25 | 2026-11-24 | ui | Two buttons (Refresh now and Start live feed) confused the owner: Refresh now should refresh and make data live | `tests/zk_refresh_live_test.mjs` |  |
+| A440fff8 | 2026-11-26 | general | fix: commit the order-flow golden vectors (.gitignore hid tests/data/*.json, CI standards + zk tests failed); guard: tests/standards_test.py | `tests/standards_test.py` | 440fff8 |
+| Ac19b13b | 2026-11-26 | general | fix: the Trading 212 key survives a browser reload during Refresh (remembered when Refresh is pressed; an interrupted refresh resumes); guard: tests/zk_live_persist_test.mjs | `tests/zk_live_persist_test.mjs` | c19b13b |
 
 ## Known gaps (fixed, no automated test yet)
 
